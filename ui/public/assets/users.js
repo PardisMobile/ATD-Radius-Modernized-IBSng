@@ -40,7 +40,7 @@
       rows.innerHTML = payload.items.map(user => `
         <tr>
           <td><div class="user-cell"><span class="avatar">${escapeHTML(user.username.slice(0,1).toUpperCase())}</span><div><strong>${escapeHTML(user.username)}</strong><small>${escapeHTML(user.id)}</small></div></div></td>
-          <td><span class="status-pill status-${escapeHTML(user.status)}"><i></i>${escapeHTML(statusLabel(user.status))}</span></td>
+          <td><span class="status-pill status-${user.locked ? 'locked' : 'active'}"><i></i>${escapeHTML(statusLabel(user.locked ? 'locked' : 'active'))}</span></td>
           <td><a class="row-action" href="#user/${encodeURIComponent(user.username)}">${escapeHTML(cfg.labels?.open || 'Open')}</a></td>
         </tr>`).join('');
     } catch (_) {
