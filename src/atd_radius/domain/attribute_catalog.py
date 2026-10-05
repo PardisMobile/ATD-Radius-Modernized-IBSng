@@ -1,71 +1,110 @@
-"""A1.24 attribute catalog extracted from the IBSng interface/plugin surface.
+"""A1.24 attribute catalog used as the compatibility contract.
 
-This is deliberately a catalog, not a claim that every entry has already been
-implemented by the policy engine. Runtime behavior is added only after its
-producer/consumer path has been mapped.
+The catalog records what the A1.24 source exposes and where that behavior is
+expected to be consumed. It intentionally does not mark behavior as migrated
+until the producer/consumer path has an implementation and a compatibility
+fixture.
 """
 from __future__ import annotations
+
+from dataclasses import dataclass
 
 from .attributes import AttributeDefinition, AttributeOperator
 
 
-def _d(name: str, value_type: str = "string", *, multi: bool = False,
-       operators: tuple[AttributeOperator, ...] = (AttributeOperator.SET,),
-       description: str = "") -> AttributeDefinition:
-    return AttributeDefinition(name, value_type, multi, operators, description)
+@dataclass(frozen=True, slots=True)
+class IBSngAttributeSpec:
+    definition: AttributeDefinition
+    source_area: str
+    consumers: tuple[str, ...]
+    radius_name: str | None = None
+    migration_status: str = "catalogued"
 
 
-# Names directly evidenced by A1.24 attrs.php and its attribute-update path.
-IBSNG_ATTRIBUTE_DEFINITIONS: dict[str, AttributeDefinition] = {
-    "rel_exp": _d("rel_exp", "integer", description="Relative expiration policy."),
-    "abs_exp": _d("abs_exp", "integer", description="Absolute expiration policy."),
-    "multi_login": _d("multi_login", "integer", description="Simultaneous/multiple login policy."),
-    "normal_charge": _d("normal_charge", "string", description="Normal-user charging policy."),
-    "voip_charge": _d("voip_charge", "string", description="VoIP charging policy."),
-    "ippool": _d("ippool", "string", description="Assigned IP pool."),
-    "assign_ip": _d("assign_ip", "string", description="Explicit IP assignment."),
-    "radius_attrs": _d("radius_attrs", "string", multi=True,
-                         operators=(AttributeOperator.SET, AttributeOperator.ADD, AttributeOperator.REMOVE),
-                         description="Additional RADIUS attributes."),
-    "group_id": _d("group_id", "string"),
-    "group_name": _d("group_name", "string"),
-    "owner_name": _d("owner_name", "string"),
-    "normal_username": _d("normal_username", "string"),
-    "normal_save_usernames": _d("normal_save_usernames", "boolean"),
-    "generate_password": _d("generate_password", "boolean"),
-    "password_character": _d("password_character", "boolean"),
-    "password_digit": _d("password_digit", "boolean"),
-    "normal_username_from_file": _d("normal_username_from_file", "string"),
-    "voip_username": _d("voip_username", "string"),
-    "voip_save_usernames": _d("voip_save_usernames", "boolean"),
-    "voip_generate_password": _d("voip_generate_password", "boolean"),
-    "voip_password_character": _d("voip_password_character", "boolean"),
-    "voip_password_digit": _d("voip_password_digit", "boolean"),
-    "voip_username_from_file": _d("voip_username_from_file", "string"),
-    "caller_id": _d("caller_id", "string", multi=True,
-                     operators=(AttributeOperator.SET, AttributeOperator.ADD, AttributeOperator.REMOVE)),
-    "lock": _d("lock", "boolean"),
-    "save_bw_usage": _d("save_bw_usage", "boolean"),
-    "persistent_lan_mac": _d("persistent_lan_mac", "string"),
-    "persistent_lan_ip": _d("persistent_lan_ip", "string"),
-    "persistent_lan_ras_ip": _d("persistent_lan_ras_ip", "string"),
-    "comment": _d("comment", "string"),
-    "name": _d("name", "string"),
-    "phone": _d("phone", "string"),
-    "limit_mac": _d("limit_mac", "boolean"),
-    "limit_station_ip": _d("limit_station_ip", "boolean"),
-    "session_timeout": _d("session_timeout", "integer"),
-    "idle_timeout": _d("idle_timeout", "integer"),
-    "limit_caller_id": _d("limit_caller_id", "boolean"),
-    "limit_caller_id_allow_not_defined": _d("limit_caller_id_allow_not_defined", "boolean"),
-    "mail_quota": _d("mail_quota", "integer"),
-    "email_address": _d("email_address", "string"),
-    "fast_dial": _d("fast_dial", "string", multi=True,
-                     operators=(AttributeOperator.SET, AttributeOperator.ADD, AttributeOperator.REMOVE)),
-    "voip_preferred_language": _d("voip_preferred_language", "string"),
-}
+def _s(
+    name: str,
+    *,
+    value_type: str = "string",
+    multi: bool = False,
+    operators: tuple[AttributeOperator, ...] = (AttributeOperator.SET,),
+    source_area: str,
+    consumers: tuple[str, ...],
+    radius_name: str | None = None,
+) -> IBSngAttributeSpec:
+    return IBSngAttributeSpec(
+        definition=AttributeDefinition(
+            name=name,
+            value_type=value_type,
+            multi=multi,
+            operators=operators,
+        ),
+        source_area=source_area,
+        consumers=consumers,
+        radius_name=radius_name,
+    )
+
+
+# Names evidenced by the A1.24 attrs.php update path and plugin inventory.
+# Values remain conservative (string) where the source semantics still need
+# consumer-level inspection; guessing a numeric/boolean type would create a
+# false compatibility guarantee.
+IBSNG_A124_ATTRIBUTES: tuple[IBSngAttributeSpec, ...] = (
+    _s("rel_exp", source_area="user/expiration", consumers=("expiration",)),
+    _s("abs_exp", source_area="user/expiration", consumers=("expiration",)),
+    _s("multi_login", source_area="user/login", consumers=("session", "radius")),
+    _s("normal_charge", source_area="user/charge", consumers=("charging",)),
+    _s("voip_charge", source_area="user/charge", consumers=("charging", "voip")),
+    _s("ippool", source_area="user/network", consumers=("ippool", "radius")),
+    _s("assign_ip", source_area="user/network", consumers=("ippool", "radius")),
+    _s("radius_attrs", multi=True, operators=(AttributeOperator.SET, AttributeOperator.ADD, AttributeOperator.REMOVE, AttributeOperator.REPLACE), source_area="user/radius", consumers=("radius",)),
+    _s("group_id", source_area="identity/group", consumers=("group",)),
+    _s("group_name", source_area="identity/group", consumers=("group",)),
+    _s("owner_name", source_area="identity", consumers=("identity",)),
+    _s("name", source_area="identity", consumers=("identity",)),
+    _s("phone", source_area="identity", consumers=("identity",)),
+    _s("comment", source_area="identity", consumers=("identity",)),
+    _s("normal_username", source_area="credentials/normal", consumers=("authentication",)),
+    _s("normal_save_usernames", source_area="credentials/normal", consumers=("authentication",)),
+    _s("generate_password", source_area="credentials/normal", consumers=("password-policy",)),
+    _s("password_character", source_area="credentials/normal", consumers=("password-policy",)),
+    _s("password_digit", source_area="credentials/normal", consumers=("password-policy",)),
+    _s("normal_username_from_file", source_area="credentials/normal", consumers=("authentication",)),
+    _s("voip_username", source_area="credentials/voip", consumers=("authentication", "voip")),
+    _s("voip_save_usernames", source_area="credentials/voip", consumers=("authentication", "voip")),
+    _s("voip_generate_password", source_area="credentials/voip", consumers=("password-policy", "voip")),
+    _s("voip_password_character", source_area="credentials/voip", consumers=("password-policy", "voip")),
+    _s("voip_password_digit", source_area="credentials/voip", consumers=("password-policy", "voip")),
+    _s("voip_username_from_file", source_area="credentials/voip", consumers=("authentication", "voip")),
+    _s("voip_preferred_language", source_area="credentials/voip", consumers=("voip",)),
+    _s("caller_id", multi=True, operators=(AttributeOperator.SET, AttributeOperator.ADD, AttributeOperator.REMOVE), source_area="access/caller-id", consumers=("caller-id",)),
+    _s("limit_caller_id", source_area="access/caller-id", consumers=("caller-id", "authorization")),
+    _s("limit_caller_id_allow_not_defined", source_area="access/caller-id", consumers=("caller-id", "authorization")),
+    _s("lock", source_area="access/restrictions", consumers=("authorization",)),
+    _s("limit_mac", source_area="access/restrictions", consumers=("authorization", "session")),
+    _s("limit_station_ip", source_area="access/restrictions", consumers=("authorization", "session")),
+    _s("session_timeout", source_area="session", consumers=("session", "radius"), radius_name="Session-Timeout"),
+    _s("idle_timeout", source_area="session", consumers=("session", "radius"), radius_name="Idle-Timeout"),
+    _s("save_bw_usage", source_area="accounting", consumers=("accounting",)),
+    _s("persistent_lan_mac", source_area="persistent-lan", consumers=("persistent-lan",)),
+    _s("persistent_lan_ip", source_area="persistent-lan", consumers=("persistent-lan", "ippool")),
+    _s("persistent_lan_ras_ip", source_area="persistent-lan", consumers=("persistent-lan", "ras")),
+    _s("mail_quota", source_area="messaging", consumers=("mail",)),
+    _s("email_address", source_area="messaging", consumers=("mail",)),
+    _s("fast_dial", multi=True, operators=(AttributeOperator.SET, AttributeOperator.ADD, AttributeOperator.REMOVE), source_area="telephony", consumers=("voip",)),
+)
+
+ATTRIBUTE_SPECS = {item.definition.name: item for item in IBSNG_A124_ATTRIBUTES}
+ATTRIBUTE_DEFINITIONS = {name: spec.definition for name, spec in ATTRIBUTE_SPECS.items()}
 
 
 def get_ibsng_attribute_definitions() -> dict[str, AttributeDefinition]:
-    """Return a copy of the catalog for use by the resolver."""
-    return dict(IBSNG_ATTRIBUTE_DEFINITIONS)
+    """Return a copy of the typed definitions for resolver integration."""
+    return dict(ATTRIBUTE_DEFINITIONS)
+
+
+def get_attribute_spec(name: str) -> IBSngAttributeSpec:
+    """Fail loudly for an attribute that has not entered the parity catalog."""
+    try:
+        return ATTRIBUTE_SPECS[name]
+    except KeyError as exc:
+        raise KeyError(f"IBSng A1.24 attribute is not catalogued: {name}") from exc
