@@ -7,7 +7,7 @@ ATD Radius is a clean modernization of IBSng A1.24. The goal is simple: keep the
 - Python 3.12+ core
 - PostgreSQL
 - RADIUS authentication and accounting
-- EAP as a first-class AAA capability
+- EAP as a later protocol-boundary extension after source-first analysis of existing IBSng protocols
 - REST API
 - XML-RPC compatibility adapter
 - PHP 8+ web panel
@@ -15,6 +15,8 @@ ATD Radius is a clean modernization of IBSng A1.24. The goal is simple: keep the
 - Migration tooling for existing IBSng installations
 
 ## Important project rule
+
+ATD uses the exact IBSng A1.24 terminology and PostgreSQL schema for existing IBSng concepts. UI modernization must not rename menus, fields, entities or workflows. New protocol extensions such as EAP require source-first analysis of the existing IBSng protocol mechanism before implementation.
 
 This is a clean repository. Nothing from the previous Go-based `ATD-Radius` repository is imported here. The IBSng archive, production databases, credentials and generated legacy binaries are not committed to this public repository.
 
@@ -29,7 +31,7 @@ The project foundation is now live:
 - RADIUS packet transport foundation
 - EAP packet foundation
 - FastAPI health/meta API
-- first ATD web shell
+- first modern IBSng-compatible web shell
 - design-system and UI specification
 - IBSng reference inventory
 - CI test workflow
