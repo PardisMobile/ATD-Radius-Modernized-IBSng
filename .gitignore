@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.py[cod]
+.env
+.env.*
+!.env.example
+node_modules/
+vendor/
+coverage.xml
+.pytest_cache/
+.phpunit.result.cache
+*.log
+secrets/

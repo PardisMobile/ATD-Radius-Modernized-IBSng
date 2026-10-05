@@ -1,28 +1,37 @@
-# Project Context
-
-This file is the portable memory of the project. Read it before making architectural changes.
+# Project Context — Carry-Forward Memory
 
 ## Identity
-ATD Radius Modernized IBSng is a modernization of IBSng A1.24, not a greenfield Go AAA project.
 
-## Reference
-IBSng A1.24 is the behavioral reference. The complete archive is kept outside this public repository and must not be copied here.
+ATD Radius Modernized IBSng is a clean-room modernization project whose behavioral reference is IBSng A1.24. The old Go-based ATD repository is not part of this repository and must not be copied here.
 
-## Technology decisions
-- Python 3 for core/domain/AAA.
-- PostgreSQL for persistence.
-- PHP 8+ for the initial web UI.
-- RADIUS is core.
-- EAP is a core requirement.
-- REST is the modern API.
-- XML-RPC is a compatibility adapter.
-- Modern systemd/Linux deployment replaces the old CentOS 7 assumptions.
+## Fixed architecture
 
-## UI contract
-The UI must preserve useful IBSng workflows while replacing its legacy visual system. It must support Persian/English, RTL/LTR, light/dark/system themes, responsive layouts, reusable components, accessible forms/tables, and a distinctive ATD identity. Do not build a generic dashboard template.
+- Python 3.12+ core
+- PostgreSQL
+- RADIUS authentication/accounting
+- EAP as a first-class capability
+- REST API
+- XML-RPC compatibility adapter
+- PHP 8+ modern web UI
+- ATD design system, RTL/LTR, Persian/English, Light/Dark/System
+- migration tooling from existing IBSng installations
 
-## Engineering rule
-Behavior is migrated deliberately. Legacy implementation is not copied merely for familiarity. Every compatibility decision should be documented.
+## Product intent
 
-## Continuity rule
-Update this file, ROADMAP.md, ARCHITECTURE.md and docs/DECISIONS.md when a major project decision changes. A future chat should be able to reconstruct the project direction from these files.
+The user wants the proven IBSng product model modernized, not a greenfield AAA product with unrelated abstractions. Preserve useful operational semantics; replace obsolete runtime and presentation technology.
+
+## UI intent
+
+The UI must modernize IBSng workflows rather than discard them. Users, groups, services, RAS/NAS, IP pools, sessions, accounting, credit, reports and permissions must remain discoverable and operationally efficient.
+
+## EAP
+
+EAP is not an optional future plugin. The protocol/state-machine layer must be designed so supported EAP methods can be added without changing the domain or persistence layers.
+
+## Repository rule
+
+Never import code, documentation, generated files, secrets or production data from the previous ATD Radius repository. Do not commit the IBSng archive to this public repository.
+
+## Working rule for future chats
+
+Read this file, `ROADMAP.md`, `ARCHITECTURE.md`, `docs/DECISIONS.md`, `docs/phase-0-inventory.md`, and `ui/UI-SPEC.md` before making architectural changes. Then inspect the latest commits before editing code.

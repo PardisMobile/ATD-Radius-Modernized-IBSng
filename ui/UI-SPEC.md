@@ -1,24 +1,38 @@
-# UI Specification
+# ATD UI Specification
 
-The UI is a product requirement, not a cosmetic layer.
+## Product character
 
-## Goals
-- Preserve the efficient mental model of IBSng.
-- Replace the legacy visual language completely.
-- Make complex AAA operations understandable without hiding technical controls.
+ATD is a network/AAA control plane, not a generic SaaS dashboard. The interface should feel operational, dense where useful, calm, fast, and unmistakably ATD.
 
-## Required capabilities
-- Persian and English.
-- Real RTL/LTR support.
-- Light, dark and system appearance.
-- Responsive desktop/tablet/mobile layouts.
-- Reusable tables, filters, forms, tabs, drawers, modals, alerts and action menus.
-- Dense network-management views where appropriate.
-- Clear status, health, session and accounting information.
-- Accessible keyboard and focus behavior.
+## Navigation
 
-## Primary workspaces
-Dashboard, Users, Groups, Services, RAS/NAS, IP Pools, Sessions/Online Users, Accounting, Billing/Charging, Reports, Administrators/Permissions, Settings, System Health.
+Dashboard
+Users
+Groups
+Services
+RAS / NAS
+IP Pools
+Sessions
+Accounting
+Billing
+Reports
+Administration
 
-## Rule
-Do not copy old IBSng HTML/Smarty presentation. Preserve workflow and domain terminology where useful, but implement the visual system anew.
+## UX rules
+
+- Preserve familiar IBSng workflows and terminology where they are operationally useful.
+- Replace legacy multi-page form chains with contextual workspaces, tabs, drawers and inline actions.
+- Search and filtering are first-class on operational tables.
+- Destructive actions require clear confirmation and audit visibility.
+- Every important object has Overview, Attributes/Policy, Activity and Audit where applicable.
+- Persian and English are first-class; RTL/LTR must not be a CSS afterthought.
+- Light, dark and system modes share one token system.
+- Mobile navigation is a deliberate responsive mode, not a collapsed desktop sidebar.
+
+## User workspace
+
+A user page must expose identity, Internet Username, authentication state, group/service assignment, attributes, credit, active sessions, accounting history and audit history without forcing the operator through the legacy page chain.
+
+## Visual system
+
+Use restrained surfaces, strong typography, compact data tables, semantic status indicators and consistent spacing. Avoid template-marketplace aesthetics, excessive gradients, decorative charts, and arbitrary component styling.

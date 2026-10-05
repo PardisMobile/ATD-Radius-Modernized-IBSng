@@ -1,31 +1,21 @@
 # Architecture Decisions
 
-## ADR-001: Modernize IBSng instead of continuing the Go implementation
-Status: accepted.
+## ADR-001 — Modernize IBSng, do not continue the Go implementation
 
-The project's primary purpose is to modernize IBSng A1.24 while preserving proven behavior. Go is not the core implementation language for this repository.
+The target is a modern IBSng-compatible AAA platform. Go is not the project core. Python 3 is selected because the behavioral reference is a Python-based AAA system and because the project must preserve its domain semantics while removing Python 2-era constraints.
 
-## ADR-002: IBSng A1.24 is the behavioral reference
-Status: accepted.
+## ADR-002 — Separate domain from protocol and presentation
 
-The reference source is analyzed separately. We preserve domain behavior where it is intentional, while replacing obsolete implementation and deployment details.
+RADIUS, REST, XML-RPC and the web UI are adapters. They must call application services rather than implement business rules.
 
-## ADR-003: Python 3 core
-Status: accepted.
+## ADR-003 — EAP is first-class
 
-Python is the closest practical modernization path for the existing IBSng core/domain concepts and keeps the implementation maintainable for this project.
+EAP state and packet handling live in the protocol/authentication layers. Supported methods must be backed by parity tests.
 
-## ADR-004: PHP 8+ web panel
-Status: accepted.
+## ADR-004 — Public repository stays clean
 
-The web panel remains a separate presentation layer, but its legacy PHP/Smarty implementation is rewritten around a modern ATD design system.
+No production data, credentials, IBSng archive, generated binaries or copied legacy repository are committed.
 
-## ADR-005: EAP is first-class
-Status: accepted.
+## ADR-005 — UI is a full modernization
 
-EAP support is part of the AAA architecture from the beginning rather than an afterthought.
-
-## ADR-006: No old ATD repository code is imported
-Status: accepted.
-
-The previous ATD-Radius repository is historical/reference only. This repository starts clean.
+The old PHP/Smarty UI is a behavioral reference. The implementation uses a reusable ATD design system with RTL/LTR and Light/Dark/System modes.

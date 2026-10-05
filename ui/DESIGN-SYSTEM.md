@@ -1,19 +1,25 @@
 # ATD Design System
 
-## Visual direction
-A distinctive, technical, calm and premium network-management interface. Avoid generic admin-dashboard styling.
-
 ## Tokens
-The implementation will define semantic tokens for background, surface, elevated surface, text, muted text, border, primary, success, warning, danger, info, focus and status states.
+
+The theme is token-based so Light/Dark/System, RTL/LTR and future brand adjustments do not require page rewrites.
+
+Core token groups:
+
+- background / surface / elevated surface
+- text / muted text / inverse text
+- border / focus ring
+- accent / accent hover
+- success / warning / danger / info
+- radius: compact, standard, large
+- spacing scale
+- typography scale
+- table density
 
 ## Components
-Buttons, inputs, selects, textareas, switches, badges, alerts, cards, data tables, filters, pagination, tabs, breadcrumbs, drawers, modals, command/action menus, charts and empty/loading/error states.
 
-## Layout
-Global shell with responsive sidebar/navigation, header, workspace content and footer. Navigation and content direction must respond to locale.
+Shell, sidebar, topbar, breadcrumbs, tabs, cards, data table, filters, search, pagination, form field, select, toggle, badge, status dot, alert, toast, modal, drawer, confirmation, empty state, loading state, command/search palette.
 
-## Theme
-Light/dark/system modes are first-class. Components must consume semantic tokens instead of hard-coded colors.
+## Accessibility
 
-## Typography
-The theme must support Persian and Latin text cleanly and allow the final font stack to be selected without rewriting components.
+Keyboard navigation, visible focus, semantic controls, sufficient contrast, reduced motion support, and screen-reader labels are required.
