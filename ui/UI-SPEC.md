@@ -73,7 +73,7 @@ Within each section, page titles and actions must use the corresponding A1.24 na
 - Light, dark and system modes share one token system.
 - Mobile navigation is a deliberate responsive mode, not a collapsed desktop sidebar.
 
-## Dashboard / Home
+## HOME
 
 The modern home replaces the large empty legacy canvas with a useful operations overview while preserving the same mental map.
 
@@ -82,9 +82,9 @@ Recommended regions:
 1. Global status and quick actions.
 2. Authentication/session health.
 3. Online users and active sessions.
-4. RAS/NAS health.
-5. IP pool utilization.
-6. Recent accounting/billing activity.
+4. RAS health.
+5. IPPool utilization.
+6. Recent Connection Logs, Connection Usages and Charge activity.
 7. Alerts and audit events.
 8. Frequently used IBSng actions.
 
@@ -109,13 +109,13 @@ Groups and services are first-class policy objects. Their pages must show:
 
 ## RAS / IPPool
 
-RAS/NAS and IP pools must be operationally visible. Operators should be able to understand availability, health, assignments, address utilization and related policy without navigating through unrelated pages.
+RAS and IPPool must be operationally visible. Operators should be able to understand availability, health, assignments, address utilization and related policy without navigating through unrelated pages.
 
-## Reports / Graphs
+## REPORT / GRAPH
 
 The legacy Report and Graph areas are preserved as functional domains. Realtime graphs, connection analysis, usage reports and audit reports should be organized by task and data source rather than reproduced as separate legacy pages.
 
-## Administration
+## ADMIN
 
 Administration includes administrators, permissions, messages, audit visibility, system settings and maintenance operations. Permission-sensitive actions must be explicit and auditable.
 
