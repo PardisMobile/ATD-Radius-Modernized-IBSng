@@ -2,7 +2,7 @@
 
 ## Product character
 
-ATD is a modernized IBSng control plane, not a generic SaaS dashboard. The interface should feel operational, dense where useful, calm, fast, and unmistakably ATD.
+ATD is a modernized IBSng control plane, not a generic SaaS product. The interface should feel operational, dense where useful, calm, fast, and unmistakably ATD.
 
 The modernization rule is:
 
@@ -56,7 +56,7 @@ The primary navigation uses the exact A1.24 labels:
 
 HOME, USER, GROUP, REPORT, GRAPH, ADMIN, SETTING.
 
-Do not replace these with Dashboard, Users, Groups, Reports, Administration, Settings, or another ATD-specific taxonomy.
+Do not replace these with an ATD-specific taxonomy.
 
 Within each section, page titles and actions must use the corresponding A1.24 names. Modern tabs, drawers and responsive layouts are allowed only as presentation mechanics.
 
