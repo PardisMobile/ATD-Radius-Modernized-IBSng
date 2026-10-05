@@ -2,7 +2,7 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
 from time import monotonic
-from typing import Generic, Hashable, Mapping, TypeVar
+from typing import Generic, Mapping, TypeVar
 
 T=TypeVar("T")
 
