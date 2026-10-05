@@ -52,22 +52,13 @@ ATD must retain these capabilities where they exist in the IBSng source, but reo
 
 ## Navigation
 
-Primary navigation:
+The primary navigation uses the exact A1.24 labels:
 
-Dashboard
-Users
-Groups
-Services
-RAS / NAS
-IP Pools
-Sessions
-Accounting
-Billing
-Reports
-Administration
-Settings
+HOME, USER, GROUP, REPORT, GRAPH, ADMIN, SETTING.
 
-Legacy IBSng labels remain available through contextual labels, search, documentation, and compatibility terminology where useful. We do not require operators to relearn core concepts merely because the UI is modernized.
+Do not replace these with Dashboard, Users, Groups, Reports, Administration, Settings, or another ATD-specific taxonomy.
+
+Within each section, page titles and actions must use the corresponding A1.24 names. Modern tabs, drawers and responsive layouts are allowed only as presentation mechanics.
 
 ## UX rules
 
@@ -99,13 +90,13 @@ Recommended regions:
 
 Charts are used only when they answer an operational question.
 
-## User workspace
+## USER
 
 A user page must expose identity, Internet Username, authentication state, group/service assignment, attributes, credit, active sessions, accounting history and audit history without forcing the operator through the legacy page chain.
 
 The user list must support fast search, filters, status, group/service, online state and high-frequency actions.
 
-## Group / Service workspace
+## GROUP
 
 Groups and services are first-class policy objects. Their pages must show:
 
@@ -116,7 +107,7 @@ Groups and services are first-class policy objects. Their pages must show:
 - status
 - audit history
 
-## RAS / IP Pool workspace
+## RAS / IPPool
 
 RAS/NAS and IP pools must be operationally visible. Operators should be able to understand availability, health, assignments, address utilization and related policy without navigating through unrelated pages.
 
