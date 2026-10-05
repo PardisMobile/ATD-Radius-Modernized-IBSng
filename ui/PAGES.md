@@ -1,18 +1,18 @@
 # ATD UI Page Map
 
-This document is the implementation map for the modernized IBSng interface. It is intentionally organized by operator workspace rather than by the number of legacy PHP/Smarty files in IBSng A1.24.
+This document maps the modern implementation directly to the IBSng A1.24 UI. It must not introduce a second operator-facing naming system.
 
 ## Implemented
 
-### Dashboard
+### HOME
 - `ui/public/index.php`
 - Global navigation
 - RTL/LTR switch
 - Light/dark theme
 - Compact operational summary
-- Entry point to Users workspace
+- Entry points using IBSng USER terminology
 
-### Users
+### USER
 - `ui/public/users.php`
 - Search by username
 - Status filter
@@ -23,9 +23,9 @@ This document is the implementation map for the modernized IBSng interface. It i
 - Theme persistence
 - Backed by `GET /api/v1/users`
 
-## Planned User workspace
+## User Information
 
-The User workspace will consolidate the legacy IBSng user workflows into one operator surface while preserving their behavior:
+User Information will consolidate the legacy IBSng user workflows into one modern responsive surface while preserving their behavior:
 
 1. Overview
 2. Identity
@@ -40,18 +40,17 @@ The User workspace will consolidate the legacy IBSng user workflows into one ope
 
 Secondary actions should use drawers, dialogs or inline actions where that improves flow; destructive operations must remain explicit and auditable.
 
-## Remaining workspaces
+## Remaining IBSng A1.24 areas
 
-- Groups
-- Services
-- RAS / NAS
-- IP Pools
-- Sessions / online users
-- Accounting
-- Billing / charges / credit
-- Reports
-- Graphs / realtime operations
-- Administration / permissions
-- System settings
+- GROUP
+- RAS
+- IPPool
+- Bandwidth Management
+- Charge
+- VoIP Tariff
+- REPORT
+- GRAPH
+- ADMIN
+- SETTING
 
-The legacy IBSng page inventory remains the compatibility reference; this page map is the modernization target.
+The legacy IBSng source and page inventory remain the compatibility reference. Technical source filenames may differ, but operator-facing names must remain the A1.24 names.
