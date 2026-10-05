@@ -54,15 +54,15 @@
 - [x] ATD design-system shell
 - [x] Persian/English and RTL/LTR foundation
 - [x] Light/dark theme foundation
-- [x] Dashboard workspace shell
-- [x] Users workspace shell and data table
-- [x] Users search/status filters and pagination
-- [x] User detail read-only workspace
-- [ ] User edit workspace and high-frequency actions
-- [ ] Groups and services workspaces
-- [ ] RAS, IP pool, sessions, accounting, billing and reports
-- [ ] Admin panel workflows
-- [ ] User portal workflows
+- [x] HOME shell
+- [x] USER shell and data table
+- [x] Search User, status filters and pagination
+- [x] User Information read-only surface
+- [ ] User Information edit actions and high-frequency IBSng actions
+- [ ] GROUP and IBSng user/group policy workflows
+- [ ] RAS, IPPool, Online Users, Connection Logs, Connection Usages, Charge and REPORT workflows
+- [ ] ADMIN workflows
+- [ ] IBSng user portal workflows
 
 ## Phase 6 — Migration
 - [ ] IBSng database importer
