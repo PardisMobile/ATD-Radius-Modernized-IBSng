@@ -45,6 +45,7 @@
 ## Phase 4 — APIs
 - [x] Initial REST resource boundary
 - [x] Users list/search/filter API
+- [x] User detail workspace API
 - [ ] REST API resources
 - [ ] XML-RPC compatibility adapter
 - [ ] API authentication, RBAC and audit
@@ -56,7 +57,8 @@
 - [x] Dashboard workspace shell
 - [x] Users workspace shell and data table
 - [x] Users search/status filters and pagination
-- [ ] User detail / edit workspace
+- [x] User detail read-only workspace
+- [ ] User edit workspace and high-frequency actions
 - [ ] Groups and services workspaces
 - [ ] RAS, IP pool, sessions, accounting, billing and reports
 - [ ] Admin panel workflows
