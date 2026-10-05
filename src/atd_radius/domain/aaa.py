@@ -36,9 +36,12 @@ class PluginPipeline:
     def __init__(self,policies:list[AAAPolicy]|list[PluginSpec]):
         specs=[]
         for index,item in enumerate(policies):
-            if isinstance(item,PluginSpec): specs.append(item)
-            else: specs.append(PluginSpec(5,str(index),item))
-        self._plugins=tuple(sorted(specs,key=lambda x:(max(0,min(9,x.priority)),x.name)))
+            if isinstance(item,PluginSpec):
+                specs.append((index, item))
+            else:
+                specs.append((index, PluginSpec(5,str(index),item)))
+        # A1.24 preserves registration order inside each numeric priority bucket.
+        self._plugins=tuple(item for _,item in sorted(specs,key=lambda pair:(max(0,min(9,pair[1].priority)),pair[0])))
     @property
     def plugins(self): return self._plugins
     def evaluate(self,request:AAARequest)->AAAResult:
