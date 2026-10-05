@@ -1,4 +1,4 @@
-"""Typed IBSng-style attribute and policy resolution.
+"""Typed IBSng-compatible attribute and policy resolution.
 
 Attributes are policy objects, not merely key/value pairs. Scope, precedence,
 operator, multiplicity and provenance remain explicit so protocol adapters do
@@ -43,6 +43,8 @@ class AttributeDefinition:
     multi: bool = False
     operators: tuple[AttributeOperator, ...] = (AttributeOperator.SET,)
     description: str = ""
+    radius_name: str | None = None
+    enforcement: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -114,13 +116,14 @@ def resolve_typed_attributes(
             result.values[attr.name] = [value] if definition.multi else value
         elif attr.operator is AttributeOperator.ADD:
             if not definition.multi:
-                result.values[attr.name] = value
-            else:
-                values = list(current or [])
-                if value not in values:
-                    values.append(value)
-                result.values[attr.name] = values
-        elif attr.operator is AttributeOperator.REMOVE and definition.multi:
+                raise AttributeValidationError(f"{attr.name}: ADD requires multi-value attribute")
+            values = list(current or [])
+            if value not in values:
+                values.append(value)
+            result.values[attr.name] = values
+        elif attr.operator is AttributeOperator.REMOVE:
+            if not definition.multi:
+                raise AttributeValidationError(f"{attr.name}: REMOVE requires multi-value attribute")
             result.values[attr.name] = [v for v in list(current or []) if v != value]
         result.sources.setdefault(attr.name, []).append(attr)
 
