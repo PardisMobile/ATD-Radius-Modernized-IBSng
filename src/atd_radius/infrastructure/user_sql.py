@@ -26,7 +26,7 @@ CALLER_IDS = """SELECT user_id, caller_id FROM caller_id_users WHERE user_id=$1 
 INSERT_CALLER_ID = """INSERT INTO caller_id_users (user_id, caller_id) VALUES ($1,$2)"""
 DELETE_CALLER_ID = """DELETE FROM caller_id_users WHERE user_id=$1 AND caller_id=$2"""
 
-PERSISTENT_LAN = """SELECT user_id, persistent_lan_mac::text, persistent_lan_ip::text, persistent_lan_ras_id
+PERSISTENT_LAN = """SELECT user_id, persistent_lan_mac::macaddr, persistent_lan_ip::cidr, persistent_lan_ras_id
 FROM persistent_lan_users WHERE user_id=$1 ORDER BY persistent_lan_mac::text, persistent_lan_ip::text"""
 INSERT_PERSISTENT_LAN = """INSERT INTO persistent_lan_users (user_id, persistent_lan_mac, persistent_lan_ip, persistent_lan_ras_id)
 VALUES ($1,$2::macaddr,$3::cidr,$4)"""
