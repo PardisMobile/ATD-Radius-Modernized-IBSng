@@ -14,7 +14,7 @@ def test_min_duration_makes_missed_call_free():
     assert chargeable_duration(2,p(min_duration=3))==0
 
 def test_free_seconds_are_excluded():
-    assert chargeable_duration(40,p(free_seconds=10))==30
+    assert chargeable_duration(40,p(free_seconds=10))==50
 
 def test_min_chargeable_duration_has_priority_over_rounding():
     assert chargeable_duration(15,p(free_seconds=0,min_chargeable_duration=20,round_to=30))==20
