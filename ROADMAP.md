@@ -18,8 +18,11 @@
 - [x] Typed users, groups, services, RAS, IP pools and sessions
 - [x] Attribute inheritance foundation
 - [x] IP allocation service contract
-- [ ] PostgreSQL repositories and transaction-safe allocation
-- [ ] Users/groups/services CRUD application services
+- [x] PostgreSQL user repository and transaction-safe IP allocation
+- [x] Initial users REST resource
+- [x] Argon2 credential boundary
+- [x] Group/service persistence repositories
+- [ ] Users/groups/services full CRUD application services
 - [ ] RAS provider registry
 - [ ] permissions and audit enforcement
 
@@ -39,6 +42,7 @@
 - [ ] expiry and subscription state
 
 ## Phase 4 — APIs
+- [x] Initial REST resource boundary
 - [ ] REST API resources
 - [ ] XML-RPC compatibility adapter
 - [ ] API authentication, RBAC and audit
