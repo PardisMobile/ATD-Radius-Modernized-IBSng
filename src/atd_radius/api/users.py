@@ -7,7 +7,7 @@ from atd_radius.infrastructure import UserRepository
 from atd_radius.infrastructure.db import connection
 from atd_radius.infrastructure.user_detail import UserDetailRepository
 
-router = APIRouter(prefix="/users", tags=["users"])
+router = APIRouter(prefix="/users", tags=["USER"])
 
 
 class UserCreate(BaseModel):
@@ -31,71 +31,55 @@ class UserListView(BaseModel):
 class GroupView(BaseModel):
     id: int
     name: str
-    description: str | None
-    enabled: bool
-
-
-class ServiceView(BaseModel):
-    id: UUID
-    name: str
-    description: str | None
-    enabled: bool
-    assignment_enabled: bool
-    starts_at: str | None
-    expires_at: str | None
+    comment: str | None
 
 
 class AttributeView(BaseModel):
     name: str
     value: str
-    operator: str
-    value_type: str
-    scope_type: str
-    precedence: int
-    enabled: bool
 
 
-class SessionView(BaseModel):
-    id: UUID
-    session_key: str
-    ras_name: str | None
-    framed_ip: str | None
-    started_at: str | None
-    last_interim_at: str | None
-    input_octets: int
-    output_octets: int
+class ConnectionLogView(BaseModel):
+    id: int
+    login_time: str | None
+    logout_time: str | None
+    successful: bool
+    service: int | None
+    ras_id: int | None
+    credit_used: str | None
 
 
-class CreditView(BaseModel):
-    amount: str
-    currency: str
-    kind: str
-    reference: str | None
-    created_at: str
+class CreditChangeView(BaseModel):
+    id: int
+    action: int | None
+    per_user_credit: str | None
+    change_time: str | None
+    comment: str | None
 
 
 class UserDetailView(BaseModel):
-    id: UUID
+    id: int
     username: str
     locked: bool
-    credential_enabled: bool
     has_password: bool
     groups: list[GroupView]
-    services: list[ServiceView]
     attributes: list[AttributeView]
-    active_sessions: list[SessionView]
-    credit_ledger: list[CreditView]
+    connection_logs: list[ConnectionLogView]
+    credit_changes: list[CreditChangeView]
 
 
 @router.post("", response_model=UserView, status_code=201)
 def create_user(payload: UserCreate) -> UserView:
     try:
         with connection() as conn:
-            record = UserRepository(conn).create(payload.username.strip(), 'locked' if payload.locked else 'active')
+            repository = UserRepository(conn)
+            record = repository.create(payload.username.strip(), "locked" if payload.locked else "active")
+            if payload.locked:
+                repository.set_status(record.id, "locked")
             conn.commit()
-            return UserView(id=record.id, username=record.username, status=record.status)
+            return UserView(id=record.id, username=record.username, locked=record.locked)
     except Exception as exc:
-        raise HTTPException(status_code=409, detail="user could not be created") from exc
+        raise HTTPException(status_code=409, detail="USER could not be created") from exc
 
 
 @router.get("", response_model=UserListView)
@@ -123,13 +107,14 @@ def get_user(username: str) -> UserView:
         record = UserRepository(conn).get_by_username(username)
     if record is None:
         raise HTTPException(status_code=404, detail="user not found")
-    return UserView(id=record.id, username=record.username, status=record.status)
+    return UserView(id=record.id, username=record.username, locked=record.locked)
 
 
 @router.get("/{username}/detail", response_model=UserDetailView)
 def get_user_detail(username: str) -> UserDetailView:
     with connection() as conn:
-        user = UserRepository(conn).get_by_username(username)
+        repository = UserRepository(conn)
+        user = repository.get_by_username(username)
         if user is None:
             raise HTTPException(status_code=404, detail="user not found")
         detail = UserDetailRepository(conn)
@@ -138,52 +123,37 @@ def get_user_detail(username: str) -> UserDetailView:
             (user.id,),
         ).fetchone()
         groups = detail.groups(user.id)
-        services = detail.services(user.id)
         attributes = detail.attributes(user.id)
-        sessions = detail.active_sessions(user.id)
-        credit = detail.credit_ledger(user.id)
+        connection_logs = detail.connection_logs(user.id)
+        credit_changes = detail.credit_changes(user.id)
 
     return UserDetailView(
         id=user.id,
         username=user.username,
         locked=user.locked,
-        credential_enabled=bool(credential[0]) if credential else False,
-        has_password=bool(credential[1]) if credential else False,
-        groups=[GroupView(id=g.id, name=g.name, description=g.description, enabled=g.enabled) for g in groups],
-        services=[
-            ServiceView(
-                id=s.id,
-                name=s.name,
-                description=s.description,
-                enabled=s.enabled,
-                assignment_enabled=s.assignment_enabled,
-                starts_at=s.starts_at.isoformat() if s.starts_at else None,
-                expires_at=s.expires_at.isoformat() if s.expires_at else None,
+        has_password=bool(credential[0]) if credential else False,
+        groups=[GroupView(id=g.id, name=g.name, comment=g.comment) for g in groups],
+        attributes=[AttributeView(name=a.name, value=a.value) for a in attributes],
+        connection_logs=[
+            ConnectionLogView(
+                id=x.id,
+                login_time=x.login_time,
+                logout_time=x.logout_time,
+                successful=x.successful,
+                service=x.service,
+                ras_id=x.ras_id,
+                credit_used=str(x.credit_used) if x.credit_used is not None else None,
             )
-            for s in services
+            for x in connection_logs
         ],
-        attributes=[AttributeView(**a.__dict__) for a in attributes],
-        active_sessions=[
-            SessionView(
-                id=s.id,
-                session_key=s.session_key,
-                ras_name=s.ras_name,
-                framed_ip=s.framed_ip,
-                started_at=s.started_at.isoformat() if s.started_at else None,
-                last_interim_at=s.last_interim_at.isoformat() if s.last_interim_at else None,
-                input_octets=s.input_octets,
-                output_octets=s.output_octets,
+        credit_changes=[
+            CreditChangeView(
+                id=x.id,
+                action=x.action,
+                per_user_credit=str(x.per_user_credit) if x.per_user_credit is not None else None,
+                change_time=x.change_time,
+                comment=x.comment,
             )
-            for s in sessions
-        ],
-        credit_ledger=[
-            CreditView(
-                amount=str(c.amount),
-                currency=c.currency,
-                kind=c.kind,
-                reference=c.reference,
-                created_at=c.created_at.isoformat(),
-            )
-            for c in credit
+            for x in credit_changes
         ],
     )
