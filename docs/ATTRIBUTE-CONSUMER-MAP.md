@@ -8,9 +8,9 @@ An attribute is **not migrated** merely because its name exists in the catalog. 
 
 | IBSng attribute | ATD boundary | Consumer / enforcement target | Status |
 |---|---|---|---|
-| `ippool` | Policy | IP allocation service | catalogued; implementation pending |
-| `assign_ip` | Policy | IP allocation service | catalogued; implementation pending |
-| `multi_login` | Policy | Session admission / concurrency guard | catalogued; implementation pending |
+| `ippool` | Policy | IP allocation service | implemented; integration pending |
+| `assign_ip` | Policy | IP allocation service | implemented; integration pending |
+| `multi_login` | Policy | Session admission / concurrency guard | catalogued; enforcement pending |
 | `session_timeout` | RADIUS policy | `Session-Timeout` + session enforcement | catalogued; mapping pending |
 | `idle_timeout` | RADIUS policy | `Idle-Timeout` + session enforcement | catalogued; mapping pending |
 | `save_bw_usage` | Accounting policy | usage recorder | catalogued; implementation pending |
