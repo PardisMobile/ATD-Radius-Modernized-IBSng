@@ -1,7 +1,8 @@
-"""SQL contract for lossless IBSng attribute persistence.
+"""SQL contract for lossless IBSng A1.24 attribute persistence.
 
-The adapter intentionally exposes SQL generation separately from execution so
-schema verification can be tested before a live PostgreSQL connection exists.
+Column names in the confirmed A1.24 user/group attribute tables are preserved
+verbatim here. RAS attributes remain intentionally gated until their exact
+source definition is verified from A1.24 SQL/source consumers.
 """
 from __future__ import annotations
 
@@ -16,15 +17,24 @@ class AttributeTableSpec:
     value_column: str
 
 
-# These are compatibility targets; exact A1.24 column names must be confirmed
-# from the extracted SQL before enabling live migration.
-USER_ATTRS = AttributeTableSpec("user_attrs", "user_id", "attribute", "value")
-GROUP_ATTRS = AttributeTableSpec("group_attrs", "group_id", "attribute", "value")
-RAS_ATTRS = AttributeTableSpec("ras_attrs", "ras_id", "attribute", "value")
+# Confirmed from the A1.24 source consumers/SQL references:
+# user_attrs(user_id, attr_name, attr_value)
+# group_attrs(group_id, attr_name, attr_value)
+USER_ATTRS = AttributeTableSpec("user_attrs", "user_id", "attr_name", "attr_value")
+GROUP_ATTRS = AttributeTableSpec("group_attrs", "group_id", "attr_name", "attr_value")
 
 
 def select_attributes(spec: AttributeTableSpec) -> str:
     return (
         f"SELECT {spec.owner_column}, {spec.name_column}, {spec.value_column} "
-        f"FROM {spec.table} WHERE {spec.owner_column} = $1 ORDER BY {spec.name_column}"
+        f"FROM {spec.table} WHERE {spec.owner_column} = $1 "
+        f"ORDER BY {spec.name_column}"
     )
+
+
+def select_user_attributes() -> str:
+    return select_attributes(USER_ATTRS)
+
+
+def select_group_attributes() -> str:
+    return select_attributes(GROUP_ATTRS)
