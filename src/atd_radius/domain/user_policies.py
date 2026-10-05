@@ -42,4 +42,22 @@ class AbsoluteExpiryPolicy:
         except (TypeError,ValueError): return None
         now=self.now.timestamp()
         if now>=expiry: return AAAResult(AAAAction.REJECT,reason="ABS_EXP_DATE_REACHED")
-        return AAAResult(AAAAction.ACCEPT,{"Session-Timeout":str(max(0,int(expiry-now)))})
+        return AAAResult(AAAAction.ACCEPT,{"Session-Timeout":str(max(0,int(expiry-now))})
+
+@dataclass(frozen=True,slots=True)
+class RelativeExpiryPolicy:
+    """A1.24 rel_exp: first successful login establishes first_login."""
+    now: datetime
+    def evaluate(self,request):
+        raw=request.attributes.get("rel_exp_date")
+        if raw in (None,""): return None
+        try: duration=float(raw)
+        except (TypeError,ValueError): return None
+        first=request.attributes.get("first_login")
+        if first in (None,""):
+            return AAAResult(AAAAction.ACCEPT,{"first_login":str(int(self.now.timestamp()))})
+        try: deadline=float(first)+duration
+        except (TypeError,ValueError): return None
+        remaining=deadline-self.now.timestamp()
+        if remaining<=0: return AAAResult(AAAAction.REJECT,reason="REL_EXP_DATE_REACHED")
+        return AAAResult(AAAAction.ACCEPT,{"Session-Timeout":str(int(remaining))})
