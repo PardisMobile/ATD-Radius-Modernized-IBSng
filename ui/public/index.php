@@ -21,7 +21,8 @@ $labels = $locale === 'fa'
     <div class="atd-brand"><span class="atd-mark">A</span><div><strong>ATD Radius</strong><small>Modernized IBSng</small></div></div>
     <nav>
       <?php foreach ($labels as $key => $label): ?>
-        <a class="atd-nav-item <?= $key === 'dashboard' ? 'is-active' : '' ?>" href="#<?= htmlspecialchars($key) ?>"><span class="atd-nav-dot"></span><?= htmlspecialchars($label) ?></a>
+        <?php $href = $key === 'users' ? '/users.php?lang=' . urlencode($locale) : '#' . htmlspecialchars($key); ?>
+        <a class="atd-nav-item <?= $key === 'dashboard' ? 'is-active' : '' ?>" href="<?= $href ?>"><span class="atd-nav-dot"></span><?= htmlspecialchars($label) ?></a>
       <?php endforeach; ?>
     </nav>
   </aside>
@@ -34,7 +35,7 @@ $labels = $locale === 'fa'
           <article class="stat-card"><span><?= htmlspecialchars($stat[0]) ?></span><strong><?= htmlspecialchars($stat[1]) ?></strong></article>
         <?php endforeach; ?>
       </section>
-      <section class="workspace"><div><span class="eyebrow">NEXT</span><h3>Connect the domain services</h3><p>The shell is intentionally presentation-only until the corresponding IBSng-compatible application service is wired to the API.</p></div><a class="primary" href="#users">Open Users</a></section>
+      <section class="workspace"><div><span class="eyebrow">NEXT</span><h3>Connect the domain services</h3><p>The dashboard remains intentionally compact; operational detail lives inside each IBSng-style workspace.</p></div><a class="primary" href="/users.php?lang=<?= urlencode($locale) ?>"><?= htmlspecialchars($labels['users']) ?></a></section>
     </main>
   </div>
 </div>
