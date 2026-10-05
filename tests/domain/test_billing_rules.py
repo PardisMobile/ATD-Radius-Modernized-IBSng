@@ -56,3 +56,20 @@ def test_no_rule_is_an_error():
     when = datetime(2026, 10, 5, 12, 0, 0)
     with pytest.raises(BillingError, match="no applicable"):
         select_effective_rule([rule(1, ras_id=10)], when, ras_id=20, port="ppp0")
+
+
+def test_rule_start_is_inclusive_like_a124_interval():
+    when = datetime(2026, 10, 5, 0, 0, 0)
+    selected = select_effective_rule([rule(8)], when, ras_id=None, port="ppp0")
+    assert selected.rule_id == 8
+
+
+def test_equal_priority_keeps_loader_order():
+    when = datetime(2026, 10, 5, 12, 0, 0)
+    selected = select_effective_rule(
+        [rule(20, ras_id=10), rule(21, ras_id=10)],
+        when,
+        ras_id=10,
+        port="ppp0",
+    )
+    assert selected.rule_id == 20
