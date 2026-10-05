@@ -1,9 +1,8 @@
 """A1.24 attribute catalog extracted from the IBSng interface/plugin surface.
 
 This is deliberately a catalog, not a claim that every entry has already been
-implemented by the policy engine.  Entries marked ``confirmed`` are names
-observed in the A1.24 source inventory.  Runtime behavior is added only after
-its producer/consumer path has been mapped.
+implemented by the policy engine. Runtime behavior is added only after its
+producer/consumer path has been mapped.
 """
 from __future__ import annotations
 
@@ -13,17 +12,10 @@ from .attributes import AttributeDefinition, AttributeOperator
 def _d(name: str, value_type: str = "string", *, multi: bool = False,
        operators: tuple[AttributeOperator, ...] = (AttributeOperator.SET,),
        description: str = "") -> AttributeDefinition:
-    return AttributeDefinition(
-        name=name,
-        value_type=value_type,
-        multi=multi,
-        operators=operators,
-        description=description,
-    )
+    return AttributeDefinition(name, value_type, multi, operators, description)
 
 
-# Names directly evidenced by A1.24 attrs.php and the related attribute update
-# path.  Keep the catalog explicit so omissions become visible in review.
+# Names directly evidenced by A1.24 attrs.php and its attribute-update path.
 IBSNG_ATTRIBUTE_DEFINITIONS: dict[str, AttributeDefinition] = {
     "rel_exp": _d("rel_exp", "integer", description="Relative expiration policy."),
     "abs_exp": _d("abs_exp", "integer", description="Absolute expiration policy."),
@@ -74,10 +66,6 @@ IBSNG_ATTRIBUTE_DEFINITIONS: dict[str, AttributeDefinition] = {
 }
 
 
-def get_ibssng_attribute_definitions() -> dict[str, AttributeDefinition]:
+def get_ibsng_attribute_definitions() -> dict[str, AttributeDefinition]:
     """Return a copy of the catalog for use by the resolver."""
     return dict(IBSNG_ATTRIBUTE_DEFINITIONS)
-
-
-# Compatibility alias kept intentionally short for callers building a registry.
-get_ibsng_attribute_definitions = get_ibssng_attribute_definitions
