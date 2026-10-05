@@ -1,7 +1,7 @@
 """A1.24 VoIP tariff and prefix charging semantics."""
 from __future__ import annotations
 from dataclasses import dataclass
-from decimal import Decimal, ROUND_CEILING
+from decimal import Decimal
 
 
 @dataclass(frozen=True, slots=True)
