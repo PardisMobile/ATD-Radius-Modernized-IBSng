@@ -1,6 +1,6 @@
 from datetime import datetime,timezone
 from atd_radius.domain.aaa import AAAAction,AAARequest,AAAResult,PluginPipeline
-from atd_radius.domain.user_policies import LockPolicy,MultiLoginPolicy,TimeoutPolicy,AbsoluteExpiryPolicy
+from atd_radius.domain.user_policies import LockPolicy,MultiLoginPolicy,TimeoutPolicy,AbsoluteExpiryPolicy,RelativeExpiryPolicy
 from atd_radius.domain.session_policy import ActiveSessionView
 
 class Marker:
@@ -26,4 +26,14 @@ def test_multilogin_matches_a124_limit():
 def test_absolute_expiry_rejects_expired_user():
     now=datetime.fromtimestamp(1000,tz=timezone.utc)
     r=AbsoluteExpiryPolicy(now).evaluate(AAARequest("u",{"abs_exp_date":"999"}))
+    assert r.action is AAAAction.REJECT
+
+def test_relative_expiry_sets_first_login_on_first_login():
+    now=datetime.fromtimestamp(1000,tz=timezone.utc)
+    r=RelativeExpiryPolicy(now).evaluate(AAARequest("u",{"rel_exp_date":"3600"}))
+    assert r.attributes["first_login"]=="1000"
+
+def test_relative_expiry_rejects_after_deadline():
+    now=datetime.fromtimestamp(5000,tz=timezone.utc)
+    r=RelativeExpiryPolicy(now).evaluate(AAARequest("u",{"rel_exp_date":"3600","first_login":"1000"}))
     assert r.action is AAAAction.REJECT
