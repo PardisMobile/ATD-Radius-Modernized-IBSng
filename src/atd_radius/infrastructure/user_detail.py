@@ -1,139 +1,111 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
 from decimal import Decimal
-from uuid import UUID
 
 import psycopg
 
 
 @dataclass(frozen=True)
 class UserGroupRecord:
-    id: UUID
+    id: int
     name: str
-    description: str | None
-    enabled: bool
+    comment: str | None
 
 
 @dataclass(frozen=True)
-class UserServiceRecord:
-    id: UUID
-    name: str
-    description: str | None
-    enabled: bool
-    assignment_enabled: bool
-    starts_at: datetime | None
-    expires_at: datetime | None
-
-
-@dataclass(frozen=True)
-class AttributeBindingRecord:
+class AttributeRecord:
     name: str
     value: str
-    operator: str
-    value_type: str
-    scope_type: str
-    precedence: int
-    enabled: bool
 
 
 @dataclass(frozen=True)
-class SessionRecord:
-    id: UUID
-    session_key: str
-    ras_name: str | None
-    framed_ip: str | None
-    started_at: datetime | None
-    last_interim_at: datetime | None
-    input_octets: int
-    output_octets: int
+class ConnectionLogRecord:
+    id: int
+    login_time: str | None
+    logout_time: str | None
+    successful: bool
+    service: int | None
+    ras_id: int | None
+    credit_used: Decimal | None
 
 
 @dataclass(frozen=True)
-class CreditRecord:
-    amount: Decimal
-    currency: str
-    kind: str
-    reference: str | None
-    created_at: datetime
+class CreditChangeRecord:
+    id: int
+    action: int | None
+    per_user_credit: Decimal | None
+    change_time: str | None
+    comment: str | None
 
 
 class UserDetailRepository:
+    """Read User Information directly from native A1.24 tables."""
+
     def __init__(self, conn: psycopg.Connection) -> None:
         self.conn = conn
 
-    def groups(self, user_id: UUID) -> list[UserGroupRecord]:
+    def groups(self, user_id: int) -> list[UserGroupRecord]:
         rows = self.conn.execute(
             """
-            SELECT g.id, g.name, g.description, g.enabled
-            FROM user_groups ug
-            JOIN groups g ON g.id = ug.group_id
-            WHERE ug.user_id = %s
-            ORDER BY g.name
+            SELECT g.group_id, g.group_name, g.comment
+            FROM groups g
+            JOIN users u ON u.group_id = g.group_id
+            WHERE u.user_id = %s
             """,
             (user_id,),
         ).fetchall()
         return [UserGroupRecord(*row) for row in rows]
 
-    def services(self, user_id: UUID) -> list[UserServiceRecord]:
+    def attributes(self, user_id: int) -> list[AttributeRecord]:
         rows = self.conn.execute(
             """
-            SELECT s.id, s.name, s.description, s.enabled,
-                   us.enabled, us.starts_at, us.expires_at
-            FROM user_services us
-            JOIN services s ON s.id = us.service_id
-            WHERE us.user_id = %s
-            ORDER BY s.name
-            """,
-            (user_id,),
-        ).fetchall()
-        return [UserServiceRecord(*row) for row in rows]
-
-    def attributes(self, user_id: UUID) -> list[AttributeBindingRecord]:
-        rows = self.conn.execute(
-            """
-            SELECT a.name, a.value, a.operator, a.value_type,
-                   ab.scope_type, ab.precedence, ab.enabled
-            FROM attribute_bindings ab
-            JOIN attributes a ON a.id = ab.attribute_id
-            WHERE (ab.scope_type = 'user' AND ab.scope_id = %s)
-               OR (ab.scope_type = 'group' AND ab.scope_id IN (
-                    SELECT group_id FROM user_groups WHERE user_id = %s
-               ))
-               OR (ab.scope_type = 'service' AND ab.scope_id IN (
-                    SELECT service_id FROM user_services WHERE user_id = %s AND enabled = true
-               ))
-            ORDER BY ab.precedence ASC, ab.scope_type, a.name
-            """,
-            (user_id, user_id, user_id),
-        ).fetchall()
-        return [AttributeBindingRecord(*row) for row in rows]
-
-    def active_sessions(self, user_id: UUID) -> list[SessionRecord]:
-        rows = self.conn.execute(
-            """
-            SELECT s.id, s.session_key, r.name, host(s.framed_ip),
-                   s.started_at, s.last_interim_at,
-                   s.input_octets, s.output_octets
-            FROM sessions s
-            LEFT JOIN ras r ON r.id = s.ras_id
-            WHERE s.user_id = %s AND s.stopped_at IS NULL
-            ORDER BY s.started_at DESC NULLS LAST
-            """,
-            (user_id,),
-        ).fetchall()
-        return [SessionRecord(*row) for row in rows]
-
-    def credit_ledger(self, user_id: UUID, limit: int = 25) -> list[CreditRecord]:
-        rows = self.conn.execute(
-            """
-            SELECT amount, currency, kind, reference, created_at
-            FROM credit_ledger
+            SELECT attr_name, attr_value
+            FROM user_attrs
             WHERE user_id = %s
-            ORDER BY created_at DESC
+            ORDER BY attr_name
+            """,
+            (user_id,),
+        ).fetchall()
+        return [AttributeRecord(*row) for row in rows]
+
+    def connection_logs(self, user_id: int, limit: int = 25) -> list[ConnectionLogRecord]:
+        rows = self.conn.execute(
+            """
+            SELECT connection_log_id, login_time, logout_time, successful, service, ras_id, credit_used
+            FROM connection_log
+            WHERE user_id = %s
+            ORDER BY login_time DESC NULLS LAST
             LIMIT %s
             """,
             (user_id, limit),
         ).fetchall()
-        return [CreditRecord(*row) for row in rows]
+        return [ConnectionLogRecord(
+            row[0],
+            row[1].isoformat() if row[1] else None,
+            row[2].isoformat() if row[2] else None,
+            bool(row[3]),
+            row[4],
+            row[5],
+            row[6],
+        ) for row in rows]
+
+    def credit_changes(self, user_id: int, limit: int = 25) -> list[CreditChangeRecord]:
+        rows = self.conn.execute(
+            """
+            SELECT c.credit_change_id, c.action, c.per_user_credit, c.change_time, c.comment
+            FROM credit_change c
+            JOIN credit_change_userid cu ON cu.credit_change_id = c.credit_change_id
+            WHERE cu.user_id = %s
+            ORDER BY c.change_time DESC NULLS LAST
+            LIMIT %s
+            """,
+            (user_id, limit),
+        ).fetchall()
+        return [CreditChangeRecord(
+            row[0],
+            row[1],
+            row[2],
+            row[3].isoformat() if row[3] else None,
+            row[4],
+        ) for row in rows]
