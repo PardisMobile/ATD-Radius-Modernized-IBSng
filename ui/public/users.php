@@ -3,8 +3,8 @@ declare(strict_types=1);
 
 $locale = ($_GET['lang'] ?? 'fa') === 'en' ? 'en' : 'fa';
 $dir = $locale === 'fa' ? 'rtl' : 'ltr';
-$fa = ['home'=>'خانه','user'=>'کاربر','group'=>'گروه','report'=>'گزارش','graph'=>'نمودار','admin'=>'مدیر','setting'=>'تنظیمات','user_info'=>'اطلاعات کاربر','search'=>'جستجوی کاربر...','status'=>'وضعیت','all'=>'همه','active'=>'فعال','disabled'=>'غیرفعال','expired'=>'منقضی','locked'=>'قفل‌شده','new_user'=>'افزودن کاربر جدید','username'=>'نام کاربری','actions'=>'عملیات','open'=>'باز کردن','total'=>'کاربر','loading'=>'در حال بارگذاری...','empty'=>'کاربری مطابق فیلتر پیدا نشد.','error'=>'دریافت اطلاعات کاربران ناموفق بود.','previous'=>'قبلی','next'=>'بعدی'];
-$en = ['home'=>'HOME','user'=>'USER','group'=>'GROUP','report'=>'REPORT','graph'=>'GRAPH','admin'=>'ADMIN','setting'=>'SETTING','user_info'=>'User Information','search'=>'Search User...','status'=>'Status','all'=>'All','active'=>'Active','disabled'=>'Disabled','expired'=>'Expired','locked'=>'Locked','new_user'=>'Add New User','username'=>'Username','actions'=>'Actions','open'=>'Open','total'=>'users','loading'=>'Loading...','empty'=>'No users match the current filters.','error'=>'Unable to load users.','previous'=>'Previous','next'=>'Next'];
+$fa = ['home'=>'خانه','user'=>'کاربر','group'=>'گروه','report'=>'گزارش','graph'=>'نمودار','admin'=>'مدیر','setting'=>'تنظیمات','user_info'=>'اطلاعات کاربر','search'=>'جستجوی کاربر...','status'=>'قفل کاربر','all'=>'همه','active'=>'قفل نشده','disabled'=>'غیرفعال','expired'=>'منقضی','locked'=>'قفل‌شده','new_user'=>'افزودن کاربر جدید','username'=>'نام کاربری','actions'=>'عملیات','open'=>'باز کردن','total'=>'کاربر','loading'=>'در حال بارگذاری...','empty'=>'کاربری مطابق فیلتر پیدا نشد.','error'=>'دریافت اطلاعات کاربران ناموفق بود.','previous'=>'قبلی','next'=>'بعدی'];
+$en = ['home'=>'HOME','user'=>'USER','group'=>'GROUP','report'=>'REPORT','graph'=>'GRAPH','admin'=>'ADMIN','setting'=>'SETTING','user_info'=>'User Information','search'=>'Search User...','status'=>'User Lock','all'=>'All','active'=>'Unlocked','disabled'=>'Disabled','expired'=>'Expired','locked'=>'Locked','new_user'=>'Add New User','username'=>'Username','actions'=>'Actions','open'=>'Open','total'=>'users','loading'=>'Loading...','empty'=>'No users match the current filters.','error'=>'Unable to load users.','previous'=>'Previous','next'=>'Next'];
 $labels = $locale === 'fa' ? $fa : $en;
 ?>
 <!doctype html>
@@ -42,7 +42,7 @@ $labels = $locale === 'fa' ? $fa : $en;
 
       <section class="toolbar">
         <label class="search-box"><span>⌕</span><input id="user-search" type="search" placeholder="<?= htmlspecialchars($labels['search']) ?>" autocomplete="off"></label>
-        <label class="select-box"><span><?= htmlspecialchars($labels['status']) ?></span><select id="user-status"><option value=""><?= htmlspecialchars($labels['all']) ?></option><option value="active"><?= htmlspecialchars($labels['active']) ?></option><option value="disabled"><?= htmlspecialchars($labels['disabled']) ?></option><option value="expired"><?= htmlspecialchars($labels['expired']) ?></option><option value="locked"><?= htmlspecialchars($labels['locked']) ?></option></select></label>
+        <label class="select-box"><span><?= htmlspecialchars($labels['status']) ?></span><select id="user-status"><option value=""><?= htmlspecialchars($labels['all']) ?></option><option value="active"><?= htmlspecialchars($labels['active']) ?></option><option value="locked"><?= htmlspecialchars($labels['locked']) ?></option></select></label>
       </section>
 
       <section class="table-card">
