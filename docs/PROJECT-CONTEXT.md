@@ -8,12 +8,22 @@ ATD Radius Modernized IBSng is a clean-room modernization project whose behavior
 
 The inspected A1.24 archive contains 2,477 members and 2,295 regular files: 1,028 under `core/`, 1,049 under `interface/`, 131 under `addons/`, 41 under `radius_server/`, 22 under `docs/`, and 19 under `db/`. It contains 453 Python sources, 530 PHP files and 284 Smarty templates plus legacy bytecode/assets.
 
+## Non-negotiable compatibility rule
+
+ATD must not create a different name for an existing IBSng A1.24 concept. This applies to UI menus, pages, entities, fields, database tables/columns, attributes, configuration concepts, workflows and protocol/domain terminology.
+
+Modernization is limited to implementation technology, responsive layout, accessibility, componentization, performance and visual presentation.
+
+## Database rule
+
+The A1.24 PostgreSQL schema is the database source of truth. Do not invent a replacement ATD schema for an existing IBSng table. Any schema change requires an explicit compatibility decision and must preserve import/restore compatibility.
+
 ## Fixed architecture
 
 - Python 3.12+ core
 - PostgreSQL
 - RADIUS authentication/accounting
-- EAP as a first-class ATD extension
+- EAP as a later protocol-boundary extension after source-first analysis of existing IBSng protocol implementations
 - REST API
 - XML-RPC compatibility adapter
 - PHP 8+ modern web UI
@@ -38,13 +48,13 @@ The user wants the proven IBSng product model modernized, not a greenfield AAA p
 - XML-RPC service behavior
 - admin and user workflows
 
-## EAP finding
+## EAP rule
 
 A source-wide text search of the uploaded A1.24 archive found no EAP implementation. Therefore EAP is an ATD modernization extension, not an IBSng feature claim. It must live at the protocol/authentication boundary and never leak into the domain model.
 
 ## UI intent
 
-The UI must modernize IBSng workflows rather than discard them. Users, groups, services, RAS/NAS, IP pools, sessions, accounting, credit, reports and permissions must remain discoverable and operationally efficient. The UI is a dedicated ATD operations console, not a generic SaaS dashboard.
+The UI must modernize IBSng A1.24 workflows rather than create a new operator taxonomy. The exact IBSng names and concepts remain visible in navigation, headings, fields and actions. Layout, responsiveness and interaction mechanics may be modernized.
 
 ## Repository rule
 
