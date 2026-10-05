@@ -28,8 +28,7 @@ def _positive_int(attributes:AttributeSet,name:str)->int|None:
     return parsed if parsed>0 else None
 
 def session_policy(attributes:AttributeSet,active_sessions:Iterable[ActiveSessionView]=())->SessionPolicyDecision:
-    locked=attributes.get("lock",False)
-    if str(locked).lower() in {"1","true","yes","on","locked"}:
+    if "lock" in attributes.values:
         return SessionPolicyDecision(False,SessionAdmissionReason.LOCKED)
     sessions=list(active_sessions)
     # A1.24 MultiLogin initializes to 1 when the attribute is absent.
