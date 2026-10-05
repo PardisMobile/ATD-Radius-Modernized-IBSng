@@ -1,4 +1,4 @@
-from atd_radius.domain.aaa import AAAAction, AAARequest, AAAResult, PluginPipeline, PluginSpec
+from atd_radius.domain.aaa import AAAAction, AAAResult, PluginPipeline, PluginSpec
 
 class Policy:
     def __init__(self, value):
