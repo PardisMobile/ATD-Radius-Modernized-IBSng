@@ -42,7 +42,7 @@ class AbsoluteExpiryPolicy:
         except (TypeError,ValueError): return None
         now=self.now.timestamp()
         if now>=expiry: return AAAResult(AAAAction.REJECT,reason="ABS_EXP_DATE_REACHED")
-        return AAAResult(AAAAction.ACCEPT,{"Session-Timeout":str(max(0,int(expiry-now))})
+        return AAAResult(AAAAction.ACCEPT,{"Session-Timeout":str(max(0,int(expiry-now)))})
 
 @dataclass(frozen=True,slots=True)
 class RelativeExpiryPolicy:
