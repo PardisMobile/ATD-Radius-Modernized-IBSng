@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from uuid import UUID
-
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
@@ -14,13 +12,13 @@ router = APIRouter(prefix="/users", tags=["users"])
 
 class UserCreate(BaseModel):
     username: str = Field(min_length=1, max_length=255)
-    status: str = Field(default="active", pattern="^(active|disabled|expired|locked)$")
+    locked: bool = False
 
 
 class UserView(BaseModel):
-    id: UUID
+    id: int
     username: str
-    status: str
+    locked: bool
 
 
 class UserListView(BaseModel):
@@ -31,7 +29,7 @@ class UserListView(BaseModel):
 
 
 class GroupView(BaseModel):
-    id: UUID
+    id: int
     name: str
     description: str | None
     enabled: bool
@@ -79,7 +77,7 @@ class CreditView(BaseModel):
 class UserDetailView(BaseModel):
     id: UUID
     username: str
-    status: str
+    locked: bool
     credential_enabled: bool
     has_password: bool
     groups: list[GroupView]
@@ -93,7 +91,7 @@ class UserDetailView(BaseModel):
 def create_user(payload: UserCreate) -> UserView:
     try:
         with connection() as conn:
-            record = UserRepository(conn).create(payload.username.strip(), payload.status)
+            record = UserRepository(conn).create(payload.username.strip(), 'locked' if payload.locked else 'active')
             conn.commit()
             return UserView(id=record.id, username=record.username, status=record.status)
     except Exception as exc:
@@ -103,7 +101,7 @@ def create_user(payload: UserCreate) -> UserView:
 @router.get("", response_model=UserListView)
 def list_users(
     search: str | None = Query(default=None, max_length=255),
-    status: str | None = Query(default=None, pattern="^(active|disabled|expired|locked)$"),
+    status: str | None = Query(default=None, pattern="^(active|locked)$"),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
 ) -> UserListView:
@@ -112,7 +110,7 @@ def list_users(
         records = repository.list(search=search, status=status, limit=limit, offset=offset)
         total = repository.count(search=search, status=status)
     return UserListView(
-        items=[UserView(id=r.id, username=r.username, status=r.status) for r in records],
+        items=[UserView(id=r.id, username=r.username, locked=r.locked) for r in records],
         total=total,
         limit=limit,
         offset=offset,
@@ -136,7 +134,7 @@ def get_user_detail(username: str) -> UserDetailView:
             raise HTTPException(status_code=404, detail="user not found")
         detail = UserDetailRepository(conn)
         credential = conn.execute(
-            "SELECT enabled, password_hash IS NOT NULL FROM user_credentials WHERE user_id = %s",
+            "SELECT normal_password IS NOT NULL AND normal_password <> '' FROM normal_users WHERE user_id = %s",
             (user.id,),
         ).fetchone()
         groups = detail.groups(user.id)
@@ -148,7 +146,7 @@ def get_user_detail(username: str) -> UserDetailView:
     return UserDetailView(
         id=user.id,
         username=user.username,
-        status=user.status,
+        locked=user.locked,
         credential_enabled=bool(credential[0]) if credential else False,
         has_password=bool(credential[1]) if credential else False,
         groups=[GroupView(id=g.id, name=g.name, description=g.description, enabled=g.enabled) for g in groups],
