@@ -4,11 +4,11 @@ This is the master parity checklist. `Implemented` means ATD code exists; `Verif
 
 | IBSng subsystem | A1.24 source area | ATD target | Status |
 |---|---|---|---|
-| Admin/auth | admins, admin_perms | A1.24 ADMIN implementation | Inventory |
-| RAS | ras, ras_ports, ras_attrs | A1.24 RAS implementation | Inventory |
+| Admin/auth | admins, admin_perms | A1.24 ADMIN implementation | Schema native / runtime pending |
+| RAS | ras, ras_ports, ras_attrs | A1.24 RAS implementation | Schema native / runtime pending |
 | IP pools | ippool, ippool_ips, ras_ippools | IP allocation service | Implemented / lifecycle integration pending |
-| Users | users, normal_users, voip_users | A1.24 USER implementation | Inventory |
-| Groups | groups, group_attrs | A1.24 GROUP implementation | Inventory |
+| Users | users, normal_users, voip_users | A1.24 USER implementation | Schema native / USER API refactor in progress |
+| Groups | groups, group_attrs | A1.24 GROUP implementation | Schema native / runtime pending |
 | Attribute system | user_attrs, group_attrs, ras_attrs | typed compatibility attribute engine | Implemented / parity pending |
 | Caller ID | caller_id_users | authentication policy | Inventory |
 | Persistent LAN | persistent_lan_users | session/address policy | Inventory |
