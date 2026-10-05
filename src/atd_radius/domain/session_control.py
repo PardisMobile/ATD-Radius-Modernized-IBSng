@@ -2,7 +2,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import Mapping
-from .radius_runtime import SessionKey,SessionRegistry
+from .radius_runtime import SessionRegistry
 
 @dataclass(slots=True)
 class RegistrySessionControl:
