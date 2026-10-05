@@ -1,23 +1,29 @@
-from dataclasses import dataclass
-from decimal import Decimal
+from __future__ import annotations
 
-from atd_radius.domain.entities import User
+from dataclasses import dataclass
+from typing import Protocol
+from uuid import UUID
+
+from atd_radius.domain.models import User, UserKind
+
+
+class UserStore(Protocol):
+    def create(self, username: str, status: str = "active") -> object: ...
+    def find_by_username(self, username: str) -> User | None: ...
 
 
 @dataclass(slots=True)
 class UserService:
-    """Application boundary for user operations.
+    """Application use cases for user lifecycle operations."""
 
-    Persistence is intentionally injected later; protocol adapters must never
-    contain SQL or user policy logic.
-    """
+    repository: UserStore
 
-    repository: object | None = None
-
-    def create(self, username: str, credit: Decimal = Decimal("0")) -> User:
+    def create(self, username: str) -> User:
         username = username.strip()
         if not username:
             raise ValueError("username is required")
-        if self.repository is not None:
-            return self.repository.create(username, credit)
-        return User(id=None, username=username, credit=credit)
+        record = self.repository.create(username, "active")
+        return User(id=record.id, username=record.username, kind=UserKind.NORMAL, enabled=True)
+
+    def get(self, username: str) -> User | None:
+        return self.repository.find_by_username(username.strip())
