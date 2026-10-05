@@ -1,8 +1,7 @@
 """AAA authentication orchestration.
 
-This is the application boundary used by RADIUS and future REST/XML-RPC
-adapters. Database repositories are injected so the protocol layer never owns
-business rules or SQL.
+RADIUS and future REST/XML-RPC adapters call this service; they do not own
+credential lookup, status policy, or password verification.
 """
 from __future__ import annotations
 
@@ -34,6 +33,7 @@ class AuthenticationService:
         self.verifier = verifier
 
     def authenticate(self, username: str, password: str) -> AuthenticationResult:
+        username = username.strip()
         user = self.users.find_by_username(username)
         if user is None or not user.enabled:
             return AuthenticationResult(False, reason="invalid_credentials")
