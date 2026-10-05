@@ -2,11 +2,12 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
 from typing import Any
+from uuid import UUID
 
 
 @dataclass(slots=True)
 class User:
-    id: int | None
+    id: UUID | None
     username: str
     enabled: bool = True
     credit: Decimal = Decimal("0")
@@ -15,7 +16,7 @@ class User:
 
 @dataclass(slots=True)
 class Group:
-    id: int | None
+    id: UUID | None
     name: str
     enabled: bool = True
     attributes: dict[str, Any] = field(default_factory=dict)
@@ -23,7 +24,7 @@ class Group:
 
 @dataclass(slots=True)
 class Service:
-    id: int | None
+    id: UUID | None
     name: str
     enabled: bool = True
     attributes: dict[str, Any] = field(default_factory=dict)
@@ -31,7 +32,7 @@ class Service:
 
 @dataclass(slots=True)
 class Ras:
-    id: int | None
+    id: UUID | None
     name: str
     host: str
     secret: str
@@ -41,7 +42,7 @@ class Ras:
 
 @dataclass(slots=True)
 class IpPool:
-    id: int | None
+    id: UUID | None
     name: str
     network_cidr: str
     enabled: bool = True
@@ -49,9 +50,9 @@ class IpPool:
 
 @dataclass(slots=True)
 class Session:
-    id: str
+    id: UUID | None
     username: str
-    ras_id: int
+    ras_id: UUID
     started_at: datetime
     interim_at: datetime | None = None
     stopped_at: datetime | None = None
