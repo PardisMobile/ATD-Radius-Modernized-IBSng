@@ -21,7 +21,10 @@ class MultiLoginPolicy:
     active_sessions: tuple[ActiveSessionView,...]=()
     def evaluate(self,request):
         d=session_policy(_attrs(request),self.active_sessions)
-        return AAAResult(AAAAction.REJECT,reason="MAX_CONCURRENT") if not d.allowed and d.reason=="multi_login" else None
+        if not d.allowed and d.reason=="multi_login": return AAAResult(AAAAction.REJECT,reason="MAX_CONCURRENT")
+        if request.attributes.get("ras_multi_login") in (False,"0","false","False") and len(self.active_sessions)>0:
+            return AAAResult(AAAAction.REJECT,reason="RAS_DOESNT_ALLOW_MULTILOGIN")
+        return None
 
 @dataclass(frozen=True,slots=True)
 class TimeoutPolicy:
@@ -46,7 +49,6 @@ class AbsoluteExpiryPolicy:
 
 @dataclass(frozen=True,slots=True)
 class RelativeExpiryPolicy:
-    """A1.24 rel_exp: first successful login establishes first_login."""
     now: datetime
     def evaluate(self,request):
         raw=request.attributes.get("rel_exp_date")
@@ -54,8 +56,7 @@ class RelativeExpiryPolicy:
         try: duration=float(raw)
         except (TypeError,ValueError): return None
         first=request.attributes.get("first_login")
-        if first in (None,""):
-            return AAAResult(AAAAction.ACCEPT,{"first_login":str(int(self.now.timestamp()))})
+        if first in (None,""): return AAAResult(AAAAction.ACCEPT,{"first_login":str(int(self.now.timestamp()))})
         try: deadline=float(first)+duration
         except (TypeError,ValueError): return None
         remaining=deadline-self.now.timestamp()
