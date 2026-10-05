@@ -40,10 +40,10 @@ def chargeable_duration(duration: int, prefix: VoipPrefix) -> int:
     if duration <= 0 or duration < prefix.min_duration:
         return 0
     result = max(duration - prefix.free_seconds, 0)
-    if result and prefix.min_chargeable_duration and result < prefix.min_chargeable_duration:
-        result = prefix.min_chargeable_duration
-    if result and prefix.round_to:
-        result = ((result + prefix.round_to - 1) // prefix.round_to) * prefix.round_to
+    if result and prefix.min_chargeable_duration and duration < prefix.min_chargeable_duration:
+        result += prefix.min_chargeable_duration - duration
+    elif result and prefix.round_to:
+        result += prefix.round_to - (duration % prefix.round_to)
     return result
 
 
