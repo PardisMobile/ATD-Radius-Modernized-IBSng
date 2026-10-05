@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from decimal import Decimal
 from uuid import UUID
 
 import psycopg
@@ -29,6 +28,36 @@ class UserRepository:
         ).fetchone()
         assert row is not None
         return UserRecord(id=row[0], username=row[1], status=row[2])
+
+    def list(self, search: str | None = None, status: str | None = None, limit: int = 50, offset: int = 0) -> list[UserRecord]:
+        conditions: list[str] = []
+        params: list[object] = []
+        if search:
+            conditions.append("username ILIKE %s")
+            params.append(f"%{search.strip()}%")
+        if status:
+            conditions.append("status = %s")
+            params.append(status)
+        where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+        params.extend([limit, offset])
+        rows = self.conn.execute(
+            f"SELECT id, username, status FROM users {where} ORDER BY username LIMIT %s OFFSET %s",
+            params,
+        ).fetchall()
+        return [UserRecord(id=row[0], username=row[1], status=row[2]) for row in rows]
+
+    def count(self, search: str | None = None, status: str | None = None) -> int:
+        conditions: list[str] = []
+        params: list[object] = []
+        if search:
+            conditions.append("username ILIKE %s")
+            params.append(f"%{search.strip()}%")
+        if status:
+            conditions.append("status = %s")
+            params.append(status)
+        where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+        row = self.conn.execute(f"SELECT count(*) FROM users {where}", params).fetchone()
+        return int(row[0]) if row else 0
 
     def find_by_username(self, username: str) -> User | None:
         row = self.conn.execute(
@@ -59,10 +88,7 @@ class UserRepository:
         return UserRecord(id=row[0], username=row[1], status=row[2])
 
     def set_status(self, user_id: UUID, status: str) -> None:
-        self.conn.execute(
-            "UPDATE users SET status = %s WHERE id = %s",
-            (status, user_id),
-        )
+        self.conn.execute("UPDATE users SET status = %s WHERE id = %s", (status, user_id))
 
     def set_password_hash(self, user_id: UUID, password_hash: str) -> None:
         self.conn.execute(
