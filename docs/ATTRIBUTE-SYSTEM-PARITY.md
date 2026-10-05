@@ -2,73 +2,78 @@
 
 ## Purpose
 
-The attribute system is a compatibility boundary, not a convenience key/value store. ATD must preserve the behavior of IBSng attributes and the plugins that consume them while moving the implementation to Python 3.
+The attribute system is a compatibility boundary, not a convenience key/value store. ATD must preserve IBSng attribute behavior and every plugin/consumer while moving the implementation to modern Python.
 
-## Milestone: producer/consumer catalog
+## Current A1.24 source families
 
-`src/atd_radius/domain/attribute_catalog.py` is now the machine-readable catalog for the attribute names evidenced by the A1.24 attribute update path. Each entry records:
+The migration inventory covers these attribute producers and consumers:
 
-- stable IBSng attribute name
-- conservative value type (string until consumer semantics prove a stronger type)
-- multiplicity
-- allowed policy operators
-- source/behavior area
-- known consumer boundary
-- RADIUS name where the mapping is already explicit
-- migration status
+- user attributes: `user_attrs`
+- group attributes: `group_attrs`
+- RAS attributes: `ras_attrs`
+- service/policy attributes where supplied by A1.24 service/plugin code
+- default/system attributes
+- authentication and credential policy
+- session/RADIUS attributes
+- accounting/bandwidth attributes
+- IP allocation attributes
+- charging attributes
+- plugin-defined/custom attributes
 
-This catalog is intentionally **not** treated as completed runtime behavior. A catalogued attribute is not `migrated` until its consumer behavior is implemented and covered by a compatibility fixture.
+## Attribute catalog
 
-## A1.24 attribute families currently catalogued
+`src/atd_radius/domain/attribute_catalog.py` is the machine-readable catalog for names evidenced by the A1.24 attribute update path. Each entry records the stable IBSng name, conservative value type, multiplicity, operators, source/behavior area, consumer boundary, explicit RADIUS mapping where known, and migration status.
 
-| Family | Examples | ATD consumer boundary | Status |
-|---|---|---|---|
-| Expiration | `rel_exp`, `abs_exp` | expiration/policy | Catalogued |
-| Login | `multi_login` | session/RADIUS | Catalogued |
-| Charging | `normal_charge`, `voip_charge` | charging | Catalogued |
-| Network | `ippool`, `assign_ip` | IP pool/RADIUS | Catalogued |
-| RADIUS | `radius_attrs` | RADIUS mapper | Catalogued |
-| Identity | `name`, `phone`, `comment`, ownership/group fields | identity/group | Catalogued |
-| Normal credentials | `normal_username`, password-generation controls | authentication/password policy | Catalogued |
-| VoIP credentials | `voip_username`, password-generation controls | authentication/VoIP | Catalogued |
-| Caller restrictions | `caller_id`, `limit_caller_id*` | authorization/caller-ID | Catalogued |
-| Access restrictions | `lock`, `limit_mac`, `limit_station_ip` | authorization/session | Catalogued |
-| Session | `session_timeout`, `idle_timeout` | session/RADIUS | Catalogued; RADIUS names explicit |
-| Accounting | `save_bw_usage` | accounting | Catalogued |
-| Persistent LAN | `persistent_lan_*` | persistent-LAN/IP/RAS | Catalogued |
-| Messaging | `mail_quota`, `email_address` | mail | Catalogued |
-| Telephony | `fast_dial`, `voip_preferred_language` | VoIP | Catalogued |
+A catalog entry is **not** equivalent to implemented behavior. It may only become `migrated` after its A1.24 consumer behavior is implemented and covered by a compatibility fixture.
 
 ## Resolver contract
 
-The typed resolver keeps:
+The ATD resolver preserves:
 
-- scope/provenance (system, RAS, service, group, user)
+- scope/provenance
 - deterministic precedence
 - typed values
 - multi-valued attributes
-- explicit set/add/remove/replace operations
-- explainability for the UI and audit tooling
+- explicit SET/ADD/REMOVE/REPLACE operations
+- explainability for UI and audit
 
-Current default scope order:
+The current resolver scope order is:
 
 `SYSTEM → RAS → SERVICE → GROUP → USER`
 
-This remains an initial deterministic model, **not a final IBSng parity claim**. Plugin-specific precedence and merge semantics must be extracted from each A1.24 consumer before that attribute is marked migrated.
+This is an implementation baseline, not a final IBSng parity claim. A1.24 plugin-specific precedence and merge rules must be verified from source before affected attributes are marked migrated.
 
-## Important non-goals
+## Compatibility rules
 
-Naming an attribute does not implement its behavior. For example, `session_timeout` is only fully migrated when the value is consumed by the session/RADIUS path with IBSng-compatible semantics.
+1. Unknown/custom attributes must remain representable.
+2. Multi-valued attributes must not be silently collapsed into one scalar.
+3. Attribute provenance must remain available for diagnostics and UI.
+4. Protocol adapters must consume the resolved policy rather than implement their own precedence.
+5. Database mapping must preserve the original attribute name/value semantics.
+6. A name is never considered migrated merely because it exists in the catalog.
 
-The same rule applies to IP pools, credit, multilogin, bandwidth accounting, caller-ID restrictions, VoIP attributes, and all charging attributes.
+## Verification workflow
 
-## Next parity work
+For every attribute family:
 
-1. Map every catalog entry to its A1.24 producer(s).
-2. Map every entry to every A1.24 consumer/plugin.
-3. Record storage representation and defaults.
-4. Record inheritance and override behavior.
-5. Record RADIUS attribute translation where applicable.
-6. Implement behavior in ATD policy/session/protocol services.
-7. Add fixture-based compatibility tests.
-8. Only then mark the attribute as `migrated` in the master compatibility matrix.
+```text
+A1.24 producer
+    ↓
+A1.24 storage/defaults
+    ↓
+A1.24 consumer/plugin
+    ↓
+ATD repository
+    ↓
+ATD resolver/policy
+    ↓
+RADIUS/session/accounting/billing consumer
+    ↓
+compatibility fixture
+```
+
+Only a passing fixture permits `Verified` status.
+
+## Next implementation boundary
+
+The next code milestone is persistence for `user_attrs`, `group_attrs` and `ras_attrs`, followed by repository-backed resolution and fixtures that compare effective values and protocol-facing results with A1.24 behavior.
