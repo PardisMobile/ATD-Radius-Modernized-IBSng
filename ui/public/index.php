@@ -1,37 +1,43 @@
 <?php
 declare(strict_types=1);
 
+$locale = ($_GET['lang'] ?? 'fa') === 'en' ? 'en' : 'fa';
+$dir = $locale === 'fa' ? 'rtl' : 'ltr';
+$labels = $locale === 'fa'
+    ? ['dashboard' => 'داشبورد', 'users' => 'کاربران', 'groups' => 'گروه‌ها', 'services' => 'سرویس‌ها', 'ras' => 'RAS / NAS', 'pools' => 'IP Pool', 'sessions' => 'Sessionها', 'accounting' => 'Accounting', 'billing' => 'Billing', 'reports' => 'گزارش‌ها', 'admin' => 'مدیریت']
+    : ['dashboard' => 'Dashboard', 'users' => 'Users', 'groups' => 'Groups', 'services' => 'Services', 'ras' => 'RAS / NAS', 'pools' => 'IP Pools', 'sessions' => 'Sessions', 'accounting' => 'Accounting', 'billing' => 'Billing', 'reports' => 'Reports', 'admin' => 'Administration'];
 ?><!doctype html>
-<html lang="en" dir="ltr">
+<html lang="<?= htmlspecialchars($locale, ENT_QUOTES) ?>" dir="<?= $dir ?>">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="light dark">
-  <title>ATD Radius</title>
+  <title>ATD Radius — <?= htmlspecialchars($labels['dashboard']) ?></title>
   <link rel="stylesheet" href="/assets/atd.css">
 </head>
 <body>
-  <div class="atd-shell">
-    <aside class="atd-sidebar">
-      <div class="atd-brand"><span class="atd-brand-mark">A</span><span>ATD Radius</span></div>
-      <nav>
-        <a class="active" href="#dashboard">Dashboard</a>
-        <a href="#users">Users</a>
-        <a href="#groups">Groups</a>
-        <a href="#services">Services</a>
-        <a href="#ras">RAS / NAS</a>
-        <a href="#pools">IP Pools</a>
-        <a href="#sessions">Sessions</a>
-        <a href="#accounting">Accounting</a>
-        <a href="#billing">Billing</a>
-        <a href="#reports">Reports</a>
-      </nav>
-    </aside>
-    <main class="atd-main">
-      <header class="atd-header"><div><span class="eyebrow">AAA PLATFORM</span><h1>Dashboard</h1></div><button class="theme-toggle" type="button" onclick="document.documentElement.classList.toggle('dark')">Theme</button></header>
-      <section class="hero"><div><span class="eyebrow">IBSNG MODERNIZATION</span><h2>Network control without the legacy stack.</h2><p>ATD Radius keeps the proven IBSng operational model while moving the core to a modern, testable runtime.</p></div></section>
-      <section class="cards"><article><small>USERS</small><strong>—</strong><span>Ready for core integration</span></article><article><small>RAS / NAS</small><strong>—</strong><span>Ready for AAA inventory</span></article><article><small>SESSIONS</small><strong>—</strong><span>Accounting layer in progress</span></article><article><small>EAP</small><strong>FOUNDATION</strong><span>Protocol layer started</span></article></section>
+<div class="atd-shell">
+  <aside class="atd-sidebar">
+    <div class="atd-brand"><span class="atd-mark">A</span><div><strong>ATD Radius</strong><small>Modernized IBSng</small></div></div>
+    <nav>
+      <?php foreach ($labels as $key => $label): ?>
+        <a class="atd-nav-item <?= $key === 'dashboard' ? 'is-active' : '' ?>" href="#<?= htmlspecialchars($key) ?>"><span class="atd-nav-dot"></span><?= htmlspecialchars($label) ?></a>
+      <?php endforeach; ?>
+    </nav>
+  </aside>
+  <div class="atd-main-shell">
+    <header class="atd-header"><div><span class="eyebrow">AAA CONTROL PLANE</span><h1><?= htmlspecialchars($labels['dashboard']) ?></h1></div><div class="atd-header-actions"><a href="?lang=<?= $locale === 'fa' ? 'en' : 'fa' ?>"><?= $locale === 'fa' ? 'EN' : 'FA' ?></a><button type="button" data-theme-toggle>Theme</button></div></header>
+    <main class="atd-content">
+      <section class="hero"><div><span class="eyebrow">IBSNG MODERNIZATION</span><h2>Operational clarity for AAA infrastructure.</h2><p>IBSng workflows, rebuilt on a modern runtime with RADIUS, EAP and a focused network-operations UI.</p></div></section>
+      <section class="stat-grid">
+        <?php foreach ([['Users','0'],['Online Sessions','0'],['RAS / NAS','0'],['IP Pools','0']] as $stat): ?>
+          <article class="stat-card"><span><?= htmlspecialchars($stat[0]) ?></span><strong><?= htmlspecialchars($stat[1]) ?></strong></article>
+        <?php endforeach; ?>
+      </section>
+      <section class="workspace"><div><span class="eyebrow">NEXT</span><h3>Connect the domain services</h3><p>The shell is intentionally presentation-only until the corresponding IBSng-compatible application service is wired to the API.</p></div><a class="primary" href="#users">Open Users</a></section>
     </main>
   </div>
+</div>
+<script src="/assets/atd.js"></script>
 </body>
 </html>
