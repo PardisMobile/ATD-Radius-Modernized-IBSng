@@ -32,20 +32,15 @@ Mobile uses a deliberate navigation mode with an accessible menu/drawer and touc
 
 ## Navigation model
 
-The modern navigation groups IBSng capabilities by operator task:
+The modern navigation uses the exact A1.24 top-level labels:
 
-- Dashboard
-- Users
-- Groups
-- Services
-- RAS / NAS
-- IP Pools
-- Sessions
-- Accounting
-- Billing
-- Reports
-- Administration
-- Settings
+- HOME
+- USER
+- GROUP
+- REPORT
+- GRAPH
+- ADMIN
+- SETTING
 
 Contextual shortcuts can expose frequent IBSng actions such as Search User, Add User, Online Users, Group List, RAS and IPPool.
 
@@ -55,7 +50,7 @@ Shell, sidebar, topbar, breadcrumbs, tabs, cards, data table, filters, search, p
 
 ## Data-dense surfaces
 
-Users, sessions, accounting records, RAS/NAS, IP pools and audit logs are operational surfaces. Tables should support density controls, sticky headers where useful, column visibility where appropriate, fast filtering, pagination, sorting and row actions.
+User, Online Users, Connection Logs, RAS, IPPool and audit/log records are operational surfaces. Tables should support density controls, sticky headers where useful, column visibility where appropriate, fast filtering, pagination, sorting and row actions.
 
 ## Status language
 
