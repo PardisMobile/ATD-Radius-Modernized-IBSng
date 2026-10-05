@@ -6,23 +6,23 @@ This is the master parity checklist. `Implemented` means ATD code exists; `Verif
 |---|---|---|---|
 | Admin/auth | admins, admin_perms | modern admin service/UI | Inventory |
 | RAS | ras, ras_ports, ras_attrs | RAS service | Inventory |
-| IP pools | ippool, ippool_ips, ras_ippools | IP allocation service | Implemented / integration pending |
+| IP pools | ippool, ippool_ips, ras_ippools | IP allocation service | Implemented / lifecycle integration pending |
 | Users | users, normal_users, voip_users | user service | Inventory |
 | Groups | groups, group_attrs | group/policy service | Inventory |
 | Attribute system | user_attrs, group_attrs, ras_attrs | typed compatibility attribute engine | Implemented / parity pending |
 | Caller ID | caller_id_users | authentication policy | Inventory |
 | Persistent LAN | persistent_lan_users | session/address policy | Inventory |
-| Sessions | connection/session sources | session service | Partial |
+| Sessions | connection_log, online user lifecycle | session service | Implemented primitives / integration pending |
 | Accounting | connection_log, ias_event, ias_event_extended | accounting service | Implemented primitives / integration pending |
 | Bandwidth | bw_* | bandwidth service | Inventory |
 | Charges | charges | billing service | Implemented primitives / A1.24 parity pending |
-| Internet billing | charge_rules, internet_charge_rules | billing rule engine | Inventory |
-| VoIP billing | voip_charge_rules, tariffs, prefixes | VoIP billing engine | Inventory |
+| Internet billing | charge_rules, internet_charge_rules | billing rule engine | Implemented primitives / source verification pending |
+| VoIP billing | voip_charge_rules, tariffs, prefixes | VoIP billing engine | Implemented primitives / source verification pending |
 | Audit | user_audit_log, web_analyzer_log | audit service | Inventory |
-| RADIUS | AAA/auth/accounting paths | RADIUS service | Planned |
+| RADIUS | AAA/auth/accounting paths | RADIUS service | Domain/runtime primitives / UDP integration pending |
 | EAP | modern EAP layer | EAP service | Planned |
 | Admin UI | legacy web/admin | modern responsive UI | Planned |
-| User UI | legacy user interface | modern user portal | Planned |
+| User UI | legacy user interface | modern user portal | Partial |
 | Installer | A1.24 legacy install | modern deployment | Planned |
 | Backup/restore | PostgreSQL dump/restore semantics | compatibility importer/exporter | Planned |
 
