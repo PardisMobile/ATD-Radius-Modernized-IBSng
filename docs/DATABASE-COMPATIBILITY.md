@@ -47,7 +47,9 @@ schema inventory
 
 ## Current status
 
-The domain layer must not be used as justification for inventing replacement persisted concepts. Existing A1.24 tables, columns, constraints and relationships remain the database source of truth. The next database milestone must be based on the actual A1.24 schema and backup/restore code, not inferred table names.
+The migration layer now contains the native A1.24 schema: 51 tables, 24 sequences and 19 explicit indexes, followed by the A1.24 stored functions, initial data and definitions. Existing A1.24 tables, columns, constraints and relationships remain the database source of truth.
+
+Runtime consumers are being refactored away from the previous parallel schema. No new replacement table is permitted. The next database milestone must be based on the actual A1.24 schema and backup/restore code, not inferred table names.
 
 ## Rule
 
