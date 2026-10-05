@@ -104,7 +104,13 @@ def resolve_typed_attributes(
     candidates.sort(key=lambda a: (a.effective_priority, a.source_id or ""))
     result = EffectiveAttributes(values={})
 
-    for attr in candidates:
+    # Establish SET/REPLACE baselines first, then apply ADD/REMOVE mutations.
+    # This preserves lower-scope defaults while allowing higher-scope mutations
+    # to refine the effective multi-value result.
+    ordered = [a for a in candidates if a.operator in (AttributeOperator.SET, AttributeOperator.REPLACE)]
+    ordered += [a for a in candidates if a.operator in (AttributeOperator.ADD, AttributeOperator.REMOVE)]
+
+    for attr in ordered:
         definition = definitions.get(attr.name, AttributeDefinition(attr.name))
         value = _coerce(definition, attr.value)
         if attr.operator not in definition.operators:
