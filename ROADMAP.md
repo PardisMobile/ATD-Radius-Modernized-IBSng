@@ -9,7 +9,7 @@
 - [x] Confirm EAP is an ATD extension, not an A1.24 feature
 - [x] Define ATD UI principles and carry-forward project context
 - [ ] Finish database table/relationship parity map
-- [ ] Finish admin/user page workflow map
+- [x] Finish first-pass admin/user page workflow map
 - [ ] Finish reuse/port/rewrite/drop matrix
 
 ## Phase 1 — Core foundation
@@ -20,6 +20,7 @@
 - [x] IP allocation service contract
 - [x] PostgreSQL user repository and transaction-safe IP allocation
 - [x] Initial users REST resource
+- [x] Searchable/paginated users REST resource
 - [x] Argon2 credential boundary
 - [x] Group/service persistence repositories
 - [ ] Users/groups/services full CRUD application services
@@ -43,6 +44,7 @@
 
 ## Phase 4 — APIs
 - [x] Initial REST resource boundary
+- [x] Users list/search/filter API
 - [ ] REST API resources
 - [ ] XML-RPC compatibility adapter
 - [ ] API authentication, RBAC and audit
@@ -51,9 +53,14 @@
 - [x] ATD design-system shell
 - [x] Persian/English and RTL/LTR foundation
 - [x] Light/dark theme foundation
+- [x] Dashboard workspace shell
+- [x] Users workspace shell and data table
+- [x] Users search/status filters and pagination
+- [ ] User detail / edit workspace
+- [ ] Groups and services workspaces
+- [ ] RAS, IP pool, sessions, accounting, billing and reports
 - [ ] Admin panel workflows
 - [ ] User portal workflows
-- [ ] RAS, IP pool, sessions, accounting, billing and reports
 
 ## Phase 6 — Migration
 - [ ] IBSng database importer
