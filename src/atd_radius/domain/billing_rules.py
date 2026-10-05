@@ -40,7 +40,7 @@ class ChargeRule:
         if when.weekday() not in self.days:
             return False
         second = when.hour * 3600 + when.minute * 60 + when.second
-        if not (self.start_second < second < self.end_second):
+        if not (self.start_second <= second < self.end_second):
             return False
         if self.ras_id is not None and self.ras_id != ras_id:
             return False
