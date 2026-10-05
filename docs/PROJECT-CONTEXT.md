@@ -63,3 +63,17 @@ Never import code, documentation, generated files, secrets or production data fr
 ## Working rule for future chats
 
 Read this file, `ROADMAP.md`, `ARCHITECTURE.md`, `docs/DECISIONS.md`, `docs/phase-0-inventory.md`, `docs/ibsng-a124-full-inventory.md`, and `ui/UI-SPEC.md` before making architectural changes. Then inspect the latest commits before editing code.
+
+
+## Current implementation checkpoint — 2026-10-06
+
+- Main branch currently advances through native A1.24 schema migration and USER persistence/UI work.
+- The native migration contains the A1.24 tables/sequences/indexes; parallel modern schema names such as `user_credentials`, `user_groups`, `user_services`, `credit_ledger`, `attribute_bindings`, `sessions`, `services` and `online_sessions` are forbidden.
+- Latest confirmed main commit before this checkpoint: `20ecc9c75f61bf6258a241c294d8a6c93769de1b`.
+- CI status must be re-checked from GitHub after each batch; do not assume queued/in-progress runs passed.
+- USER API/persistence is mapped to `users`, `normal_users`, `user_attrs` and related A1.24 tables. USER lock is presence of the `lock` attribute.
+- GROUP work is now being implemented directly against `groups` and `group_attrs`, preserving A1.24 names and semantics.
+- A1.24 GROUP source behavior verified: group names accept only ASCII alphanumeric, underscore and hyphen; creation uses `groups_group_id_seq`; deletion is blocked when `users.group_id` references the group; group attributes are one value per `(group_id, attr_name)`.
+- A1.24 GroupActions/GroupHandler source was inspected directly before implementing the GROUP repository/API.
+- Remaining high-priority parity gaps include RAS lifecycle, full AAA/RADIUS UDP integration, accounting/session integration, permissions/audit, billing source verification, remaining UI areas, installer verification, and migration/import testing.
+- Do not mark any subsystem Verified merely because an implementation exists; Verified requires source-derived behavior tests and/or database parity evidence.
