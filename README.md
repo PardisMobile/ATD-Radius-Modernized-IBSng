@@ -25,7 +25,7 @@ This is a clean repository. Nothing from the previous Go-based `ATD-Radius` repo
 The project foundation is now live:
 
 - Python package and test configuration
-- PostgreSQL initial domain migration
+- Native IBSng A1.24 PostgreSQL schema migration sequence (`tables.sql → functions.sql → initial.sql → defs.sql`)
 - user/group/service/RAS/IP-pool/session domain primitives
 - layered attribute policy primitive
 - RADIUS packet transport foundation
