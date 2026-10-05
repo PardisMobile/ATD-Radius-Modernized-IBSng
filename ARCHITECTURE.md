@@ -22,9 +22,9 @@
 
 ## Layers
 
-1. Domain: users, groups, services, RAS/NAS, IP pools, attributes, sessions, accounting, charging, permissions.
-2. Application services: explicit use cases; interfaces never contain business rules.
-3. Protocol/API adapters: RADIUS, EAP, REST, XML-RPC, CLI.
-4. Presentation: modern PHP web panel and ATD design system.
+1. Domain: IBSng A1.24 concepts including User, Group, RAS, IPPool, attributes, online/session state, Connection Logs, Connection Usages, Charge, permissions and audit.
+2. Application layer: explicit use cases mapped to IBSng A1.24 workflows; adapters never contain business rules.
+3. Protocol/API adapters: RADIUS, REST and XML-RPC; EAP is a later protocol-boundary extension after source-first protocol analysis.
+4. Presentation: modern PHP implementation of the IBSng A1.24 web interface, with responsive presentation and accessibility improvements.
 
 IBSng A1.24 is the reference for behavior. Its obsolete implementation details are not automatically preserved.
