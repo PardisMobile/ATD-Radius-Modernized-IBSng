@@ -14,8 +14,12 @@ def test_min_duration_makes_missed_call_free():
 def test_free_seconds_are_excluded():
     assert chargeable_duration(40,p(free_seconds=10))==30
 
-def test_min_chargeable_then_rounding():
-    assert chargeable_duration(15,p(free_seconds=0,min_chargeable_duration=20,round_to=30))==30
+def test_min_chargeable_duration_has_priority_over_rounding():
+    assert chargeable_duration(15,p(free_seconds=0,min_chargeable_duration=20,round_to=30))==20
 
 def test_charge_uses_cpm_per_minute():
     assert calculate_voip_charge(60,p(free_seconds=0,round_to=0,min_chargeable_duration=0))==Decimal("60")
+
+
+def test_rounding_uses_full_call_duration():
+    assert chargeable_duration(31, p(free_seconds=10, min_chargeable_duration=0, round_to=30)) == 50
