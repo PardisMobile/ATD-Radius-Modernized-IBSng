@@ -3,26 +3,8 @@ declare(strict_types=1);
 
 $locale = ($_GET['lang'] ?? 'fa') === 'en' ? 'en' : 'fa';
 $dir = $locale === 'fa' ? 'rtl' : 'ltr';
-$fa = [
-    'dashboard' => 'داشبورد', 'users' => 'کاربران', 'groups' => 'گروه‌ها', 'services' => 'سرویس‌ها',
-    'ras' => 'RAS / NAS', 'pools' => 'IP Pool', 'sessions' => 'Sessionها', 'accounting' => 'Accounting',
-    'billing' => 'Billing', 'reports' => 'گزارش‌ها', 'admin' => 'مدیریت',
-    'user_workspace' => 'مدیریت کاربران', 'search' => 'جستجوی کاربر...', 'status' => 'وضعیت',
-    'all' => 'همه', 'active' => 'فعال', 'disabled' => 'غیرفعال', 'expired' => 'منقضی', 'locked' => 'قفل‌شده',
-    'new_user' => 'کاربر جدید', 'username' => 'نام کاربری', 'actions' => 'عملیات', 'open' => 'باز کردن',
-    'total' => 'کاربر', 'loading' => 'در حال بارگذاری...', 'empty' => 'کاربری مطابق فیلتر پیدا نشد.',
-    'error' => 'دریافت اطلاعات کاربران ناموفق بود.', 'previous' => 'قبلی', 'next' => 'بعدی',
-];
-$en = [
-    'dashboard' => 'Dashboard', 'users' => 'Users', 'groups' => 'Groups', 'services' => 'Services',
-    'ras' => 'RAS / NAS', 'pools' => 'IP Pools', 'sessions' => 'Sessions', 'accounting' => 'Accounting',
-    'billing' => 'Billing', 'reports' => 'Reports', 'admin' => 'Administration',
-    'user_workspace' => 'User Management', 'search' => 'Search users...', 'status' => 'Status',
-    'all' => 'All', 'active' => 'Active', 'disabled' => 'Disabled', 'expired' => 'Expired', 'locked' => 'Locked',
-    'new_user' => 'New User', 'username' => 'Username', 'actions' => 'Actions', 'open' => 'Open',
-    'total' => 'users', 'loading' => 'Loading...', 'empty' => 'No users match the current filters.',
-    'error' => 'Unable to load users.', 'previous' => 'Previous', 'next' => 'Next',
-];
+$fa = ['home'=>'خانه','user'=>'کاربر','group'=>'گروه','report'=>'گزارش','graph'=>'نمودار','admin'=>'مدیر','setting'=>'تنظیمات','user_info'=>'اطلاعات کاربر','search'=>'جستجوی کاربر...','status'=>'وضعیت','all'=>'همه','active'=>'فعال','disabled'=>'غیرفعال','expired'=>'منقضی','locked'=>'قفل‌شده','new_user'=>'افزودن کاربر جدید','username'=>'نام کاربری','actions'=>'عملیات','open'=>'باز کردن','total'=>'کاربر','loading'=>'در حال بارگذاری...','empty'=>'کاربری مطابق فیلتر پیدا نشد.','error'=>'دریافت اطلاعات کاربران ناموفق بود.','previous'=>'قبلی','next'=>'بعدی'];
+$en = ['home'=>'HOME','user'=>'USER','group'=>'GROUP','report'=>'REPORT','graph'=>'GRAPH','admin'=>'ADMIN','setting'=>'SETTING','user_info'=>'User Information','search'=>'Search User...','status'=>'Status','all'=>'All','active'=>'Active','disabled'=>'Disabled','expired'=>'Expired','locked'=>'Locked','new_user'=>'Add New User','username'=>'Username','actions'=>'Actions','open'=>'Open','total'=>'users','loading'=>'Loading...','empty'=>'No users match the current filters.','error'=>'Unable to load users.','previous'=>'Previous','next'=>'Next'];
 $labels = $locale === 'fa' ? $fa : $en;
 ?>
 <!doctype html>
@@ -31,7 +13,7 @@ $labels = $locale === 'fa' ? $fa : $en;
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="light dark">
-  <title>ATD Radius — <?= htmlspecialchars($labels['users']) ?></title>
+  <title>ATD Radius — <?= htmlspecialchars($labels['user']) ?></title>
   <link rel="stylesheet" href="/assets/atd.css">
 </head>
 <body>
@@ -39,14 +21,14 @@ $labels = $locale === 'fa' ? $fa : $en;
   <aside class="atd-sidebar">
     <div class="atd-brand"><span class="atd-mark">A</span><div><strong>ATD Radius</strong><small>Modernized IBSng</small></div></div>
     <nav>
-      <?php foreach ($labels as $key => $label): if (!in_array($key, ['user_workspace','search','status','all','active','disabled','expired','locked','new_user','username','actions','open','total','loading','empty','error','previous','next'], true)): ?>
-        <a class="atd-nav-item <?= $key === 'users' ? 'is-active' : '' ?>" href="<?= $key === 'users' ? '/users.php' : '/?lang=' . urlencode($locale) . '#' . htmlspecialchars($key) ?>"><span class="atd-nav-dot"></span><?= htmlspecialchars($label) ?></a>
+      <?php foreach ($labels as $key => $label): if (!in_array($key, ['user_info','search','status','all','active','disabled','expired','locked','new_user','username','actions','open','total','loading','empty','error','previous','next'], true)): ?>
+        <a class="atd-nav-item <?= $key === 'user' ? 'is-active' : '' ?>" href="<?= $key === 'user' ? '/users.php' : '/?lang=' . urlencode($locale) . '#' . htmlspecialchars($key) ?>"><span class="atd-nav-dot"></span><?= htmlspecialchars($label) ?></a>
       <?php endif; endforeach; ?>
     </nav>
   </aside>
   <div class="atd-main-shell">
     <header class="atd-header">
-      <div><span class="eyebrow">IBSNG WORKSPACE</span><h1><?= htmlspecialchars($labels['user_workspace']) ?></h1></div>
+      <div><span class="eyebrow">IBSNG WORKSPACE</span><h1><?= htmlspecialchars($labels['user_info']) ?></h1></div>
       <div class="atd-header-actions">
         <a href="?lang=<?= $locale === 'fa' ? 'en' : 'fa' ?>"><?= $locale === 'fa' ? 'EN' : 'FA' ?></a>
         <button type="button" data-theme-toggle>Theme</button>
@@ -54,7 +36,7 @@ $labels = $locale === 'fa' ? $fa : $en;
     </header>
     <main class="atd-content">
       <section class="page-head">
-        <div><span class="eyebrow">IDENTITY &amp; ACCESS</span><h2><?= htmlspecialchars($labels['users']) ?></h2><p id="user-count">—</p></div>
+        <div><span class="eyebrow">IDENTITY &amp; ACCESS</span><h2><?= htmlspecialchars($labels['user']) ?></h2><p id="user-count">—</p></div>
         <a class="primary" href="#new-user"><?= htmlspecialchars($labels['new_user']) ?></a>
       </section>
 
