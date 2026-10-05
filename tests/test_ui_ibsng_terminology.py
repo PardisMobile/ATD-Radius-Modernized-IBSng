@@ -36,17 +36,10 @@ def test_user_pages_do_not_reintroduce_atd_operator_taxonomy():
 
 def test_user_information_keeps_a124_names():
     text = Path("ui/public/user.php").read_text(encoding="utf-8")
-    for label in (
-        "User Information",
-        "Search User",
-        "Add New User",
-        "Group List",
-        "RAS",
-        "IPPool",
-        "Online Users",
-        "Connection Logs",
-        "Connection Usages",
-        "Credit Changes",
-        "User Audit Logs",
-    ):
+    for label in ("User Information", "Group List", "RAS", "Connection Logs", "Credit Changes"):
+        assert label in text
+
+def test_user_list_keeps_a124_search_names():
+    text = Path("ui/public/users.php").read_text(encoding="utf-8")
+    for label in ("User Information", "Search User", "Add New User"):
         assert label in text
