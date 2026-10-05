@@ -1,51 +1,53 @@
-"""Deterministic IPv4 allocation primitives for IBSng-compatible IP pools."""
+"""IP pool primitives matching A1.24's ordered free/used container semantics."""
 from __future__ import annotations
-
-from dataclasses import dataclass
+from dataclasses import dataclass,field
 import ipaddress
 from typing import Iterable
 
+class IPPoolError(ValueError): pass
 
-class IPPoolError(ValueError):
-    pass
-
-
-@dataclass(frozen=True, slots=True)
+@dataclass(slots=True)
 class IPPool:
-    name: str
-    network: ipaddress.IPv4Network
-    enabled: bool = True
+    name:str
+    addresses_list:list[ipaddress.IPv4Address]
+    enabled:bool=True
+    used:list[ipaddress.IPv4Address]=field(default_factory=list)
 
     @classmethod
-    def from_cidr(cls, name: str, cidr: str, enabled: bool = True) -> "IPPool":
-        network = ipaddress.ip_network(cidr, strict=True)
-        if not isinstance(network, ipaddress.IPv4Network):
-            raise IPPoolError("ATD IP pools currently support IPv4 only")
-        return cls(name=name, network=network, enabled=enabled)
+    def from_cidr(cls,name:str,cidr:str,enabled:bool=True)->"IPPool":
+        network=ipaddress.ip_network(cidr,strict=True)
+        if not isinstance(network,ipaddress.IPv4Network): raise IPPoolError("IPv4 only")
+        # CIDR convenience; explicit list remains authoritative for allocation order.
+        return cls(name,list(network.hosts()),enabled)
 
-    def addresses(self) -> Iterable[ipaddress.IPv4Address]:
-        if not self.enabled:
-            return ()
-        return self.network.hosts()
+    @property
+    def network(self): return ipaddress.ip_network(f"{self.addresses_list[0]}/{len(self.addresses_list)}",strict=False) if self.addresses_list else None
 
+    def free(self)->list[ipaddress.IPv4Address]:
+        return [ip for ip in self.addresses_list if ip not in self.used]
 
-class IPAllocator:
-    """Allocate an address without ever returning an already-used address."""
+    def allocate(self)->ipaddress.IPv4Address:
+        if not self.enabled: raise IPPoolError(f"IP pool {self.name!r} is disabled")
+        free=self.free()
+        if not free: raise IPPoolError(f"IP pool {self.name!r} is exhausted")
+        ip=free[0]; self.used.append(ip); return ip
 
-    def __init__(self, pool: IPPool):
-        self.pool = pool
+    def use(self,address:str|ipaddress.IPv4Address)->ipaddress.IPv4Address:
+        ip=ipaddress.ip_address(address)
+        if not isinstance(ip,ipaddress.IPv4Address) or ip not in self.addresses_list: raise IPPoolError("IP is not in pool")
+        if ip in self.used: raise IPPoolError("IP is already in use")
+        self.used.append(ip); return ip
 
-    def allocate(self, used: Iterable[str | ipaddress.IPv4Address]) -> ipaddress.IPv4Address:
-        if not self.pool.enabled:
-            raise IPPoolError(f"IP pool {self.pool.name!r} is disabled")
-        used_set = {ipaddress.ip_address(value) for value in used}
-        for address in self.pool.addresses():
-            if address not in used_set:
-                return address
-        raise IPPoolError(f"IP pool {self.pool.name!r} is exhausted")
+    def release(self,address:str|ipaddress.IPv4Address)->None:
+        ip=ipaddress.ip_address(address)
+        try: self.used.remove(ip)
+        except ValueError: raise IPPoolError("IP is not in used pool")
 
-    def is_available(self, address: str | ipaddress.IPv4Address, used: Iterable[str | ipaddress.IPv4Address]) -> bool:
-        candidate = ipaddress.ip_address(address)
-        if candidate.version != 4 or candidate not in self.pool.network:
-            return False
-        return candidate not in {ipaddress.ip_address(value) for value in used}
+    def set_in_reply(self,reply:dict[str,str])->ipaddress.IPv4Address:
+        ip=self.allocate()
+        reply["Framed-IP-Address"]=str(ip); reply["Framed-IP-Netmask"]="255.255.255.255"
+        return ip
+
+    def is_available(self,address:str|ipaddress.IPv4Address)->bool:
+        ip=ipaddress.ip_address(address)
+        return ip in self.addresses_list and ip not in self.used
