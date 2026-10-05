@@ -1,6 +1,16 @@
+"""RADIUS EAP-Message primitives.
+
+IBSng A1.24 has no EAP implementation. EAP is an ATD extension. Transport
+and EAP method state machines must remain separate from these packet helpers.
+"""
+from __future__ import annotations
+
 from dataclasses import dataclass
 import hashlib
 import hmac
+
+EAP_MESSAGE_ATTRIBUTE = 79
+MESSAGE_AUTHENTICATOR_ATTRIBUTE = 80
 
 
 @dataclass(frozen=True, slots=True)
@@ -31,3 +41,13 @@ class EAPPacket:
 
 def message_authenticator(secret: bytes, packet_without_attribute: bytes) -> bytes:
     return hmac.new(secret, packet_without_attribute, hashlib.md5).digest()
+
+
+def join_eap_message(attributes: list[bytes]) -> bytes:
+    return b"".join(attributes)
+
+
+def split_eap_message(packet: bytes, chunk_size: int = 253) -> list[bytes]:
+    if not 1 <= chunk_size <= 253:
+        raise ValueError("chunk_size must be between 1 and 253")
+    return [packet[i:i + chunk_size] for i in range(0, len(packet), chunk_size)]
