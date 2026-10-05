@@ -1,15 +1,15 @@
 # Database Compatibility Strategy
 
-ATD must preserve the operational semantics of IBSng A1.24 data. Database modernization is **lossless-first**, not redesign-first.
+ATD must preserve the operational semantics **and PostgreSQL schema of IBSng A1.24**. Database modernization is compatibility-first, not redesign-first.
 
 ## Compatibility levels
 
-1. **Native** — an IBSng table/column can remain structurally compatible.
-2. **Mapped** — ATD uses a modern table/model but every source field has an explicit mapping.
-3. **Transformed** — a transformation is required; it must be deterministic and reversible where practical.
+1. **Native** — the A1.24 table/column is retained directly.
+2. **Mapped** — permitted only at an adapter/application boundary while the persisted PostgreSQL schema remains A1.24-compatible.
+3. **Transformed** — permitted only for migration of external data; the resulting persisted representation must remain compatible with A1.24 semantics.
 4. **Unsupported** — prohibited until an explicit compatibility decision is documented.
 
-No IBSng table is considered safely migrated until its rows, relationships, defaults, constraints and behavioral consumers are mapped.
+No IBSng table is considered compatible until its rows, relationships, defaults, constraints, indexes and behavioral consumers are verified against the A1.24 source.
 
 ## Restore workflow
 
@@ -47,7 +47,7 @@ schema inventory
 
 ## Current status
 
-The domain layer already contains `User`, `Group`, `Service`, `Ras`, `IPPool`, `Session` and `AccountingEvent` concepts, but this document deliberately does **not** claim database migration is complete. The next database milestone must be based on the actual A1.24 schema and backup/restore code, not inferred table names.
+The domain layer must not be used as justification for inventing replacement persisted concepts. Existing A1.24 tables, columns, constraints and relationships remain the database source of truth. The next database milestone must be based on the actual A1.24 schema and backup/restore code, not inferred table names.
 
 ## Rule
 
