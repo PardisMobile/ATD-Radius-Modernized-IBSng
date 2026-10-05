@@ -4,25 +4,25 @@ This is the master parity checklist. `Implemented` means ATD code exists; `Verif
 
 | IBSng subsystem | A1.24 source area | ATD target | Status |
 |---|---|---|---|
-| Admin/auth | admins, admin_perms | modern admin service/UI | Inventory |
-| RAS | ras, ras_ports, ras_attrs | RAS service | Inventory |
+| Admin/auth | admins, admin_perms | A1.24 ADMIN implementation | Inventory |
+| RAS | ras, ras_ports, ras_attrs | A1.24 RAS implementation | Inventory |
 | IP pools | ippool, ippool_ips, ras_ippools | IP allocation service | Implemented / lifecycle integration pending |
-| Users | users, normal_users, voip_users | user service | Inventory |
-| Groups | groups, group_attrs | group/policy service | Inventory |
+| Users | users, normal_users, voip_users | A1.24 USER implementation | Inventory |
+| Groups | groups, group_attrs | A1.24 GROUP implementation | Inventory |
 | Attribute system | user_attrs, group_attrs, ras_attrs | typed compatibility attribute engine | Implemented / parity pending |
 | Caller ID | caller_id_users | authentication policy | Inventory |
 | Persistent LAN | persistent_lan_users | session/address policy | Inventory |
-| Sessions | connection_log, online user lifecycle | session service | Implemented primitives / integration pending |
-| Accounting | connection_log, ias_event, ias_event_extended | accounting service | Implemented primitives / integration pending |
-| Bandwidth | bw_* | bandwidth service | Inventory |
-| Charges | charges | billing service | Implemented primitives / A1.24 parity pending |
-| Internet billing | charge_rules, internet_charge_rules | billing rule engine | Implemented primitives / source verification pending |
-| VoIP billing | voip_charge_rules, tariffs, prefixes | VoIP billing engine | Implemented primitives / source verification pending |
-| Audit | user_audit_log, web_analyzer_log | audit service | Inventory |
-| RADIUS | AAA/auth/accounting paths | RADIUS service | Domain/runtime primitives / UDP integration pending |
-| EAP | modern EAP layer | EAP service | Planned |
-| Admin UI | legacy web/admin | modern responsive UI | Planned |
-| User UI | legacy user interface | modern user portal | Partial |
+| Sessions | connection_log, online user lifecycle | A1.24 online/session lifecycle | Implemented primitives / integration pending |
+| Accounting | connection_log, ias_event, ias_event_extended | A1.24 accounting implementation | Implemented primitives / integration pending |
+| Bandwidth | bw_* | A1.24 Bandwidth Management implementation | Inventory |
+| Charges | charges | A1.24 Charge implementation | Implemented primitives / A1.24 parity pending |
+| Internet billing | charge_rules, internet_charge_rules | A1.24 Internet Charge Rule implementation | Implemented primitives / source verification pending |
+| VoIP billing | voip_charge_rules, tariffs, prefixes | A1.24 VoIP Charge Rule / VoIP Tariff implementation | Implemented primitives / source verification pending |
+| Audit | user_audit_log, web_analyzer_log | A1.24 audit/log implementation | Inventory |
+| RADIUS | AAA/auth/accounting paths | A1.24 RADIUS boundary and runtime | Domain/runtime primitives / UDP integration pending |
+| EAP | protocol boundary | ATD protocol extension after A1.24 protocol audit | Planned |
+| Admin UI | legacy web/admin | modern responsive IBSng A1.24 UI | Planned |
+| User UI | legacy user interface | modern responsive IBSng user UI | Partial |
 | Installer | A1.24 legacy install | modern deployment | Planned |
 | Backup/restore | PostgreSQL dump/restore semantics | compatibility importer/exporter | Planned |
 
