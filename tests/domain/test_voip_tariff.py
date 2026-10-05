@@ -2,7 +2,9 @@ from decimal import Decimal
 from atd_radius.domain.voip_tariff import VoipPrefix, VoipTariff, chargeable_duration, calculate_voip_charge
 
 def p(code="98", **kw):
-    return VoipPrefix(1, code, "Iran", Decimal("60"), 10, 3, 30, 20, **kw)
+    defaults = dict(free_seconds=10, min_duration=3, round_to=30, min_chargeable_duration=20)
+    defaults.update(kw)
+    return VoipPrefix(1, code, "Iran", Decimal("60"), **defaults)
 
 def test_longest_prefix_wins():
     tariff=VoipTariff(1,"t","", (p("9"),p("98"),p("989")))
