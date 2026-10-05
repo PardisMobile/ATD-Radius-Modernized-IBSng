@@ -1,10 +1,10 @@
-# User Workspace Implementation
+# User Information Implementation
 
-This document records the first real user-centric workspace built from the IBSng A1.24 workflow inventory.
+This document records the first real User Information surface built from the IBSng A1.24 workflow inventory.
 
 ## Read-only surface delivered
 
-The user detail API and PHP workspace expose the high-value information an operator needs without reproducing IBSng's legacy page chain:
+The User Information API and PHP surface expose the high-value information an operator needs without reproducing IBSng's legacy page chain:
 
 - identity and account status
 - credential readiness
@@ -40,4 +40,4 @@ The API returns applicable user/group/service bindings ordered by precedence. Th
 6. Add credit actions through the billing ledger rather than direct balance mutation.
 7. Add audit timeline to the workspace.
 
-The UI must continue to use contextual tabs/drawers rather than recreate IBSng's old multi-page form chain.
+The UI must continue to use contextual tabs/drawers only as presentation mechanics; operator-facing names and workflows remain those of IBSng A1.24.
