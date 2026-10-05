@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Iterable
 
-from .domain_models_compat import AttributeSet
+from .models import AttributeSet
 
 
 class SessionAdmissionReason(str):
@@ -49,10 +49,9 @@ def session_policy(
 ) -> SessionPolicyDecision:
     """Evaluate lock/multi-login admission and expose timeout enforcement values.
 
-    ``multi_login`` is treated as a maximum concurrent-session count when it is
-    numeric. A zero/false value means no concurrent login is permitted. A true
-    value means one concurrent session. This normalization is intentionally kept
-    here so the RADIUS adapter does not need IBSng-specific policy knowledge.
+    ``multi_login`` is normalized here so protocol adapters do not need
+    IBSng-specific policy knowledge. Numeric values are maximum concurrent
+    sessions; boolean true permits one and false permits none.
     """
     locked = attributes.get("lock", False)
     if str(locked).lower() in {"1", "true", "yes", "on", "locked"}:
