@@ -1,8 +1,4 @@
-"""Modern domain model derived from IBSng A1.24 behavior.
-
-The models deliberately avoid coupling the domain to PostgreSQL, HTTP, RADIUS,
-or the web UI. Protocol and persistence adapters translate into these objects.
-"""
+"""Modern domain model derived from IBSng A1.24 behavior."""
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -10,6 +6,7 @@ from datetime import datetime
 from decimal import Decimal
 from enum import Enum
 from typing import Any
+from uuid import UUID
 
 
 class UserKind(str, Enum):
@@ -26,19 +23,19 @@ class SessionState(str, Enum):
 
 @dataclass(slots=True)
 class User:
-    id: int | None
+    id: UUID | None
     username: str
     password_hash: str | None = None
     kind: UserKind = UserKind.NORMAL
     enabled: bool = True
     credit: Decimal = Decimal("0")
     attributes: dict[str, Any] = field(default_factory=dict)
-    group_ids: list[int] = field(default_factory=list)
+    group_ids: list[UUID] = field(default_factory=list)
 
 
 @dataclass(slots=True)
 class Group:
-    id: int | None
+    id: UUID | None
     name: str
     description: str = ""
     enabled: bool = True
@@ -47,7 +44,7 @@ class Group:
 
 @dataclass(slots=True)
 class Service:
-    id: int | None
+    id: UUID | None
     name: str
     description: str = ""
     enabled: bool = True
@@ -56,7 +53,7 @@ class Service:
 
 @dataclass(slots=True)
 class Ras:
-    id: int | None
+    id: UUID | None
     name: str
     kind: str
     address: str | None = None
@@ -67,7 +64,7 @@ class Ras:
 
 @dataclass(slots=True)
 class IPPool:
-    id: int | None
+    id: UUID | None
     name: str
     network_cidr: str
     enabled: bool = True
@@ -75,9 +72,9 @@ class IPPool:
 
 @dataclass(slots=True)
 class Session:
-    id: int | None
-    user_id: int
-    ras_id: int
+    id: UUID | None
+    user_id: UUID
+    ras_id: UUID
     unique_id: str
     state: SessionState = SessionState.STARTING
     framed_ip: str | None = None
@@ -100,8 +97,6 @@ class AccountingEvent:
 
 @dataclass(slots=True)
 class AttributeSet:
-    """Effective attributes after IBSng-style inheritance."""
-
     values: dict[str, Any]
 
     def get(self, key: str, default: Any = None) -> Any:
