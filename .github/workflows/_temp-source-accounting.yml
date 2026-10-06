@@ -1,6 +1,8 @@
 name: _temp-source-accounting
 on:
-  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/_temp-source-accounting.yml'
 jobs:
   trace:
     runs-on: ubuntu-latest
