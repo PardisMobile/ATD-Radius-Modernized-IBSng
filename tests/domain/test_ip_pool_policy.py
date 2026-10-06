@@ -1,5 +1,5 @@
 from atd_radius.domain.aaa import AAAAction, AAARequest
-from atd_radius.domain.ip_pool import IPPoolRuntimeRegistry, IPPoolFullError
+from atd_radius.domain.ip_pool import IPPoolRuntimeRegistry
 from atd_radius.domain.ip_pool_policy import IPPoolAllocationPolicy
 from atd_radius.infrastructure.ip_pool_repository import IPPoolRecord
 
