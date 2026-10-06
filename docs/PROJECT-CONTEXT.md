@@ -97,3 +97,14 @@ Read this file, `ROADMAP.md`, `ARCHITECTURE.md`, `docs/DECISIONS.md`, `docs/phas
 - Added duplicate-request cache expiry primitive; transport integration can invoke purge on its lifecycle cadence.
 - Added focused accounting-session and runtime expiry/lookup tests.
 - This remains an in-memory runtime boundary; persistent connection_log writes are not yet wired into the Accounting-Request path.
+
+
+### 2026-10-06 — Native RADIUS runtime composition
+- Added application-level RADIUS runtime composition so UDP transport can invoke the native AAA dispatcher without putting PostgreSQL concerns into the domain.
+- Added RadiusRuntimeHandler for Access-Request and Accounting-Request dispatch.
+- Accounting requests now resolve native user/RAS identities and can apply AccountingSessionService.
+- Added NativeAccountingIdentityResolver over native User/RAS repositories.
+- Added NativeAccountingPersistence and idempotent connection_log_details upserts.
+- UDP duplicate-request cache now purges stale entries before lookup.
+- Added focused runtime, accounting persistence, and UDP configuration tests.
+- CI has not yet produced a workflow result for the current HEAD; do not mark the batch verified until GitHub reports one.
