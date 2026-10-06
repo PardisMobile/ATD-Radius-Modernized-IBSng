@@ -11,6 +11,10 @@ class AuthenticationPolicy:
     def evaluate(self,request):
         if request.attributes.get("__user_found") != "1" or request.attributes.get("__password_ok") != "1":
             return AAAResult(AAAAction.REJECT,reason="INVALID_CREDENTIALS")
+        if request.attributes.get("__auth_method") == "mschapv2":
+            success = request.attributes.get("__mschapv2_success")
+            if success:
+                return AAAResult(AAAAction.ACCEPT, {"MS-CHAP2-Success": success})
         return None
 
 
