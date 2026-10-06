@@ -69,7 +69,7 @@ Read this file, `ROADMAP.md`, `ARCHITECTURE.md`, `docs/DECISIONS.md`, `docs/phas
 
 - Main branch currently advances through native A1.24 schema migration and USER persistence/UI work.
 - The native migration contains the A1.24 tables/sequences/indexes; parallel modern schema names such as `user_credentials`, `user_groups`, `user_services`, `credit_ledger`, `attribute_bindings`, `sessions`, `services` and `online_sessions` are forbidden.
-- Latest confirmed main commit at this checkpoint: `e57813044c1f88ae519582ec1e719ff882a9919f`.
+- Latest confirmed main commit at this checkpoint: `1edf3825d06c25bc34169477d144c448f7968b44`.
 - CI status must be re-checked from GitHub after each batch; do not assume queued/in-progress runs passed.
 - USER API/persistence is mapped to `users`, `normal_users`, `user_attrs` and related A1.24 tables. USER lock is presence of the `lock` attribute.
 - GROUP work is implemented directly against `groups` and `group_attrs`, preserving A1.24 names and semantics.
