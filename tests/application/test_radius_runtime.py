@@ -86,3 +86,20 @@ def test_runtime_handler_can_attach_native_accounting_persistence():
     handler = RadiusRuntimeHandler(dispatcher, sessions, identities, persistence)
 
     assert handler.accounting_sessions.persistence is persistence
+
+
+def test_build_ras_runtime_loads_and_binds_repository_change_hook():
+    from atd_radius.application.radius_runtime import build_ras_runtime
+
+    class Repo:
+        on_change = None
+        def __init__(self):
+            self.records = []
+        def list(self):
+            return self.records
+        def get(self, ras_id):
+            return None
+    repo = Repo()
+    registry = build_ras_runtime(repo)
+    assert registry.active() == ()
+    assert repo.on_change == registry.on_repository_change
