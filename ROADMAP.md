@@ -28,18 +28,25 @@
 - [ ] permissions and audit enforcement
 
 ## Phase 2 — AAA
-- [ ] RADIUS server parity
-- [ ] PAP/CHAP/MS-CHAPv2
-- [ ] accounting start/interim/stop
-- [ ] duplicate request cache
-- [ ] sessions and disconnect
-- [x] EAP packet primitives
+- [x] RADIUS wire codec and core packet families
+- [x] PAP User-Password RFC algorithm
+- [x] Native Access-Request authentication boundary
+- [x] Accounting Start/Interim/Stop runtime lifecycle
+- [x] Duplicate request identity/replay boundary and expiry primitive
+- [x] Disconnect/CoA runtime boundary and RFC 5176 selectors
+- [x] RFC 5176 Message-Authenticator boundary for current control path
+- [ ] Full CHAP/MS-CHAPv2 parity
+- [ ] Full RAS provider behavior parity
+- [ ] PostgreSQL connection-log persistence on the live Accounting-Request path
+- [ ] Complete source-derived RADIUS attribute/dictionary coverage
 - [ ] EAP state machine and supported methods
 
 ## Phase 3 — Billing
 - [ ] credit ledger
-- [ ] charge rules
-- [ ] plans and usage
+- [x] charge-rule selection and Internet billing primitives
+- [x] VoIP tariff/charge-rule primitives
+- [ ] PostgreSQL billing persistence and A1.24 parity
+- [ ] plans and usage integration
 - [ ] expiry and subscription state
 
 ## Phase 4 — APIs
