@@ -84,6 +84,10 @@ class RASRuntimeRegistry:
                 self._ras_by_id[ras_id] = self._load(record)
         return self.active()
 
+    def on_repository_change(self, ras_id: int) -> None:
+        """Reload one RAS after a repository mutation."""
+        self.reload(ras_id)
+
     def get(self, ras_id: int) -> RAS | None:
         return self._ras_by_id.get(ras_id)
 
