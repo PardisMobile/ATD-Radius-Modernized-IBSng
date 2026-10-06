@@ -194,6 +194,29 @@ def verify_mschapv2(
     return compare_digest(nt_response, expected)
 
 
+
+def generate_mschapv2_authenticator_response(
+    password: str,
+    nt_response: object,
+    peer_challenge: object,
+    authenticator_challenge: object,
+    username: str,
+) -> str:
+    """Generate the RFC 2759 MS-CHAPv2 AuthenticatorResponse (S=...)."""
+    nt = _octets(nt_response)
+    peer = _octets(peer_challenge)
+    auth = _octets(authenticator_challenge)
+    if len(nt) != 24 or len(peer) != 16 or len(auth) != 16:
+        raise ValueError("invalid MS-CHAPv2 response/challenge length")
+    password_hash = _md4(password.encode("utf-16le"))
+    password_hash_hash = _md4(password_hash)
+    magic1 = b"Magic server to client signing constant"
+    digest = sha1(password_hash_hash + nt + magic1).digest()
+    challenge = _challenge_hash(peer, auth, username)
+    magic2 = b"Pad to make it do more than one iteration"
+    digest = sha1(digest + challenge + magic2).digest()
+    return "S=" + digest.hex().upper()
+
 def validate_mschapv2_response(response: object, challenge: object | None) -> bool:
     """Validate the RFC 2548 MS-CHAP2-Response VSA shape."""
     raw = _octets(response)
