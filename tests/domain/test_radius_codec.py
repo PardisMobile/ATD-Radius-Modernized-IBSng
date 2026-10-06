@@ -36,3 +36,17 @@ def test_malformed_attribute_is_rejected():
     except RadiusCodecError:
         return
     raise AssertionError("malformed attribute was accepted")
+
+
+
+def test_response_authenticator_is_derived_from_request():
+    from hashlib import md5
+    from atd_radius.domain.radius_codec import encode_response
+    request = RadiusPacket(
+        RadiusCode.ACCESS_REQUEST, 9, {"User-Name":"alice"},
+        bytes.fromhex("00112233445566778899aabbccddeeff"),
+    )
+    response = RadiusPacket(RadiusCode.ACCESS_ACCEPT, 9, {"Reply-Message":"ok"}, request.authenticator)
+    wire = encode_response(response, request, "shared")
+    expected = md5(wire[:4] + request.authenticator + wire[20:] + b"shared").digest()
+    assert wire[4:20] == expected
