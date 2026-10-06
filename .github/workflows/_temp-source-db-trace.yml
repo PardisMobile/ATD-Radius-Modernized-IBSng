@@ -1,5 +1,8 @@
 name: _temp-source-db-trace
-on: workflow_dispatch
+on:
+  push:
+    paths:
+      - .github/workflows/_temp-source-db-trace.yml
 jobs:
   trace:
     runs-on: ubuntu-latest
