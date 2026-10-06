@@ -56,6 +56,17 @@ class ConnectionLogRepository:
         for name, value in details:
             self.add_detail(connection_log_id, name, value)
 
+    def upsert_detail(self, connection_log_id: int, name: str, value: str) -> None:
+        self.conn.execute(
+            """
+            INSERT INTO connection_log_details(connection_log_id, name, value)
+            VALUES (%s, %s, %s)
+            ON CONFLICT (connection_log_id, name)
+            DO UPDATE SET value=EXCLUDED.value
+            """,
+            (connection_log_id, name, value),
+        )
+
     def close(
         self,
         connection_log_id: int,
