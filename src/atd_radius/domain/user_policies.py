@@ -52,7 +52,6 @@ def _int_attr(attributes, name, default):
         return default
 
 def ras_allows_multi_login(ras_type, ras_attributes=None, service="internet"):
-    rtype = (ras_type or "").strip().lower()
     attrs = ras_attributes or {}
     if service == "voip":
         if rtype == "gnugk":
