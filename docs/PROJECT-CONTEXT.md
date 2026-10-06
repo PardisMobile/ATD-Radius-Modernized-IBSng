@@ -50,7 +50,7 @@ Never import code, documentation, generated files, secrets or production data fr
 ## Working rule for future chats
 Read this file, ROADMAP.md, ARCHITECTURE.md, docs/DECISIONS.md, docs/phase-0-inventory.md, docs/ibsng-a124-full-inventory.md, and ui/UI-SPEC.md before architectural changes. Then inspect the latest commits before editing code.
 
-## Current implementation checkpoint — 2026-10-06 (IP pool runtime checkpoint)
+## Current implementation checkpoint — 2026-10-06 (RADIUS authentication + wire integration checkpoint)
 
 ### RADIUS wire/protocol boundary
 - Real RADIUS wire codec covers Access, Accounting and RFC 5176 Disconnect/CoA packet families.
@@ -64,7 +64,7 @@ Read this file, ROADMAP.md, ARCHITECTURE.md, docs/DECISIONS.md, docs/phase-0-inv
 - Focused codec and RFC 5176 tests exist.
 - CHAP verification is implemented against the RFC 2865 response format.
 - MS-CHAPv2 verification now implements the RFC 2759 challenge-hash, NT-password MD4 hash and DES-based NT-Response check, with a published RFC test vector and native Access-Request coverage.
-- This is not yet a claim of full A1.24 RADIUS parity: full RAS coverage, complete attribute dictionary coverage, source-derived MS-CHAPv2 integration parity and end-to-end parity remain open.
+- This is not yet a claim of full A1.24 RADIUS parity: full RAS coverage, complete attribute dictionary coverage, MS-CHAPv2 success/failure response parity, Message-Authenticator handling for Access-Request, source-derived authentication integration parity and end-to-end parity remain open.
 
 ### RADIUS runtime composition
 - Native RadiusDispatcher handles Access-Request, Accounting-Request, Disconnect-Request and CoA-Request.
@@ -128,9 +128,9 @@ Read this file, ROADMAP.md, ARCHITECTURE.md, docs/DECISIONS.md, docs/phase-0-inv
 - User Information edit actions, high-frequency IBSng workflows, GROUP/RAS/IPPool/REPORT/GRAPH/ADMIN workflows and full user portal parity remain open.
 
 ### Current repository head
-- Current main branch head at this checkpoint: bd7e48582530e5b584e446b7cd5960425289ce7b
-- Latest code checkpoint: native MS-CHAPv2 verification and Access-Request integration, alongside the existing RAS-bound IP pool allocation, session lease lifecycle, billing repositories and production RADIUS composition.
-- Older checkpoint references are historical and must not be treated as current HEAD.
+- The main branch has progressed beyond the historical bd7e48582530e5b584e446b7cd5960425289ce7b checkpoint.
+- Latest implementation work adds canonical RFC 2548 Microsoft RADIUS VSA handling for CHAP/MS-CHAPv2 wire attributes, canonical 50-byte MS-CHAP2-Response verification, and wire-level codec tests. The immediate commits are 08052a37, 7fbdd113, adf16472, ae271547, e867ce52, 4f87df0d, c9cdb075 and 795641c6.
+- The historical bd7e485 checkpoint remains useful as the pre-wire-integration MS-CHAPv2 checkpoint; do not treat it as current HEAD.
 - The code checkpoint immediately before this documentation update has green Python and CI workflow runs.
 - Do not mark a subsystem Verified merely because an implementation exists. Verified requires source-derived behavior tests and/or database parity evidence.
 
