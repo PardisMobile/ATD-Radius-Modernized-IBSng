@@ -56,7 +56,7 @@ class GroupRepository:
             raise LookupError("group not found")
         if current.name != name and self.get_by_name(name) is not None:
             raise ValueError("group name already exists")
-        self.conn.execute(UPDATE_GROUP, (group_id, name, owner_id, comment))
+        self.conn.execute(UPDATE_GROUP, (name, owner_id, comment, group_id))
         return GroupRecord(group_id, name, owner_id, comment)
 
     def delete(self, group_id: int) -> None:
