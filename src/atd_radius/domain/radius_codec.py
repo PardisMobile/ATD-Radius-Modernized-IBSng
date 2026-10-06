@@ -150,3 +150,12 @@ def decode(data: bytes, secret: str | None = None) -> RadiusPacket:
         attrs[name] = _decode_value(name,raw,secret,authenticator)
         offset += attr_length
     return RadiusPacket(code,identifier,attrs,authenticator)
+
+def encode_response(response: RadiusPacket, request: RadiusPacket, secret: str) -> bytes:
+    """Encode a response and calculate its RFC 2865/2866 response authenticator."""
+    if len(request.authenticator) != 16:
+        raise RadiusCodecError("request authenticator must be 16 bytes")
+    unsigned = RadiusPacket(response.code, response.identifier, response.attributes, request.authenticator)
+    wire = encode(unsigned, secret)
+    response_authenticator = md5(wire[:4] + request.authenticator + wire[20:] + secret.encode("utf-8")).digest()
+    return wire[:4] + response_authenticator + wire[20:]
