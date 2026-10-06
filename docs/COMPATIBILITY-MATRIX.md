@@ -24,7 +24,7 @@ This is the master parity ledger. A feature is not considered migrated merely be
 | PAP | IBSng RADIUS auth | RADIUS auth pipeline | Implemented boundary / parity pending |
 | CHAP | IBSng RADIUS auth | RADIUS auth pipeline | Implemented boundary / parity pending |
 | MS-CHAP | IBSng RADIUS auth/plugin behavior | RADIUS auth pipeline | MS-CHAPv1/v2 + MPPE boundary implemented / end-to-end parity pending |
-| Accounting | radius_server/* + accounting plugins | Accounting engine | Start/Stop/Alive runtime + native connection-log persistence implemented / charge-credit and no_connection_log parity pending |
+| Accounting | radius_server/* + accounting plugins | Accounting engine | Start/Stop/Alive runtime + native connection-log persistence + no_connection_log suppression implemented / runtime Charge-credit calculation pending |
 | Duplicate requests | IBSng RADIUS request handling | Request deduplication/idempotency | Implemented boundary / full parity pending |
 | Disconnect | RADIUS/RAS behavior | RADIUS CoA/Disconnect adapter | Runtime implemented / full parity pending |
 | Charging | charge plugins/core | Billing/charge engine | Implemented boundary / parity pending |
