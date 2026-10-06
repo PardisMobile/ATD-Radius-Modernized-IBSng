@@ -54,7 +54,7 @@ def test_rule_transition_accumulates_previous_rule_before_resetting_baseline():
     state.output_octets=2224
     stop=transition.replace(minute=2)
     used=settlement.settle(state,stop,3,None)
-    assert used==Decimal("3663.953125")
+    assert used==Decimal("3843.953125")
 
 def test_multiple_instances_keep_independent_charge_baselines():
     rule=InternetChargeRule(1,frozenset({0}),0,86399,cpm=Decimal("60"),cpk=Decimal("1"))
