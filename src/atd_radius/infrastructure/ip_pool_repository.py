@@ -30,7 +30,7 @@ class IPPoolSql:
         "SELECT ippool_id, ippool_name, ippool_comment FROM ippool WHERE ippool_id=%s"
     )
     list_addresses: ClassVar[str] = (
-        "SELECT ip::text FROM ippool_ips WHERE ippool_id=%s ORDER BY ip"
+        "SELECT ip::text FROM ippool_ips WHERE ippool_id=%s"
     )
     add_address: ClassVar[str] = (
         "INSERT INTO ippool_ips(ippool_id, ip) VALUES (%s, %s::inet)"
