@@ -32,7 +32,7 @@ _PROFILES: tuple[RASProviderProfile, ...] = (
     RASProviderProfile("portslave", unique_id="port"),
     RASProviderProfile("pppd", unique_id="port"),
     RASProviderProfile("ser", unique_id="call_id"),
-    RASProviderProfile("tenor", unique_id="h323_conf_id", voip_multi_login=False),
+    RASProviderProfile("tenor", unique_id="h323_conf_id", internet_multi_login=False, voip_multi_login=False),
     RASProviderProfile("total_control", unique_id="interface_index"),
 )
 
