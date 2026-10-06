@@ -17,17 +17,17 @@ This is the master parity ledger. A feature is not considered migrated merely be
 | User attributes | user/plugin attribute system | Typed Attribute Policy Engine | Implemented boundary / parity fixtures pending |
 | Group policy | core/group/* and group plugins | Group policy + resolver | In progress |
 | Service policy | service/plugin behavior | Service policy + resolver | In progress |
-| RAS/NAS | core/ras/*, radius_server/* | RAS registry/adapters | Runtime registry implemented / mutation-reload integration pending |
+| RAS/NAS | core/ras/*, radius_server/* | RAS registry/adapters | Runtime registry + live packet lookup implemented / provider behavior parity pending |
 | IP pools | core/ippool/* | Transaction-safe allocator | Native membership repository + A1.24-compatible runtime allocation / claim / release; Access/session lifecycle integration pending |
 | Sessions | session/accounting plugins | Session domain + accounting store | Runtime implemented / persistence and source parity pending |
-| RADIUS authentication | radius_server/* | Python RADIUS server | Runtime boundary implemented / full parity pending |
-| PAP | IBSng RADIUS auth | RADIUS auth pipeline | Implemented boundary / parity pending |
-| CHAP | IBSng RADIUS auth | RADIUS auth pipeline | Implemented boundary / parity pending |
-| MS-CHAP | IBSng RADIUS auth/plugin behavior | RADIUS auth pipeline | MS-CHAPv1/v2 + MPPE boundary implemented / end-to-end parity pending |
-| Accounting | radius_server/* + accounting plugins | Accounting engine | Start/Stop/Alive runtime + native connection-log persistence + no_connection_log suppression implemented / runtime Charge-credit calculation pending |
+| RADIUS authentication | radius_server/* | Python RADIUS server | Runtime + live UDP wiring implemented / end-to-end parity pending |
+| PAP | IBSng RADIUS auth | RADIUS auth pipeline | Implemented / end-to-end parity pending |
+| CHAP | IBSng RADIUS auth | RADIUS auth pipeline | Implemented / end-to-end parity pending |
+| MS-CHAP | IBSng RADIUS auth/plugin behavior | RADIUS auth pipeline | MS-CHAPv1/v2 + MPPE implemented / end-to-end parity pending |
+| Accounting | radius_server/* + accounting plugins | Accounting engine | Start/Stop/Alive + native connection-log + no_connection_log + Charge/Credit runtime + live UDP wiring implemented / live integration parity pending |
 | Duplicate requests | IBSng RADIUS request handling | Request deduplication/idempotency | Implemented boundary / full parity pending |
 | Disconnect | RADIUS/RAS behavior | RADIUS CoA/Disconnect adapter | Runtime implemented / full parity pending |
-| Charging | charge plugins/core | Billing/charge engine | Implemented boundary / parity pending |
+| Charging | charge plugins/core | Billing/charge engine | Internet charge runtime implemented / broader billing persistence parity pending |
 | Credit | credit plugins/core | Credit ledger/policy | Foundation |
 | Reports | interface/admin/report/* | Report subsystem | Not started |
 | Graphs | interface/admin/graph/* | Metrics/graphs | Not started |
