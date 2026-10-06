@@ -47,3 +47,20 @@ Direct inspection has confirmed:
 - RAS-specific `multi_login` behavior is supplied by individual RAS implementations; it is not a single universal RAS attribute.
 - The RADIUS duplicate request key is exactly `(source_ip, source_port, packet_id, packet_code)`.
 - A1.24's RADIUS dictionary contains `Message-Authenticator` (attribute 80), but the inspected request-processing path does not implement Message-Authenticator verification. Any ATD implementation of that verification must therefore be described as modern/RFC hardening unless later source inspection finds another path that performs it.
+
+
+## MultiLogin source trace (A1.24)
+
+The A1.24 `core/user/plugins/multilogin.py` path is directly traced end-to-end:
+
+- `MultiLogin.__setMultiLogin()` initializes `self.multi_login = 1`.
+- It changes that default only when the user attribute `multi_login` exists; then it performs `int(user_attrs["multi_login"])`.
+- Therefore **attribute absent = default limit 1**.
+- **attribute explicitly present as `0` = limit 0**, not default 1.
+- `MultiLoginAttrUpdater.changeInit()` accepts integer values from 0 through 255, so zero is a valid stored attribute value.
+- During `USER_LOGIN`, `User.login()` increments `user_obj.instances` before calling the plugin hooks.
+- MultiLogin rejects when `user_obj.instances > self.multi_login`.
+- Consequently an explicit `multi_login=0` rejects even the first login, while an absent attribute permits one instance.
+- RAS capability is a separate `ras_msg["multi_login"]` boolean. The plugin keeps one capability value per login instance and rejects when a disallowing RAS is involved and `instances > 1`.
+
+This distinction is important: **defaulting an absent attribute to 1 is not the same as treating an explicit zero as 1.**
