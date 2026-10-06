@@ -90,14 +90,21 @@ def test_control_request_authenticator_and_message_authenticator_are_verified():
     from hashlib import md5
     from atd_radius.domain.radius_codec import verify_control_request
     from struct import pack
+
     secret = b"shared"
     sid = bytes((44, 5)) + b"sid"
-    header = pack("!BBH", 40, 7, 20 + len(sid) + 18)
     msg = bytes((80, 18)) + bytes(16)
-    request_auth = md5(header + bytes(16) + sid + msg + secret).digest()
-    wire = header + request_auth + sid + msg
-    # Message-Authenticator covers the complete packet with its own value zeroed.
-    expected = hmac.new(secret, wire, "md5").digest()
-    wire = wire[:20 + len(sid) + 2] + expected + wire[20 + len(sid) + 18:]
+    header = pack("!BBH", 40, 7, 20 + len(sid) + len(msg))
+
+    # RFC 5176: Message-Authenticator is calculated first with both
+    # Request-Authenticator and Message-Authenticator treated as zero.
+    ma_input = header + bytes(16) + sid + msg
+    message_auth = hmac.new(secret, ma_input, "md5").digest()
+    with_ma = header + bytes(16) + sid + bytes((80, 18)) + message_auth
+
+    # The Request-Authenticator is then calculated like Accounting-Request.
+    request_auth = md5(header + bytes(16) + sid + bytes((80, 18)) + message_auth + secret).digest()
+    wire = header + request_auth + sid + bytes((80, 18)) + message_auth
+
     assert verify_control_request(wire, "shared")
     assert not verify_control_request(wire[:-1] + bytes((wire[-1] ^ 1,)), "shared")
