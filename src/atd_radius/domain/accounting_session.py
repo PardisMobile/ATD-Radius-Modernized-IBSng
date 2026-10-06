@@ -38,14 +38,14 @@ class AccountingSessionService:
             raise ValueError("Acct-Session-Id is required")
         key = SessionKey(user_id, ras_id, event.session_id)
 
-        if event.status is AccountingStatus.START:
+        current = self.registry.get(key)
+
+        if event.status is AccountingStatus.START and current is None:
             state = self.registry.start(key, dict(event.attributes), event.input_octets, event.output_octets)
             log_id = self.persistence.start(event, user_id, ras_id) if self.persistence else None
             if log_id is not None:
                 state.attributes = {**state.attributes, "__connection_log_id": str(log_id)}
             return AccountingSessionResult(state, connection_log_id=log_id)
-
-        current = self.registry.get(key)
         if current is not None and current.stopped:
             # Accounting retries after a completed Stop must not resurrect the
             # session or create/update a second native connection_log record.
