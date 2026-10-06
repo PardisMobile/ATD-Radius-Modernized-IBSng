@@ -79,3 +79,12 @@ Read this file, `ROADMAP.md`, `ARCHITECTURE.md`, `docs/DECISIONS.md`, `docs/phas
 - Remaining high-priority gaps are production dispatcher construction/wiring, cache expiry policy, Message-Authenticator/EAP boundary work, session/accounting persistence, permissions/audit, billing, remaining UI, installer verification, and migration/import testing.
 - Do not mark any subsystem Verified merely because an implementation exists; Verified requires source-derived behavior tests and/or database parity evidence.
 
+
+
+### Latest AAA authentication checkpoint
+- Native Access-Request context now resolves the user through the canonical A1.24 users / normal_users tables and loads user_attrs.
+- Native normal_password comparison is used deliberately; Argon2 is not substituted for the A1.24 credential field.
+- Unknown users, wrong credentials, and locked users are represented as authentication failure before AAA policy acceptance.
+- AAA result attributes are now output-only: request attributes such as User-Password are policy inputs and are not copied into Access-Accept/Reject attributes.
+- Added focused tests for native access context and credential non-leakage.
+- Local test execution was attempted but the execution environment could not resolve GitHub DNS; CI status must therefore be checked from GitHub before marking this batch verified.
