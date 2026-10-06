@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Protocol
 from atd_radius.domain.aaa import PluginPipeline, PluginSpec
 from atd_radius.domain.accounting_session import AccountingSessionService
+from atd_radius.domain.accounting_charge import InternetChargeSettlement
 from atd_radius.domain.radius import RadiusCode, RadiusPacket
 from atd_radius.domain.radius_dispatch import DispatchResult, RadiusDispatcher
 from atd_radius.domain.session_policy import ActiveSessionView
@@ -14,6 +15,8 @@ from atd_radius.domain.ip_pool_policy import IPPoolAllocationPolicy
 from atd_radius.domain.radius_runtime import SessionRegistry
 from atd_radius.infrastructure.accounting_persistence import NativeAccountingPersistence
 from atd_radius.infrastructure.connection_log_repository import ConnectionLogRepository
+from atd_radius.infrastructure.billing_rules import PostgresInternetChargeRuleRepository
+from atd_radius.infrastructure.credit_repository import UserCreditRepository
 from atd_radius.infrastructure.ip_pool_repository import PostgresIPPoolRepository
 from atd_radius.infrastructure.ras import RASRepository
 from atd_radius.infrastructure import UserRepository
@@ -174,7 +177,8 @@ def build_native_radius_runtime(conn, type_defaults=None, users=None, ras_reposi
 
     sessions = SessionRegistry()
     persistence = NativeAccountingPersistence(ConnectionLogRepository(conn))
-    accounting = AccountingSessionService(sessions, persistence)
+    charge = InternetChargeSettlement(PostgresInternetChargeRuleRepository(conn), users, UserCreditRepository(conn))
+    accounting = AccountingSessionService(sessions, persistence, charge)
     dispatcher = build_radius_dispatcher(
         users,
         active_sessions_provider=session_views(sessions),
