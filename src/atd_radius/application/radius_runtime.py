@@ -10,6 +10,7 @@ from atd_radius.domain.radius_dispatch import DispatchResult, RadiusDispatcher
 from atd_radius.domain.session_policy import ActiveSessionView
 from atd_radius.domain.session_control import RegistrySessionControl
 from atd_radius.domain.user_policies import AuthenticationPolicy, LockPolicy, MultiLoginPolicy, TimeoutPolicy
+from atd_radius.domain.ras import RASRuntimeRegistry
 
 
 class UserSource(Protocol):
@@ -96,3 +97,12 @@ def session_views(registry) -> callable:
             for state in registry.active_for_user(user_id)
         )
     return provider
+
+
+def build_ras_runtime(repository, type_defaults=None) -> RASRuntimeRegistry:
+    """Build and load the source-compatible RAS runtime with mutation reloads."""
+    registry = RASRuntimeRegistry(repository, type_defaults)
+    registry.reload()
+    if getattr(repository, "on_change", None) is None:
+        repository.on_change = registry.on_repository_change
+    return registry
