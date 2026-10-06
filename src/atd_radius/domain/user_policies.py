@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from .aaa import AAAAction,AAAResult
+from .session_policy import ActiveSessionView,session_policy
 
 @dataclass(frozen=True,slots=True)
 class AuthenticationPolicy:
