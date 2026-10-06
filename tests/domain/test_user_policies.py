@@ -46,7 +46,7 @@ def test_relative_expiry_rejects_after_deadline():
 def test_multilogin_live_provider_uses_active_sessions_for_user():
     sessions = {7: (ActiveSessionView("s1"),)}
     p = MultiLoginPolicy(active_sessions_provider=lambda user_id: sessions[user_id])
-    request = AAARequest("u", {"__user_id": "7", "multi_login": "1"})
+    request = AAARequest("u", {"__user_id": "7", "multi_login": "2"})
     assert p.evaluate(request) is None
 
 
