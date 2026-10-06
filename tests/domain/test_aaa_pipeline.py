@@ -19,3 +19,11 @@ def test_lower_priority_runs_first():
         PluginSpec(2, "early", Policy("early")),
     ])
     assert [p.name for p in pipeline.plugins] == ["early", "late"]
+
+
+def test_request_credentials_are_not_emitted_as_reply_attributes():
+    from atd_radius.domain.aaa import AAARequest
+    pipeline = PluginPipeline([Policy("reply")])
+    result = pipeline.evaluate(AAARequest("alice", {"User-Password": "secret", "User-Name": "alice"}))
+    assert result.attributes == {"reply": "reply"}
+    assert "User-Password" not in result.attributes
