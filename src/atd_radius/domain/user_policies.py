@@ -14,6 +14,29 @@ class AuthenticationPolicy:
 
 from .session_policy import ActiveSessionView,session_policy
 
+def _int_attr(attributes, name, default):
+    raw = attributes.get(name, default)
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return default
+
+def ras_allows_multi_login(ras_type, ras_attributes=None, service="internet"):
+    """Mirror A1.24 RAS multi-login flags and defaults."""
+    rtype = (ras_type or "").strip().lower()
+    attrs = ras_attributes or {}
+    if service == "voip":
+        if rtype == "gnugk":
+            return _int_attr(attrs, "gnugk_multiple_login", 0) != 0
+        if rtype == "asterisk":
+            return _int_attr(attrs, "asterisk_multi_login", 0) != 0
+        if rtype in {"cisco", "quintum tenor"}:
+            return False
+        return True
+    if rtype == "bsae":
+        return False
+    return True
+
 def _attrs(request):
     from .models import AttributeSet
     return AttributeSet(request.attributes)
@@ -35,12 +58,13 @@ class MultiLoginPolicy:
             user_id = request.attributes.get("__user_id")
             if user_id not in (None, ""):
                 sessions = tuple(self.active_sessions_provider(int(user_id)))
-        # A1.24 precedence: a RAS that does not permit multi-login rejects
-        # an additional active session before the per-user limit is evaluated.
-        if request.attributes.get("ras_multi_login") in (False,"0","false","False") and len(sessions)>0:
-            return AAAResult(AAAAction.REJECT,reason="RAS_DOESNT_ALLOW_MULTILOGIN")
+        # IBSng increments instances before USER_LOGIN hooks: evaluate the
+        # user limit first, then the RAS capability for an additional session.
         d=session_policy(_attrs(request),sessions)
-        if not d.allowed and d.reason=="multi_login": return AAAResult(AAAAction.REJECT,reason="MAX_CONCURRENT")
+        if not d.allowed and d.reason=="multi_login":
+            return AAAResult(AAAAction.REJECT,reason="MAX_CONCURRENT")
+        if request.attributes.get("__ras_multi_login_allowed") in (False,"0","false","False") and len(sessions)>0:
+            return AAAResult(AAAAction.REJECT,reason="RAS_DOESNT_ALLOW_MULTILOGIN")
         return None
 
 @dataclass(frozen=True,slots=True)
