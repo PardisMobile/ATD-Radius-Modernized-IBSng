@@ -36,6 +36,7 @@
 - [x] Disconnect/CoA runtime boundary and RFC 5176 selectors
 - [x] RFC 5176 Message-Authenticator boundary for current control path
 - [ ] Full CHAP/MS-CHAPv2 parity
+- [x] Source-compatible RAS runtime registry/loader
 - [ ] Full RAS provider behavior parity
 - [ ] PostgreSQL connection-log persistence on the live Accounting-Request path
 - [ ] Complete source-derived RADIUS attribute/dictionary coverage
