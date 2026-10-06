@@ -1,0 +1,183 @@
+=== Charge references ===
+/tmp/ibsng/IBSng/addons/asterisk/agi-bin/lib/language.py:47:                      "pre_say_used_credit":[],
+/tmp/ibsng/IBSng/addons/asterisk/agi-bin/lib/language.py:48:                      "post_say_used_credit":[],
+/tmp/ibsng/IBSng/addons/asterisk/agi-bin/lib/language.py:218:    def sayCredit(self, credit):
+/tmp/ibsng/IBSng/addons/asterisk/agi-bin/states/get_current_credit.py:9:def getCurrentCredit():
+/tmp/ibsng/IBSng/addons/asterisk/agi-bin/states/call_end.py:17:        (duration,used_credit)=req.send("callEnd",True,duration=duration,dc_cause=status)
+/tmp/ibsng/IBSng/addons/asterisk/agi-bin/states/call_end.py:20:            toLog("CallEnd: duration %s used_credit %s"%(duration,used_credit))
+/tmp/ibsng/IBSng/addons/asterisk/agi-bin/states/call_end.py:24:        duration=used_credit=0
+/tmp/ibsng/IBSng/addons/asterisk/agi-bin/states/call_end.py:26:    return duration,used_credit
+/tmp/ibsng/IBSng/addons/asterisk/agi-bin/states/say_remaining_credit.py:7:def sayRemainingCredit(credit):
+/tmp/ibsng/IBSng/addons/asterisk/agi-bin/states/credit_announcement.py:7:def creditAnnouncement():
+/tmp/ibsng/IBSng/addons/asterisk/agi-bin/states/say_used_credit.py:5:    ibs_agi.getStateMachine().registerState("SAY_USED_CREDIT",sayUsedCredit)
+/tmp/ibsng/IBSng/addons/asterisk/agi-bin/states/say_used_credit.py:7:def sayUsedCredit(duration, used_credit):
+/tmp/ibsng/IBSng/addons/asterisk/agi-bin/states/say_used_credit.py:18:    for f in [lambda:ibs_agi.getSelectedLanguage().sayPrompt("pre_say_used_credit"),
+/tmp/ibsng/IBSng/addons/asterisk/agi-bin/states/say_used_credit.py:19:              lambda:ibs_agi.getSelectedLanguage().sayCredit(int(used_credit)),
+/tmp/ibsng/IBSng/addons/asterisk/agi-bin/states/say_used_credit.py:20:              lambda:ibs_agi.getSelectedLanguage().sayPrompt("post_say_used_credit")]:
+/tmp/ibsng/IBSng/addons/asterisk/agi-bin/states/dial.py:23:            (duration,used_credit)=ibs_agi.getStateMachine().gotoState("CALL_END",duration,status)
+/tmp/ibsng/IBSng/addons/asterisk/agi-bin/states/dial.py:29:            ibs_agi.getStateMachine().gotoState("SAY_USED_CREDIT",duration,used_credit)
+/tmp/ibsng/IBSng/addons/asterisk/agi-bin/languages/fa.py:23:                  "pre_say_used_credit":[],
+/tmp/ibsng/IBSng/addons/asterisk/agi-bin/languages/fa.py:24:                  "post_say_used_credit":["used_credit"],
+/tmp/ibsng/IBSng/addons/asterisk/agi-bin/languages/fa.py:107:    def sayCredit(self, credit):
+/tmp/ibsng/IBSng/addons/asterisk/agi-bin/languages/en.py:23:                  "pre_say_used_credit":["your_account_decreased"],
+/tmp/ibsng/IBSng/addons/asterisk/agi-bin/languages/en.py:24:                  "post_say_used_credit":[],
+/tmp/ibsng/IBSng/addons/asterisk/agi-bin/languages/en.py:106:    def sayCredit(self, credit):
+/tmp/ibsng/IBSng/core/ras/rases/asterisk.py:205:    def getUserCredit(self, request):
+/tmp/ibsng/IBSng/core/ras/rases/asterisk.py:351:        used_credit = ras_msg.send()
+/tmp/ibsng/IBSng/core/ras/rases/asterisk.py:353:        return (duration, used_credit)
+/tmp/ibsng/IBSng/core/ras/rases/gnugk.py:137:    def setSingleH323CreditTime(self,reply_pkt,credit_time):
+/tmp/ibsng/IBSng/core/ras/rases/gnugk.py:140:    def setSingleH323CreditAmount(self,reply_pkt,credit_amount):
+/tmp/ibsng/IBSng/core/ras/rases/mvts.py:182:    def setSingleH323CreditTime(self,reply_pkt,credit_time):
+/tmp/ibsng/IBSng/core/ras/rases/mvts.py:185:    def setSingleH323CreditAmount(self,reply_pkt,credit_amount):
+/tmp/ibsng/IBSng/core/ras/rases/tenor.py:196:    def setSingleH323CreditTime(self,reply_pkt,credit_time):
+/tmp/ibsng/IBSng/core/ras/rases/tenor.py:203:    def setSingleH323CreditAmount(self,reply_pkt,credit_amount):
+/tmp/ibsng/IBSng/core/ras/rases/cisco.py:537:    def setSingleH323CreditTime(self,reply_pkt,credit_time):
+/tmp/ibsng/IBSng/core/ras/rases/cisco.py:540:    def setSingleH323CreditAmount(self,reply_pkt,credit_amount):
+/tmp/ibsng/IBSng/core/ras/voip_ras.py:50:    def setSingleH323CreditTime(self,reply_pkt,credit_time, conv_to_int=False):
+/tmp/ibsng/IBSng/core/ras/voip_ras.py:60:    def setSingleH323CreditAmount(self,reply_pkt,credit_amount, precision=0):
+/tmp/ibsng/IBSng/core/ras/voip_ras.py:75:    def fixCreditPrecision(self, credit, precision):
+/tmp/ibsng/IBSng/core/user/online.py:217:    def __negCreditCheck(self, user_obj):
+/tmp/ibsng/IBSng/core/user/online.py:427:            used_credit=user_obj.logout(instance,ras_msg)
+/tmp/ibsng/IBSng/core/user/online.py:564:            used_credit=user_obj.logout(instance,ras_msg)
+/tmp/ibsng/IBSng/core/user/online.py:569:        return used_credit
+/tmp/ibsng/IBSng/core/user/user_main.py:98:def getCreditChangeLogActions():
+/tmp/ibsng/IBSng/core/user/plugins/charge.py:10:class ChargeUserPlugin(user_plugin.UserPlugin):
+/tmp/ibsng/IBSng/core/user/plugins/charge.py:77:            self.charge_obj.logout(self.user_obj,instance,self.user_obj.getInstanceInfo(instance)["no_commit"])
+/tmp/ibsng/IBSng/core/user/plugins/charge.py:84:    def calcCreditUsage(self,round_result):
+/tmp/ibsng/IBSng/core/user/plugins/charge.py:89:    def calcInstanceCreditUsage(self,instance,round_result):
+/tmp/ibsng/IBSng/core/user/user_handler.py:137:    def changeCredit(self,request):
+/tmp/ibsng/IBSng/core/user/user_handler.py:154:    def __canChangeCredit(self,loaded_user,requester):
+/tmp/ibsng/IBSng/core/user/user_type.py:18:            return an tuple of (ibs_query instance, used_credit)
+/tmp/ibsng/IBSng/core/user/credit_change_log.py:13:    def logCreditChangeQuery(self,action,admin_id,user_ids,per_user_credit,admin_credit,remote_address,comment):
+/tmp/ibsng/IBSng/core/user/credit_change_log.py:43:    def __getNewCreditChangeID(self):
+/tmp/ibsng/IBSng/core/user/credit_change_log.py:49:    def __creditChangeCheckInput(self,remote_address,credit_change_comment):
+/tmp/ibsng/IBSng/core/user/normal_user.py:49:        used_credit=0
+/tmp/ibsng/IBSng/core/user/normal_user.py:57:            used_credit=self.user_obj.charge.calcInstanceCreditUsage(instance,True)
+/tmp/ibsng/IBSng/core/user/normal_user.py:58:            query+=self.user_obj.commit(used_credit)
+/tmp/ibsng/IBSng/core/user/normal_user.py:60:        self.user_obj.getInstanceInfo(instance)["used_credit"]=used_credit
+/tmp/ibsng/IBSng/core/user/normal_user.py:63:        return (query, used_credit)
+/tmp/ibsng/IBSng/core/user/normal_user.py:68:        return user_main.getConnectionLogManager().logConnectionQuery(self.user_obj.getUserID(),
+/tmp/ibsng/IBSng/core/user/normal_user.py:69:                                                               instance_info["used_credit"],
+/tmp/ibsng/IBSng/core/user/connection_log.py:9:    def logConnectionQuery(self,user_id,credit_used,login_time,logout_time,successful,_type,ras_id,details):
+/tmp/ibsng/IBSng/core/user/connection_log.py:12:            credit_used(float): amount of credit used by user
+/tmp/ibsng/IBSng/core/user/connection_log.py:22:        return ibs_db.createFunctionCallQuery("insert_connection_log", \
+/tmp/ibsng/IBSng/core/user/connection_log.py:24:                                                 credit_used, 
+/tmp/ibsng/IBSng/core/user/voip_user.py:50:            used_credit=0
+/tmp/ibsng/IBSng/core/user/voip_user.py:53:            used_credit=self.user_obj.charge.calcInstanceCreditUsage(instance,True)
+/tmp/ibsng/IBSng/core/user/voip_user.py:56:            query+=self.user_obj.commit(used_credit)
+/tmp/ibsng/IBSng/core/user/voip_user.py:58:        instance_info["used_credit"]=used_credit
+/tmp/ibsng/IBSng/core/user/voip_user.py:61:        return (query, used_credit)
+/tmp/ibsng/IBSng/core/user/voip_user.py:97:        return user_main.getConnectionLogManager().logConnectionQuery(self.user_obj.getUserID(),
+/tmp/ibsng/IBSng/core/user/voip_user.py:98:                                                               instance_info["used_credit"],
+/tmp/ibsng/IBSng/core/user/voip_user.py:122:    def getSingleSessionRemainingCredit(self):
+/tmp/ibsng/IBSng/core/user/user_actions.py:69:    def addNewUsers(self,_count,credit,owner_name,creator_name,group_name,remote_address,credit_change_comment,user_ids=None):
+/tmp/ibsng/IBSng/core/user/user_actions.py:102:    def __addNewUsersCheckInput(self,_count,credit,owner_name,creator_name,group_name,remote_address,credit_change_comment,user_ids):
+/tmp/ibsng/IBSng/core/user/user_actions.py:124:    def addNewUsersQuery(self,_count,credit,owner_name,group_name,ibs_query,user_ids=None):
+/tmp/ibsng/IBSng/core/user/user_actions.py:148:    def __insertBasicUsersQueries(self,_count,user_ids,credit,owner_id,group_id,ibs_query):
+/tmp/ibsng/IBSng/core/user/user_actions.py:156:    def __insertBasicUserQuery(self,user_id,credit,owner_id,group_id):
+/tmp/ibsng/IBSng/core/user/user_actions.py:172:    def __addNewUserIASQuery(self,ibs_query,creator_name,credit,user_ids):
+/tmp/ibsng/IBSng/core/user/user_actions.py:178:    def changeCredit(self,user_ids,credit,changer_admin_name,remote_address,credit_change_comment,loaded_users):
+/tmp/ibsng/IBSng/core/user/user_actions.py:206:    def __changeCreditCheckInput(self,user_ids,credit,changer_admin_name,remote_address,credit_change_comment,loaded_users):
+/tmp/ibsng/IBSng/core/user/user_actions.py:222:    def __changeCreditQuery(self,user_ids,credit):
+/tmp/ibsng/IBSng/core/user/basic_user.py:11:    def __init__(self,user_id,owner_id,credit,group_id,creation_date):
+/tmp/ibsng/IBSng/core/user/basic_user.py:41:    def getInitialCredit(self):
+/tmp/ibsng/IBSng/core/user/basic_user.py:44:    def getCredit(self):
+/tmp/ibsng/IBSng/core/user/user.py:52:    def __setInitialCredit(self):
+/tmp/ibsng/IBSng/core/user/user.py:134:    def calcCurrentCredit(self,round_result=True):
+/tmp/ibsng/IBSng/core/user/user.py:137:    def calcInstanceCreditUsage(self,instance,round_result=True):
+/tmp/ibsng/IBSng/core/user/user.py:215:        (query,used_credit)=self.getTypeObj().logout(instance,ras_msg)
+/tmp/ibsng/IBSng/core/user/user.py:222:        return used_credit
+/tmp/ibsng/IBSng/core/user/user.py:237:    def commit(self,used_credit):
+/tmp/ibsng/IBSng/core/user/user.py:243:        query+=self.__commitCreditQuery(used_credit)
+/tmp/ibsng/IBSng/core/user/user.py:246:    def __commitCreditQuery(self,used_credit):
+/tmp/ibsng/IBSng/core/user/user.py:247:        return ibs_db.createFunctionCallQuery("change_user_credit",[self.getUserID(), -1*used_credit])
+/tmp/ibsng/IBSng/core/charge/charge_actions.py:17:class ChargeActions:
+/tmp/ibsng/IBSng/core/charge/voip_charge.py:157:    def calcInstanceCreditUsage(self,user_obj,instance,round_result):
+/tmp/ibsng/IBSng/core/charge/voip_charge.py:170:    def calcInstanceRuleCreditUsage(self,user_obj,instance,round_result):
+/tmp/ibsng/IBSng/core/charge/voip_charge.py:201:    def calcInstanceCreditUsageFromStart(self,user_obj,instance,round_result):
+/tmp/ibsng/IBSng/core/charge/charge_handler.py:7:class ChargeHandler(handler.Handler):
+/tmp/ibsng/IBSng/core/charge/charge.py:15:class Charge:
+/tmp/ibsng/IBSng/core/charge/charge.py:118:class ChargeWithRules(Charge):
+/tmp/ibsng/IBSng/core/charge/charge.py:157:        Charge.logout(self,user_obj,instance)
+/tmp/ibsng/IBSng/core/charge/charge.py:160:                user_obj.charge_info.credit_prev_usage += user_obj.getInstanceInfo(instance)["used_credit"]
+/tmp/ibsng/IBSng/core/charge/charge.py:162:        user_obj.charge_info.logout(instance)
+/tmp/ibsng/IBSng/core/charge/charge.py:225:    def calcInstanceCreditUsage(self,user_obj,instance,round_result):
+/tmp/ibsng/IBSng/core/charge/charge.py:231:    def calcCreditUsage(self,user_obj,round_result):
+/tmp/ibsng/IBSng/core/charge/charge.py:237:        credit_used=0
+/tmp/ibsng/IBSng/core/charge/charge.py:239:            credit_used+=self.calcInstanceCreditUsage(user_obj,_index+1,round_result)
+/tmp/ibsng/IBSng/core/charge/charge.py:240:        return credit_used + user_obj.charge_info.credit_prev_usage
+/tmp/ibsng/IBSng/core/charge/charge.py:281:    def calcInstanceRuleCreditUsage(self,user_obj,instance,round_result):
+/tmp/ibsng/IBSng/core/charge/internet_charge.py:85:    def calcInstanceRuleCreditUsage(self,user_obj,instance,round_result):
+/tmp/ibsng/IBSng/core/charge/internet_charge.py:92:        timely_credit_used=0
+/tmp/ibsng/IBSng/core/charge/internet_charge.py:93:        transfer_credit_used=0
+/tmp/ibsng/IBSng/core/charge/internet_charge.py:95:            timely_credit_used=effective_rule.cpm * (now - user_obj.charge_info.rule_start[instance-1]) / 60
+/tmp/ibsng/IBSng/core/charge/internet_charge.py:97:            transfer_credit_used=effective_rule.cpk * (effective_rule.calcRuleTransferUsage(user_obj,instance)) / 1024.0
+/tmp/ibsng/IBSng/core/charge/internet_charge.py:100:            toLog("user_id: %s timely_credit_used: %s transfer_credit_used: %s"%(user_obj.getUserID(),timely_credit_used,transfer_credit_used),LOG_DEBUG)
+/tmp/ibsng/IBSng/core/charge/internet_charge.py:102:        return timely_credit_used + transfer_credit_used
+/tmp/ibsng/IBSng/core/charge/user_charge.py:44:        UserCharge.logout(self,instance)
+/tmp/ibsng/IBSng/core/charge/user_charge.py:59:        UserCharge.logout(self,instance)
+/tmp/ibsng/IBSng/core/charge/charge_rule.py:7:class ChargeRule:
+/tmp/ibsng/IBSng/core/charge/charge_loader.py:11:class ChargeLoader:
+/tmp/ibsng/IBSng/core/charge/charge_loader.py:135:class ChargeRuleLoader:
+/tmp/ibsng/IBSng/core/admin/admin_actions.py:303:    def __delAdminUpdateCreditChangersQuery(self, admin_id):
+/tmp/ibsng/IBSng/core/admin/perms/CHARGE_ACCESS.py:10:class ChargeAccess (MultiValuePermission,ChargeCatPermission,Permission):
+/tmp/ibsng/IBSng/core/admin/admin_perm.py:223:class ChargeCatPermission:
+/tmp/ibsng/IBSng/core/admin/admin.py:128:    def consumeDeposit(self,credit): 
+/tmp/ibsng/IBSng/core/report/connection.py:62:        total_credit_used = self.__directQueryGetTotalCreditUsed(conditions)
+/tmp/ibsng/IBSng/core/report/connection.py:69:        return (total_rows, total_credit_used, total_duration, total_in, total_out, 
+/tmp/ibsng/IBSng/core/report/connection.py:86:    def __directQueryGetTotalCreditUsed(self, conditions):
+/tmp/ibsng/IBSng/core/report/connection.py:87:        if self.hasCondFor("show_total_credit_used"):
+/tmp/ibsng/IBSng/core/report/connection.py:88:            return db_main.getHandle().get("connection_log",conditions,0,-1,"",["sum(credit_used) as sum"])[0]["sum"]
+/tmp/ibsng/IBSng/core/report/connection.py:188:            total_credit_used = self.__tempTableGetTotalCreditUsed(db_handle)
+/tmp/ibsng/IBSng/core/report/connection.py:201:        return (total_rows, total_credit_used, total_duration, total_in, total_out, 
+/tmp/ibsng/IBSng/core/report/connection.py:223:    def __tempTableGetTotalCreditUsed(self,db_handle):
+/tmp/ibsng/IBSng/core/report/connection.py:224:        if self.hasCondFor("show_total_credit_used"):
+/tmp/ibsng/IBSng/core/report/connection.py:225:            return db_handle.selectQuery("select sum(credit_used) as sum from connection_log,connection_log_report where \
+/tmp/ibsng/IBSng/core/report/connection.py:483:        con_table.ltgtSearch(self.search_helper,"credit_used","credit_used_op","credit_used")
+/tmp/ibsng/IBSng/core/report/connection.py:571:        if order_by not in ["user_id","credit_used","login_time","logout_time","successful","service","ras_id"]:
+/tmp/ibsng/IBSng/core/report/connection_usage.py:127:    def getCreditUsages(self,_from,to):
+/tmp/ibsng/IBSng/core/report/connection_usage.py:132:        return self.__getUsageReport("credit_used", _from, to)
+/tmp/ibsng/IBSng/core/report/connection_usage.py:154:    def getCreditUsages(self, _from, to):
+/tmp/ibsng/IBSng/core/report/credit.py:39:    def getCreditChanges(self,_from,to,order_by,desc,date_type):
+/tmp/ibsng/IBSng/core/report/credit.py:56:    def __createReportResult(self,credit_changes,user_ids,date_type):
+/tmp/ibsng/IBSng/core/report/credit.py:61:    def __repairCreditChangeDic(self,credit_changes,user_ids,date_type):
+/tmp/ibsng/IBSng/core/report/credit.py:92:    def __getUserIDs(self,db_handle,credit_changes):
+/tmp/ibsng/IBSng/core/report/credit.py:98:    def __getCreditChanges(self,db_handle,_from,to,order_by,desc):
+/tmp/ibsng/IBSng/core/report/credit.py:112:    def __getTotalPerUserCredit(self,db_handle):
+/tmp/ibsng/IBSng/core/report/credit.py:118:    def __getTotalAdminCredit(self,db_handle):
+/tmp/ibsng/IBSng/core/report/credit.py:124:    def __createCreditChangeIDsQuery(self):
+/tmp/ibsng/IBSng/core/report/credit.py:178:    def getCreditChanges(self,_from,to,order_by,desc,date_type):
+/tmp/ibsng/IBSng/core/report/credit.py:191:    def __getCreditChangesCheckInput(self,_from,to,order_by,desc):
+/tmp/ibsng/IBSng/core/report/report_handler.py:151:    def getCreditChanges(self,request):
+/tmp/ibsng/IBSng/core/report/report_handler.py:173:    def __filterCreditChangesForUser(self,credit_changes):
+/tmp/ibsng/IBSng/core/report/report_handler.py:298:    def getCreditUsages(self,request):
+=== Candidate charge files ===
+/tmp/ibsng/IBSng/addons/asterisk/agi-bin/states/credit_announcement.py
+/tmp/ibsng/IBSng/addons/asterisk/agi-bin/states/get_current_credit.py
+/tmp/ibsng/IBSng/addons/asterisk/agi-bin/states/say_remaining_credit.py
+/tmp/ibsng/IBSng/addons/asterisk/agi-bin/states/say_used_credit.py
+/tmp/ibsng/IBSng/addons/client/test/charge_test.py
+/tmp/ibsng/IBSng/core/admin/perms/ACCESS_ALL_CHARGES.py
+/tmp/ibsng/IBSng/core/admin/perms/CHANGE_CHARGE.py
+/tmp/ibsng/IBSng/core/admin/perms/CHANGE_USER_CREDIT.py
+/tmp/ibsng/IBSng/core/admin/perms/CHARGE_ACCESS.py
+/tmp/ibsng/IBSng/core/admin/perms/SEE_CREDIT_CHANGES.py
+/tmp/ibsng/IBSng/core/charge/charge.py
+/tmp/ibsng/IBSng/core/charge/charge_actions.py
+/tmp/ibsng/IBSng/core/charge/charge_handler.py
+/tmp/ibsng/IBSng/core/charge/charge_loader.py
+/tmp/ibsng/IBSng/core/charge/charge_main.py
+/tmp/ibsng/IBSng/core/charge/charge_rule.py
+/tmp/ibsng/IBSng/core/charge/charge_types.py
+/tmp/ibsng/IBSng/core/charge/internet_charge.py
+/tmp/ibsng/IBSng/core/charge/internet_charge_rule.py
+/tmp/ibsng/IBSng/core/charge/user_charge.py
+/tmp/ibsng/IBSng/core/charge/voip_charge.py
+/tmp/ibsng/IBSng/core/charge/voip_charge_rule.py
+/tmp/ibsng/IBSng/core/report/credit.py
+/tmp/ibsng/IBSng/core/user/credit_change_log.py
+/tmp/ibsng/IBSng/core/user/plugins/charge.py
+/tmp/ibsng/IBSng/core/user/plugins/credit.py
+/tmp/ibsng/IBSng/core/user/plugins/normal_charge.py
+/tmp/ibsng/IBSng/core/user/plugins/voip_charge.py
+=== Logout / connection log references ===
