@@ -119,3 +119,43 @@ def test_control_response_emits_message_authenticator_when_request_had_one():
     wire = encode_response(response, request, secret)
     decoded = decode(wire, secret)
     assert len(decoded.attributes["Message-Authenticator"]) == 32
+
+
+def test_chap_and_mschapv2_attributes_round_trip_as_wire_values():
+    auth_challenge = bytes.fromhex("5B5D7C7D7B3F2F3E3C2C602132262628")
+    peer_challenge = bytes.fromhex("21402324255E262A28295F2B3A337C7E")
+    nt_response = bytes.fromhex("82309ECD8D708B5EA08FAA3981CD83544233114A3D85D6DF")
+    mschapv2_response = b"\x07\x00" + peer_challenge + b"\x00" * 8 + nt_response
+    chap_response = bytes.fromhex("01" + "00112233445566778899aabbccddeeff")
+
+    packet = RadiusPacket(
+        RadiusCode.ACCESS_REQUEST,
+        11,
+        {
+            "User-Name": "User",
+            "CHAP-Password": chap_response,
+            "CHAP-Challenge": auth_challenge,
+            "MS-CHAP-Challenge": auth_challenge,
+            "MS-CHAP2-Response": mschapv2_response,
+        },
+        bytes.fromhex("00112233445566778899aabbccddeeff"),
+    )
+    decoded = decode(encode(packet))
+    assert decoded.attributes["CHAP-Password"] == chap_response.hex()
+    assert decoded.attributes["CHAP-Challenge"] == auth_challenge.hex()
+    assert decoded.attributes["MS-CHAP-Challenge"] == auth_challenge.hex()
+    assert decoded.attributes["MS-CHAP2-Response"] == mschapv2_response.hex()
+
+
+def test_mschapv2_vsa_rejects_noncanonical_response_length():
+    packet = RadiusPacket(
+        RadiusCode.ACCESS_REQUEST,
+        12,
+        {"MS-CHAP2-Response": b"\x00" * 49},
+        bytes(16),
+    )
+    try:
+        encode(packet)
+    except RadiusCodecError:
+        return
+    raise AssertionError("non-canonical MS-CHAP2-Response was accepted")
