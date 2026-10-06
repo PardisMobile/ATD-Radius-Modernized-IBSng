@@ -3,6 +3,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from .aaa import AAAAction,AAAResult
+
+@dataclass(frozen=True,slots=True)
+class AuthenticationPolicy:
+    """Reject users that cannot be authenticated against native credentials."""
+    def evaluate(self,request):
+        if request.attributes.get("__user_found") != "1" or request.attributes.get("__password_ok") != "1":
+            return AAAResult(AAAAction.REJECT,reason="INVALID_CREDENTIALS")
+        return None
+
 from .session_policy import ActiveSessionView,session_policy
 
 def _attrs(request):
