@@ -72,7 +72,7 @@ Read this file, `ROADMAP.md`, `ARCHITECTURE.md`, `docs/DECISIONS.md`, `docs/phas
 - Response encoding now calculates the RADIUS response authenticator from the request authenticator and shared secret.
 - A synchronous UDP transport boundary exists with NAS secret resolution by source IP; it is deliberately not claimed as production-ready until lifecycle, request verification, duplicate handling integration, and full dispatcher wiring are completed.
 - Codec tests cover common attribute round-trips, PAP, malformed packets, and response authenticator calculation.
-- Latest implementation checkpoint commit: `c5e9c9dfd8abf3c88614e958877fd7f6462a9205`.
+- Latest implementation checkpoint commit: `12a1c79a53be8405cc54e8be0b29fa0381608b25`.
 - CI must be re-checked after this batch; the GitHub combined-status endpoint currently reports no status entries for the latest commit, so this batch is not being marked CI-verified.
 - Remaining high-priority gaps are NAS/RAS secret lookup wiring, real dispatcher integration, Accounting request authenticator verification, duplicate request cache integration, Message-Authenticator/EAP boundary work, session/accounting persistence, permissions/audit, billing, remaining UI, installer verification, and migration/import testing.
 - Do not mark any subsystem Verified merely because an implementation exists; Verified requires source-derived behavior tests and/or database parity evidence.
