@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from .aaa import AAAAction,AAAResult
 from .session_policy import ActiveSessionView,session_policy
-from .ras_provider import provider_multi_login
+from .ras_provider import normalize_ras_type, provider_multi_login
 
 @dataclass(frozen=True,slots=True)
 class AuthenticationPolicy:
@@ -52,6 +52,7 @@ def _int_attr(attributes, name, default):
         return default
 
 def ras_allows_multi_login(ras_type, ras_attributes=None, service="internet"):
+    rtype = normalize_ras_type(ras_type)
     attrs = ras_attributes or {}
     if service == "voip":
         if rtype == "gnugk":
