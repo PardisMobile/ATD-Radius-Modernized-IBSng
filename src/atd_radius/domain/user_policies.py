@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from datetime import datetime
 from .aaa import AAAAction,AAAResult
 from .session_policy import ActiveSessionView,session_policy
-from .radius_auth import derive_mschapv2_mppe_keys
 
 @dataclass(frozen=True,slots=True)
 class AuthenticationPolicy:
@@ -26,11 +25,9 @@ class AuthenticationPolicy:
                 )
         if method == "mschapv2":
             success = request.attributes.get("__mschapv2_success")
-            response = request.attributes.get("MS-CHAP2-Response")
-            password = request.attributes.get("__stored_password")
-            if success and response and password:
-                raw = response if isinstance(response, bytes) else bytes.fromhex(str(response))
-                send_key, recv_key = derive_mschapv2_mppe_keys(str(password), raw[26:50])
+            send_key = request.attributes.get("__mschapv2_send_key")
+            recv_key = request.attributes.get("__mschapv2_recv_key")
+            if success and send_key and recv_key:
                 return AAAResult(
                     AAAAction.ACCEPT,
                     {
