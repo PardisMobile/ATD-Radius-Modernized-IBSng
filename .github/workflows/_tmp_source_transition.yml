@@ -1,0 +1,27 @@
+name: temp-source-transition
+on:
+  push:
+    paths:
+      - ".github/workflows/_tmp_source_transition.yml"
+jobs:
+  trace:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          mkdir -p /tmp/src
+          tar -xjf "Source of Truth/IBSng-A1.24.tar.bz2" -C /tmp/src
+          {
+            echo '=== internet_charge.py ==='
+            sed -n '1,320p' $(find /tmp/src -path '*/core/charge/internet_charge.py' | head -1)
+            echo '=== charge.py ==='
+            sed -n '1,360p' $(find /tmp/src -path '*/core/charge/charge.py' | head -1)
+            echo '=== user_charge.py ==='
+            sed -n '1,360p' $(find /tmp/src -path '*/core/charge/user_charge.py' | head -1)
+            echo '=== online.py charge/accounting refs ==='
+            grep -nE 'charge|bytes|account|update|alive|logout' $(find /tmp/src -path '*/core/user/online.py' | head -1) | head -n 300
+          } > /tmp/trace.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: charge-transition-source
+          path: /tmp/trace.txt
