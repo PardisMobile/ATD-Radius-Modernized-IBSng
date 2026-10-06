@@ -1,5 +1,5 @@
 from atd_radius.domain.radius import RadiusCode, RadiusPacket
-from atd_radius.domain.radius_codec import RadiusCodecError, decode, decrypt_user_password, encode, encrypt_user_password
+from atd_radius.domain.radius_codec import RadiusCodecError, decode, decrypt_user_password, encode, encrypt_user_password, encode_response, verify_control_request
 
 
 def test_common_attributes_round_trip():
@@ -108,3 +108,30 @@ def test_control_request_authenticator_and_message_authenticator_are_verified():
 
     assert verify_control_request(wire, "shared")
     assert not verify_control_request(wire[:-1] + bytes((wire[-1] ^ 1,)), "shared")
+
+
+def test_control_request_authenticator_is_valid_without_message_authenticator():
+    from hashlib import md5
+    from struct import pack
+    secret = b"shared"
+    attrs = bytes((44, 5)) + b"sid"
+    header = pack("!BBH", 40, 3, 20 + len(attrs))
+    auth = md5(header + bytes(16) + attrs + secret).digest()
+    assert verify_control_request(header + auth + attrs, "shared")
+
+
+def test_control_response_emits_message_authenticator_when_request_had_one():
+    import hmac
+    from hashlib import md5
+    from struct import pack
+    secret = "shared"
+    sid = bytes((44, 5)) + b"sid"
+    msg = bytes((80, 18)) + bytes(16)
+    header = pack("!BBH", 40, 9, 20 + len(sid) + len(msg))
+    request_ma = hmac.new(secret.encode(), header + bytes(16) + sid + msg, "md5").digest()
+    request_auth = md5(header + bytes(16) + sid + bytes((80, 18)) + request_ma + secret.encode()).digest()
+    request = RadiusPacket(RadiusCode.DISCONNECT_REQUEST, 9, {"Acct-Session-Id":"sid","Message-Authenticator":request_ma.hex()}, request_auth)
+    response = RadiusPacket(RadiusCode.DISCONNECT_ACK, 9, {}, request_auth)
+    wire = encode_response(response, request, secret)
+    decoded = decode(wire, secret)
+    assert len(decoded.attributes["Message-Authenticator"]) == 32
