@@ -1,7 +1,6 @@
 """Production composition for the native RADIUS runtime."""
 from __future__ import annotations
 
-from collections.abc import Callable
 from typing import Protocol
 
 from atd_radius.domain.aaa import PluginPipeline, PluginSpec
