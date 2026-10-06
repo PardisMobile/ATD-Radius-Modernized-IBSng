@@ -1,6 +1,6 @@
 name: _tmp_source_charge_hooks
 on:
-  workflow_dispatch:
+  push:
 jobs:
   inspect:
     runs-on: ubuntu-latest
