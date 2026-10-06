@@ -2,8 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Mapping
-
+from collections.abc import Callable
 from atd_radius.infrastructure.connection_log import ConnectionLog
 from atd_radius.infrastructure.connection_log_repository import ConnectionLogRepository
 
@@ -11,7 +10,7 @@ from atd_radius.infrastructure.connection_log_repository import ConnectionLogRep
 class NativeAccountingPersistence:
     """Translate RADIUS accounting events into native connection_log records."""
 
-    def __init__(self, repository: ConnectionLogRepository, clock: callable | None = None) -> None:
+    def __init__(self, repository: ConnectionLogRepository, clock: Callable[[], datetime] | None = None) -> None:
         self.repository = repository
         self.clock = clock or datetime.now
 
@@ -40,7 +39,7 @@ class NativeAccountingPersistence:
 
     def update(self, connection_log_id: int, event) -> None:
         for name, value in self._details(event).items():
-            self.repository.add_detail(connection_log_id, name, value)
+            self.repository.upsert_detail(connection_log_id, name, value)
 
     def stop(self, connection_log_id: int, event) -> None:
         for name, value in self._details(event).items():
