@@ -163,3 +163,10 @@ When a new ChatGPT conversation starts, do not ask the user to restate the proje
 3. Add source-derived tests for rule transition, counter reset, multiple instances, zero-credit commit and atomic credit/log persistence.
 4. Verify transaction/rollback boundaries so credit and connection-log settlement remain consistent on failure.
 5. Update accounting parity docs only after these checks pass.
+
+### Charge implementation checkpoint — 2026-10-07 follow-up
+- Runtime charge settlement is now covered by source-derived tests for rule-start time/IN-OUT baselines, rule transition accumulation, independent per-session/multi-instance baselines, and A1.24 no_commit behavior.
+- Accounting parity documentation now records runtime Charge integration as implemented rather than pending.
+- The implementation keeps the A1.24 per-instance state model explicit instead of treating raw accounting deltas as the billing model.
+- Remaining validation is deliberately limited to exact source confirmation of InternetChargeRule.start/end, the authoritative getTypeObj().getInOutBytes(instance) data path, and transaction/rollback atomicity.
+- Temporary source-trace workflow created during this follow-up was removed; no temporary workflow is intentionally left in main.
