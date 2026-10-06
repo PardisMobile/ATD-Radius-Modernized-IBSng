@@ -173,26 +173,34 @@ def verify_mschapv2(
     username: str,
     challenge: object,
 ) -> bool:
-    """Verify an RFC 2759 MS-CHAPv2 Response using an A1.24 cleartext password."""
+    """Verify the RFC 2548 MS-CHAP2-Response VSA value."""
     if stored is None:
         return False
     raw = _octets(response)
     auth_challenge = _octets(challenge)
     if len(raw) != 50 or len(auth_challenge) != 16:
         return False
-    peer_challenge = raw[:16]
-    reserved = raw[16:24]
-    nt_response = raw[24:48]
-    flags = raw[49]
+
+    # RFC 2548 VSA value: Ident, Flags, Peer-Challenge, Reserved, NT-Response.
+    peer_challenge = raw[2:18]
+    reserved = raw[18:26]
+    nt_response = raw[26:50]
+    flags = raw[1]
     if reserved != b"\x00" * 8 or flags != 0:
         return False
+
     challenge_hash = _challenge_hash(peer_challenge, auth_challenge, username)
     expected = _nt_response(challenge_hash, stored)
     return compare_digest(nt_response, expected)
 
 
 def validate_mschapv2_response(response: object, challenge: object | None) -> bool:
-    """Validate the RFC 2548 wire shape before cryptographic verification."""
+    """Validate the RFC 2548 MS-CHAP2-Response VSA shape."""
     raw = _octets(response)
     challenge_octets = _octets(challenge) if challenge is not None else b""
-    return len(raw) == 50 and len(challenge_octets) == 16 and raw[16:24] == b"\x00" * 8 and raw[49] == 0
+    return (
+        len(raw) == 50
+        and len(challenge_octets) == 16
+        and raw[18:26] == b"\x00" * 8
+        and raw[1] == 0
+    )
