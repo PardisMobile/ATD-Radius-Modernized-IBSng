@@ -1,10 +1,12 @@
-"""RADIUS credential-method detection and legacy challenge verification."""
+"""RADIUS credential-method detection and challenge-response verification."""
 from __future__ import annotations
 
 from enum import StrEnum
-from hashlib import md5
+from hashlib import md5, sha1
 from hmac import compare_digest
 from typing import Mapping
+
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
 
 class RadiusAuthMethod(StrEnum):
@@ -64,13 +66,133 @@ def verify_chap(
     return compare_digest(digest, expected)
 
 
-def validate_mschapv2_response(
+def _md4(data: bytes) -> bytes:
+    """Minimal RFC-compatible MD4 implementation for NT password hashes."""
+    message = bytearray(data)
+    bit_length = len(message) * 8
+    message.append(0x80)
+    while len(message) % 64 != 56:
+        message.append(0)
+    message.extend(bit_length.to_bytes(8, "little"))
+    a0, b0, c0, d0 = 0x67452301, 0xEFCDAB89, 0x98BADCFE, 0x10325476
+
+    def rol(value: int, shift: int) -> int:
+        return ((value << shift) | (value >> (32 - shift))) & 0xFFFFFFFF
+
+    for offset in range(0, len(message), 64):
+        x = [int.from_bytes(message[offset + i : offset + i + 4], "little") for i in range(0, 64, 4)]
+        a, b, c, d = a0, b0, c0, d0
+
+        def f(xv: int, y: int, z: int) -> int:
+            return (xv & y) | (~xv & z)
+
+        def g(xv: int, y: int, z: int) -> int:
+            return (xv & y) | (xv & z) | (y & z)
+
+        for i, shift in zip(range(16), [3, 7, 11, 19] * 4):
+            k = i
+            if i % 4 == 0:
+                a = rol((a + f(b, c, d) + x[k]) & 0xFFFFFFFF, shift)
+            elif i % 4 == 1:
+                d = rol((d + f(a, b, c) + x[k]) & 0xFFFFFFFF, shift)
+            elif i % 4 == 2:
+                c = rol((c + f(d, a, b) + x[k]) & 0xFFFFFFFF, shift)
+            else:
+                b = rol((b + f(c, d, a) + x[k]) & 0xFFFFFFFF, shift)
+
+        order = [0, 4, 8, 12, 1, 5, 9, 13, 2, 6, 10, 14, 3, 7, 11, 15]
+        for i, shift in zip(range(16), [3, 5, 9, 13] * 4):
+            k = order[i]
+            if i % 4 == 0:
+                a = rol((a + g(b, c, d) + x[k] + 0x5A827999) & 0xFFFFFFFF, shift)
+            elif i % 4 == 1:
+                d = rol((d + g(a, b, c) + x[k] + 0x5A827999) & 0xFFFFFFFF, shift)
+            elif i % 4 == 2:
+                c = rol((c + g(d, a, b) + x[k] + 0x5A827999) & 0xFFFFFFFF, shift)
+            else:
+                b = rol((b + g(c, d, a) + x[k] + 0x5A827999) & 0xFFFFFFFF, shift)
+
+        order = [0, 8, 4, 12, 2, 10, 6, 14, 1, 9, 5, 13, 3, 11, 7, 15]
+        for i, shift in zip(range(16), [3, 9, 11, 15] * 4):
+            k = order[i]
+            if i % 4 == 0:
+                a = rol((a + (b ^ c ^ d) + x[k] + 0x6ED9EBA1) & 0xFFFFFFFF, shift)
+            elif i % 4 == 1:
+                d = rol((d + (a ^ b ^ c) + x[k] + 0x6ED9EBA1) & 0xFFFFFFFF, shift)
+            elif i % 4 == 2:
+                c = rol((c + (d ^ a ^ b) + x[k] + 0x6ED9EBA1) & 0xFFFFFFFF, shift)
+            else:
+                b = rol((b + (c ^ d ^ a) + x[k] + 0x6ED9EBA1) & 0xFFFFFFFF, shift)
+
+        a0 = (a0 + a) & 0xFFFFFFFF
+        b0 = (b0 + b) & 0xFFFFFFFF
+        c0 = (c0 + c) & 0xFFFFFFFF
+        d0 = (d0 + d) & 0xFFFFFFFF
+    return b"".join(value.to_bytes(4, "little") for value in (a0, b0, c0, d0))
+
+
+def _des_key(key7: bytes) -> bytes:
+    if len(key7) != 7:
+        raise ValueError("MS-CHAPv2 DES key fragment must be 7 bytes")
+    key = bytearray(8)
+    key[0] = key7[0] & 0xFE
+    key[1] = ((key7[0] << 7) | (key7[1] >> 1)) & 0xFE
+    key[2] = ((key7[1] << 6) | (key7[2] >> 2)) & 0xFE
+    key[3] = ((key7[2] << 5) | (key7[3] >> 3)) & 0xFE
+    key[4] = ((key7[3] << 4) | (key7[4] >> 4)) & 0xFE
+    key[5] = ((key7[4] << 3) | (key7[5] >> 5)) & 0xFE
+    key[6] = ((key7[5] << 2) | (key7[6] >> 6)) & 0xFE
+    key[7] = (key7[6] << 1) & 0xFE
+    for i in range(8):
+        key[i] |= 1 if key[i].bit_count() % 2 == 0 else 0
+    return bytes(key)
+
+
+def _des_encrypt(clear: bytes, key7: bytes) -> bytes:
+    key = _des_key(key7)
+    cipher = Cipher(algorithms.TripleDES(key * 3), modes.ECB())
+    return cipher.encryptor().update(clear)
+
+
+def _challenge_hash(peer: bytes, authenticator: bytes, username: str) -> bytes:
+    if len(peer) != 16 or len(authenticator) != 16:
+        raise ValueError("MS-CHAPv2 challenges must be 16 bytes")
+    name = username.split("\\", 1)[-1].encode()
+    return sha1(peer + authenticator + name).digest()[:8]
+
+
+def _nt_response(challenge: bytes, password: str) -> bytes:
+    password_hash = _md4(password.encode("utf-16le"))
+    zpwd = password_hash + b"\x00" * 5
+    return b"".join(_des_encrypt(challenge, zpwd[i : i + 7]) for i in (0, 7, 14))
+
+
+def verify_mschapv2(
     response: object,
-    challenge: object | None,
+    stored: str | None,
+    username: str,
+    challenge: object,
 ) -> bool:
-    """Validate the wire shape only; cryptographic verification remains separate."""
+    """Verify an RFC 2759 MS-CHAPv2 Response using an A1.24 cleartext password."""
+    if stored is None:
+        return False
+    raw = _octets(response)
+    auth_challenge = _octets(challenge)
+    if len(raw) != 50 or len(auth_challenge) != 16:
+        return False
+    peer_challenge = raw[:16]
+    reserved = raw[16:24]
+    nt_response = raw[24:48]
+    flags = raw[49]
+    if reserved != b"\x00" * 8 or flags != 0:
+        return False
+    challenge_hash = _challenge_hash(peer_challenge, auth_challenge, username)
+    expected = _nt_response(challenge_hash, stored)
+    return compare_digest(nt_response, expected)
+
+
+def validate_mschapv2_response(response: object, challenge: object | None) -> bool:
+    """Validate the RFC 2548 wire shape before cryptographic verification."""
     raw = _octets(response)
     challenge_octets = _octets(challenge) if challenge is not None else b""
-    # RFC 2548 MS-CHAP2-Response: Ident + Flags + Peer-Challenge +
-    # Reserved + NT-Response + optional trailing fields as carried by the VSA.
-    return len(raw) >= 50 and len(challenge_octets) == 16
+    return len(raw) == 50 and len(challenge_octets) == 16 and raw[16:24] == b"\x00" * 8 and raw[49] == 0
