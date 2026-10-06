@@ -31,12 +31,17 @@ No external IBSng mirror is authoritative.
 Direct inspection has confirmed:
 
 - CHAP authentication is implemented by `Packet.checkChapPassword()`.
-- MS-CHAPv1 authentication is implemented by `Packet.checkMSChapPassword()`.
+- MS-CHAPv1 authentication is implemented by `Packet.checkMSChapPassword()` and is part of the normal password plugin path.
 - MS-CHAPv2 authentication is implemented by `Packet.checkMSChap2Password()`.
+- MS-CHAPv1 consumes an 8-byte `MS-CHAP-Challenge` and compares the 24-byte NT-Response at `MS-CHAP-Response[0][26:]`.
 - MS-CHAPv2 uses `MS-CHAP2-Response[0][2:18]` as Peer-Challenge and `[0][26:]` as NT-Response.
+- A1.24's MS-CHAPv2 implementation does not validate the Flags or Reserved fields before comparing the NT-Response, and its challenge hash implementation uses the username string supplied by the caller without stripping a domain prefix.
 - `generateMSChap2AuthenticatorResponse()` emits Ident + `S=...` for `MS-CHAP2-Success`.
 - `MSChapEndPlugin` adds MS-CHAP/MPPE response attributes at login-hook priority 9.
+- A1.24 MS-CHAPv1 MPPE emits `MS-CHAP-MPPE-Keys` containing the first 8 bytes of the LM hash, the 16-byte hash-of-NT-hash, and 8 zero bytes; it protects that VSA with the same RADIUS password obfuscation algorithm used by `PwCrypt()`.
+- A1.24 MS-CHAPv1 also emits `MS-MPPE-Encryption-Policy` = 0x00000001 and `MS-MPPE-Encryption-Types` = 0x00000006.
 - A1.24 MS-CHAPv2 MPPE derives server send/receive keys in `core/lib/mschap/mppe.py`, then encrypts the MPPE key attributes using the Access-Request authenticator and per-key salts.
+- A1.24 generates MPPE salts randomly with the high bit set and ensures the Send and Receive salts differ; the salts are not deterministic counters.
 - `multi_login` defaults to 1 when the user has no explicit attribute.
 - User instance count is incremented before `USER_LOGIN` hooks; the MultiLogin plugin rejects when `instances > multi_login`.
 - RAS-specific `multi_login` behavior is supplied by individual RAS implementations; it is not a single universal RAS attribute.
