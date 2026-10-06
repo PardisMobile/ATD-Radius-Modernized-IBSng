@@ -37,7 +37,7 @@ def session_policy(attributes:AttributeSet,active_sessions:Iterable[ActiveSessio
     else:
         try: limit=int(multi_login)
         except (TypeError,ValueError): limit=1
-    if len(sessions)>=limit:
+    if len(sessions)>limit:
         return SessionPolicyDecision(False,SessionAdmissionReason.MULTI_LOGIN)
     return SessionPolicyDecision(True,session_timeout_seconds=_positive_int(attributes,"session_timeout"),idle_timeout_seconds=_positive_int(attributes,"idle_timeout"))
 
