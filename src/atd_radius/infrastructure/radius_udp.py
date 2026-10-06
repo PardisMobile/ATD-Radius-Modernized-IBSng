@@ -5,8 +5,9 @@ import socket
 from collections.abc import Callable
 from typing import Protocol
 
-from .radius import RadiusCode, RadiusPacket
-from .radius_codec import decode, encode, encode_response
+from atd_radius.domain.radius import RadiusCode, RadiusPacket
+from atd_radius.domain.radius_codec import decode, encode_response, verify_accounting_request
+from atd_radius.domain.radius_runtime import DuplicateRequestCache, RequestKey
 
 
 class RadiusSecretResolver(Protocol):
@@ -14,7 +15,7 @@ class RadiusSecretResolver(Protocol):
 
 
 class RadiusUDPServer:
-    """Small synchronous UDP server; production lifecycle owns threading/process policy."""
+    """Synchronous UDP transport with NAS secret lookup and duplicate replay."""
 
     def __init__(
         self,
@@ -23,12 +24,14 @@ class RadiusUDPServer:
         host: str = "0.0.0.0",
         port: int = 1812,
         max_packet_size: int = 4096,
+        duplicate_cache: DuplicateRequestCache[bytes] | None = None,
     ) -> None:
         self.handler = handler
         self.secret_resolver = secret_resolver
         self.host = host
         self.port = port
         self.max_packet_size = max_packet_size
+        self.cache = duplicate_cache or DuplicateRequestCache()
         self._socket: socket.socket | None = None
 
     def serve_once(self) -> None:
@@ -40,16 +43,23 @@ class RadiusUDPServer:
         if not secret:
             return
         request = decode(data, secret)
-        response = self.handler(request, peer)
-        if request.code is RadiusCode.ACCESS_REQUEST and response.code in {
-            RadiusCode.ACCESS_ACCEPT, RadiusCode.ACCESS_REJECT, RadiusCode.ACCESS_CHALLENGE,
-        }:
+        if request.code is RadiusCode.ACCOUNTING_REQUEST and not verify_accounting_request(data, secret):
+            return
+        key = RequestKey(peer[0], peer[1], request.identifier, int(data[0]))
+        cached = self.cache.get(key)
+        if cached is not None:
+            if cached.response is not None:
+                self._socket.sendto(cached.response, peer)
+            return
+        self.cache.add(key)
+        try:
+            response = self.handler(request, peer)
             wire = encode_response(response, request, secret)
-        elif request.code is RadiusCode.ACCOUNTING_REQUEST and response.code is RadiusCode.ACCOUNTING_RESPONSE:
-            wire = encode_response(response, request, secret)
-        else:
-            wire = encode(response, secret)
-        self._socket.sendto(wire, peer)
+            self.cache.finish(key, wire)
+            self._socket.sendto(wire, peer)
+        except Exception:
+            self.cache.remove(key)
+            raise
 
     def close(self) -> None:
         if self._socket is not None:
