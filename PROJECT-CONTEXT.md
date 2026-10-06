@@ -46,7 +46,15 @@ Core direction:
 
 ## Current checkpoint
 Branch: `main`
-The source-authority documentation and temporary-inspection cleanup are the latest repository changes. Inspect the actual current HEAD before making the next code change.
+Latest source-driven checkpoint includes:
+- direct A1.24 source extraction/inspection infrastructure removed after use
+- durable source-only authority rule in `docs/SOURCE-AUTHORITY.md`
+- MS-CHAPv1 authentication + A1.24 MPPE response path
+- MS-CHAPv2 behavior aligned to A1.24 field consumption
+- A1.24-style random MPPE salts
+- duplicate identity aligned to `(source_ip, source_port, packet_id, packet_code)`
+
+The latest code checkpoint before this documentation update is `94afc8f17fa0616d9ab4e2e24c6c939a0f5ddc1c`; inspect the actual current HEAD before the next code change.
 
 Recent MS-CHAPv2/MPPE work:
 - RFC-compatible CHAP/MS-CHAPv2 wire attribute handling.
@@ -82,10 +90,10 @@ The latest code changes around MS-CHAPv2/MPPE, Message-Authenticator, duplicate 
 - `src/atd_radius/infrastructure/connection_log_repository.py`
 
 ## Next technical priorities
-1. Inspect the newest CI failure/result and fix any regression before adding more behavior.
-2. Finish source-derived MS-CHAPv2 failure/error semantics and end-to-end Access-Accept/Reject behavior.
-3. Verify MPPE VSA semantics and salts against the canonical A1.24 source/RFC behavior.
-4. Complete RAS provider parity and multi-login source-derived behavior.
+1. Continue systematic direct source inspection across the A1.24 RAS/user/session/accounting paths; source, not parity docs, determines behavior.
+2. Finish source-derived MS-CHAPv1/v2 failure/error semantics and end-to-end Access-Accept/Reject behavior.
+3. Verify the full Microsoft VSA dictionary/response surface against A1.24 source usage.
+4. Complete RAS provider parity and multi-login source-derived behavior, including service-specific RAS flags.
 5. Complete PostgreSQL connection-log/accounting persistence and live UDP integration.
 6. Expand source-derived RADIUS attribute dictionary/behavior coverage.
 7. Continue session/IP-pool lifecycle parity.
