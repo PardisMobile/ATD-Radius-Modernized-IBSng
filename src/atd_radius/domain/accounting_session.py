@@ -39,7 +39,7 @@ class AccountingSessionService:
         key = SessionKey(user_id, ras_id, event.session_id)
 
         if event.status is AccountingStatus.START:
-            state = self.registry.start(key, dict(event.attributes))
+            state = self.registry.start(key, dict(event.attributes), event.input_octets, event.output_octets)
             log_id = self.persistence.start(event, user_id, ras_id) if self.persistence else None
             if log_id is not None:
                 state.attributes = {**state.attributes, "__connection_log_id": str(log_id)}
@@ -48,7 +48,7 @@ class AccountingSessionService:
         current = self.registry.get(key)
         if current is None:
             if event.status is AccountingStatus.INTERIM:
-                state = self.registry.start(key, dict(event.attributes))
+                state = self.registry.start(key, dict(event.attributes), event.input_octets, event.output_octets)
                 log_id = self.persistence.start(event, user_id, ras_id) if self.persistence else None
                 if log_id is not None:
                     state.attributes = {**state.attributes, "__connection_log_id": str(log_id)}
