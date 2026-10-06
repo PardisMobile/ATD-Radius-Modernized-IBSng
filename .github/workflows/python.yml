@@ -10,6 +10,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: TEMP extract canonical IBSng A1.24 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/ibsng-a124
+          mkdir -p /tmp/ibsng-a124
+          tar -xjf "Source of Truth/IBSng-A1.24.tar.bz2" -C /tmp/ibsng-a124
+          tar -cjf /tmp/IBSng-A1.24-extracted.tar.bz2 -C /tmp/ibsng-a124 .
+      - name: TEMP upload extracted IBSng source
+        uses: actions/upload-artifact@v4
+        with:
+          name: ibsng-a124-extracted-source
+          path: /tmp/IBSng-A1.24-extracted.tar.bz2
+          retention-days: 1
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
