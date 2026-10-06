@@ -2,7 +2,7 @@
 from __future__ import annotations
 from dataclasses import dataclass,field
 from enum import StrEnum
-from typing import Mapping,Protocol
+from typing import Mapping,Protocol,Any
 
 class AAAAction(StrEnum):
     ACCEPT="accept"; REJECT="reject"; CHALLENGE="challenge"
@@ -10,7 +10,7 @@ class AAAAction(StrEnum):
 @dataclass(frozen=True,slots=True)
 class AAARequest:
     username:str
-    attributes:Mapping[str,str]=field(default_factory=dict)
+    attributes:Mapping[str,Any]=field(default_factory=dict)
     protocol:str="radius"
     service:str="internet"
     def __post_init__(self):
@@ -19,7 +19,7 @@ class AAARequest:
 @dataclass(frozen=True,slots=True)
 class AAAResult:
     action:AAAAction
-    attributes:Mapping[str,str]=field(default_factory=dict)
+    attributes:Mapping[str,Any]=field(default_factory=dict)
     reason:str|None=None
 
 class AAAPolicy(Protocol):
