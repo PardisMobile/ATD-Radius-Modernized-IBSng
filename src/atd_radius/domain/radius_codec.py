@@ -178,13 +178,50 @@ def _encode_value(name: str, value: object, secret: str | None, authenticator: b
     return _octets(value)
 
 
-def _encode_microsoft_vsa(name: str, value: object) -> bytes:
+def _encrypt_ms_mppe_key(
+    key: bytes,
+    secret: str,
+    authenticator: bytes,
+    salt: bytes,
+) -> bytes:
+    if len(authenticator) != 16:
+        raise RadiusCodecError("MS-MPPE key encryption requires a 16-byte request authenticator")
+    if len(salt) != 2 or not (salt[0] & 0x80):
+        raise RadiusCodecError("MS-MPPE key salt must be two bytes with the high bit set")
+    if not 1 <= len(key) <= 255:
+        raise RadiusCodecError("MS-MPPE key length must fit in one octet")
+    plaintext = bytes((len(key),)) + key
+    plaintext += bytes((-len(plaintext)) % 16)
+    secret_bytes = secret.encode("utf-8")
+    previous = md5(secret_bytes + authenticator + salt).digest()
+    encrypted = bytearray(a ^ b for a, b in zip(plaintext[:16], previous))
+    for offset in range(16, len(plaintext), 16):
+        previous = md5(secret_bytes + bytes(encrypted[offset - 16 : offset])).digest()
+        encrypted.extend(
+            a ^ b
+            for a, b in zip(plaintext[offset : offset + 16], previous)
+        )
+    return salt + bytes(encrypted)
+
+
+def _encode_microsoft_vsa(
+    name: str,
+    value: object,
+    *,
+    secret: str | None,
+    authenticator: bytes,
+    salt: bytes | None = None,
+) -> bytes:
     vendor_type = _MICROSOFT_VSA_TYPES[name]
     raw = _octets(value)
     if name == "MS-CHAP-Challenge" and len(raw) != 16:
         raise RadiusCodecError("MS-CHAP-Challenge must be 16 bytes for MS-CHAPv2")
     if name == "MS-CHAP2-Response" and len(raw) != 50:
         raise RadiusCodecError("MS-CHAP2-Response must be 50 bytes")
+    if name in {"MS-MPPE-Send-Key", "MS-MPPE-Recv-Key"}:
+        if secret is None:
+            raise RadiusCodecError(f"secret is required for {name}")
+        raw = _encrypt_ms_mppe_key(raw, secret, authenticator, salt or b"\x80\x01")
     vendor_length = len(raw) + 2
     if vendor_length > 255:
         raise RadiusCodecError(f"Microsoft VSA is too long: {name}")
@@ -239,10 +276,23 @@ def encode(packet: RadiusPacket, secret: str | None = None) -> bytes:
         raise RadiusCodecError("authenticator must be empty or 16 bytes")
     authenticator = packet.authenticator or bytes(16)
     body = bytearray()
+    mppe_salt = 0x8000
     for name, value in packet.attributes.items():
         if name in _MICROSOFT_VSA_TYPES:
             number = 26
-            raw = _encode_microsoft_vsa(name, value)
+            salt = None
+            if name in {"MS-MPPE-Send-Key", "MS-MPPE-Recv-Key"}:
+                mppe_salt += 1
+                if mppe_salt > 0xFFFF:
+                    raise RadiusCodecError("exhausted MS-MPPE salt space")
+                salt = pack("!H", mppe_salt)
+            raw = _encode_microsoft_vsa(
+                name,
+                value,
+                secret=secret,
+                authenticator=authenticator,
+                salt=salt,
+            )
         else:
             number = _ATTR_NUMBERS.get(name)
             if number is None and name.startswith("Attr-"):
