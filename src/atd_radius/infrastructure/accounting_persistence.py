@@ -43,5 +43,5 @@ class NativeAccountingPersistence:
 
     def stop(self, connection_log_id: int, event) -> None:
         for name, value in self._details(event).items():
-            self.repository.add_detail(connection_log_id, name, value)
+            self.repository.upsert_detail(connection_log_id, name, value)
         self.repository.close(connection_log_id, self.clock(), None, True)
