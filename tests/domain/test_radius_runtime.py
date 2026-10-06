@@ -2,7 +2,7 @@ from atd_radius.domain.radius_runtime import DuplicateRequestCache,RequestKey,Se
 
 def test_duplicate_key_matches_a124_source_ip_port_id_code():
     c=DuplicateRequestCache()
-    k=RequestKey("10.0.0.1",1812,7,1,b"auth")
+    k=RequestKey("10.0.0.1",1812,7,1)
     first=c.add(k)
     assert c.get(k) is first
     assert len(c)==1
@@ -11,14 +11,9 @@ def test_duplicate_key_matches_a124_source_ip_port_id_code():
 
 def test_same_id_from_different_source_port_is_not_duplicate():
     c=DuplicateRequestCache()
-    c.add(RequestKey("10.0.0.1",1812,7,1,b"auth"))
+    c.add(RequestKey("10.0.0.1",1812,7,1))
     assert c.get(RequestKey("10.0.0.1",1813,7,1,b"auth")) is None
 
-
-def test_different_authenticator_is_not_duplicate():
-    c=DuplicateRequestCache()
-    c.add(RequestKey("10.0.0.1",1812,7,1,b"one"))
-    assert c.get(RequestKey("10.0.0.1",1812,7,1,b"two")) is None
 
 def test_session_registry_tracks_deltas_and_active_sessions():
     r=SessionRegistry(); k=SessionKey(4,2,"abc")
@@ -32,7 +27,7 @@ def test_session_registry_tracks_deltas_and_active_sessions():
 
 def test_duplicate_cache_purges_old_entries():
     c = DuplicateRequestCache()
-    k = RequestKey("10.0.0.1", 1812, 7, 1, b"auth")
+    k = RequestKey("10.0.0.1", 1812, 7, 1)
     item = c.add(k)
     assert c.purge_expired(10, now=item.created_at + 11) == 1
     assert c.get(k) is None
