@@ -3,7 +3,7 @@ on:
   push:
     branches: [main]
 permissions:
-  contents: read
+  contents: write
 jobs:
   trace:
     runs-on: ubuntu-latest
@@ -16,7 +16,17 @@ jobs:
           tar -xjf "Source of Truth/IBSng-A1.24.tar.bz2" -C /tmp/ibsng
       - name: Trace Charge and logout
         run: |
-          echo '=== Charge references ==='
-          grep -RniE 'class Charge|def .*credit|used_credit|credit_used|logout.*Charge|Charge.*logout|insert_connection_log|logConnection' /tmp/ibsng --include='*.py' | head -n 500
-          echo '=== Candidate charge files ==='
-          find /tmp/ibsng -type f -iname '*charge*.py' -o -iname '*credit*.py' | sort
+          {
+            echo '=== Charge references ==='
+            grep -RniE 'class Charge|def .*credit|used_credit|credit_used|logout.*Charge|Charge.*logout|insert_connection_log|logConnection' /tmp/ibsng --include='*.py' | head -n 800
+            echo '=== Candidate charge files ==='
+            find /tmp/ibsng -type f \( -iname '*charge*.py' -o -iname '*credit*.py' \) | sort
+            echo '=== Logout / connection log references ==='
+            grep -RniE 'used_credit|logConnection|insert_connection_log|connection_log' /tmp/ibsng/core /tmp/ibsng/handlers --include='*.py' 2>/dev/null | head -n 800
+          } > /tmp/charge_trace.txt
+          cp /tmp/charge_trace.txt docs/_tmp_A124_CHARGE_TRACE.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/_tmp_A124_CHARGE_TRACE.txt
+          git diff --cached --quiet || git commit -m "chore: record A1.24 charge trace"
+          git push
