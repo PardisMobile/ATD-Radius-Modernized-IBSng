@@ -1,0 +1,18 @@
+name: temp-source-charge
+on:
+  push:
+    paths:
+      - ".github/workflows/_tmp_source_charge.yml"
+jobs:
+  trace:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          mkdir -p /tmp/src
+          tar -xjf "Source of Truth/IBSng-A1.24.tar.bz2" -C /tmp/src
+          find /tmp/src -type f \( -name 'internet_charge_rule.py' -o -name 'user_charge.py' -o -name 'online.py' \) -print
+          for f in $(find /tmp/src -type f \( -name 'internet_charge_rule.py' -o -name 'user_charge.py' -o -name 'online.py' \)); do
+            echo "===== $f ====="
+            sed -n '1,280p' "$f"
+          done
