@@ -50,3 +50,17 @@ def test_response_authenticator_is_derived_from_request():
     wire = encode_response(response, request, "shared")
     expected = md5(wire[:4] + request.authenticator + wire[20:] + b"shared").digest()
     assert wire[4:20] == expected
+
+
+
+def test_accounting_request_authenticator_is_verified():
+    from hashlib import md5
+    from atd_radius.domain.radius_codec import verify_accounting_request
+    from struct import pack
+    secret = b"shared"
+    attrs = bytes((44, 5)) + b"sid"
+    header = pack("!BBH", 4, 2, 20 + len(attrs))
+    authenticator = md5(header + bytes(16) + attrs + secret).digest()
+    wire = header + authenticator + attrs
+    assert verify_accounting_request(wire, "shared")
+    assert not verify_accounting_request(wire, "wrong")
