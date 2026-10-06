@@ -17,3 +17,10 @@ def test_multilogin_rejects_when_existing_sessions_reach_source_limit():
 def test_multilogin_zero_allows_first_login():
     attrs = AttributeSet({"multi_login": "0"})
     assert session_policy(attrs, []).allowed
+
+
+def test_multi_login_zero_rejects_even_the_first_instance():
+    from atd_radius.domain.models import AttributeSet
+    decision = session_policy(AttributeSet({"multi_login": "0"}), ())
+    assert not decision.allowed
+    assert decision.reason == "multi_login"
