@@ -12,7 +12,7 @@ def test_duplicate_key_matches_a124_source_ip_port_id_code():
 def test_same_id_from_different_source_port_is_not_duplicate():
     c=DuplicateRequestCache()
     c.add(RequestKey("10.0.0.1",1812,7,1))
-    assert c.get(RequestKey("10.0.0.1",1813,7,1,b"auth")) is None
+    assert c.get(RequestKey("10.0.0.1",1813,7,1)) is None
 
 
 def test_session_registry_tracks_deltas_and_active_sessions():
