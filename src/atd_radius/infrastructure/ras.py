@@ -58,6 +58,18 @@ class RASRepository:
     def active_ids(self) -> list[int]:
         return [int(row[0]) for row in self.conn.execute(select_active_ras_ids()).fetchall()]
 
+    def get_by_ip(self, ip: str) -> RASRecord | None:
+        row = self.conn.execute(
+            "SELECT ras_id, ras_description, ras_ip, ras_type, radius_secret, active, comment "
+            "FROM ras WHERE ras_ip=%s::inet",
+            (ip,),
+        ).fetchone()
+        return self._ras(row) if row else None
+
+    def get_secret_by_ip(self, ip: str) -> str | None:
+        row = self.conn.execute("SELECT radius_secret FROM ras WHERE ras_ip=%s::inet AND active=true", (ip,)).fetchone()
+        return str(row[0]) if row else None
+
     def get(self, ras_id: int) -> RASRecord | None:
         row = self.conn.execute(select_ras(ras_id)).fetchone()
         return self._ras(row) if row else None
