@@ -54,7 +54,7 @@ Latest source-driven checkpoint includes:
 - A1.24-style random MPPE salts
 - duplicate identity aligned to `(source_ip, source_port, packet_id, packet_code)`
 
-The latest code checkpoint before this documentation update is `94afc8f17fa0616d9ab4e2e24c6c939a0f5ddc1c`; inspect the actual current HEAD before the next code change.
+The current branch contains later source-authority, MultiLogin, attribute-inheritance and documentation checkpoint commits. Always inspect the actual current main HEAD before the next code change.
 
 Recent MS-CHAPv2/MPPE work:
 - RFC-compatible CHAP/MS-CHAPv2 wire attribute handling.
@@ -69,7 +69,7 @@ Recent MS-CHAPv2/MPPE work:
 - RADIUS duplicate identity was aligned to the A1.24 source-derived tuple: source IP + source port + packet identifier + packet code.
 
 ## Current verification state
-The canonical binary archive has now been extracted through a temporary GitHub Actions inspection run and directly inspected locally. The extracted tree contains 2,295 files. The temporary CI inspection hooks were removed immediately after extraction.
+The canonical binary archive has been extracted and directly inspected through temporary GitHub Actions runner jobs. The extracted tree contains 2,295 files. Temporary inspection hooks are removed after use.
 
 Important: this does **not** make parity docs authoritative. The source archive remains the sole behavioral authority. Current ATD tests are validation only.
 
@@ -112,6 +112,12 @@ The latest code changes around MS-CHAPv2/MPPE, Message-Authenticator, duplicate 
 - `docs/A1.24-RUNTIME-BATCH-AUDIT.md`
 - `docs/COMPATIBILITY-MATRIX.md`
 - `Source of Truth/README.md`
+
+## Fixed source-traced checkpoints — do not restart
+
+Before starting new work, read docs/SOURCE-AUTHORITY.md. The following areas have already been directly traced against A1.24 source and should be treated as established unless new source evidence contradicts them: MS-CHAPv1/v2 field semantics and MPPE response generation; MultiLogin default/explicit-zero semantics; user-over-group attribute precedence; A1.24 attribute table structure; user attribute aggregation; RAS-specific MultiLogin capability; duplicate request identity; IP-pool membership vs runtime free/used state; connection_log native structure.
+
+Do not re-open these as fresh investigations merely because a new chat starts. Work only on the unresolved items listed in SOURCE-AUTHORITY.md and this file.
 
 ## Conversation handoff
 When a new ChatGPT conversation starts, do not ask the user to restate the project. Read this file plus the canonical docs and inspect current `main` before continuing.
