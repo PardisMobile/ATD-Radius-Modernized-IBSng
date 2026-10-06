@@ -50,7 +50,7 @@ Never import code, documentation, generated files, secrets or production data fr
 ## Working rule for future chats
 Read this file, ROADMAP.md, ARCHITECTURE.md, docs/DECISIONS.md, docs/phase-0-inventory.md, docs/ibsng-a124-full-inventory.md, and ui/UI-SPEC.md before architectural changes. Then inspect the latest commits before editing code.
 
-## Current implementation checkpoint — 2026-10-06
+## Current implementation checkpoint — 2026-10-06 (RAS runtime checkpoint)
 
 ### RADIUS wire/protocol boundary
 - Real RADIUS wire codec covers Access, Accounting and RFC 5176 Disconnect/CoA packet families.
@@ -104,7 +104,7 @@ Read this file, ROADMAP.md, ARCHITECTURE.md, docs/DECISIONS.md, docs/phase-0-inv
 - IP-pool allocator primitives preserve ordered free/used runtime semantics and first-free allocation.
 - Explicit IP use/release behavior and RADIUS reply mapping are represented.
 - Native PostgreSQL schema contracts for ippool, ippool_ips and ras_ippools are documented.
-- Full RAS repository/runtime lifecycle integration and reload behavior remain pending verification.
+- RAS repository plus source-compatible runtime registry/loader is implemented; mutation-triggered reload integration remains pending verification.
 
 ### Billing
 - Internet charge-rule selection implements source-derived priority: RAS-specific +2, port-specific +1.
@@ -119,14 +119,14 @@ Read this file, ROADMAP.md, ARCHITECTURE.md, docs/DECISIONS.md, docs/phase-0-inv
 - User Information edit actions, high-frequency IBSng workflows, GROUP/RAS/IPPool/REPORT/GRAPH/ADMIN workflows and full user portal parity remain open.
 
 ### Current repository head
-- Current main branch head: 8a9d03d5b064478a00397d4968cb8fd6b38471fa
+- Current main branch head: 19dfd4b3b88c8c6faae563c9c3092892593f4c3f
 - Latest change: fix: preserve A1.24 equal-priority charge rule order
 - Older checkpoint references are historical and must not be treated as current HEAD.
 - GitHub workflow lookup currently returns no workflow runs for this HEAD, so this checkpoint is not CI-verified.
 - Do not mark a subsystem Verified merely because an implementation exists. Verified requires source-derived behavior tests and/or database parity evidence.
 
 ## Immediate continuation priorities
-1. Complete RAS repository/runtime lifecycle integration from source-derived loader/reload semantics.
+1. Complete mutation-triggered RAS reload integration from source-derived semantics.
 2. Complete IP-pool lifecycle integration against native PostgreSQL membership and ras_ippools bindings.
 3. Wire persistent connection history into the live Accounting-Request path and test idempotency/parity.
 4. Strengthen live session admission/termination integration against A1.24 online/session behavior.
