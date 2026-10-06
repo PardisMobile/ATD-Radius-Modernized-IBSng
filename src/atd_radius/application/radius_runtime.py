@@ -47,7 +47,7 @@ class RadiusRuntimeHandler:
         return self.dispatcher.access(packet, source_ip=peer[0])
 
 
-def build_radius_dispatcher(users: UserSource, active_sessions_provider=None) -> RadiusDispatcher:
+def build_radius_dispatcher(users: UserSource, active_sessions_provider=None, ras=None) -> RadiusDispatcher:
     """Build the native authentication boundary without inventing a new schema."""
     from atd_radius.infrastructure.access_context import NativeAccessContext
 
@@ -59,7 +59,7 @@ def build_radius_dispatcher(users: UserSource, active_sessions_provider=None) ->
             PluginSpec(5, "timeout", TimeoutPolicy()),
         ]
     )
-    return RadiusDispatcher(pipeline, access_context=NativeAccessContext(users))
+    return RadiusDispatcher(pipeline, access_context=NativeAccessContext(users, ras))
 
 
 class NativeAccountingIdentityResolver:
