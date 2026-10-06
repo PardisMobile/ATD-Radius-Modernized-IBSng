@@ -159,3 +159,15 @@ def encode_response(response: RadiusPacket, request: RadiusPacket, secret: str) 
     wire = encode(unsigned, secret)
     response_authenticator = md5(wire[:4] + request.authenticator + wire[20:] + secret.encode("utf-8")).digest()
     return wire[:4] + response_authenticator + wire[20:]
+
+def verify_accounting_request(data: bytes, secret: str) -> bool:
+    """Verify the RFC 2866 Accounting-Request authenticator."""
+    if len(data) < 20:
+        return False
+    code, identifier, length = unpack("!BBH", data[:4])
+    if code != 4 or length < 20 or length > len(data):
+        return False
+    supplied = data[4:20]
+    unsigned = data[:4] + bytes(16) + data[20:length]
+    expected = md5(unsigned + secret.encode("utf-8")).digest()
+    return supplied == expected
