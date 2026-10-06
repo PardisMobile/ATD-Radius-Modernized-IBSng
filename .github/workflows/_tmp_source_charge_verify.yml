@@ -1,0 +1,21 @@
+name: _tmp_source_charge_verify
+on:
+  push:
+    paths:
+      - ".github/workflows/_tmp_source_charge_verify.yml"
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract canonical source and inspect charge internals
+        run: |
+          set -eux
+          mkdir -p /tmp/ibs
+          tar -xjf "Source of Truth/IBSng-A1.24.tar.bz2" -C /tmp/ibs
+          echo "=== files ==="
+          find /tmp/ibs -type f | grep -E '/(internet_charge_rule|internet_charge|charge|user_charge|normal_user|online|.*radius.*acct).*\.py$' | head -200
+          echo "=== start/end/getInOutBytes ==="
+          grep -R -n -A40 -B12 "def start(self,user_obj\|def end(self,user_obj\|def getInOutBytes" /tmp/ibs/core /tmp/ibs/radius_server 2>/dev/null | head -500
+          echo "=== in/out mutation ==="
+          grep -R -n -A20 -B10 "in_bytes\|out_bytes\|bytes_in\|bytes_out\|in_octets\|out_octets" /tmp/ibs/core/user /tmp/ibs/radius_server 2>/dev/null | head -500
