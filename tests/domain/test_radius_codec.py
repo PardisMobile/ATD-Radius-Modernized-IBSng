@@ -248,7 +248,7 @@ def test_mppe_keys_are_salted_and_rfc2548_encrypted():
         previous = md5(b"shared" + request_authenticator + salt).digest()
         plaintext = bytearray(a ^ b for a, b in zip(ciphertext[:16], previous))
         for block_offset in range(16, len(ciphertext), 16):
-            previous = md5(b"shared" + bytes(plaintext[block_offset - 16:block_offset])).digest()
+            previous = md5(b"shared" + ciphertext[block_offset - 16:block_offset]).digest()
             plaintext.extend(
                 a ^ b
                 for a, b in zip(ciphertext[block_offset:block_offset + 16], previous)
