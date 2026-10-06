@@ -6,7 +6,8 @@ from hashlib import md5, sha1
 from hmac import compare_digest
 from typing import Mapping
 
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.decrepit.ciphers import algorithms
+from cryptography.hazmat.primitives.ciphers import Cipher, modes
 
 
 class RadiusAuthMethod(StrEnum):
