@@ -38,10 +38,12 @@ jobs:
         run: |
           rm -rf /tmp/a124 && mkdir -p /tmp/a124
           tar -xjf 'Source of Truth/IBSng-A1.24.tar.bz2' -C /tmp/a124
-          for f in core/user/user.py core/user/plugins/charge.py core/charge/charge.py core/charge/*.py core/ras/rases/mikrotik.py; do
-            echo "===== $f ====="
-            sed -n '1,430p' "/tmp/a124/IBSng/$f"
-          done
+          echo '=== no_connection_log ==='
+          grep -Rni 'no_connection_log' /tmp/a124/IBSng/core | head -n 100
+          echo '=== logToConnectionLog ==='
+          grep -Rni 'def logToConnectionLog\|logConnectionQuery' /tmp/a124/IBSng/core/user /tmp/a124/IBSng/core/ras | head -n 100
+          echo '=== credit/log call sites ==='
+          grep -RniE 'calcCreditUsage\(|logToConnectionLog\(|logConnectionQuery\(' /tmp/a124/IBSng/core/user /tmp/a124/IBSng/core/charge | head -n 200
 
       - name: PHP syntax
         run: |
