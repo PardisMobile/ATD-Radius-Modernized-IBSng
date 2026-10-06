@@ -38,11 +38,15 @@ class RadiusDispatcher:
         return DispatchResult(RadiusPacket(RadiusCode.ACCOUNTING_RESPONSE,packet.identifier,{},packet.authenticator),event_from_attributes(packet.attributes))
     def control(self, packet: RadiusPacket) -> RadiusPacket:
         if packet.code is RadiusCode.DISCONNECT_REQUEST:
-            ok = self.session_control is not None and self.session_control.disconnect(packet.attributes)
-            code = RadiusCode.DISCONNECT_ACK if ok else RadiusCode.DISCONNECT_NAK
+            result = self.session_control.disconnect(packet.attributes) if self.session_control is not None else False
+            code = RadiusCode.DISCONNECT_ACK if (result.ok if hasattr(result, "ok") else result) else RadiusCode.DISCONNECT_NAK
         elif packet.code is RadiusCode.COA_REQUEST:
-            ok = self.session_control is not None and self.session_control.change_of_authorization(packet.attributes)
-            code = RadiusCode.COA_ACK if ok else RadiusCode.COA_NAK
+            result = self.session_control.change_of_authorization(packet.attributes) if self.session_control is not None else False
+            code = RadiusCode.COA_ACK if (result.ok if hasattr(result, "ok") else result) else RadiusCode.COA_NAK
         else:
             raise ValueError("unsupported control packet")
-        return RadiusPacket(code, packet.identifier, {}, packet.authenticator)
+        attrs = {}
+        error_cause = getattr(result, "error_cause", None)
+        if error_cause is not None and code in {RadiusCode.DISCONNECT_NAK, RadiusCode.COA_NAK}:
+            attrs["Error-Cause"] = error_cause
+        return RadiusPacket(code, packet.identifier, attrs, packet.authenticator)
