@@ -71,3 +71,18 @@ def test_session_views_exposes_only_active_runtime_sessions():
     views = session_views(registry)(7)
 
     assert tuple(view.unique_id for view in views) == ("active",)
+
+
+def test_runtime_handler_can_attach_native_accounting_persistence():
+    from atd_radius.application.radius_runtime import RadiusRuntimeHandler
+    from atd_radius.domain.accounting_session import AccountingSessionService
+    from unittest.mock import Mock
+
+    dispatcher = Mock()
+    sessions = AccountingSessionService(Mock())
+    identities = Mock()
+    persistence = Mock()
+
+    handler = RadiusRuntimeHandler(dispatcher, sessions, identities, persistence)
+
+    assert handler.accounting_sessions.persistence is persistence
