@@ -1,0 +1,19 @@
+name: TEMP IBSng attribute trace
+on:
+  push:
+    branches: [main]
+jobs:
+  trace:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          set -e
+          rm -rf /tmp/i && mkdir /tmp/i
+          tar -xjf "Source of Truth/IBSng-A1.24.tar.bz2" -C /tmp/i
+          echo '=== multi_login refs ==='
+          grep -Rni --exclude='*.pyc' -E 'multi_login|MultiLogin|instances|USER_LOGIN' /tmp/i | head -n 500 || true
+          echo '=== attribute default/get refs ==='
+          grep -Rni --exclude='*.pyc' -E 'class .*Attribute|def getAttribute|def get.*attribute|default.*attribute|attributes.*default' /tmp/i/core /tmp/i/plugin 2>/dev/null | head -n 500 || true
+          echo '=== likely plugin files ==='
+          find /tmp/i -type f \( -iname '*multilogin*' -o -iname '*attribute*' \) | head -n 300
