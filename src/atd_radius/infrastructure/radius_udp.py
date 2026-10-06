@@ -54,7 +54,7 @@ class RadiusUDPServer:
         if request.code in (RadiusCode.DISCONNECT_REQUEST, RadiusCode.COA_REQUEST) and not verify_control_request(data, secret):
             return
         self.cache.purge_expired(self.duplicate_cache_max_age)
-        key = RequestKey(peer[0], peer[1], request.identifier, int(data[0]), request.authenticator)
+        key = RequestKey(peer[0], peer[1], request.identifier, int(data[0]))
         cached = self.cache.get(key)
         if cached is not None:
             if cached.response is not None:
