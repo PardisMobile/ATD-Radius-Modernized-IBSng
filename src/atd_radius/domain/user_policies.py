@@ -62,7 +62,7 @@ def ras_allows_multi_login(ras_type, ras_attributes=None, service="internet"):
         if rtype in {"cisco", "quintum tenor"}:
             return False
         return True
-    if rtype == "bsae":
+    if rtype in {"bsae", "cisco", "quintum tenor"}:
         return False
     return True
 
