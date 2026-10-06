@@ -130,3 +130,36 @@ Do not re-open these as fresh investigations merely because a new chat starts. W
 
 ## Conversation handoff
 When a new ChatGPT conversation starts, do not ask the user to restate the project. Read this file plus the canonical docs and inspect current `main` before continuing.
+
+## Accounting / Charge source-traced checkpoint — 2026-10-07
+
+### A1.24 accounting lifecycle
+- Canonical RAS providers explicitly handle Start, Stop and Alive. A1.24 does not use RADIUS Interim-Update as the provider-side status in the inspected source; Alive is the source-native periodic update concept.
+- core/user/connection_log.py calls the native insert_connection_log DB function.
+- core/user/user.py suppresses native connection logging when no_connection_log is present.
+- Normal-user logout computes used_credit through the active Charge object and passes that value into connection-log persistence.
+- no_commit suppresses credit settlement in the source logout path.
+- ATD accounting state now supports START/STOP/INTERIM/ALIVE, native connection-log persistence, no_connection_log and no_commit handling, observed event time, and charge settlement.
+
+### A1.24 Internet Charge source findings
+- core/charge/charge.py starts accounting with the effective rule, records the rule start time, and invokes the rule start hook.
+- core/charge/user_charge.py maintains per-instance credit_prev_usage, effective_rules, rule_start and Internet-user rule_start_inout state.
+- core/charge/internet_charge_rule.py calcRuleInOutUsage subtracts the per-instance rule-start IN/OUT baseline from current IN/OUT counters; transfer usage is the sum of those deltas.
+- core/charge/internet_charge.py actively detects effective-rule changes, ends the old rule, starts the new rule, and replaces the effective rule for the instance.
+- Logout preserves accumulated per-instance usage across rule transitions and then ends the effective rule.
+- ATD InternetChargeSettlement now mirrors the source state machine conceptually: effective rule selection, per-rule time start, per-rule IN/OUT baseline, transition accumulation, final settlement, and credit decrement.
+- This checkpoint is source-traced but not yet full parity Verified: the remaining validation target is the exact implementation of the A1.24 InternetChargeRule.start/end hooks and the source of getTypeObj().getInOutBytes(instance) compared with ATD accounting counters.
+
+### Current ATD billing/accounting implementation
+- src/atd_radius/domain/accounting_charge.py contains the settlement state machine.
+- SessionState stores charge ID, effective rule ID, rule start time, per-rule input/output baselines, and accumulated charge.
+- Native runtime composes InternetChargeSettlement with PostgresInternetChargeRuleRepository, UserRepository.policy_attributes, and UserCreditRepository.
+- used_credit is passed to native connection-log close and no_commit produces zero settlement.
+- Source-derived tests exist for charge calculation and accounting-charge settlement.
+
+### Remaining charge validation
+1. Directly trace InternetChargeRule.start/end from the canonical archive.
+2. Directly trace getTypeObj().getInOutBytes(instance) and its accounting update path.
+3. Add source-derived tests for rule transition, counter reset, multiple instances, zero-credit commit and atomic credit/log persistence.
+4. Verify transaction/rollback boundaries so credit and connection-log settlement remain consistent on failure.
+5. Update accounting parity docs only after these checks pass.
