@@ -133,6 +133,16 @@ class UserRepository:
     def find_by_username(self, username: str) -> UserRecord | None:
         return self.get_by_username(username)
 
+    def attributes(self, user_id: int) -> list[tuple[str, str]]:
+        rows = self.conn.execute(
+            "SELECT attr_name, attr_value FROM user_attrs WHERE user_id=%s ORDER BY attr_name",
+            (user_id,),
+        ).fetchall()
+        return [(str(row[0]), str(row[1])) for row in rows]
+
+    def find_by_username(self, username: str) -> UserRecord | None:
+        return self.get_by_username(username)
+
     def set_password(self, user_id: int, password: str) -> None:
         self.conn.execute(
             "UPDATE normal_users SET normal_password=%s WHERE user_id=%s",
