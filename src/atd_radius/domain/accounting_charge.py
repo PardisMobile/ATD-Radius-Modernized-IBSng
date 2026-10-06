@@ -55,7 +55,7 @@ class InternetChargeSettlement:
 
     def settle(self, state: SessionState, when: datetime, ras_id: int, port: str | None) -> Decimal:
         total = self.update(state, when, ras_id, port)
-        if state.charge_id is not None and total:
+        if state.charge_id is not None:
             self.credits.change(state.key.user_id, -total)
         return total
 
