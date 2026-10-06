@@ -171,3 +171,54 @@ def test_mschapv2_success_vsa_round_trip():
     )
     decoded = decode(encode(packet))
     assert decoded.attributes["MS-CHAP2-Success"] == success
+
+
+def test_mppe_keys_are_salted_and_rfc2548_encrypted():
+    from hashlib import md5
+    from struct import unpack
+    from atd_radius.domain.radius_auth import derive_mschapv2_mppe_keys
+
+    request_authenticator = bytes.fromhex("00112233445566778899aabbccddeeff")
+    send_key, recv_key = derive_mschapv2_mppe_keys(
+        "clientPass",
+        bytes.fromhex("82309ECD8D708B5EA08FAA3981CD83544233114A3D85D6DF"),
+    )
+    packet = RadiusPacket(
+        RadiusCode.ACCESS_ACCEPT,
+        14,
+        {
+            "MS-MPPE-Send-Key": send_key,
+            "MS-MPPE-Recv-Key": recv_key,
+        },
+        request_authenticator,
+    )
+    wire = encode(packet, "shared")
+    offset = 20
+    decoded = {}
+    salts = []
+    while offset < len(wire):
+        length = wire[offset + 1]
+        value = wire[offset + 2 : offset + length]
+        assert value[:4] == (311).to_bytes(4, "big")
+        vendor_type = value[4]
+        vendor_length = value[5]
+        assert vendor_length == len(value) - 4
+        salt = value[6:8]
+        ciphertext = value[8:4 + vendor_length]
+        salts.append(salt)
+        previous = md5(b"shared" + request_authenticator + salt).digest()
+        plaintext = bytearray(a ^ b for a, b in zip(ciphertext[:16], previous))
+        for block_offset in range(16, len(ciphertext), 16):
+            previous = md5(b"shared" + bytes(plaintext[block_offset - 16:block_offset])).digest()
+            plaintext.extend(
+                a ^ b
+                for a, b in zip(ciphertext[block_offset:block_offset + 16], previous)
+            )
+        key_length = plaintext[0]
+        decoded[vendor_type] = bytes(plaintext[1:1 + key_length])
+        offset += length
+    assert salts[0] != salts[1]
+    assert salts[0][0] & 0x80
+    assert salts[1][0] & 0x80
+    assert decoded[16] == send_key
+    assert decoded[17] == recv_key
