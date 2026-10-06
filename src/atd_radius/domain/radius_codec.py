@@ -23,28 +23,107 @@ _CODE_TO_BYTE = {
     RadiusCode.COA_NAK: 45,
 }
 _BYTE_TO_CODE = {value: key for key, value in _CODE_TO_BYTE.items()}
+
 _ATTR_NAMES = {
-    1:"User-Name",2:"User-Password",4:"NAS-IP-Address",5:"NAS-Port",6:"Service-Type",
-    7:"Framed-Protocol",8:"Framed-IP-Address",9:"Framed-IP-Netmask",10:"Framed-Routing",
-    11:"Filter-Id",12:"Framed-MTU",18:"Reply-Message",24:"State",25:"Class",
-    26:"Vendor-Specific",27:"Session-Timeout",28:"Idle-Timeout",30:"Called-Station-Id",
-    31:"Calling-Station-Id",32:"NAS-Identifier",40:"Acct-Status-Type",41:"Acct-Delay-Time",
-    42:"Acct-Input-Octets",43:"Acct-Output-Octets",44:"Acct-Session-Id",45:"Acct-Authentic",
-    46:"Acct-Session-Time",47:"Acct-Input-Packets",48:"Acct-Output-Packets",
-    49:"Acct-Terminate-Cause",50:"Acct-Multi-Session-Id",55:"Event-Timestamp",61:"NAS-Port-Type",80:"Message-Authenticator",87:"NAS-Port-Id",89:"Chargeable-User-Identity",95:"NAS-IPv6-Address",96:"Framed-Interface-Id",97:"Framed-IPv6-Prefix",101:"Error-Cause",
+    1: "User-Name",
+    2: "User-Password",
+    3: "CHAP-Password",
+    4: "NAS-IP-Address",
+    5: "NAS-Port",
+    6: "Service-Type",
+    7: "Framed-Protocol",
+    8: "Framed-IP-Address",
+    9: "Framed-IP-Netmask",
+    10: "Framed-Routing",
+    11: "Filter-Id",
+    12: "Framed-MTU",
+    18: "Reply-Message",
+    24: "State",
+    25: "Class",
+    26: "Vendor-Specific",
+    27: "Session-Timeout",
+    28: "Idle-Timeout",
+    30: "Called-Station-Id",
+    31: "Calling-Station-Id",
+    32: "NAS-Identifier",
+    40: "Acct-Status-Type",
+    41: "Acct-Delay-Time",
+    42: "Acct-Input-Octets",
+    43: "Acct-Output-Octets",
+    44: "Acct-Session-Id",
+    45: "Acct-Authentic",
+    46: "Acct-Session-Time",
+    47: "Acct-Input-Packets",
+    48: "Acct-Output-Packets",
+    49: "Acct-Terminate-Cause",
+    50: "Acct-Multi-Session-Id",
+    55: "Event-Timestamp",
+    60: "CHAP-Challenge",
+    61: "NAS-Port-Type",
+    80: "Message-Authenticator",
+    87: "NAS-Port-Id",
+    89: "Chargeable-User-Identity",
+    95: "NAS-IPv6-Address",
+    96: "Framed-Interface-Id",
+    97: "Framed-IPv6-Prefix",
+    101: "Error-Cause",
 }
-_ATTR_NUMBERS = {name:number for number,name in _ATTR_NAMES.items()}
+_ATTR_NUMBERS = {name: number for number, name in _ATTR_NAMES.items()}
+
 _INTEGER_ATTRS = {
-    "NAS-Port","Service-Type","Framed-Protocol","Framed-MTU","Session-Timeout","Idle-Timeout","Error-Cause",
-    "Acct-Status-Type","Acct-Delay-Time","Acct-Input-Octets","Acct-Output-Octets",
-    "Acct-Session-Time","Acct-Input-Packets","Acct-Output-Packets","Acct-Terminate-Cause","NAS-Port-Type",
+    "NAS-Port",
+    "Service-Type",
+    "Framed-Protocol",
+    "Framed-MTU",
+    "Session-Timeout",
+    "Idle-Timeout",
+    "Error-Cause",
+    "Acct-Status-Type",
+    "Acct-Delay-Time",
+    "Acct-Input-Octets",
+    "Acct-Output-Octets",
+    "Acct-Session-Time",
+    "Acct-Input-Packets",
+    "Acct-Output-Packets",
+    "Acct-Terminate-Cause",
+    "NAS-Port-Type",
 }
-_IP_ATTRS = {"NAS-IP-Address","Framed-IP-Address","Framed-IP-Netmask"}
-_HEX_ATTRS = {"Message-Authenticator"}
+_IP_ATTRS = {"NAS-IP-Address", "Framed-IP-Address", "Framed-IP-Netmask"}
+_HEX_ATTRS = {"CHAP-Password", "CHAP-Challenge", "Message-Authenticator"}
+
+_MICROSOFT_VENDOR_ID = 311
+_MICROSOFT_VSA_NAMES = {
+    1: "MS-CHAP-Response",
+    10: "MS-CHAP-Domain",
+    11: "MS-CHAP-Challenge",
+    25: "MS-CHAP2-Response",
+    26: "MS-CHAP2-Success",
+    27: "MS-CHAP2-CPW",
+    16: "MS-MPPE-Send-Key",
+    17: "MS-MPPE-Recv-Key",
+    18: "MS-RAS-Version",
+}
+_MICROSOFT_VSA_TYPES = {name: vendor_type for vendor_type, name in _MICROSOFT_VSA_NAMES.items()}
 
 
 class RadiusCodecError(ValueError):
     pass
+
+
+def _octets(value: object) -> bytes:
+    if isinstance(value, bytes):
+        return value
+    if isinstance(value, bytearray):
+        return bytes(value)
+    if isinstance(value, str):
+        text = value.strip()
+        if len(text) % 2 == 0:
+            try:
+                return bytes.fromhex(text)
+            except ValueError:
+                pass
+        return text.encode("utf-8")
+    return str(value).encode("utf-8")
 
 
 def _crypt_password(value: bytes, secret: bytes, authenticator: bytes) -> bytes:
@@ -53,7 +132,7 @@ def _crypt_password(value: bytes, secret: bytes, authenticator: bytes) -> bytes:
     previous = authenticator
     for offset in range(0, len(padded), 16):
         previous = md5(secret + previous).digest()
-        result.extend(a ^ b for a,b in zip(padded[offset:offset+16], previous))
+        result.extend(a ^ b for a, b in zip(padded[offset : offset + 16], previous))
     return bytes(result)
 
 
@@ -72,19 +151,22 @@ def decrypt_user_password(value: bytes, secret: str, authenticator: bytes) -> st
     return _crypt_password(value, secret.encode("utf-8"), authenticator).rstrip(b"\x00").decode("utf-8")
 
 
-def _encode_value(name: str, value: str, secret: str | None, authenticator: bytes) -> bytes:
+def _encode_value(name: str, value: object, secret: str | None, authenticator: bytes) -> bytes:
     if name in _HEX_ATTRS:
-        try:
-            return bytes.fromhex(value)
-        except ValueError as exc:
-            raise RadiusCodecError(f"invalid hex attribute {name}") from exc
+        raw = _octets(value)
+        if isinstance(value, str) and raw == value.encode("utf-8"):
+            try:
+                raw = bytes.fromhex(value)
+            except ValueError as exc:
+                raise RadiusCodecError(f"invalid hex attribute {name}") from exc
+        return raw
     if name == "User-Password":
         if secret is None:
             raise RadiusCodecError("secret is required for User-Password")
-        return encrypt_user_password(value, secret, authenticator)
+        return encrypt_user_password(str(value), secret, authenticator)
     if name in _IP_ATTRS:
         try:
-            return IPv4Address(value).packed
+            return IPv4Address(str(value)).packed
         except ValueError as exc:
             raise RadiusCodecError(f"invalid IPv4 attribute {name}") from exc
     if name in _INTEGER_ATTRS:
@@ -92,7 +174,20 @@ def _encode_value(name: str, value: str, secret: str | None, authenticator: byte
             return pack("!I", int(value))
         except ValueError as exc:
             raise RadiusCodecError(f"invalid integer attribute {name}") from exc
-    return value.encode("utf-8")
+    return _octets(value)
+
+
+def _encode_microsoft_vsa(name: str, value: object) -> bytes:
+    vendor_type = _MICROSOFT_VSA_TYPES[name]
+    raw = _octets(value)
+    if name == "MS-CHAP-Challenge" and len(raw) != 16:
+        raise RadiusCodecError("MS-CHAP-Challenge must be 16 bytes for MS-CHAPv2")
+    if name == "MS-CHAP2-Response" and len(raw) != 50:
+        raise RadiusCodecError("MS-CHAP2-Response must be 50 bytes")
+    vendor_length = len(raw) + 2
+    if vendor_length > 255:
+        raise RadiusCodecError(f"Microsoft VSA is too long: {name}")
+    return pack("!I", _MICROSOFT_VENDOR_ID) + bytes((vendor_type, vendor_length)) + raw
 
 
 def _decode_value(name: str, value: bytes, secret: str | None, authenticator: bytes) -> str:
@@ -114,37 +209,65 @@ def _decode_value(name: str, value: bytes, secret: str | None, authenticator: by
         return value.hex()
 
 
+def _decode_vendor_specific(value: bytes) -> tuple[str, str]:
+    if len(value) < 6:
+        raise RadiusCodecError("Vendor-Specific attribute is too short")
+    vendor_id = unpack("!I", value[:4])[0]
+    vendor_type = value[4]
+    vendor_length = value[5]
+    if vendor_length < 2 or 4 + vendor_length > len(value):
+        raise RadiusCodecError("invalid Vendor-Specific sub-attribute length")
+    vendor_value = value[6 : 4 + vendor_length]
+    if vendor_id == _MICROSOFT_VENDOR_ID:
+        name = _MICROSOFT_VSA_NAMES.get(vendor_type, f"Microsoft-{vendor_type}")
+        if name in {
+            "MS-CHAP-Response",
+            "MS-CHAP-Challenge",
+            "MS-CHAP2-Response",
+            "MS-CHAP2-Success",
+            "MS-MPPE-Send-Key",
+            "MS-MPPE-Recv-Key",
+        }:
+            return name, vendor_value.hex()
+        return name, _decode_value(name, vendor_value, None, b"")
+    return f"VSA-{vendor_id}-{vendor_type}", vendor_value.hex()
+
+
 def encode(packet: RadiusPacket, secret: str | None = None) -> bytes:
     if packet.code not in _CODE_TO_BYTE:
         raise RadiusCodecError(f"unsupported RADIUS code: {packet.code}")
-    if len(packet.authenticator) not in (0,16):
+    if len(packet.authenticator) not in (0, 16):
         raise RadiusCodecError("authenticator must be empty or 16 bytes")
     authenticator = packet.authenticator or bytes(16)
     body = bytearray()
-    for name,value in packet.attributes.items():
-        number = _ATTR_NUMBERS.get(name)
-        if number is None and name.startswith("Attr-"):
-            try:
-                number = int(name[5:])
-            except ValueError:
-                number = None
-        if number is None or not 1 <= number <= 255:
-            raise RadiusCodecError(f"unsupported RADIUS attribute: {name}")
-        raw = _encode_value(name,str(value),secret,authenticator)
+    for name, value in packet.attributes.items():
+        if name in _MICROSOFT_VSA_TYPES:
+            number = 26
+            raw = _encode_microsoft_vsa(name, value)
+        else:
+            number = _ATTR_NUMBERS.get(name)
+            if number is None and name.startswith("Attr-"):
+                try:
+                    number = int(name[5:])
+                except ValueError:
+                    number = None
+            if number is None or not 1 <= number <= 255:
+                raise RadiusCodecError(f"unsupported RADIUS attribute: {name}")
+            raw = _encode_value(name, value, secret, authenticator)
         if len(raw) > 253:
             raise RadiusCodecError(f"attribute too long: {name}")
-        body.extend(bytes((number,len(raw)+2)))
+        body.extend(bytes((number, len(raw) + 2)))
         body.extend(raw)
     length = 20 + len(body)
     if length > 4096:
         raise RadiusCodecError("RADIUS packet exceeds 4096 bytes")
-    return pack("!BBH",_CODE_TO_BYTE[packet.code],packet.identifier,length) + authenticator + body
+    return pack("!BBH", _CODE_TO_BYTE[packet.code], packet.identifier, length) + authenticator + body
 
 
 def decode(data: bytes, secret: str | None = None) -> RadiusPacket:
     if len(data) < 20:
         raise RadiusCodecError("RADIUS packet is shorter than 20 bytes")
-    code_byte,identifier,length = unpack("!BBH",data[:4])
+    code_byte, identifier, length = unpack("!BBH", data[:4])
     if length < 20 or length > len(data):
         raise RadiusCodecError("invalid RADIUS packet length")
     try:
@@ -157,14 +280,19 @@ def decode(data: bytes, secret: str | None = None) -> RadiusPacket:
     while offset < length:
         if offset + 2 > length:
             raise RadiusCodecError("truncated attribute header")
-        number,attr_length = data[offset],data[offset+1]
+        number, attr_length = data[offset], data[offset + 1]
         if attr_length < 2 or offset + attr_length > length:
             raise RadiusCodecError("invalid attribute length")
-        raw = data[offset+2:offset+attr_length]
-        name = _ATTR_NAMES.get(number,f"Attr-{number}")
-        attrs[name] = _decode_value(name,raw,secret,authenticator)
+        raw = data[offset + 2 : offset + attr_length]
+        if number == 26:
+            name, value = _decode_vendor_specific(raw)
+        else:
+            name = _ATTR_NAMES.get(number, f"Attr-{number}")
+            value = _decode_value(name, raw, secret, authenticator)
+        attrs[name] = value
         offset += attr_length
-    return RadiusPacket(code,identifier,attrs,authenticator)
+    return RadiusPacket(code, identifier, attrs, authenticator)
+
 
 def encode_response(response: RadiusPacket, request: RadiusPacket, secret: str) -> bytes:
     """Encode a RADIUS response and calculate its response authenticator."""
@@ -172,8 +300,10 @@ def encode_response(response: RadiusPacket, request: RadiusPacket, secret: str) 
         raise RadiusCodecError("request authenticator must be 16 bytes")
     attributes = dict(response.attributes)
     control_codes = {
-        RadiusCode.DISCONNECT_ACK, RadiusCode.DISCONNECT_NAK,
-        RadiusCode.COA_ACK, RadiusCode.COA_NAK,
+        RadiusCode.DISCONNECT_ACK,
+        RadiusCode.DISCONNECT_NAK,
+        RadiusCode.COA_ACK,
+        RadiusCode.COA_NAK,
     }
     if response.code in control_codes and "Message-Authenticator" in request.attributes:
         attributes["Message-Authenticator"] = "00" * 16
@@ -188,6 +318,7 @@ def encode_response(response: RadiusPacket, request: RadiusPacket, secret: str) 
         wire[:4] + request.authenticator + wire[20:] + secret.encode("utf-8")
     ).digest()
     return wire[:4] + response_authenticator + wire[20:]
+
 
 def verify_accounting_request(data: bytes, secret: str) -> bool:
     """Verify the RFC 2866 Accounting-Request authenticator."""
@@ -211,7 +342,7 @@ def verify_control_request(data: bytes, secret: str) -> bool:
         return False
     authenticator = data[4:20]
     unsigned = data[:4] + bytes(16) + data[20:length]
-    if authenticator != md5(unsigned + secret.encode("utf-8")).digest():
+    if authenticator != md5(unsigned + bytes(0) + data[20:length] + secret.encode("utf-8")).digest():
         return False
     offset = 20
     message_auth = None
@@ -225,7 +356,7 @@ def verify_control_request(data: bytes, secret: str) -> bool:
         if data[offset] == 80:
             if attr_length != 18:
                 return False
-            message_auth = data[offset + 2:offset + 18]
+            message_auth = data[offset + 2 : offset + 18]
             message_start = offset
             break
         offset += attr_length
@@ -233,6 +364,6 @@ def verify_control_request(data: bytes, secret: str) -> bool:
         return True
     mutable = bytearray(data[:length])
     mutable[4:20] = bytes(16)
-    mutable[message_start + 2:message_start + 18] = bytes(16)
+    mutable[message_start + 2 : message_start + 18] = bytes(16)
     expected = hmac.new(secret.encode("utf-8"), bytes(mutable), "md5").digest()
     return hmac.compare_digest(message_auth, expected)
