@@ -3,17 +3,27 @@
 ## Purpose
 This file is the durable handoff for continuing the project across ChatGPT conversations. Read this before making architectural or parity changes.
 
-## Canonical hierarchy
-1. `Source of Truth/IBSng-A1.24.tar.bz2` — canonical IBSng A1.24 behavior/source.
-2. `docs/` parity/reference documents — source-derived project contracts.
-3. Current ATD implementation.
-4. Automated parity tests.
-5. "Verified" only when reproducible source-derived or integration evidence exists.
+## Source-of-truth rule — NON-NEGOTIABLE
+**The actual IBSng A1.24 source archive is the sole behavioral authority for this project.**
 
-Canonical archive SHA-256:
+Canonical archive:
+`Source of Truth/IBSng-A1.24.tar.bz2`
+
+SHA-256:
 `c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839614bb9349d18a8`
 
-Do not replace or reconstruct the archive. Do not use external IBSng mirrors as authoritative when the archive/docs answer the question.
+Parity docs, inventories, matrices, notes, tests, and current ATD code are guides/records/validation artifacts only. They must never override or substitute for the actual IBSng source when the source is available. If any parity document conflicts with the source archive, **the source archive wins**.
+
+For every source-sensitive change:
+1. Inspect the actual A1.24 source implementation and its call path/consumers.
+2. Record the source-derived behavior.
+3. Implement the modern ATD equivalent without unnecessarily cloning legacy architecture.
+4. Add/adjust tests.
+5. Only call behavior "Verified" when source/integration evidence supports it.
+
+See `docs/SOURCE-AUTHORITY.md` for the durable rule and current source-derived findings.
+
+Do not replace or reconstruct the canonical archive. Do not use external IBSng mirrors as authoritative.
 
 ## Architecture direction
 ATD is a modern AAA/RADIUS/ISP-management platform with IBSng A1.24 behavioral compatibility. Compatibility is not architectural cloning: preserve A1.24 behavior, terminology, schema semantics and workflows where required, but keep the implementation modular and extensible.
@@ -36,8 +46,7 @@ Core direction:
 
 ## Current checkpoint
 Branch: `main`
-HEAD: `23290d8af39a03d9e9940a05ee6cee28a9f92817`
-Latest commit: `Remove unused MPPE test import`
+The source-authority documentation and temporary-inspection cleanup are the latest repository changes. Inspect the actual current HEAD before making the next code change.
 
 Recent MS-CHAPv2/MPPE work:
 - RFC-compatible CHAP/MS-CHAPv2 wire attribute handling.
@@ -52,9 +61,11 @@ Recent MS-CHAPv2/MPPE work:
 - RADIUS duplicate identity was aligned to the A1.24 source-derived tuple: source IP + source port + packet identifier + packet code.
 
 ## Current verification state
-Latest focused GitHub workflows are green: Python #506 and CI #441 on HEAD `23290d8af39a03d9e9940a05ee6cee28a9f92817`. The passing suite covers the current codec, MS-CHAPv2/MPPE, duplicate-cache and access-context tests. This is test-green, not source-parity Verified.
+The canonical binary archive has now been extracted through a temporary GitHub Actions inspection run and directly inspected locally. The extracted tree contains 2,295 files. The temporary CI inspection hooks were removed immediately after extraction.
 
-The canonical binary archive is present in GitHub but the available GitHub text API cannot directly extract its binary contents. Source-derived project docs remain the working authority until the archive can be programmatically inspected.
+Important: this does **not** make parity docs authoritative. The source archive remains the sole behavioral authority. Current ATD tests are validation only.
+
+The latest code changes around MS-CHAPv2/MPPE, Message-Authenticator, duplicate detection, and multi-login must be judged against the newly inspected source findings before being called source-parity Verified.
 
 ## Key current files
 - `src/atd_radius/domain/radius_auth.py`
