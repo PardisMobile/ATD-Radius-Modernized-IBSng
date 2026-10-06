@@ -1,6 +1,8 @@
 """Production composition for the native RADIUS runtime."""
 from __future__ import annotations
-from typing import Protocol
+
+from typing import Callable, Protocol
+
 from atd_radius.domain.aaa import PluginPipeline, PluginSpec
 from atd_radius.domain.accounting_session import AccountingSessionService
 from atd_radius.domain.accounting_charge import InternetChargeSettlement
@@ -21,13 +23,16 @@ from atd_radius.infrastructure.ip_pool_repository import PostgresIPPoolRepositor
 from atd_radius.infrastructure.ras import RASRepository
 from atd_radius.infrastructure import UserRepository
 
+
 class UserSource(Protocol):
     def get_authentication_record(self, username: str) -> tuple[int, str, bool] | None: ...
     def attributes(self, user_id: int) -> list[tuple[str, str]]: ...
 
+
 class AccountingIdentityResolver(Protocol):
     def user_id(self, username: str) -> int | None: ...
     def ras_id(self, source_ip: str) -> int | None: ...
+
 
 class IPPoolSessionManager:
     """Bind native IP-pool runtime leases to RADIUS session lifecycle."""
@@ -67,8 +72,10 @@ class IPPoolSessionManager:
         for state in states:
             self.release_ip(state.key.ras_id, state.attributes.get("Framed-IP-Address"))
 
+
 class RadiusRuntimeHandler:
     """Adapt domain dispatch to UDP transport and execute accounting lifecycle."""
+
     def __init__(
         self,
         dispatcher: RadiusDispatcher,
@@ -112,6 +119,80 @@ class RadiusRuntimeHandler:
             return result.response
         return self.dispatcher.access(packet, source_ip=peer[0])
 
+
+class NativeRadiusRuntimeState:
+    """Long-lived in-memory state shared by packet-scoped database runtimes."""
+
+    def __init__(self, type_defaults=None) -> None:
+        self.sessions = SessionRegistry()
+        self.ras: RASRuntimeRegistry | None = None
+        self.pools: IPPoolRuntimeRegistry | None = None
+        self.type_defaults = type_defaults
+
+    def initialize(self, ras_repository, pool_repository) -> None:
+        self.ras = build_ras_runtime(ras_repository, self.type_defaults)
+        self.pools = IPPoolRuntimeRegistry(pool_repository)
+        self.pools.reload()
+
+
+class NativeRadiusPacketHandler:
+    """Create a fresh DB transaction for each packet while retaining runtime state."""
+
+    def __init__(
+        self,
+        state: NativeRadiusRuntimeState,
+        connection_factory: Callable[[], object],
+    ) -> None:
+        self.state = state
+        self.connection_factory = connection_factory
+
+    def __call__(self, packet: RadiusPacket, peer: tuple[str, int]) -> RadiusPacket:
+        with self.connection_factory() as conn:
+            if self.state.ras is None or self.state.pools is None:
+                self.state.initialize(RASRepository(conn), PostgresIPPoolRepository(conn))
+            else:
+                self.state.ras.repository = RASRepository(conn)
+                self.state.pools.repository = PostgresIPPoolRepository(conn)
+                self.state.ras.reload()
+                self.state.pools.reload()
+
+            users = UserRepository(conn)
+            ras = self.state.ras
+            pools = self.state.pools
+            persistence = NativeAccountingPersistence(ConnectionLogRepository(conn))
+            charge = InternetChargeSettlement(
+                PostgresInternetChargeRuleRepository(conn),
+                users,
+                UserCreditRepository(conn),
+            )
+            accounting = AccountingSessionService(self.state.sessions, persistence, charge)
+            dispatcher = build_radius_dispatcher(
+                users,
+                active_sessions_provider=session_views(self.state.sessions),
+                ras=ras,
+                ip_pools=pools,
+            )
+            identities = NativeAccountingIdentityResolver(users, ras)
+            handler = RadiusRuntimeHandler(
+                dispatcher,
+                accounting,
+                identities,
+                ip_pool_sessions=IPPoolSessionManager(pools, ras),
+            )
+            return handler(packet, peer)
+
+
+class PostgresRadiusSecretResolver:
+    """Resolve active NAS/RAS secrets from PostgreSQL for each incoming packet."""
+
+    def __init__(self, connection_factory: Callable[[], object]) -> None:
+        self.connection_factory = connection_factory
+
+    def secret_for_ip(self, source_ip: str) -> str | None:
+        with self.connection_factory() as conn:
+            return RASRepository(conn).get_secret_by_ip(source_ip)
+
+
 def build_radius_dispatcher(
     users: UserSource,
     active_sessions_provider=None,
@@ -120,6 +201,7 @@ def build_radius_dispatcher(
 ) -> RadiusDispatcher:
     """Build the native authentication boundary without inventing a new schema."""
     from atd_radius.infrastructure.access_context import NativeAccessContext
+
     policies = [
         PluginSpec(1, "authentication", AuthenticationPolicy()),
         PluginSpec(2, "lock", LockPolicy()),
@@ -131,17 +213,22 @@ def build_radius_dispatcher(
     pipeline = PluginPipeline(policies)
     return RadiusDispatcher(pipeline, access_context=NativeAccessContext(users, ras))
 
+
 class NativeAccountingIdentityResolver:
     """Resolve Accounting-Request identities through native User/RAS repositories."""
+
     def __init__(self, users: UserSource, ras) -> None:
         self.users = users
         self.ras = ras
+
     def user_id(self, username: str) -> int | None:
         record = self.users.get_authentication_record(username)
         return int(record[0]) if record else None
+
     def ras_id(self, source_ip: str) -> int | None:
         record = self.ras.get_by_ip(source_ip)
         return int(record.ras_id) if record else None
+
 
 def session_views(registry) -> callable:
     """Return native policy views backed by the live runtime session registry."""
@@ -150,7 +237,9 @@ def session_views(registry) -> callable:
             ActiveSessionView(state.key.unique_id)
             for state in registry.active_for_user(user_id)
         )
+
     return provider
+
 
 def build_ras_runtime(repository, type_defaults=None) -> RASRuntimeRegistry:
     """Build and load the source-compatible RAS runtime with mutation reloads."""
@@ -161,35 +250,47 @@ def build_ras_runtime(repository, type_defaults=None) -> RASRuntimeRegistry:
     return registry
 
 
-def build_native_radius_runtime(conn, type_defaults=None, users=None, ras_repository=None, pool_repository=None):
+def build_native_radius_runtime(
+    conn,
+    type_defaults=None,
+    users=None,
+    ras_repository=None,
+    pool_repository=None,
+    state: NativeRadiusRuntimeState | None = None,
+):
     """Compose the native RADIUS runtime over the A1.24 PostgreSQL schema.
 
-    The connection is intentionally supplied by the caller so the runtime,
-    accounting persistence and repository reads share one transaction boundary.
+    The connection is intentionally supplied by the caller so this function
+    remains useful for tests and one-transaction composition. Production UDP
+    wiring should use NativeRadiusPacketHandler so each packet owns a short
+    transaction while runtime session/pool state remains process-local.
     """
     users = users or UserRepository(conn)
     ras_repository = ras_repository or RASRepository(conn)
     pool_repository = pool_repository or PostgresIPPoolRepository(conn)
 
-    ras = build_ras_runtime(ras_repository, type_defaults)
-    pools = IPPoolRuntimeRegistry(pool_repository)
-    pools.reload()
+    state = state or NativeRadiusRuntimeState(type_defaults)
+    if state.ras is None or state.pools is None:
+        state.initialize(ras_repository, pool_repository)
+    else:
+        state.ras.repository = ras_repository
+        state.pools.repository = pool_repository
+        state.ras.reload()
+        state.pools.reload()
 
-    sessions = SessionRegistry()
     persistence = NativeAccountingPersistence(ConnectionLogRepository(conn))
     charge = InternetChargeSettlement(PostgresInternetChargeRuleRepository(conn), users, UserCreditRepository(conn))
-    accounting = AccountingSessionService(sessions, persistence, charge)
+    accounting = AccountingSessionService(state.sessions, persistence, charge)
     dispatcher = build_radius_dispatcher(
         users,
-        active_sessions_provider=session_views(sessions),
-        ras=ras,
-        ip_pools=pools,
+        active_sessions_provider=session_views(state.sessions),
+        ras=state.ras,
+        ip_pools=state.pools,
     )
-    identities = NativeAccountingIdentityResolver(users, ras)
-    ip_pool_sessions = IPPoolSessionManager(pools, ras)
+    identities = NativeAccountingIdentityResolver(users, state.ras)
     return RadiusRuntimeHandler(
         dispatcher,
         accounting,
         identities,
-        ip_pool_sessions=ip_pool_sessions,
+        ip_pool_sessions=IPPoolSessionManager(state.pools, state.ras),
     )
