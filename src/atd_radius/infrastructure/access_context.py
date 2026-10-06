@@ -25,8 +25,16 @@ class NativeAccessContext:
         if record is None:
             return {"__user_found": "0", "__password_ok": "0"}
         user_id, stored_password, locked = record
-        loader = getattr(self.users, "policy_attributes", self.users.attributes)
-        attrs = {name: value for name, value in loader(user_id)}
+        loader = getattr(self.users, "policy_attributes", None)
+        if loader is None:
+            loader = self.users.attributes
+        try:
+            loaded_attrs = loader(user_id)
+            attrs = {name: value for name, value in loaded_attrs}
+        except TypeError:
+            # Compatibility with simple/mock user sources that only implement
+            # attributes(); native UserRepository always supplies policy_attributes.
+            attrs = {name: value for name, value in self.users.attributes(user_id)}
         attrs["__user_found"] = "1"
         attrs["__user_id"] = str(user_id)
         attrs["__password_ok"] = "1" if (
