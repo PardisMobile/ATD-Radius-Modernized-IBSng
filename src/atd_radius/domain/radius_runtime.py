@@ -57,8 +57,8 @@ class SessionState:
 
 class SessionRegistry:
     def __init__(self): self._sessions:dict[SessionKey,SessionState]={}
-    def start(self,key:SessionKey,attributes:Mapping[str,str]|None=None)->SessionState:
-        state=SessionState(key,attributes or {},True,False)
+    def start(self,key:SessionKey,attributes:Mapping[str,str]|None=None,input_octets:int=0,output_octets:int=0)->SessionState:
+        state=SessionState(key,attributes or {},True,False,input_octets,output_octets)
         self._sessions[key]=state; return state
     def get(self,key:SessionKey)->SessionState|None: return self._sessions.get(key)
     def update(self,key:SessionKey,input_octets:int,output_octets:int)->tuple[int,int]:
