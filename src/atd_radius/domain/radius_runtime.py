@@ -12,7 +12,6 @@ class RequestKey:
     source_port:int
     identifier:int
     code:int
-    authenticator:bytes = b""
 
 @dataclass(slots=True)
 class CachedRequest(Generic[T]):
