@@ -14,9 +14,11 @@ def test_multilogin_rejects_when_existing_sessions_reach_source_limit():
     assert decision.reason == "multi_login"
 
 
-def test_multilogin_zero_allows_first_login():
+def test_multilogin_zero_rejects_first_login():
     attrs = AttributeSet({"multi_login": "0"})
-    assert session_policy(attrs, []).allowed
+    decision = session_policy(attrs, [])
+    assert not decision.allowed
+    assert decision.reason == "multi_login"
 
 
 def test_multi_login_zero_rejects_even_the_first_instance():
