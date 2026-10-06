@@ -30,9 +30,14 @@ class RadiusRuntimeHandler:
         dispatcher: RadiusDispatcher,
         accounting_sessions: AccountingSessionService,
         identities: AccountingIdentityResolver,
+        persistence=None,
     ) -> None:
         self.dispatcher = dispatcher
-        self.accounting_sessions = accounting_sessions
+        self.accounting_sessions = (
+            AccountingSessionService(accounting_sessions.registry, persistence)
+            if persistence is not None and accounting_sessions.persistence is None
+            else accounting_sessions
+        )
         self.identities = identities
         if self.dispatcher.session_control is None:
             self.dispatcher.session_control = RegistrySessionControl(accounting_sessions.registry)
