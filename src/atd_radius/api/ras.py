@@ -119,3 +119,87 @@ def edit_ras_port(ras_id: int, port_name: str, payload: RASPortPayload) -> dict[
         repo.upsert_port(ras_id, port_name, payload.phone, payload.type, payload.comment)
         conn.commit()
     return {"ok": True}
+
+
+@router.delete("/{ras_id}/ports/{port_name}", status_code=204)
+def delete_ras_port(ras_id: int, port_name: str) -> None:
+    with connection() as conn:
+        repo = RASRepository(conn)
+        if repo.get(ras_id) is None:
+            raise HTTPException(status_code=404, detail="RAS not found")
+        repo.delete_port(ras_id, port_name)
+        conn.commit()
+
+
+class RASAttributePayload(BaseModel):
+    attr_name: str = Field(min_length=1)
+    attr_value: str
+
+
+@router.get("/{ras_id}/attrs")
+def ras_attributes(ras_id: int) -> list[dict[str, str]]:
+    with connection() as conn:
+        repo = RASRepository(conn)
+        if repo.get(ras_id) is None:
+            raise HTTPException(status_code=404, detail="RAS not found")
+        return [{"attr_name": n, "attr_value": v} for n, v in repo.attributes(ras_id)]
+
+
+@router.put("/{ras_id}/attrs/{attr_name}")
+def set_ras_attribute(ras_id: int, attr_name: str, payload: RASAttributePayload) -> dict[str, bool]:
+    with connection() as conn:
+        repo = RASRepository(conn)
+        if repo.get(ras_id) is None:
+            raise HTTPException(status_code=404, detail="RAS not found")
+        repo.set_attribute(ras_id, attr_name, payload.attr_value)
+        conn.commit()
+    return {"ok": True}
+
+
+@router.delete("/{ras_id}/attrs/{attr_name}", status_code=204)
+def delete_ras_attribute(ras_id: int, attr_name: str) -> None:
+    with connection() as conn:
+        repo = RASRepository(conn)
+        if repo.get(ras_id) is None:
+            raise HTTPException(status_code=404, detail="RAS not found")
+        repo.delete_attribute(ras_id, attr_name)
+        conn.commit()
+
+
+class RASIPPoolPayload(BaseModel):
+    ippool_id: int = Field(gt=0)
+
+
+@router.get("/{ras_id}/ippools")
+def ras_ippools(ras_id: int) -> list[dict[str, int]]:
+    with connection() as conn:
+        repo = RASRepository(conn)
+        if repo.get(ras_id) is None:
+            raise HTTPException(status_code=404, detail="RAS not found")
+        return [{"serial": x.serial, "ras_id": x.ras_id, "ippool_id": x.ippool_id} for x in repo.ippools(ras_id)]
+
+
+@router.post("/{ras_id}/ippools", status_code=201)
+def add_ras_ippool(ras_id: int, payload: RASIPPoolPayload) -> dict[str, int]:
+    try:
+        with connection() as conn:
+            repo = RASRepository(conn)
+            if repo.get(ras_id) is None:
+                raise HTTPException(status_code=404, detail="RAS not found")
+            serial = repo.add_ippool(ras_id, payload.ippool_id)
+            conn.commit()
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="IPPool could not be assigned to RAS") from exc
+    return {"serial": serial, "ras_id": ras_id, "ippool_id": payload.ippool_id}
+
+
+@router.delete("/{ras_id}/ippools/{serial}", status_code=204)
+def delete_ras_ippool(ras_id: int, serial: int) -> None:
+    with connection() as conn:
+        repo = RASRepository(conn)
+        if repo.get(ras_id) is None:
+            raise HTTPException(status_code=404, detail="RAS not found")
+        repo.delete_ippool(serial)
+        conn.commit()
