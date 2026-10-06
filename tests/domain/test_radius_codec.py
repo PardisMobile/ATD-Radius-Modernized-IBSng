@@ -260,3 +260,27 @@ def test_mppe_keys_are_salted_and_rfc2548_encrypted():
     assert salts[1][0] & 0x80
     assert decoded[16] == send_key
     assert decoded[17] == recv_key
+
+def test_mschapv1_mppe_key_and_policy_vsas_are_a124_encrypted():
+    from atd_radius.domain.radius_auth import derive_mschapv1_mppe_key
+    from atd_radius.domain.radius_codec import _crypt_password
+
+    request_authenticator = bytes.fromhex("00112233445566778899aabbccddeeff")
+    key = derive_mschapv1_mppe_key("clientPass")
+    packet = RadiusPacket(
+        RadiusCode.ACCESS_ACCEPT,
+        15,
+        {
+            "MS-CHAP-MPPE-Keys": key,
+            "MS-MPPE-Encryption-Policy": "00000001",
+            "MS-MPPE-Encryption-Types": "00000006",
+        },
+        request_authenticator,
+    )
+    wire = encode(packet, "shared")
+    decoded = decode(wire, "shared")
+    assert decoded.attributes["MS-CHAP-MPPE-Keys"] == _crypt_password(
+        key, b"shared", request_authenticator
+    ).hex()
+    assert decoded.attributes["MS-MPPE-Encryption-Policy"] == "00000001"
+    assert decoded.attributes["MS-MPPE-Encryption-Types"] == "00000006"
