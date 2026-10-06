@@ -170,3 +170,6 @@ When a new ChatGPT conversation starts, do not ask the user to restate the proje
 - The implementation keeps the A1.24 per-instance state model explicit instead of treating raw accounting deltas as the billing model.
 - Remaining validation is deliberately limited to exact source confirmation of InternetChargeRule.start/end, the authoritative getTypeObj().getInOutBytes(instance) data path, and transaction/rollback atomicity.
 - Temporary source-trace workflow created during this follow-up was removed; no temporary workflow is intentionally left in main.
+
+- Follow-up tests now also cover counter reset (no negative transfer charge) and zero-credit settlement (A1.24-style zero-value credit commit remains observable).
+- Source verification via temporary GitHub Action could not be executed from the available connector because workflow dispatch/run retrieval is not exposed reliably; the temporary workflow was removed and no source claim was upgraded to Verified on that basis.
