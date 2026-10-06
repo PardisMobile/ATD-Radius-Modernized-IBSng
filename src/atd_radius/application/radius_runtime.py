@@ -54,8 +54,8 @@ class IPPoolSessionManager:
         if pool is not None and ip in pool.used_ips:
             self.pools.release(pool_id, ip)
 
-    def release_control(self, attributes, registry) -> None:
-        for state in registry.matching(attributes):
+    def release_states(self, states) -> None:
+        for state in states:
             self.release_ip(state.key.ras_id, state.attributes.get("Framed-IP-Address"))
 
 class RadiusRuntimeHandler:
@@ -81,9 +81,11 @@ class RadiusRuntimeHandler:
 
     def __call__(self, packet: RadiusPacket, peer: tuple[str, int]) -> RadiusPacket:
         if packet.code in (RadiusCode.DISCONNECT_REQUEST, RadiusCode.COA_REQUEST):
+            registry = self.accounting_sessions.registry
+            matches = registry.matching(packet.attributes) if packet.code is RadiusCode.DISCONNECT_REQUEST else ()
             response = self.dispatcher.control(packet)
-            if response.code in (RadiusCode.DISCONNECT_ACK, RadiusCode.COA_ACK) and self.ip_pool_sessions:
-                self.ip_pool_sessions.release_control(packet.attributes, self.accounting_sessions.registry)
+            if response.code is RadiusCode.DISCONNECT_ACK and self.ip_pool_sessions:
+                self.ip_pool_sessions.release_states(matches)
             return response
         if packet.code is RadiusCode.ACCOUNTING_REQUEST:
             result: DispatchResult = self.dispatcher.accounting(packet)
