@@ -2,7 +2,7 @@ from types import SimpleNamespace
 
 from atd_radius.application.radius_runtime import IPPoolSessionManager
 from atd_radius.domain.ip_pool import IPPoolRuntimeRegistry
-from atd_radius.domain.ras import RAS, RASRuntimeRegistry
+from atd_radius.domain.ras import RASRuntimeRegistry
 from atd_radius.infrastructure.ip_pool_repository import IPPoolRecord
 
 
