@@ -36,8 +36,8 @@ Core direction:
 
 ## Current checkpoint
 Branch: `main`
-HEAD: `2a98959328e810ebec5e0eaac494a8f1e4ddeae9`
-Latest commit: `Lock duplicate identity to A1.24 source tuple`
+HEAD: `23290d8af39a03d9e9940a05ee6cee28a9f92817`
+Latest commit: `Remove unused MPPE test import`
 
 Recent MS-CHAPv2/MPPE work:
 - RFC-compatible CHAP/MS-CHAPv2 wire attribute handling.
@@ -52,7 +52,7 @@ Recent MS-CHAPv2/MPPE work:
 - RADIUS duplicate identity was aligned to the A1.24 source-derived tuple: source IP + source port + packet identifier + packet code.
 
 ## Current verification state
-Latest commits have triggered GitHub Python/CI workflows. At handoff time they are not yet confirmed green. Earlier MS-CHAPv2 checkpoint run failed, so do not mark MS-CHAPv2/MPPE Verified yet.
+Latest focused GitHub workflows are green: Python #506 and CI #441 on HEAD `23290d8af39a03d9e9940a05ee6cee28a9f92817`. The passing suite covers the current codec, MS-CHAPv2/MPPE, duplicate-cache and access-context tests. This is test-green, not source-parity Verified.
 
 The canonical binary archive is present in GitHub but the available GitHub text API cannot directly extract its binary contents. Source-derived project docs remain the working authority until the archive can be programmatically inspected.
 
