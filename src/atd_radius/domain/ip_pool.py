@@ -47,3 +47,145 @@ class IPAllocator:
         raise IPPoolError(f"IP pool {self.pool.name!r} is exhausted")
     def is_available(self,address:str|ipaddress.IPv4Address,used:Iterable[str|ipaddress.IPv4Address])->bool:
         ip=ipaddress.ip_address(address); return ip in self.pool.addresses_list and ip not in {ipaddress.ip_address(x) for x in used}
+
+
+
+class IPPoolFullError(IPPoolError):
+    pass
+
+
+class IPPoolIPNotInUseError(IPPoolError):
+    pass
+
+
+class IPPoolRuntime:
+    """A1.24-compatible process-local free/used IP container."""
+
+    def __init__(self, pool_id: int, name: str, comment: str | None, addresses) -> None:
+        self.pool_id = pool_id
+        self.name = name
+        self.comment = comment
+        import threading
+        self._lock = threading.RLock()
+        self._all_ips = tuple(addresses)
+        self._free = list(self._all_ips)
+        self._used: list[str] = []
+
+    @property
+    def all_ips(self) -> tuple[str, ...]:
+        with self._lock:
+            return self._all_ips
+
+    @property
+    def free_ips(self) -> tuple[str, ...]:
+        with self._lock:
+            return tuple(self._free)
+
+    @property
+    def used_ips(self) -> tuple[str, ...]:
+        with self._lock:
+            return tuple(self._used)
+
+    def allocate(self) -> str:
+        with self._lock:
+            if not self._free:
+                raise IPPoolFullError(f"IP pool {self.name} has no free addresses")
+            ip = self._free.pop(0)
+            self._used.append(ip)
+            return ip
+
+    def claim(self, ip: str) -> None:
+        with self._lock:
+            if ip not in self._all_ips:
+                return
+            if ip not in self._free:
+                raise IPPoolFullError(f"IP address {ip} is already in use")
+            self._free.remove(ip)
+            self._used.append(ip)
+
+    def release(self, ip: str) -> None:
+        with self._lock:
+            try:
+                self._used.remove(ip)
+            except ValueError as exc:
+                raise IPPoolIPNotInUseError(f"IP address {ip} is not in use") from exc
+            if ip in self._all_ips:
+                self._free.append(ip)
+
+    def reload(self, addresses) -> None:
+        with self._lock:
+            new_all = tuple(addresses)
+            used = [ip for ip in self._used if ip in new_all]
+            used_set = set(used)
+            self._all_ips = new_all
+            self._used = used
+            self._free = [ip for ip in new_all if ip not in used_set]
+
+
+class IPPoolRuntimeRegistry:
+    """Load native ippool membership and expose A1.24 allocation operations."""
+
+    def __init__(self, repository) -> None:
+        self.repository = repository
+        import threading
+        self._pools = {}
+        self._lock = threading.RLock()
+
+    def reload(self, pool_id: int | None = None):
+        with self._lock:
+            if pool_id is None:
+                records = self.repository.list()
+                existing = self._pools
+                self._pools = {}
+                for record in records:
+                    addresses = self.repository.list_addresses(record.pool_id)
+                    pool = existing.get(record.pool_id)
+                    if pool is None:
+                        pool = IPPoolRuntime(record.pool_id, record.name, record.comment, addresses)
+                    else:
+                        pool.name = record.name
+                        pool.comment = record.comment
+                        pool.reload(addresses)
+                    self._pools[record.pool_id] = pool
+            else:
+                record = self.repository.get(pool_id)
+                if record is None:
+                    self._pools.pop(pool_id, None)
+                else:
+                    addresses = self.repository.list_addresses(pool_id)
+                    pool = self._pools.get(pool_id)
+                    if pool is None:
+                        pool = IPPoolRuntime(record.pool_id, record.name, record.comment, addresses)
+                        self._pools[pool_id] = pool
+                    else:
+                        pool.name = record.name
+                        pool.comment = record.comment
+                        pool.reload(addresses)
+            return self.active()
+
+    def get(self, pool_id: int) -> IPPoolRuntime | None:
+        return self._pools.get(pool_id)
+
+    def get_by_name(self, name: str) -> IPPoolRuntime | None:
+        return next((pool for pool in self._pools.values() if pool.name == name), None)
+
+    def allocate(self, pool_id: int) -> str:
+        return self._require(pool_id).allocate()
+
+    def claim(self, pool_id: int, ip: str) -> None:
+        self._require(pool_id).claim(ip)
+
+    def release(self, pool_id: int, ip: str) -> None:
+        self._require(pool_id).release(ip)
+
+    def active(self):
+        return tuple(self._pools[key] for key in sorted(self._pools))
+
+    def snapshot(self):
+        return dict(self._pools)
+
+    def _require(self, pool_id: int) -> IPPoolRuntime:
+        pool = self._pools.get(pool_id)
+        if pool is None:
+            raise KeyError(f"IP pool {pool_id} is not loaded")
+        return pool
