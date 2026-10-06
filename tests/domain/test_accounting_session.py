@@ -109,6 +109,6 @@ def test_no_connection_log_suppresses_native_persistence():
     persistence = Mock()
     persistence.start.return_value = 42
     service = AccountingSessionService(SessionRegistry(), persistence)
-    result = service.apply(event(AccountingStatus.START, "nolog", attrs={"no_connection_log": "1"}), 7, 3)
+    result = service.apply(event(AccountingStatus.START, "nolog", attributes={"no_connection_log": "1"}), 7, 3)
     assert result.connection_log_id is None
     persistence.start.assert_not_called()
