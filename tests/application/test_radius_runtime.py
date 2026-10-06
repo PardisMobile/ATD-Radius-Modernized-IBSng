@@ -103,3 +103,40 @@ def test_build_ras_runtime_loads_and_binds_repository_change_hook():
     registry = build_ras_runtime(repo)
     assert registry.active() == ()
     assert repo.on_change == registry.on_repository_change
+
+
+def test_build_radius_dispatcher_allocates_from_ras_bound_native_pool():
+    from atd_radius.domain.ip_pool import IPPoolRuntimeRegistry
+    from atd_radius.domain.ras import RAS
+    from atd_radius.infrastructure.ip_pool_repository import IPPoolRecord
+
+    class PoolRepo:
+        def list(self): return [IPPoolRecord(1, "pool-a", None)]
+        def get(self, pool_id): return IPPoolRecord(1, "pool-a", None) if pool_id == 1 else None
+        def list_addresses(self, pool_id): return ("192.0.2.20",)
+
+    users = Mock()
+    users.get_authentication_record.return_value = (7, "secret", False)
+    users.attributes.return_value = []
+    ras = Mock()
+    ras.get_by_ip.return_value = RAS(3, "192.0.2.1", "router", "Mikrotik", "secret", ippool_ids=(1,))
+    ras.attributes.return_value = []
+
+    pools = IPPoolRuntimeRegistry(PoolRepo())
+    pools.reload()
+    dispatcher = build_radius_dispatcher(users, ras=ras, ip_pools=pools)
+
+    response = dispatcher.access(
+        RadiusPacket(
+            RadiusCode.ACCESS_REQUEST,
+            5,
+            {"User-Name": "alice", "User-Password": "secret"},
+            b"0123456789abcdef",
+        ),
+        source_ip="192.0.2.1",
+    )
+
+    assert response.code is RadiusCode.ACCESS_ACCEPT
+    assert response.attributes["Framed-IP-Address"] == "192.0.2.20"
+    assert response.attributes["Framed-IP-Netmask"] == "255.255.255.255"
+    assert pools.get(1).used_ips == ("192.0.2.20",)
