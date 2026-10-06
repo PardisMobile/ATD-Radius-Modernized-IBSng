@@ -33,3 +33,27 @@ def test_build_radius_dispatcher_uses_native_access_context():
 
     assert response.code is RadiusCode.ACCESS_ACCEPT
     assert "User-Password" not in response.attributes
+
+
+def test_runtime_handler_applies_accounting_session():
+    from atd_radius.application.radius_runtime import RadiusRuntimeHandler
+    from atd_radius.domain.accounting_lifecycle import AccountingEvent, AccountingStatus
+    from atd_radius.domain.radius_dispatch import DispatchResult
+
+    dispatcher = Mock()
+    event = AccountingEvent(AccountingStatus.START, "alice", "sid")
+    dispatcher.accounting.return_value = DispatchResult(
+        RadiusPacket(RadiusCode.ACCOUNTING_RESPONSE, 9, {}, b"0123456789abcdef"), event
+    )
+    sessions = Mock()
+    identities = Mock()
+    identities.user_id.return_value = 7
+    identities.ras_id.return_value = 3
+
+    handler = RadiusRuntimeHandler(dispatcher, sessions, identities)
+    packet = RadiusPacket(RadiusCode.ACCOUNTING_REQUEST, 9, {"Acct-Status-Type": "Start"}, b"0123456789abcdef")
+
+    response = handler(packet, ("192.0.2.1", 1812))
+
+    assert response.code is RadiusCode.ACCOUNTING_RESPONSE
+    sessions.apply.assert_called_once_with(event, 7, 3)
