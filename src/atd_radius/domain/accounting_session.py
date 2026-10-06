@@ -1,6 +1,7 @@
 """Session lifecycle adapter for RADIUS Accounting-Request events."""
 from __future__ import annotations
 from dataclasses import dataclass
+from decimal import Decimal
 from typing import Protocol
 from .accounting_lifecycle import AccountingEvent, AccountingStatus
 from .accounting_charge import InternetChargeSettlement
@@ -54,7 +55,7 @@ class AccountingSessionService:
         if event.status is AccountingStatus.STOP:
             di,do=self.registry.update(key,event.input_octets,event.output_octets)
             state=self.registry.stop(key,event.input_octets,event.output_octets)
-            used=self.charge.settle(state,event.observed_at,ras_id,port) if self.charge else None
+            used=(Decimal("0") if "no_commit" in event.attributes else self.charge.settle(state,event.observed_at,ras_id,port)) if self.charge else None
             if self.persistence and log_id is not None and "no_connection_log" not in event.attributes:
                 self.persistence.stop(log_id,event,used)
             return AccountingSessionResult(state,di,do,log_id,str(used) if used is not None else None)
