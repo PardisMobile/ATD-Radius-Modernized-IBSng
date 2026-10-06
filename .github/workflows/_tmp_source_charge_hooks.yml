@@ -1,0 +1,18 @@
+name: _tmp_source_charge_hooks
+on:
+  workflow_dispatch:
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect A1.24 charge hooks
+        run: |
+          set -e
+          mkdir -p /tmp/ibs
+          tar -xjf "Source of Truth/IBSng-A1.24.tar.bz2" -C /tmp/ibs
+          find /tmp/ibs -type f \( -name 'internet_charge_rule.py' -o -name 'internet_charge.py' -o -name 'charge.py' -o -name 'user_charge.py' -o -name 'normal_user.py' \) -print
+          grep -R -n -A35 -B10 "def start(self,user_obj" /tmp/ibs 2>/dev/null | head -250
+          grep -R -n -A25 -B10 "def end(self,user_obj" /tmp/ibs 2>/dev/null | head -200
+          grep -R -n -A25 -B10 "def getInOutBytes" /tmp/ibs 2>/dev/null | head -200
+          grep -R -n -A20 -B10 "def update.*InOut\|updateInOut\|bytes_in\|bytes_out" /tmp/ibs/core /tmp/ibs/radius_server 2>/dev/null | head -300
