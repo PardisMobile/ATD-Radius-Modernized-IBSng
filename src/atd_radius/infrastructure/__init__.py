@@ -113,6 +113,16 @@ class UserRepository:
         else:
             raise ValueError("A1.24 USER state is controlled by attributes; only active/locked are supported here.")
 
+    def get_authentication_record(self, username: str) -> tuple[int, str, bool] | None:
+        row = self.conn.execute(
+            "SELECT u.user_id, nu.normal_password, (lock_attr.user_id IS NOT NULL) "
+            "FROM users u JOIN normal_users nu ON nu.user_id=u.user_id "
+            "LEFT JOIN user_attrs lock_attr ON lock_attr.user_id=u.user_id AND lock_attr.attr_name='lock' "
+            "WHERE nu.normal_username=%s",
+            (username,),
+        ).fetchone()
+        return (int(row[0]), str(row[1]), bool(row[2])) if row else None
+
     def set_password(self, user_id: int, password: str) -> None:
         self.conn.execute(
             "UPDATE normal_users SET normal_password=%s WHERE user_id=%s",
