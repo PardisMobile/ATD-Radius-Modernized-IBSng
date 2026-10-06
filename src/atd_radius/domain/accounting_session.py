@@ -46,6 +46,27 @@ class AccountingSessionService:
             return AccountingSessionResult(state, connection_log_id=log_id)
 
         current = self.registry.get(key)
+        if current is not None and current.stopped:
+            # Accounting retries after a completed Stop must not resurrect the
+            # session or create/update a second native connection_log record.
+            return AccountingSessionResult(
+                current,
+                connection_log_id=(
+                    int(current.attributes["__connection_log_id"])
+                    if "__connection_log_id" in current.attributes
+                    else None
+                ),
+            )
+
+        if current is not None and event.status is AccountingStatus.START:
+            # Duplicate Accounting-Start is a retransmission, not a new session.
+            log_id = (
+                int(current.attributes["__connection_log_id"])
+                if "__connection_log_id" in current.attributes
+                else None
+            )
+            return AccountingSessionResult(current, connection_log_id=log_id)
+
         if current is None:
             if event.status is AccountingStatus.INTERIM:
                 state = self.registry.start(key, dict(event.attributes), event.input_octets, event.output_octets)
