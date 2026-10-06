@@ -18,7 +18,7 @@
 - [x] Typed users, groups, services, RAS, IP pools and sessions
 - [x] Attribute inheritance foundation
 - [x] IP allocation service contract
-- [x] PostgreSQL user repository and transaction-safe IP allocation
+- [x] PostgreSQL user repository and native A1.24 IP pool membership/runtime allocation
 - [x] Initial users REST resource
 - [x] Searchable/paginated users REST resource
 - [x] Argon2 credential boundary
