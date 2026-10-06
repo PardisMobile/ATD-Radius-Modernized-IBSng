@@ -113,6 +113,15 @@ The latest code changes around MS-CHAPv2/MPPE, Message-Authenticator, duplicate 
 - `docs/COMPATIBILITY-MATRIX.md`
 - `Source of Truth/README.md`
 
+### Newly fixed source-traced authentication checkpoint — 2026-10-06
+- Canonical A1.24 source directly traced through `core/user/plugins/password.py`, `core/user/plugins/mschap_end.py`, and `radius_server/pyrad/packet.py`.
+- CHAP uses CHAP-Identifier + password + CHAP-Challenge, falling back to the packet authenticator when CHAP-Challenge is absent.
+- MS-CHAPv1 compares only the 24-byte NT-Response field at response offset 26 and does not require extra response-field validation beyond the source path.
+- MS-CHAPv2 compares the 24-byte NT-Response at offset 26 using the supplied username and MS-CHAP-Challenge; successful authentication then emits the A1.24 MS-CHAP2-Success and MPPE material through the final plugin.
+- Authentication failure in the A1.24 password plugin is a `WRONG_PASSWORD` GeneralException; ATD's authentication boundary maps invalid credentials to `Access-Reject` / `INVALID_CREDENTIALS`.
+- This checkpoint confirms the credential verification and reply-material semantics already implemented in ATD. End-to-end RAS/provider coverage and complete attribute/dictionary coverage remain separate unresolved work.
+- Do not re-investigate these exact CHAP/MS-CHAP verification semantics in later chats unless new canonical-source evidence contradicts them.
+
 ## Fixed source-traced checkpoints — do not restart
 
 Before starting new work, read docs/SOURCE-AUTHORITY.md. The following areas have already been directly traced against A1.24 source and should be treated as established unless new source evidence contradicts them: MS-CHAPv1/v2 field semantics and MPPE response generation; MultiLogin default/explicit-zero semantics; user-over-group attribute precedence; A1.24 attribute table structure; user attribute aggregation; RAS-specific MultiLogin capability; duplicate request identity; IP-pool membership vs runtime free/used state; connection_log native structure.
