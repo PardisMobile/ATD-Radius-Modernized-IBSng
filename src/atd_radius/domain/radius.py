@@ -9,11 +9,11 @@ class RadiusCode(StrEnum):
 class RadiusPacket:
     code: RadiusCode
     identifier: int
-    attributes: Mapping[str,str]=field(default_factory=dict)
+    attributes: Mapping[str, object]=field(default_factory=dict)
     authenticator: bytes=b""
     def __post_init__(self):
         if not 0 <= self.identifier <= 255: raise ValueError("RADIUS identifier must be 0..255")
-def response_for_access(request: RadiusPacket, action: str, attributes: Mapping[str,str]|None=None)->RadiusPacket:
+def response_for_access(request: RadiusPacket, action: str, attributes: Mapping[str, object]|None=None)->RadiusPacket:
     mapping={"accept":RadiusCode.ACCESS_ACCEPT,"reject":RadiusCode.ACCESS_REJECT,"challenge":RadiusCode.ACCESS_CHALLENGE}
     if request.code is not RadiusCode.ACCESS_REQUEST: raise ValueError("access response requires Access-Request")
     if action not in mapping: raise ValueError("invalid AAA action")
