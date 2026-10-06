@@ -41,3 +41,17 @@ def test_relative_expiry_rejects_after_deadline():
     now=datetime.fromtimestamp(5000,tz=timezone.utc)
     r=RelativeExpiryPolicy(now).evaluate(AAARequest("u",{"rel_exp_date":"3600","first_login":"1000"}))
     assert r.action is AAAAction.REJECT
+
+
+def test_multilogin_live_provider_uses_active_sessions_for_user():
+    sessions = {7: (ActiveSessionView("s1"),)}
+    p = MultiLoginPolicy(active_sessions_provider=lambda user_id: sessions[user_id])
+    request = AAARequest("u", {"__user_id": "7", "multi_login": "1"})
+    assert p.evaluate(request) is None
+
+
+def test_multilogin_live_provider_rejects_second_session_when_ras_disallows():
+    sessions = {7: (ActiveSessionView("s1"),)}
+    p = MultiLoginPolicy(active_sessions_provider=lambda user_id: sessions[user_id])
+    request = AAARequest("u", {"__user_id": "7", "multi_login": "2", "ras_multi_login": "false"})
+    assert p.evaluate(request).reason == "RAS_DOESNT_ALLOW_MULTILOGIN"
