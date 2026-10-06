@@ -46,3 +46,38 @@ def test_accounting_session_persists_start_and_stop_using_connection_log_id():
     persistence.stop.assert_called_once()
     assert persistence.stop.call_args.args[0] == 99
     assert persistence.stop.call_args.args[1].session_id == "sid-p"
+
+
+def test_duplicate_start_does_not_create_a_second_connection_log():
+    from unittest.mock import Mock
+    persistence = Mock()
+    persistence.start.return_value = 123
+    service = AccountingSessionService(SessionRegistry(), persistence)
+    first = service.apply(event(AccountingStatus.START, "dup", 100, 200), 7, 3)
+    second = service.apply(event(AccountingStatus.START, "dup", 999, 999), 7, 3)
+    assert first.connection_log_id == second.connection_log_id == 123
+    assert second.state.input_octets == 100
+    persistence.start.assert_called_once()
+
+
+def test_duplicate_stop_does_not_update_persistence_twice_or_resurrect_session():
+    from unittest.mock import Mock
+    persistence = Mock()
+    persistence.start.return_value = 124
+    service = AccountingSessionService(SessionRegistry(), persistence)
+    service.apply(event(AccountingStatus.START, "stop-dup", 100, 200), 7, 3)
+    first = service.apply(event(AccountingStatus.STOP, "stop-dup", 150, 260), 7, 3)
+    second = service.apply(event(AccountingStatus.STOP, "stop-dup", 999, 999), 7, 3)
+    assert first.state.stopped and second.state.stopped
+    assert (second.delta_input_octets, second.delta_output_octets) == (0, 0)
+    persistence.stop.assert_called_once()
+
+
+def test_interim_after_stop_does_not_resurrect_session():
+    service = AccountingSessionService(SessionRegistry())
+    service.apply(event(AccountingStatus.START, "after-stop", 10, 20), 7, 3)
+    service.apply(event(AccountingStatus.STOP, "after-stop", 20, 30), 7, 3)
+    result = service.apply(event(AccountingStatus.INTERIM, "after-stop", 50, 60), 7, 3)
+    assert result.state.stopped
+    assert result.state.input_octets == 20
+    assert result.state.output_octets == 30
