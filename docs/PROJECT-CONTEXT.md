@@ -105,7 +105,7 @@ Read this file, ROADMAP.md, ARCHITECTURE.md, docs/DECISIONS.md, docs/phase-0-inv
 - IP pool runtime preserves the A1.24 process-local free/used model, first-free allocation, explicit claim/release and reload behavior.
 - Reload preserves active addresses that remain in the refreshed membership list and drops deleted members.
 - `ras_ippools` remains the authoritative RAS-to-pool binding surface; live Access/session lifecycle wiring is still pending.
-- RAS repository plus source-compatible runtime registry/loader is implemented; mutation-triggered reload integration remains pending verification.
+- RAS repository plus source-compatible runtime registry/loader is implemented; repository mutation hooks now support targeted runtime reload.
 
 ### Billing
 - Internet charge-rule selection implements source-derived priority: RAS-specific +2, port-specific +1.
