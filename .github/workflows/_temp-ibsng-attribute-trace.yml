@@ -13,7 +13,17 @@ jobs:
           tar -xjf "Source of Truth/IBSng-A1.24.tar.bz2" -C /tmp/i
           echo '=== multi_login refs ==='
           grep -Rni --exclude='*.pyc' -E 'multi_login|MultiLogin|instances|USER_LOGIN' /tmp/i | head -n 500 || true
-          echo '=== attribute default/get refs ==='
-          grep -Rni --exclude='*.pyc' -E 'class .*Attribute|def getAttribute|def get.*attribute|default.*attribute|attributes.*default' /tmp/i/core /tmp/i/plugin 2>/dev/null | head -n 500 || true
-          echo '=== likely plugin files ==='
-          find /tmp/i -type f \( -iname '*multilogin*' -o -iname '*attribute*' \) | head -n 300
+          echo '=== multilogin.py ==='
+          sed -n '1,260p' /tmp/i/IBSng/core/user/plugins/multilogin.py
+          echo '=== attribute.py ==='
+          sed -n '1,320p' /tmp/i/IBSng/core/user/attribute.py
+          echo '=== user_plugin.py hooks ==='
+          sed -n '1,220p' /tmp/i/IBSng/core/user/user_plugin.py
+          echo '=== group/user attribute loading ==='
+          sed -n '1,180p' /tmp/i/IBSng/core/user/attribute_manager.py
+          echo '=== normal_user.py ==='
+          sed -n '1,260p' /tmp/i/IBSng/core/user/normal_user.py
+          echo '=== user.py attribute/instance refs ==='
+          grep -n -E 'getAttribute|attribute|instances|USER_LOGIN|login' /tmp/i/IBSng/core/user/user.py | head -n 250
+          echo '=== RAS internet multi-login refs ==='
+          grep -Rni --include='*.py' -E 'multi_login|ras_msg\["multi_login"\]|getAttribute\(".*multi_login' /tmp/i/IBSng/core/ras/rases
