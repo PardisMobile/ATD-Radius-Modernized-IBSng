@@ -22,8 +22,8 @@ This is the master parity ledger. A feature is not considered migrated merely be
 | Sessions | session/accounting plugins | Session domain + accounting store | Runtime implemented / persistence and source parity pending |
 | RADIUS authentication | radius_server/* | Python RADIUS server | Runtime boundary implemented / full parity pending |
 | PAP | IBSng RADIUS auth | RADIUS auth pipeline | Implemented boundary / parity pending |
-| CHAP | IBSng RADIUS auth | RADIUS auth pipeline | Not implemented |
-| MS-CHAP | IBSng RADIUS auth/plugin behavior | RADIUS auth pipeline | Not implemented |
+| CHAP | IBSng RADIUS auth | RADIUS auth pipeline | Implemented boundary / parity pending |
+| MS-CHAP | IBSng RADIUS auth/plugin behavior | RADIUS auth pipeline | MS-CHAPv2 implemented boundary / source parity pending |
 | Accounting | radius_server/* + accounting plugins | Accounting engine | Runtime implemented / connection-log persistence pending |
 | Duplicate requests | IBSng RADIUS request handling | Request deduplication/idempotency | Implemented boundary / full parity pending |
 | Disconnect | RADIUS/RAS behavior | RADIUS CoA/Disconnect adapter | Runtime implemented / full parity pending |
