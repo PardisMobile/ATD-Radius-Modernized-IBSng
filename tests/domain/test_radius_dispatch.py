@@ -24,8 +24,8 @@ def test_accounting_returns_event_and_response():
 
 def test_disconnect_and_coa_dispatch():
     p=RadiusDispatcher(PluginPipeline([]),Control())
-    assert p.control("Disconnect-Request",{"Acct-Session-Id":"s"})=="ack"
-    assert p.control("CoA-Request",{"Acct-Session-Id":"s"})=="ack"
+    assert p.control(RadiusPacket(RadiusCode.DISCONNECT_REQUEST, 1, {"Acct-Session-Id":"s"})).code is RadiusCode.DISCONNECT_ACK
+    assert p.control(RadiusPacket(RadiusCode.COA_REQUEST, 2, {"Acct-Session-Id":"s"})).code is RadiusCode.COA_ACK
 
 
 class Context:
