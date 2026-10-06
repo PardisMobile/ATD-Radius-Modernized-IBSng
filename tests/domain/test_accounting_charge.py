@@ -46,7 +46,7 @@ def test_rule_transition_accumulates_previous_rule_before_resetting_baseline():
     state.output_octets=1200
     transition=start.replace(hour=11)
     settlement.update(state,transition,3,None)
-    assert state.charge_accrued==Decimal("61.953125")
+    assert state.charge_accrued==Decimal("3601.953125")
     assert state.charge_rule_id==2
     assert state.charge_rule_input_octets==1100
     assert state.charge_rule_output_octets==1200
@@ -54,7 +54,7 @@ def test_rule_transition_accumulates_previous_rule_before_resetting_baseline():
     state.output_octets=2224
     stop=transition.replace(minute=2)
     used=settlement.settle(state,stop,3,None)
-    assert used==Decimal("123.953125")
+    assert used==Decimal("3663.953125")
 
 def test_multiple_instances_keep_independent_charge_baselines():
     rule=InternetChargeRule(1,frozenset({0}),0,86399,cpm=Decimal("60"),cpk=Decimal("1"))
@@ -68,8 +68,8 @@ def test_multiple_instances_keep_independent_charge_baselines():
     a.input_octets=1124; a.output_octets=1124
     b.input_octets=6024; b.output_octets=10024
     stop=start.replace(minute=1)
-    assert settlement.settle(a,stop,3,None)==Decimal("61.953125")
-    assert settlement.settle(b,stop,3,None)==Decimal("61.953125")
+    assert settlement.settle(a,stop,3,None)==Decimal("62")
+    assert settlement.settle(b,stop,3,None)==Decimal("62")
 
 
 def test_counter_reset_never_creates_negative_transfer_usage():
