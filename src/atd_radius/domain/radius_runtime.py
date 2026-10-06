@@ -1,6 +1,7 @@
 """Runtime primitives for A1.24 RADIUS duplicate handling and session state."""
 from __future__ import annotations
 from dataclasses import dataclass, field
+from decimal import Decimal
 from datetime import datetime, timezone
 from time import monotonic
 from typing import Generic, Mapping, TypeVar
@@ -57,7 +58,7 @@ class SessionState:
     charge_rule_started_at:datetime|None=None
     charge_rule_input_octets:int=0
     charge_rule_output_octets:int=0
-    charge_accrued=field(default_factory=lambda: __import__("decimal").Decimal("0"))
+    charge_accrued: Decimal = field(default_factory=lambda: Decimal("0"))
 
 class SessionRegistry:
     def __init__(self): self._sessions:dict[SessionKey,SessionState]={}
