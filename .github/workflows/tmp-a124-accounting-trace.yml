@@ -1,4 +1,4 @@
-name: tmp-a124-accounting-trace
+name: tmp-a124-accounting-focus
 on:
   push:
     branches: [main]
@@ -10,5 +10,7 @@ jobs:
       - run: |
           rm -rf /tmp/a124 && mkdir -p /tmp/a124
           tar -xjf 'Source of Truth/IBSng-A1.24.tar.bz2' -C /tmp/a124
-          echo '--- accounting core references ---'
-          grep -RniE 'Acct-Status-Type|Acct-Session-Id|Accounting|connection_log|insert_connection_log|INTERIM|ALIVE|Alive' /tmp/a124/IBSng/core /tmp/a124/IBSng/radius_server --include='*.py' | head -700
+          for f in core/ras/rases/mikrotik.py core/ras/rases/bsae.py core/ras/rases/cisco.py core/ras/rases/pppd.py core/user/connection_log.py core/user/user.py core/user/plugins/charge.py core/charge/charge.py db/tables.sql; do
+            echo "===== $f ====="
+            sed -n '1,430p' "/tmp/a124/IBSng/$f" | grep -nE 'status_type|Start|Stop|Alive|connection_log|insert_connection_log|credit_used|bytes_in|bytes_out|startAccounting|stopAccounting|updateAccounting|Accounting'
+          done
