@@ -6,6 +6,7 @@ from atd_radius.domain.radius_auth import (
     validate_mschapv2_response,
     verify_chap,
     verify_mschapv2,
+    generate_mschapv2_authenticator_response,
     verify_pap,
 )
 
@@ -52,3 +53,16 @@ def test_mschapv2_shape_rejects_bad_reserved_and_flags():
     assert validate_mschapv2_response(valid, challenge)
     assert not validate_mschapv2_response(valid[:18] + b"\x01" + valid[19:], challenge)
     assert not validate_mschapv2_response(valid[:1] + b"\x01" + valid[2:], challenge)
+
+
+def test_mschapv2_rfc2759_authenticator_response():
+    auth_challenge = bytes.fromhex("5B5D7C7D7B3F2F3E3C2C602132262628")
+    peer_challenge = bytes.fromhex("21402324255E262A28295F2B3A337C7E")
+    nt_response = bytes.fromhex("82309ECD8D708B5EA08FAA3981CD83544233114A3D85D6DF")
+    assert generate_mschapv2_authenticator_response(
+        "clientPass",
+        nt_response,
+        peer_challenge,
+        auth_challenge,
+        "User",
+    ) == "S=407A5589115FD0D6209F510FE9C04566932CDA56"
