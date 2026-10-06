@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Mapping
 class RadiusCode(StrEnum):
-    ACCESS_REQUEST="Access-Request"; ACCESS_ACCEPT="Access-Accept"; ACCESS_REJECT="Access-Reject"; ACCESS_CHALLENGE="Access-Challenge"; ACCOUNTING_REQUEST="Accounting-Request"; ACCOUNTING_RESPONSE="Accounting-Response"
+    ACCESS_REQUEST="Access-Request"; ACCESS_ACCEPT="Access-Accept"; ACCESS_REJECT="Access-Reject"; ACCESS_CHALLENGE="Access-Challenge"; ACCOUNTING_REQUEST="Accounting-Request"; ACCOUNTING_RESPONSE="Accounting-Response"; DISCONNECT_REQUEST="Disconnect-Request"; DISCONNECT_ACK="Disconnect-ACK"; DISCONNECT_NAK="Disconnect-NAK"; COA_REQUEST="CoA-Request"; COA_ACK="CoA-ACK"; COA_NAK="CoA-NAK"
 @dataclass(frozen=True, slots=True)
 class RadiusPacket:
     code: RadiusCode
