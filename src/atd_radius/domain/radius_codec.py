@@ -342,7 +342,7 @@ def verify_control_request(data: bytes, secret: str) -> bool:
         return False
     authenticator = data[4:20]
     unsigned = data[:4] + bytes(16) + data[20:length]
-    if authenticator != md5(unsigned + bytes(0) + data[20:length] + secret.encode("utf-8")).digest():
+    if authenticator != md5(unsigned + secret.encode("utf-8")).digest():
         return False
     offset = 20
     message_auth = None
