@@ -39,9 +39,9 @@
 - [x] RFC 5176 Message-Authenticator boundary for current control path
 - [ ] Full CHAP/MS-CHAPv2 parity
 - [x] Source-compatible RAS runtime registry/loader
-- [ ] Full RAS provider behavior parity
+- [ ] Full RAS provider behavior parity (source audit complete; provider adapters/fixtures remain)
 - [x] Native psycopg SQL placeholder contracts for user/group/attribute persistence
-- [ ] PostgreSQL connection-log persistence on the live Accounting-Request path
+- [x] PostgreSQL connection-log persistence on the live Accounting-Request path
 - [ ] Complete source-derived RADIUS attribute/dictionary coverage
 - [ ] EAP state machine and supported methods
 
