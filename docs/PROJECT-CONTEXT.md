@@ -123,10 +123,10 @@ Read this file, ROADMAP.md, ARCHITECTURE.md, docs/DECISIONS.md, docs/phase-0-inv
 - User Information edit actions, high-frequency IBSng workflows, GROUP/RAS/IPPool/REPORT/GRAPH/ADMIN workflows and full user portal parity remain open.
 
 ### Current repository head
-- Current main branch head at this checkpoint: f1715d4fa3429cdd56cb089592e49f6df45328fe
-- Latest code checkpoint: native RAS-bound IP pool allocation and session lease lifecycle.
+- Current main branch head at this checkpoint: e259364f8d0984ef01238812b0c3f922d65ba9ca
+- Latest code checkpoint: native RAS-bound IP pool allocation, session lease lifecycle, and production RADIUS composition with persistent Connection Log wiring.
 - Older checkpoint references are historical and must not be treated as current HEAD.
-- CI verification is pending for this exact documentation commit; preceding native IP-pool/runtime checkpoints have green Python/CI runs where verified.
+- The code checkpoint immediately before this documentation update has green Python and CI workflow runs.
 - Do not mark a subsystem Verified merely because an implementation exists. Verified requires source-derived behavior tests and/or database parity evidence.
 
 ## Immediate continuation priorities
