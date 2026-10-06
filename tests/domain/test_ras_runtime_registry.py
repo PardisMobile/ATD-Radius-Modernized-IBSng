@@ -59,7 +59,7 @@ def test_registry_full_reload_removes_deleted_ras_state():
     registry = RASRuntimeRegistry(repo)
     registry.reload()
 
-    repo.records = [repo.records[1]]
+    repo.records = [repo.records[0]]
     registry.reload()
 
     assert registry.get(1) is None
