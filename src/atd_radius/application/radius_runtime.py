@@ -59,3 +59,19 @@ def build_radius_dispatcher(users: UserSource) -> RadiusDispatcher:
         ]
     )
     return RadiusDispatcher(pipeline, access_context=NativeAccessContext(users))
+
+
+class NativeAccountingIdentityResolver:
+    """Resolve Accounting-Request identities through native User/RAS repositories."""
+
+    def __init__(self, users: UserSource, ras) -> None:
+        self.users = users
+        self.ras = ras
+
+    def user_id(self, username: str) -> int | None:
+        record = self.users.get_authentication_record(username)
+        return int(record[0]) if record else None
+
+    def ras_id(self, source_ip: str) -> int | None:
+        record = self.ras.get_by_ip(source_ip)
+        return int(record.ras_id) if record else None
