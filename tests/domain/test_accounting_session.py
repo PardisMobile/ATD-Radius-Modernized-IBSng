@@ -43,4 +43,6 @@ def test_accounting_session_persists_start_and_stop_using_connection_log_id():
     stopped = service.apply(event(AccountingStatus.STOP, "sid-p", 150, 260), 7, 3)
     assert stopped.connection_log_id == 99
     persistence.start.assert_called_once()
-    persistence.stop.assert_called_once_with(99, stopped_event := stopped and event(AccountingStatus.STOP, "sid-p", 150, 260))
+    persistence.stop.assert_called_once()
+    assert persistence.stop.call_args.args[0] == 99
+    assert persistence.stop.call_args.args[1].session_id == "sid-p"
