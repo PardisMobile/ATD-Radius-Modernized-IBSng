@@ -104,6 +104,7 @@ _MICROSOFT_VSA_NAMES = {
     18: "MS-RAS-Version",
 }
 _MICROSOFT_VSA_TYPES = {name: vendor_type for vendor_type, name in _MICROSOFT_VSA_NAMES.items()}
+_MICROSOFT_VSA_TEXT_NAMES = {"MS-CHAP-Domain", "MS-CHAP2-Success"}
 
 
 class RadiusCodecError(ValueError):
@@ -220,15 +221,13 @@ def _decode_vendor_specific(value: bytes) -> tuple[str, str]:
     vendor_value = value[6 : 4 + vendor_length]
     if vendor_id == _MICROSOFT_VENDOR_ID:
         name = _MICROSOFT_VSA_NAMES.get(vendor_type, f"Microsoft-{vendor_type}")
-        if name in {
-            "MS-CHAP-Response",
-            "MS-CHAP-Challenge",
-            "MS-CHAP2-Response",
-            "MS-CHAP2-Success",
-            "MS-MPPE-Send-Key",
-            "MS-MPPE-Recv-Key",
-        }:
+        if name in {"MS-CHAP-Response", "MS-CHAP-Challenge", "MS-CHAP2-Response", "MS-MPPE-Send-Key", "MS-MPPE-Recv-Key"}:
             return name, vendor_value.hex()
+        if name in _MICROSOFT_VSA_TEXT_NAMES:
+            try:
+                return name, vendor_value.decode("ascii")
+            except UnicodeDecodeError:
+                return name, vendor_value.hex()
         return name, _decode_value(name, vendor_value, None, b"")
     return f"VSA-{vendor_id}-{vendor_type}", vendor_value.hex()
 
