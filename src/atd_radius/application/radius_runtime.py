@@ -35,7 +35,7 @@ class RadiusRuntimeHandler:
         self.identities = identities
 
     def __call__(self, packet: RadiusPacket, peer: tuple[str, int]) -> RadiusPacket:
-        if packet.code.value == "Accounting-Request":
+        if packet.code is RadiusCode.ACCOUNTING_REQUEST:
             result: DispatchResult = self.dispatcher.accounting(packet)
             event = result.accounting
             if event is not None:
