@@ -4,6 +4,8 @@ from atd_radius.domain.radius_auth import (
     RadiusAuthMethod,
     detect_auth_method,
     validate_mschapv2_response,
+    verify_mschapv1,
+    derive_mschapv1_mppe_key,
     verify_chap,
     verify_mschapv2,
     generate_mschapv2_authenticator_response,
@@ -16,6 +18,7 @@ def test_detects_pap_chap_and_mschapv2():
     assert detect_auth_method({"User-Password": "secret"}) is RadiusAuthMethod.PAP
     assert detect_auth_method({"CHAP-Password": b"x"}) is RadiusAuthMethod.CHAP
     assert detect_auth_method({"MS-CHAP2-Response": b"x"}) is RadiusAuthMethod.MSCHAPV2
+    assert detect_auth_method({"MS-CHAP-Response": b"x"}) is RadiusAuthMethod.MSCHAPV1
 
 
 def test_chap_verification_uses_identifier_password_and_challenge():
@@ -48,12 +51,21 @@ def test_mschapv2_rfc2759_vector():
     assert not verify_mschapv2(response, "wrongPass", "User", auth_challenge)
 
 
-def test_mschapv2_shape_rejects_bad_reserved_and_flags():
+def test_mschapv1_verification_matches_a124_nt_response():
+    challenge = bytes.fromhex("5B5D7C7D7B3F2F3E")
+    nt_response = bytes.fromhex("9F9BEC2D4EA5BD51E59EC761C102526860A6C4DE36AFB512")
+    response = b"\x01\x00" + b"\x00" * 16 + b"\x00" * 8 + nt_response
+    assert verify_mschapv1(response, "clientPass", challenge)
+    assert not verify_mschapv1(response, "wrongPass", challenge)
+    assert len(derive_mschapv1_mppe_key("clientPass")) == 32
+
+
+def test_mschapv2_shape_matches_a124_field_consumption():
     challenge = b"x" * 16
     valid = b"\x01\x00" + b"x" * 16 + b"\x00" * 8 + b"x" * 24
     assert validate_mschapv2_response(valid, challenge)
-    assert not validate_mschapv2_response(valid[:18] + b"\x01" + valid[19:], challenge)
-    assert not validate_mschapv2_response(valid[:1] + b"\x01" + valid[2:], challenge)
+    assert validate_mschapv2_response(valid[:18] + b"\x01" + valid[19:], challenge)
+    assert validate_mschapv2_response(valid[:1] + b"\x01" + valid[2:], challenge)
 
 
 def test_mschapv2_rfc2759_authenticator_response():
