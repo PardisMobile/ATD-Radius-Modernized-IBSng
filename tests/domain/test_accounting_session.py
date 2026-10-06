@@ -102,3 +102,13 @@ def test_alive_after_stop_does_not_resurrect_session():
     assert result.state.stopped
     assert result.state.input_octets == 20
     assert result.state.output_octets == 30
+
+
+def test_no_connection_log_suppresses_native_persistence():
+    from unittest.mock import Mock
+    persistence = Mock()
+    persistence.start.return_value = 42
+    service = AccountingSessionService(SessionRegistry(), persistence)
+    result = service.apply(event(AccountingStatus.START, "nolog", attributes={"no_connection_log": "1"}), 7, 3)
+    assert result.connection_log_id is None
+    persistence.start.assert_not_called()
