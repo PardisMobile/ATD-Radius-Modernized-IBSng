@@ -40,7 +40,7 @@ def test_mschapv2_rfc2759_vector():
     auth_challenge = bytes.fromhex("5B5D7C7D7B3F2F3E3C2C602132262628")
     peer_challenge = bytes.fromhex("21402324255E262A28295F2B3A337C7E")
     nt_response = bytes.fromhex("82309ECD8D708B5EA08FAA3981CD83544233114A3D85D6DF")
-    response = peer_challenge + b"\x00" * 8 + nt_response + b"\x00"
+    response = b"\x01\x00" + peer_challenge + b"\x00" * 8 + nt_response
     assert validate_mschapv2_response(response, auth_challenge)
     assert verify_mschapv2(response, "clientPass", "User", auth_challenge)
     assert not verify_mschapv2(response, "wrongPass", "User", auth_challenge)
@@ -48,7 +48,7 @@ def test_mschapv2_rfc2759_vector():
 
 def test_mschapv2_shape_rejects_bad_reserved_and_flags():
     challenge = b"x" * 16
-    valid = b"x" * 16 + b"\x00" * 8 + b"x" * 24 + b"\x00"
+    valid = b"\x01\x00" + b"x" * 16 + b"\x00" * 8 + b"x" * 24
     assert validate_mschapv2_response(valid, challenge)
     assert not validate_mschapv2_response(valid[:16] + b"\x01" + valid[17:], challenge)
     assert not validate_mschapv2_response(valid[:-1] + b"\x01", challenge)
