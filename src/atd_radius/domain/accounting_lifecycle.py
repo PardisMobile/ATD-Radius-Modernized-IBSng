@@ -64,8 +64,11 @@ def event_from_attributes(attrs: Mapping[str, object]) -> AccountingEvent:
     def integer(name: str) -> int:
         value = attrs.get(name, 0)
         return int(value[0] if isinstance(value, (list, tuple)) else value)
-    return AccountingEvent(status=status, username=str(attrs.get("User-Name", "")),
-        session_id=(str(attrs["Acct-Session-Id"]) if attrs.get("Acct-Session-Id") is not None else None),
-        remote_ip=(str(attrs["Framed-IP-Address"]) if attrs.get("Framed-IP-Address") is not None else None),
+    username = str(attrs.get("User-Name", ""))
+    session_id = str(attrs["Acct-Session-Id"]) if attrs.get("Acct-Session-Id") is not None else None
+    remote_ip = str(attrs["Framed-IP-Address"]) if attrs.get("Framed-IP-Address") is not None else None
+    return AccountingEvent(status=status, username=username,
+        session_id=session_id, remote_ip=remote_ip,
         input_octets=integer("Acct-Input-Octets"), output_octets=integer("Acct-Output-Octets"),
-        terminate_cause=(str(attrs["Acct-Terminate-Cause"]) if attrs.get("Acct-Terminate-Cause") is not None else None))
+        terminate_cause=(str(attrs["Acct-Terminate-Cause"]) if attrs.get("Acct-Terminate-Cause") is not None else None),
+        attributes={str(name): str(value) for name, value in attrs.items()})
