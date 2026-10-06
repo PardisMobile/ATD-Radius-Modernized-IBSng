@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from .aaa import AAAAction,AAAResult
 from .session_policy import ActiveSessionView,session_policy
+from .ras_provider import provider_multi_login
 
 @dataclass(frozen=True,slots=True)
 class AuthenticationPolicy:
@@ -51,7 +52,6 @@ def _int_attr(attributes, name, default):
         return default
 
 def ras_allows_multi_login(ras_type, ras_attributes=None, service="internet"):
-    """Mirror A1.24 RAS multi-login flags and defaults."""
     rtype = (ras_type or "").strip().lower()
     attrs = ras_attributes or {}
     if service == "voip":
@@ -59,13 +59,10 @@ def ras_allows_multi_login(ras_type, ras_attributes=None, service="internet"):
             return _int_attr(attrs, "gnugk_multiple_login", 0) != 0
         if rtype == "asterisk":
             return _int_attr(attrs, "asterisk_multi_login", 0) != 0
-        if rtype in {"cisco", "quintum tenor"}:
-            return False
-        return True
-    if rtype in {"bsae", "cisco", "quintum tenor"}:
-        return False
+    explicit = provider_multi_login(ras_type, service)
+    if explicit is not None:
+        return explicit
     return True
-
 def _attrs(request):
     from .models import AttributeSet
     return AttributeSet(request.attributes)
