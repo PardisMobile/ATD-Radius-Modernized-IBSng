@@ -22,9 +22,9 @@ class Conn:
         if sql.startswith("SELECT group_id FROM users"):
             return Result((42,))
         if "FROM group_attrs" in sql:
-            return Result(many=((42, "multi_login", "3"), (42, "session_timeout", "120")))
+            return Result(many=(("multi_login", "3"), ("session_timeout", "120")))
         if "FROM user_attrs" in sql:
-            return Result(many=((7, "multi_login", "1"), (7, "idle_timeout", "30")))
+            return Result(many=(("multi_login", "1"), ("idle_timeout", "30")))
         raise AssertionError(sql)
 
 
