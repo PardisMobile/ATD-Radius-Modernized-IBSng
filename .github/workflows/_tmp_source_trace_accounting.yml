@@ -1,0 +1,22 @@
+name: tmp-source-trace-accounting
+on:
+  push:
+    paths: [".github/workflows/_tmp_source_trace_accounting.yml"]
+jobs:
+  trace:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract canonical source
+        run: |
+          mkdir -p /tmp/ibs
+          tar -xjf "Source of Truth/IBSng-A1.24.tar.bz2" -C /tmp/ibs
+          find /tmp/ibs -type f | wc -l
+          echo '--- accounting status handlers ---'
+          grep -RniE 'Acct-Status-Type|INTERNET_UPDATE|INTERNET_STOP|logConnectionQuery|no_connection_log|credit_used|Alive' /tmp/ibs/IBSng/core/ras /tmp/ibs/IBSng/core/user /tmp/ibs/IBSng/core/charge 2>/dev/null | head -n 500
+          echo '--- mikrotik source ---'
+          sed -n '1,360p' /tmp/ibs/IBSng/core/ras/rases/mikrotik.py 2>/dev/null
+          echo '--- connection log ---'
+          sed -n '1,360p' /tmp/ibs/IBSng/core/user/connection_log.py 2>/dev/null
+          echo '--- user accounting hooks ---'
+          grep -RniE 'connection_log|credit_used|charge|ACCOUNTING|INTERNET_UPDATE|INTERNET_STOP' /tmp/ibs/IBSng/core/user/*.py /tmp/ibs/IBSng/core/user/plugins/*.py 2>/dev/null | head -n 500
