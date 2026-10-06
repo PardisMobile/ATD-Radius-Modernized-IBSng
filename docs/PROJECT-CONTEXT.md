@@ -88,3 +88,12 @@ Read this file, `ROADMAP.md`, `ARCHITECTURE.md`, `docs/DECISIONS.md`, `docs/phas
 - AAA result attributes are now output-only: request attributes such as User-Password are policy inputs and are not copied into Access-Accept/Reject attributes.
 - Added focused tests for native access context and credential non-leakage.
 - Local test execution was attempted but the execution environment could not resolve GitHub DNS; CI status must therefore be checked from GitHub before marking this batch verified.
+
+
+### Latest RADIUS runtime checkpoint
+- Added `AccountingSessionService` to apply native Start / Interim-Update / Stop events to `SessionRegistry`.
+- Accounting octet deltas are calculated against the previous runtime snapshot; Stop marks the session inactive.
+- Added public session lookup by `Acct-Session-Id` for runtime control/lifecycle adapters.
+- Added duplicate-request cache expiry primitive; transport integration can invoke purge on its lifecycle cadence.
+- Added focused accounting-session and runtime expiry/lookup tests.
+- This remains an in-memory runtime boundary; persistent connection_log writes are not yet wired into the Accounting-Request path.
