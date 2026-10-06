@@ -1,0 +1,23 @@
+name: _temp-source-accounting
+on:
+  workflow_dispatch:
+jobs:
+  trace:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: extract and trace
+        shell: bash
+        run: |
+          set -e
+          mkdir -p /tmp/ibs
+          tar -xjf 'Source of Truth/IBSng-A1.24.tar.bz2' -C /tmp/ibs
+          echo '=== ACCOUNTING FILES ==='
+          find /tmp/ibs/IBSng -type f | grep -Ei '/(accounting|acct|connection|online|ias)' | head -120
+          echo '=== STATUS HANDLERS ==='
+          grep -RniE 'Accounting-Request|Acct-Status-Type|Start|Interim|Stop|connection_log|ConnectionLog|accounting' /tmp/ibs/IBSng/core /tmp/ibs/IBSng/radius 2>/dev/null | head -300
+          echo '=== CONNECTION LOG ==='
+          grep -RniE 'class .*Connection|connection_log|ConnectionLog|addConnection|logout|closeConnection' /tmp/ibs/IBSng/core 2>/dev/null | head -300
+          echo '=== TABLE ==='
+          grep -nA80 -B10 '^CREATE TABLE connection_log' /tmp/ibs/IBSng/db/tables.sql
+          grep -nA50 -B5 '^CREATE TABLE connection_log_details' /tmp/ibs/IBSng/db/tables.sql
