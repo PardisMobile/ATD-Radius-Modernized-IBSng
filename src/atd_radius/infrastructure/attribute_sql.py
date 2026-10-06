@@ -23,7 +23,7 @@ RAS_ATTRS = AttributeTableSpec("ras_attrs", "ras_id", "attr_name", "attr_value")
 def select_attributes(spec: AttributeTableSpec) -> str:
     return (
         f"SELECT {spec.owner_column}, {spec.name_column}, {spec.value_column} "
-        f"FROM {spec.table} WHERE {spec.owner_column} = $1 "
+        f"FROM {spec.table} WHERE {spec.owner_column} = %s "
         f"ORDER BY {spec.name_column}"
     )
 
@@ -31,14 +31,14 @@ def select_attributes(spec: AttributeTableSpec) -> str:
 def upsert_attributes(spec: AttributeTableSpec) -> str:
     return (
         f"INSERT INTO {spec.table} ({spec.owner_column}, {spec.name_column}, {spec.value_column}) "
-        f"VALUES ($1, $2, $3) "
+        f"VALUES (%s, %s, %s) "
         f"ON CONFLICT ({spec.owner_column}, {spec.name_column}) "
         f"DO UPDATE SET {spec.value_column} = EXCLUDED.{spec.value_column}"
     )
 
 
 def delete_attribute(spec: AttributeTableSpec) -> str:
-    return f"DELETE FROM {spec.table} WHERE {spec.owner_column} = $1 AND {spec.name_column} = $2"
+    return f"DELETE FROM {spec.table} WHERE {spec.owner_column} = %s AND {spec.name_column} = %s"
 
 
 def select_user_attributes() -> str:
