@@ -9,7 +9,7 @@ from .radius_runtime import SessionKey, SessionRegistry, SessionState
 
 
 class AccountingPersistence(Protocol):
-    def start(self, event: AccountingEvent, user_id: int, ras_id: int) -> int: ...
+    def start(self, event: AccountingEvent, user_id: int, ras_id: int) -> int | None: ...
     def update(self, connection_log_id: int, event: AccountingEvent) -> None: ...
     def stop(self, connection_log_id: int, event: AccountingEvent) -> None: ...
 
@@ -42,7 +42,7 @@ class AccountingSessionService:
 
         if event.status is AccountingStatus.START and current is None:
             state = self.registry.start(key, dict(event.attributes), event.input_octets, event.output_octets)
-            log_id = self.persistence.start(event, user_id, ras_id) if self.persistence else None
+            log_id = (self.persistence.start(event, user_id, ras_id) if self.persistence and "no_connection_log" not in event.attributes else None)
             if log_id is not None:
                 state.attributes = {**state.attributes, "__connection_log_id": str(log_id)}
             return AccountingSessionResult(state, connection_log_id=log_id)
@@ -70,7 +70,7 @@ class AccountingSessionService:
         if current is None:
             if event.status is AccountingStatus.INTERIM:
                 state = self.registry.start(key, dict(event.attributes), event.input_octets, event.output_octets)
-                log_id = self.persistence.start(event, user_id, ras_id) if self.persistence else None
+                log_id = (self.persistence.start(event, user_id, ras_id) if self.persistence and "no_connection_log" not in event.attributes else None)
                 if log_id is not None:
                     state.attributes = {**state.attributes, "__connection_log_id": str(log_id)}
                 return AccountingSessionResult(state, connection_log_id=log_id)
@@ -86,7 +86,7 @@ class AccountingSessionService:
         if event.status is AccountingStatus.STOP:
             di, do = self.registry.update(key, event.input_octets, event.output_octets)
             state = self.registry.stop(key, event.input_octets, event.output_octets)
-            if self.persistence and log_id is not None:
+            if self.persistence and log_id is not None and "no_connection_log" not in event.attributes:
                 self.persistence.stop(log_id, event)
             return AccountingSessionResult(state, di, do, log_id)
 
