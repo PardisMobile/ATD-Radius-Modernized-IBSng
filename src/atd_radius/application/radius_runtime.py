@@ -44,7 +44,7 @@ class RadiusRuntimeHandler:
                 if user_id is not None and ras_id is not None:
                     self.accounting_sessions.apply(event, user_id, ras_id)
             return result.response
-        return self.dispatcher.access(packet)
+        return self.dispatcher.access(packet, source_ip=peer[0])
 
 
 def build_radius_dispatcher(users: UserSource, active_sessions_provider=None) -> RadiusDispatcher:
