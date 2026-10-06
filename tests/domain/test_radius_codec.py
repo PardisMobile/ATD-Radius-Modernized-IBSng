@@ -29,7 +29,8 @@ def test_password_attribute_uses_shared_secret():
 
 
 def test_malformed_attribute_is_rejected():
-    wire = encode(RadiusPacket(RadiusCode.ACCESS_REQUEST, 1, {}, bytes(16))) + bytes((1, 1))
+    wire = bytearray(encode(RadiusPacket(RadiusCode.ACCESS_REQUEST, 1, {}, bytes(16))) + bytes((1, 1)))
+    wire[2:4] = (22).to_bytes(2, "big")
     try:
         decode(wire)
     except RadiusCodecError:
