@@ -81,3 +81,24 @@ def test_interim_after_stop_does_not_resurrect_session():
     assert result.state.stopped
     assert result.state.input_octets == 20
     assert result.state.output_octets == 30
+
+
+def test_alive_is_a1_24_accounting_update_and_persists_delta():
+    from unittest.mock import Mock
+    persistence = Mock()
+    persistence.start.return_value = 125
+    service = AccountingSessionService(SessionRegistry(), persistence)
+    service.apply(event(AccountingStatus.START, "alive", 100, 200), 7, 3)
+    result = service.apply(event(AccountingStatus.ALIVE, "alive", 140, 260), 7, 3)
+    assert (result.delta_input_octets, result.delta_output_octets) == (40, 60)
+    persistence.update.assert_called_once()
+
+
+def test_alive_after_stop_does_not_resurrect_session():
+    service = AccountingSessionService(SessionRegistry())
+    service.apply(event(AccountingStatus.START, "alive-stop", 10, 20), 7, 3)
+    service.apply(event(AccountingStatus.STOP, "alive-stop", 20, 30), 7, 3)
+    result = service.apply(event(AccountingStatus.ALIVE, "alive-stop", 50, 60), 7, 3)
+    assert result.state.stopped
+    assert result.state.input_octets == 20
+    assert result.state.output_octets == 30
