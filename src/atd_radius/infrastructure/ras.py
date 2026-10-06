@@ -170,8 +170,8 @@ class RASRepository:
         return serial
 
     def delete_ippool(self, serial: int) -> None:
-        self.conn.execute(delete_ras_ippool(), (serial,))
         row = self.conn.execute("SELECT ras_id FROM ras_ippools WHERE serial=%s", (serial,)).fetchone()
+        self.conn.execute(delete_ras_ippool(), (serial,))
         if row is not None:
             self._changed(int(row[0]))
 
