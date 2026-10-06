@@ -112,3 +112,17 @@ def test_no_connection_log_suppresses_native_persistence():
     result = service.apply(event(AccountingStatus.START, "nolog", attributes={"no_connection_log": "1"}), 7, 3)
     assert result.connection_log_id is None
     persistence.start.assert_not_called()
+
+
+def test_no_commit_skips_charge_settlement_and_reports_zero_credit():
+    from unittest.mock import Mock
+    charge=Mock()
+    persistence=Mock()
+    persistence.start.return_value=126
+    service=AccountingSessionService(SessionRegistry(), persistence, charge)
+    service.apply(event(AccountingStatus.START, "no-commit", 100, 200), 7, 3)
+    result=service.apply(event(AccountingStatus.STOP, "no-commit", 150, 260, attributes={"no_commit":"1"}), 7, 3)
+    assert result.credit_used=="0"
+    charge.settle.assert_not_called()
+    persistence.stop.assert_called_once()
+    assert persistence.stop.call_args.args[2]=="0"
