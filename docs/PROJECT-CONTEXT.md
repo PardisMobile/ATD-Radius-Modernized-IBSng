@@ -104,8 +104,11 @@ Read this file, ROADMAP.md, ARCHITECTURE.md, docs/DECISIONS.md, docs/phase-0-inv
 - Native PostgreSQL `ippool` / `ippool_ips` repository mapping is implemented without inventing an allocation table.
 - IP pool runtime preserves the A1.24 process-local free/used model, first-free allocation, explicit claim/release and reload behavior.
 - Reload preserves active addresses that remain in the refreshed membership list and drops deleted members.
-- `ras_ippools` remains the authoritative RAS-to-pool binding surface; live Access/session lifecycle wiring is still pending.
-- RAS repository plus source-compatible runtime registry/loader is implemented; repository mutation hooks now support targeted runtime reload.
+- `ras_ippools` remains the authoritative RAS-to-pool binding surface.
+- Access-Request now allocates from the RAS-bound native pools in `ras_ippools` order and emits the A1.24-compatible `Framed-IP-Address` / `/32` netmask reply.
+- Accounting-Start adopts the returned address into the process-local runtime after restart if necessary; Accounting-Stop and successful Disconnect release the runtime lease. CoA does not release it.
+- RAS repository plus source-compatible runtime registry/loader is implemented; repository mutation hooks support targeted runtime reload.
+- Native user/group/attribute SQL contracts were normalized to psycopg `%s` placeholders; no `$1...` placeholders remain in the infrastructure `*_sql.py` contracts.
 
 ### Billing
 - Internet charge-rule selection implements source-derived priority: RAS-specific +2, port-specific +1.
@@ -120,11 +123,10 @@ Read this file, ROADMAP.md, ARCHITECTURE.md, docs/DECISIONS.md, docs/phase-0-inv
 - User Information edit actions, high-frequency IBSng workflows, GROUP/RAS/IPPool/REPORT/GRAPH/ADMIN workflows and full user portal parity remain open.
 
 ### Current repository head
-- Current main branch head at this checkpoint: 99a2b68cfdfbe9500ad42a18eed3e79b79e26694
-- Latest change: docs: align roadmap with native IP pool runtime
-- Code milestone immediately before this documentation checkpoint: 5ba63ffb862022e01fef2666d7542f308b8ff9b4
+- Current main branch head at this checkpoint: f1715d4fa3429cdd56cb089592e49f6df45328fe
+- Latest code checkpoint: native RAS-bound IP pool allocation and session lease lifecycle.
 - Older checkpoint references are historical and must not be treated as current HEAD.
-- GitHub workflow lookup currently returns no workflow runs for this HEAD, so this checkpoint is not CI-verified.
+- CI verification is pending for this exact documentation commit; preceding native IP-pool/runtime checkpoints have green Python/CI runs where verified.
 - Do not mark a subsystem Verified merely because an implementation exists. Verified requires source-derived behavior tests and/or database parity evidence.
 
 ## Immediate continuation priorities
