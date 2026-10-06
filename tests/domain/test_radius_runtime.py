@@ -28,3 +28,17 @@ def test_session_registry_tracks_deltas_and_active_sessions():
     assert len(r.active_for_user(4))==1
     r.stop(k,140,280)
     assert not r.active_for_user(4)
+
+
+def test_duplicate_cache_purges_old_entries():
+    c = DuplicateRequestCache()
+    k = RequestKey("10.0.0.1", 1812, 7, 1, b"auth")
+    item = c.add(k)
+    assert c.purge_expired(10, now=item.created_at + 11) == 1
+    assert c.get(k) is None
+
+def test_session_registry_finds_session_by_acct_session_id():
+    r = SessionRegistry()
+    r.start(SessionKey(4, 2, "abc"))
+    assert r.find_by_unique_id("abc") is not None
+    assert r.find_by_unique_id("missing") is None
