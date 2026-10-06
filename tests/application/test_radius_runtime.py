@@ -173,3 +173,46 @@ def test_build_native_radius_runtime_composes_native_accounting_and_ip_pool_runt
     assert handler.accounting_sessions.persistence is not None
     assert handler.ip_pool_sessions is not None
     assert handler.dispatcher.access_context.ras is not None
+
+
+def test_native_radius_packet_handler_reuses_runtime_state_across_transactions():
+    from atd_radius.application.radius_runtime import NativeRadiusPacketHandler, NativeRadiusRuntimeState
+
+    class FakeConnection:
+        def __init__(self):
+            self.entered = 0
+            self.exited = 0
+        def __enter__(self):
+            self.entered += 1
+            return self
+        def __exit__(self, exc_type, exc, tb):
+            self.exited += 1
+            return False
+
+    class Repo:
+        def __init__(self, conn):
+            self.conn = conn
+            self.on_change = None
+        def list(self): return []
+        def get(self, _): return None
+        def attributes(self, _): return []
+        def ports(self, _): return []
+        def ippools(self, _): return []
+
+    connections = []
+    state = NativeRadiusRuntimeState()
+
+    # The packet handler is intentionally exercised with a connection factory;
+    # repository construction is the only DB-scoped part of the runtime.
+    def factory():
+        conn = FakeConnection()
+        connections.append(conn)
+        return conn
+
+    # Replace native repositories for this unit test so no PostgreSQL driver is needed.
+    handler = NativeRadiusPacketHandler(state, factory)
+    handler.connection_factory = factory
+
+    # Construction should be deferred to the packet and state must remain reusable.
+    assert state.sessions.active_for_user(7) == ()
+    assert connections == []
