@@ -28,11 +28,19 @@ class LockPolicy:
 @dataclass(frozen=True,slots=True)
 class MultiLoginPolicy:
     active_sessions: tuple[ActiveSessionView,...]=()
+    active_sessions_provider: object | None = None
     def evaluate(self,request):
-        d=session_policy(_attrs(request),self.active_sessions)
-        if not d.allowed and d.reason=="multi_login": return AAAResult(AAAAction.REJECT,reason="MAX_CONCURRENT")
+        sessions = self.active_sessions
+        if self.active_sessions_provider is not None:
+            user_id = request.attributes.get("__user_id")
+            if user_id not in (None, ""):
+                sessions = tuple(self.active_sessions_provider(int(user_id)))
+        # A1.24 precedence: a RAS that does not permit multi-login rejects
+        # an additional active session before the per-user limit is evaluated.
         if request.attributes.get("ras_multi_login") in (False,"0","false","False") and len(sessions)>0:
             return AAAResult(AAAAction.REJECT,reason="RAS_DOESNT_ALLOW_MULTILOGIN")
+        d=session_policy(_attrs(request),sessions)
+        if not d.allowed and d.reason=="multi_login": return AAAResult(AAAAction.REJECT,reason="MAX_CONCURRENT")
         return None
 
 @dataclass(frozen=True,slots=True)
