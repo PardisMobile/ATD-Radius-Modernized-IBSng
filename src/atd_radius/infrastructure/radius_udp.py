@@ -6,7 +6,7 @@ from collections.abc import Callable
 from typing import Protocol
 
 from atd_radius.domain.radius import RadiusCode, RadiusPacket
-from atd_radius.domain.radius_codec import decode, encode_response, verify_accounting_request, verify_control_request
+from atd_radius.domain.radius_codec import decode, encode_response, verify_accounting_request, verify_control_request, verify_message_authenticator
 from atd_radius.domain.radius_runtime import DuplicateRequestCache, RequestKey
 
 
@@ -48,6 +48,8 @@ class RadiusUDPServer:
             return
         request = decode(data, secret)
         if request.code is RadiusCode.ACCOUNTING_REQUEST and not verify_accounting_request(data, secret):
+            return
+        if request.code is RadiusCode.ACCESS_REQUEST and "Message-Authenticator" in request.attributes and not verify_message_authenticator(data, secret):
             return
         if request.code in (RadiusCode.DISCONNECT_REQUEST, RadiusCode.COA_REQUEST) and not verify_control_request(data, secret):
             return
