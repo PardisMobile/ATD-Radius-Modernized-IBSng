@@ -13,6 +13,7 @@ from cryptography.hazmat.primitives.ciphers import Cipher, modes
 class RadiusAuthMethod(StrEnum):
     PAP = "pap"
     CHAP = "chap"
+    MSCHAPV1 = "mschapv1"
     MSCHAPV2 = "mschapv2"
     UNKNOWN = "unknown"
 
@@ -36,6 +37,8 @@ def _octets(value: object) -> bytes:
 def detect_auth_method(attributes: Mapping[str, object]) -> RadiusAuthMethod:
     if attributes.get("MS-CHAP2-Response") is not None:
         return RadiusAuthMethod.MSCHAPV2
+    if attributes.get("MS-CHAP-Response") is not None:
+        return RadiusAuthMethod.MSCHAPV1
     if attributes.get("CHAP-Password") is not None:
         return RadiusAuthMethod.CHAP
     if attributes.get("User-Password") is not None:
@@ -158,14 +161,43 @@ def _des_encrypt(clear: bytes, key7: bytes) -> bytes:
 def _challenge_hash(peer: bytes, authenticator: bytes, username: str) -> bytes:
     if len(peer) != 16 or len(authenticator) != 16:
         raise ValueError("MS-CHAPv2 challenges must be 16 bytes")
-    name = username.split("\\", 1)[-1].encode()
-    return sha1(peer + authenticator + name).digest()[:8]
+    return sha1(peer + authenticator + username.encode()).digest()[:8]
 
 
 def _nt_response(challenge: bytes, password: str) -> bytes:
     password_hash = _md4(password.encode("utf-16le"))
     zpwd = password_hash + b"\x00" * 5
     return b"".join(_des_encrypt(challenge, zpwd[i : i + 7]) for i in (0, 7, 14))
+
+
+def verify_mschapv1(
+    response: object,
+    stored: str | None,
+    challenge: object,
+) -> bool:
+    """Verify the A1.24 MS-CHAPv1 NT-Response field."""
+    if stored is None:
+        return False
+    raw = _octets(response)
+    challenge_octets = _octets(challenge)
+    if len(raw) != 50 or len(challenge_octets) != 8:
+        return False
+    expected = _nt_response(challenge_octets, stored)
+    return compare_digest(raw[26:50], expected)
+
+
+def _lm_password_hash(password: str) -> bytes:
+    """Build the legacy MS-CHAPv1 LM hash used by A1.24 MPPE output."""
+    value = password.upper()[:14].encode()
+    value += b"\x00" * (14 - len(value))
+    return _des_encrypt(b"KGS!@#$%", value[:7]) + _des_encrypt(b"KGS!@#$%", value[7:14])
+
+
+def derive_mschapv1_mppe_key(password: str) -> bytes:
+    """Derive the 32-byte MS-CHAPv1 MPPE key material emitted by A1.24."""
+    lm_hash = _lm_password_hash(password)
+    nt_hash = _md4(_md4(password.encode("utf-16le")))
+    return lm_hash[:8] + nt_hash + b"\x00" * 8
 
 
 def verify_mschapv2(
@@ -182,13 +214,10 @@ def verify_mschapv2(
     if len(raw) != 50 or len(auth_challenge) != 16:
         return False
 
-    # RFC 2548 VSA value: Ident, Flags, Peer-Challenge, Reserved, NT-Response.
+    # A1.24 consumes Peer-Challenge and NT-Response only; it does not
+    # validate the Flags or Reserved fields before comparing the NT response.
     peer_challenge = raw[2:18]
-    reserved = raw[18:26]
     nt_response = raw[26:50]
-    flags = raw[1]
-    if reserved != b"\x00" * 8 or flags != 0:
-        return False
 
     challenge_hash = _challenge_hash(peer_challenge, auth_challenge, username)
     expected = _nt_response(challenge_hash, stored)
@@ -250,6 +279,4 @@ def validate_mschapv2_response(response: object, challenge: object | None) -> bo
     return (
         len(raw) == 50
         and len(challenge_octets) == 16
-        and raw[18:26] == b"\x00" * 8
-        and raw[1] == 0
     )
