@@ -37,7 +37,9 @@ def session_policy(attributes:AttributeSet,active_sessions:Iterable[ActiveSessio
     else:
         try: limit=int(multi_login)
         except (TypeError,ValueError): limit=1
-    if len(sessions)>limit:
+    # A1.24 counts the incoming instance before USER_LOGIN hooks run.
+    # Therefore an existing count equal to the configured limit rejects the new login.
+    if len(sessions) >= limit:
         return SessionPolicyDecision(False,SessionAdmissionReason.MULTI_LOGIN)
     return SessionPolicyDecision(True,session_timeout_seconds=_positive_int(attributes,"session_timeout"),idle_timeout_seconds=_positive_int(attributes,"idle_timeout"))
 
