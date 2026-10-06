@@ -26,3 +26,15 @@ def test_disconnect_and_coa_dispatch():
     p=RadiusDispatcher(PluginPipeline([]),Control())
     assert p.control("Disconnect-Request",{"Acct-Session-Id":"s"})=="ack"
     assert p.control("CoA-Request",{"Acct-Session-Id":"s"})=="ack"
+
+
+class Context:
+    def enrich(self, packet):
+        return {"User-Name": "enriched", "NAS-Identifier": "ras-1"}
+
+
+def test_access_context_enriches_request_before_plugins():
+    r = RadiusDispatcher(PluginPipeline([Accept()]), access_context=Context()).access(
+        RadiusPacket(RadiusCode.ACCESS_REQUEST, 2, {"User-Name": "original"})
+    )
+    assert r.code is RadiusCode.ACCESS_ACCEPT
