@@ -29,7 +29,7 @@ def test_disconnect_and_coa_dispatch():
 
 
 class Context:
-    def enrich(self, packet):
+    def enrich(self, packet, source_ip=None):
         return {"User-Name": "enriched", "NAS-Identifier": "ras-1"}
 
 
