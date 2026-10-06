@@ -217,6 +217,7 @@ def verify_control_request(data: bytes, secret: str) -> bool:
     if message_auth is None or message_start is None:
         return False
     mutable = bytearray(data[:length])
+    mutable[4:20] = bytes(16)
     mutable[message_start + 2:message_start + 18] = bytes(16)
     expected = hmac.new(secret.encode("utf-8"), bytes(mutable), "md5").digest()
     return hmac.compare_digest(message_auth, expected)
