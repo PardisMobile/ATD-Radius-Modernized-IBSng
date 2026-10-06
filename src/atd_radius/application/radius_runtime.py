@@ -5,7 +5,7 @@ from typing import Protocol
 
 from atd_radius.domain.aaa import PluginPipeline, PluginSpec
 from atd_radius.domain.accounting_session import AccountingSessionService
-from atd_radius.domain.radius import RadiusPacket
+from atd_radius.domain.radius import RadiusCode, RadiusPacket
 from atd_radius.domain.radius_dispatch import DispatchResult, RadiusDispatcher
 from atd_radius.domain.session_policy import ActiveSessionView
 from atd_radius.domain.user_policies import AuthenticationPolicy, LockPolicy, MultiLoginPolicy, TimeoutPolicy
