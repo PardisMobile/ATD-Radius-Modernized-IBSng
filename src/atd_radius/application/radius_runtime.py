@@ -8,6 +8,7 @@ from atd_radius.domain.accounting_session import AccountingSessionService
 from atd_radius.domain.radius import RadiusCode, RadiusPacket
 from atd_radius.domain.radius_dispatch import DispatchResult, RadiusDispatcher
 from atd_radius.domain.session_policy import ActiveSessionView
+from atd_radius.domain.session_control import RegistrySessionControl
 from atd_radius.domain.user_policies import AuthenticationPolicy, LockPolicy, MultiLoginPolicy, TimeoutPolicy
 
 
@@ -33,6 +34,8 @@ class RadiusRuntimeHandler:
         self.dispatcher = dispatcher
         self.accounting_sessions = accounting_sessions
         self.identities = identities
+        if self.dispatcher.session_control is None:
+            self.dispatcher.session_control = RegistrySessionControl(accounting_sessions.registry)
 
     def __call__(self, packet: RadiusPacket, peer: tuple[str, int]) -> RadiusPacket:
         if packet.code in (RadiusCode.DISCONNECT_REQUEST, RadiusCode.COA_REQUEST):
