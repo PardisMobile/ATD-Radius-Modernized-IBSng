@@ -67,17 +67,13 @@ Read this file, `ROADMAP.md`, `ARCHITECTURE.md`, `docs/DECISIONS.md`, `docs/phas
 
 ## Current implementation checkpoint — 2026-10-06
 
-- Main branch currently advances through native A1.24 schema migration and USER persistence/UI work.
-- The native migration contains the A1.24 tables/sequences/indexes; parallel modern schema names such as `user_credentials`, `user_groups`, `user_services`, `credit_ledger`, `attribute_bindings`, `sessions`, `services` and `online_sessions` are forbidden.
-- Latest confirmed main commit at this checkpoint: `1edf3825d06c25bc34169477d144c448f7968b44`.
-- CI status must be re-checked from GitHub after each batch; do not assume queued/in-progress runs passed.
-- USER API/persistence is mapped to `users`, `normal_users`, `user_attrs` and related A1.24 tables. USER lock is presence of the `lock` attribute.
-- GROUP work is implemented directly against `groups` and `group_attrs`, preserving A1.24 names and semantics.
-- RAS work is now implemented directly against `ras`, `ras_ports`, `ras_attrs` and `ras_ippools`; `ras_ippools.serial` remains database-generated and is returned by insertion.
-- RAS API now exposes RAS List, RAS Information, Add New RAS, Edit RAS Information and RAS Ports boundaries using native column names.
-- Direct schema verification confirms RAS persistence boundaries: `ras`, `ras_ports`, `ras_attrs`, `ras_ippools`; RAS-to-IPPool links use DB-generated `ras_ippools.serial`.
-- IPPool runtime remains in-memory for used/free state, matching A1.24; persisted `ippool_ips` stores pool membership only.
-- A1.24 GROUP source behavior verified: group names accept only ASCII alphanumeric, underscore and hyphen; creation uses `groups_group_id_seq`; deletion is blocked when `users.group_id` references the group; group attributes are one value per `(group_id, attr_name)`.
-- A1.24 GroupActions/GroupHandler source was inspected directly before implementing the GROUP repository/API.
-- Remaining high-priority parity gaps include RAS lifecycle, full AAA/RADIUS UDP integration, accounting/session integration, permissions/audit, billing source verification, remaining UI areas, installer verification, and migration/import testing.
+- Main branch now includes a real RADIUS wire codec covering the core Access/Accounting packet codes and common A1.24 attributes.
+- PAP User-Password encryption/decryption uses the RFC shared-secret algorithm and request authenticator.
+- Response encoding now calculates the RADIUS response authenticator from the request authenticator and shared secret.
+- A synchronous UDP transport boundary exists with NAS secret resolution by source IP; it is deliberately not claimed as production-ready until lifecycle, request verification, duplicate handling integration, and full dispatcher wiring are completed.
+- Codec tests cover common attribute round-trips, PAP, malformed packets, and response authenticator calculation.
+- Latest implementation checkpoint commit: `c5e9c9dfd8abf3c88614e958877fd7f6462a9205`.
+- CI must be re-checked after this batch; the GitHub combined-status endpoint currently reports no status entries for the latest commit, so this batch is not being marked CI-verified.
+- Remaining high-priority gaps are NAS/RAS secret lookup wiring, real dispatcher integration, Accounting request authenticator verification, duplicate request cache integration, Message-Authenticator/EAP boundary work, session/accounting persistence, permissions/audit, billing, remaining UI, installer verification, and migration/import testing.
 - Do not mark any subsystem Verified merely because an implementation exists; Verified requires source-derived behavior tests and/or database parity evidence.
+
