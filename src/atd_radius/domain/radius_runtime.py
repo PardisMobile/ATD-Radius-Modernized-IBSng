@@ -30,6 +30,14 @@ class DuplicateRequestCache(Generic[T]):
     def finish(self,key:RequestKey,response:T)->None:
         item=self._items[key]; item.response=response; item.finished=True
     def remove(self,key:RequestKey)->None: self._items.pop(key,None)
+    def purge_expired(self, max_age_seconds: float, now: float | None = None) -> int:
+        if max_age_seconds < 0:
+            raise ValueError("max_age_seconds must be non-negative")
+        current = monotonic() if now is None else now
+        expired = [key for key, item in self._items.items() if current - item.created_at >= max_age_seconds]
+        for key in expired:
+            del self._items[key]
+        return len(expired)
     def __len__(self): return len(self._items)
 
 @dataclass(frozen=True,slots=True)
@@ -62,5 +70,10 @@ class SessionRegistry:
         state=self._sessions[key]
         state.input_octets=input_octets; state.output_octets=output_octets; state.stopped=True
         return state
+    def find_by_unique_id(self, unique_id: str) -> SessionState | None:
+        for state in self._sessions.values():
+            if state.key.unique_id == unique_id:
+                return state
+        return None
     def active_for_user(self,user_id:int)->tuple[SessionState,...]:
         return tuple(s for s in self._sessions.values() if s.key.user_id==user_id and s.started and not s.stopped)
