@@ -178,6 +178,19 @@ class IPPoolRuntimeRegistry:
     def release(self, pool_id: int, ip: str) -> None:
         self._require(pool_id).release(ip)
 
+    def find_pool(self, pool_ids, ip: str) -> int | None:
+        for pool_id in pool_ids:
+            pool = self._pools.get(int(pool_id))
+            if pool is not None and ip in pool.all_ips:
+                return int(pool_id)
+        return None
+
+    def ensure_claimed(self, pool_id: int, ip: str) -> None:
+        pool = self._require(pool_id)
+        if ip in pool.used_ips:
+            return
+        pool.claim(ip)
+
     def active(self):
         return tuple(self._pools[key] for key in sorted(self._pools))
 
