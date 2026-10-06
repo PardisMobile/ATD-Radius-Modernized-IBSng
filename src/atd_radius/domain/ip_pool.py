@@ -58,6 +58,10 @@ class IPPoolIPNotInUseError(IPPoolError):
     pass
 
 
+class IPPoolIPNotInPoolError(IPPoolError):
+    pass
+
+
 class IPPoolRuntime:
     """A1.24-compatible process-local free/used IP container."""
 
@@ -97,7 +101,7 @@ class IPPoolRuntime:
     def claim(self, ip: str) -> None:
         with self._lock:
             if ip not in self._all_ips:
-                return
+                raise IPPoolIPNotInPoolError(f"IP address {ip} is not a member of pool {self.name}")
             if ip not in self._free:
                 raise IPPoolFullError(f"IP address {ip} is already in use")
             self._free.remove(ip)
