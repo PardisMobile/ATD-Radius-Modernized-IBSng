@@ -69,10 +69,12 @@ Read this file, `ROADMAP.md`, `ARCHITECTURE.md`, `docs/DECISIONS.md`, `docs/phas
 
 - Main branch currently advances through native A1.24 schema migration and USER persistence/UI work.
 - The native migration contains the A1.24 tables/sequences/indexes; parallel modern schema names such as `user_credentials`, `user_groups`, `user_services`, `credit_ledger`, `attribute_bindings`, `sessions`, `services` and `online_sessions` are forbidden.
-- Latest confirmed main commit before this checkpoint: `20ecc9c75f61bf6258a241c294d8a6c93769de1b`.
+- Latest confirmed main commit at this checkpoint: `5282cc3ac31c4929fa6f3eaaaf3b53b580cd5681`.
 - CI status must be re-checked from GitHub after each batch; do not assume queued/in-progress runs passed.
 - USER API/persistence is mapped to `users`, `normal_users`, `user_attrs` and related A1.24 tables. USER lock is presence of the `lock` attribute.
-- GROUP work is now being implemented directly against `groups` and `group_attrs`, preserving A1.24 names and semantics.
+- GROUP work is implemented directly against `groups` and `group_attrs`, preserving A1.24 names and semantics.
+- RAS work is now implemented directly against `ras`, `ras_ports`, `ras_attrs` and `ras_ippools`; `ras_ippools.serial` remains database-generated and is returned by insertion.
+- RAS API now exposes RAS List, RAS Information, Add New RAS, Edit RAS Information and RAS Ports boundaries using native column names.
 - A1.24 GROUP source behavior verified: group names accept only ASCII alphanumeric, underscore and hyphen; creation uses `groups_group_id_seq`; deletion is blocked when `users.group_id` references the group; group attributes are one value per `(group_id, attr_name)`.
 - A1.24 GroupActions/GroupHandler source was inspected directly before implementing the GROUP repository/API.
 - Remaining high-priority parity gaps include RAS lifecycle, full AAA/RADIUS UDP integration, accounting/session integration, permissions/audit, billing source verification, remaining UI areas, installer verification, and migration/import testing.
