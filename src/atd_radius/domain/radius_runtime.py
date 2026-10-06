@@ -1,6 +1,7 @@
 """Runtime primitives for A1.24 RADIUS duplicate handling and session state."""
 from __future__ import annotations
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from time import monotonic
 from typing import Generic, Mapping, TypeVar
 
@@ -21,7 +22,6 @@ class CachedRequest(Generic[T]):
     created_at:float=field(default_factory=monotonic)
 
 class DuplicateRequestCache(Generic[T]):
-    """A1.24 request-list semantics: one in-flight request per RADIUS key."""
     def __init__(self): self._items:dict[RequestKey,CachedRequest[T]]={}
     def get(self,key:RequestKey)->CachedRequest[T]|None: return self._items.get(key)
     def add(self,key:RequestKey)->CachedRequest[T]:
@@ -29,13 +29,11 @@ class DuplicateRequestCache(Generic[T]):
     def finish(self,key:RequestKey,response:T)->None:
         item=self._items[key]; item.response=response; item.finished=True
     def remove(self,key:RequestKey)->None: self._items.pop(key,None)
-    def purge_expired(self, max_age_seconds: float, now: float | None = None) -> int:
-        if max_age_seconds < 0:
-            raise ValueError("max_age_seconds must be non-negative")
-        current = monotonic() if now is None else now
-        expired = [key for key, item in self._items.items() if current - item.created_at >= max_age_seconds]
-        for key in expired:
-            del self._items[key]
+    def purge_expired(self,max_age_seconds:float,now:float|None=None)->int:
+        if max_age_seconds<0: raise ValueError("max_age_seconds must be non-negative")
+        current=monotonic() if now is None else now
+        expired=[key for key,item in self._items.items() if current-item.created_at>=max_age_seconds]
+        for key in expired: del self._items[key]
         return len(expired)
     def __len__(self): return len(self._items)
 
@@ -53,63 +51,45 @@ class SessionState:
     stopped:bool=False
     input_octets:int=0
     output_octets:int=0
+    started_at:datetime|None=None
+    charge_id:int|None=None
+    charge_rule_id:int|None=None
+    charge_rule_started_at:datetime|None=None
+    charge_rule_input_octets:int=0
+    charge_rule_output_octets:int=0
+    charge_accrued=field(default_factory=lambda: __import__("decimal").Decimal("0"))
 
 class SessionRegistry:
     def __init__(self): self._sessions:dict[SessionKey,SessionState]={}
-    def start(self,key:SessionKey,attributes:Mapping[str,str]|None=None,input_octets:int=0,output_octets:int=0)->SessionState:
-        state=SessionState(key,attributes or {},True,False,input_octets,output_octets)
+    def start(self,key,attributes=None,input_octets=0,output_octets=0,started_at=None)->SessionState:
+        state=SessionState(key,attributes or {},True,False,input_octets,output_octets,started_at or datetime.now(timezone.utc))
         self._sessions[key]=state; return state
-    def get(self,key:SessionKey)->SessionState|None: return self._sessions.get(key)
-    def update(self,key:SessionKey,input_octets:int,output_octets:int)->tuple[int,int]:
+    def get(self,key): return self._sessions.get(key)
+    def update(self,key,input_octets,output_octets):
         state=self._sessions[key]
-        delta=(input_octets-state.input_octets,output_octets-state.output_octets)
+        di=max(0,input_octets-state.input_octets); do=max(0,output_octets-state.output_octets)
         state.input_octets=input_octets; state.output_octets=output_octets
-        return delta
-    def stop(self,key:SessionKey,input_octets:int=0,output_octets:int=0)->SessionState:
-        state=self._sessions[key]
-        state.input_octets=input_octets; state.output_octets=output_octets; state.stopped=True
-        return state
-    def find_by_unique_id(self, unique_id: str) -> SessionState | None:
+        return di,do
+    def stop(self,key,input_octets=0,output_octets=0):
+        state=self._sessions[key]; state.input_octets=input_octets; state.output_octets=output_octets; state.stopped=True; return state
+    def find_by_unique_id(self,unique_id): 
         for state in self._sessions.values():
-            if state.key.unique_id == unique_id:
-                return state
+            if state.key.unique_id==unique_id: return state
         return None
-    def matching(self, attributes: Mapping[str, str]) -> tuple[SessionState, ...]:
-        """Return active sessions matching every supplied NAS/session identifier."""
-        nas_names = {"NAS-IP-Address", "NAS-Identifier"}
-        session_names = {
-            "User-Name", "NAS-Port", "Framed-IP-Address", "Calling-Station-Id",
-            "Called-Station-Id", "Acct-Session-Id", "Acct-Multi-Session-Id",
-            "NAS-Port-Id", "Chargeable-User-Identity",
-        }
-        identifiers = {k: v for k, v in attributes.items() if k in nas_names | session_names}
-        if not identifiers:
-            return ()
-        return tuple(
-            state for state in self._sessions.values()
-            if state.started and not state.stopped
-            and all(state.attributes.get(name) == value for name, value in identifiers.items())
-        )
-
-    def disconnect_matching(self, attributes: Mapping[str, str]) -> tuple[SessionState, ...]:
-        matches = self.matching(attributes)
-        for state in matches:
-            state.stopped = True
+    def matching(self,attributes):
+        names={"NAS-IP-Address","NAS-Identifier","User-Name","NAS-Port","Framed-IP-Address","Calling-Station-Id","Called-Station-Id","Acct-Session-Id","Acct-Multi-Session-Id","NAS-Port-Id","Chargeable-User-Identity"}
+        ids={k:v for k,v in attributes.items() if k in names}
+        if not ids:return ()
+        return tuple(s for s in self._sessions.values() if s.started and not s.stopped and all(s.attributes.get(k)==v for k,v in ids.items()))
+    def disconnect_matching(self,attributes):
+        matches=self.matching(attributes)
+        for state in matches: state.stopped=True
         return matches
-
-    def apply_authorization(self, attributes: Mapping[str, str]) -> tuple[SessionState, ...]:
-        matches = self.matching(attributes)
-        changes = {
-            name: value for name, value in attributes.items()
-            if name in {"Filter-Id", "NAS-Filter-Rule"}
-        }
-        if not changes:
-            return ()
+    def apply_authorization(self,attributes):
+        matches=self.matching(attributes); changes={k:v for k,v in attributes.items() if k in {"Filter-Id","NAS-Filter-Rule"}}
+        if not changes:return ()
         for state in matches:
-            updated = dict(state.attributes)
-            updated.update(changes)
-            state.attributes = updated
+            updated=dict(state.attributes); updated.update(changes); state.attributes=updated
         return matches
-
-    def active_for_user(self,user_id:int)->tuple[SessionState,...]:
+    def active_for_user(self,user_id):
         return tuple(s for s in self._sessions.values() if s.key.user_id==user_id and s.started and not s.stopped)
