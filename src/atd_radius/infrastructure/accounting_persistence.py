@@ -44,4 +44,4 @@ class NativeAccountingPersistence:
     def stop(self, connection_log_id: int, event, credit_used=None) -> None:
         for name, value in self._details(event).items():
             self.repository.upsert_detail(connection_log_id, name, value)
-        self.repository.close(connection_log_id, event.observed_at, str(credit_used) if credit_used is not None else None, True)
+        self.repository.close(connection_log_id, event.observed_at if credit_used is not None else self.clock(), str(credit_used) if credit_used is not None else None, True)
