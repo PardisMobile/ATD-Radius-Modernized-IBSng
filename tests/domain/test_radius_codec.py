@@ -214,7 +214,6 @@ def test_mschapv2_success_vsa_round_trip():
 
 def test_mppe_keys_are_salted_and_rfc2548_encrypted():
     from hashlib import md5
-    from struct import unpack
     from atd_radius.domain.radius_auth import derive_mschapv2_mppe_keys
 
     request_authenticator = bytes.fromhex("00112233445566778899aabbccddeeff")
