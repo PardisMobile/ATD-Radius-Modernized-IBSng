@@ -64,3 +64,18 @@ The A1.24 `core/user/plugins/multilogin.py` path is directly traced end-to-end:
 - RAS capability is a separate `ras_msg["multi_login"]` boolean. The plugin keeps one capability value per login instance and rejects when a disallowing RAS is involved and `instances > 1`.
 
 This distinction is important: **defaulting an absent attribute to 1 is not the same as treating an explicit zero as 1.**
+
+## Direct source trace — Attribute / Group / DB linkage
+
+The canonical A1.24 source and SQL were also traced for the MultiLogin attribute path:
+
+- db/tables.sql defines groups, group_attrs, users, normal_users, voip_users, and user_attrs as separate structures. group_attrs and user_attrs both use (scope_id, attr_name) as their primary key and store attr_value as text.
+- UserLoader.__createUserAttrs() constructs UserAttributes(user_attrs_dic, basic_user.getGroupID()).
+- UserAttributes.getAttr() first checks the explicit user attribute; when absent it delegates to the user's group object.
+- UserAttributes.hasAttr() is likewise true when the attribute exists at either user or group scope.
+- Therefore a group-level multi_login is an effective user setting unless explicitly overridden by a user-level multi_login.
+- MultiLogin.__setMultiLogin() consumes this effective UserAttributes view, so its default-1 behavior applies only when neither user nor group provides the attribute.
+- AttributeManager is the source registration/update/parse/search layer; MultiLoginAttrHandler registers multi_login for change/delete/search, and the updater persists it as an attribute rather than as a dedicated users-table column.
+- User.login() increments instances before invoking USER_LOGIN, so session admission must evaluate the incoming instance as existing + 1.
+
+This trace confirms that the current ATD architecture should preserve user-over-group precedence and group inheritance before applying the MultiLogin limit. A change that only reads a user-local dictionary would be a regression.
