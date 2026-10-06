@@ -1,5 +1,3 @@
-from unittest.mock import Mock
-
 from atd_radius.domain.aaa import AAAAction, AAARequest
 from atd_radius.domain.user_policies import MultiLoginPolicy, ras_allows_multi_login
 from atd_radius.domain.session_policy import ActiveSessionView
