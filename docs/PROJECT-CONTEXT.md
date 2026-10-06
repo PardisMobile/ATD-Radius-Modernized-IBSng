@@ -50,7 +50,7 @@ Never import code, documentation, generated files, secrets or production data fr
 ## Working rule for future chats
 Read this file, ROADMAP.md, ARCHITECTURE.md, docs/DECISIONS.md, docs/phase-0-inventory.md, docs/ibsng-a124-full-inventory.md, and ui/UI-SPEC.md before architectural changes. Then inspect the latest commits before editing code.
 
-## Current implementation checkpoint — 2026-10-06 (RAS runtime checkpoint)
+## Current implementation checkpoint — 2026-10-06 (IP pool runtime checkpoint)
 
 ### RADIUS wire/protocol boundary
 - Real RADIUS wire codec covers Access, Accounting and RFC 5176 Disconnect/CoA packet families.
@@ -101,9 +101,10 @@ Read this file, ROADMAP.md, ARCHITECTURE.md, docs/DECISIONS.md, docs/phase-0-inv
 - A1.24 online state is primarily runtime state; internet_onlines_snapshot / voip_onlines_snapshot are the source-confirmed persistence surfaces.
 
 ### IP pools / RAS
-- IP-pool allocator primitives preserve ordered free/used runtime semantics and first-free allocation.
-- Explicit IP use/release behavior and RADIUS reply mapping are represented.
-- Native PostgreSQL schema contracts for ippool, ippool_ips and ras_ippools are documented.
+- Native PostgreSQL `ippool` / `ippool_ips` repository mapping is implemented without inventing an allocation table.
+- IP pool runtime preserves the A1.24 process-local free/used model, first-free allocation, explicit claim/release and reload behavior.
+- Reload preserves active addresses that remain in the refreshed membership list and drops deleted members.
+- `ras_ippools` remains the authoritative RAS-to-pool binding surface; live Access/session lifecycle wiring is still pending.
 - RAS repository plus source-compatible runtime registry/loader is implemented; mutation-triggered reload integration remains pending verification.
 
 ### Billing
@@ -119,15 +120,16 @@ Read this file, ROADMAP.md, ARCHITECTURE.md, docs/DECISIONS.md, docs/phase-0-inv
 - User Information edit actions, high-frequency IBSng workflows, GROUP/RAS/IPPool/REPORT/GRAPH/ADMIN workflows and full user portal parity remain open.
 
 ### Current repository head
-- Current main branch head: 19dfd4b3b88c8c6faae563c9c3092892593f4c3f
-- Latest change: fix: preserve A1.24 equal-priority charge rule order
+- Current main branch head at this checkpoint: 99a2b68cfdfbe9500ad42a18eed3e79b79e26694
+- Latest change: docs: align roadmap with native IP pool runtime
+- Code milestone immediately before this documentation checkpoint: 5ba63ffb862022e01fef2666d7542f308b8ff9b4
 - Older checkpoint references are historical and must not be treated as current HEAD.
 - GitHub workflow lookup currently returns no workflow runs for this HEAD, so this checkpoint is not CI-verified.
 - Do not mark a subsystem Verified merely because an implementation exists. Verified requires source-derived behavior tests and/or database parity evidence.
 
 ## Immediate continuation priorities
 1. Complete mutation-triggered RAS reload integration from source-derived semantics.
-2. Complete IP-pool lifecycle integration against native PostgreSQL membership and ras_ippools bindings.
+2. Wire native IP-pool allocation/claim/release into live Access and Accounting/session lifecycle, preserving `ras_ippools` ordering.
 3. Wire persistent connection history into the live Accounting-Request path and test idempotency/parity.
 4. Strengthen live session admission/termination integration against A1.24 online/session behavior.
 5. Complete RADIUS authentication protocol coverage and source-derived attribute handling.
