@@ -74,5 +74,5 @@ def test_control_release_uses_session_ras_and_framed_ip():
         def matching(self, attributes):
             return (State(),)
 
-    manager.release_control({"Acct-Session-Id": "sid"}, Registry())
+    manager.release_states(Registry().matching({"Acct-Session-Id": "sid"}))
     assert pools.get(1).used_ips == ()
