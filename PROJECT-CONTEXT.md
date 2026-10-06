@@ -10,7 +10,7 @@ Canonical archive:
 `Source of Truth/IBSng-A1.24.tar.bz2`
 
 SHA-256:
-`c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839614bb9349d18a8`
+`c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839bb9349d18a8`
 
 Parity docs, inventories, matrices, notes, tests, and current ATD code are guides/records/validation artifacts only. They must never override or substitute for the actual IBSng source when the source is available. If any parity document conflicts with the source archive, **the source archive wins**.
 
@@ -178,3 +178,31 @@ When a new ChatGPT conversation starts, do not ask the user to restate the proje
 
 - Follow-up tests now also cover counter reset (no negative transfer charge) and zero-credit settlement (A1.24-style zero-value credit commit remains observable).
 - Source verification via temporary GitHub Action is now available from historical successful runs: the canonical archive trace directly verified `InternetChargeRule.start/end` and the `getTypeObj().getInOutBytes(instance)` baseline path. The temporary workflow was removed; no temporary workflow remains in `main`.
+
+
+## Live RADIUS runtime wiring checkpoint — 2026-10-07
+
+### Implemented
+- Added `NativeRadiusRuntimeState` as the long-lived in-process state boundary for SessionRegistry, RAS runtime state and IP-pool runtime state.
+- Added `NativeRadiusPacketHandler`: each UDP packet opens a fresh PostgreSQL connection/transaction through the existing `infrastructure.db.connection()` context, while the session/RAS/IP-pool state remains shared across packets.
+- Added `PostgresRadiusSecretResolver`: active RAS/NAS secrets are resolved from PostgreSQL per incoming source IP instead of freezing secrets in process state.
+- `main.py` can now start both authentication (1812) and accounting (1813) UDP listeners alongside FastAPI when `ATD_RADIUS_ENABLED=true`.
+- The default remains disabled so existing API-only deployments are not unexpectedly changed.
+- Existing `build_native_radius_runtime()` remains available for tests and explicit one-transaction composition; production UDP wiring uses the packet-scoped transaction handler.
+- Added a runtime-state boundary test scaffold and CI coverage through the normal push workflows.
+
+### Transaction/state invariant
+The production RADIUS path must not keep one PostgreSQL transaction open for the lifetime of the UDP listener. Each packet gets its own DB context/commit/rollback boundary, while in-memory session and IP-pool state persists for the process lifetime. This is now the explicit runtime architecture.
+
+### Current status
+- Live UDP application wiring: implemented.
+- Per-packet DB transaction boundary: implemented.
+- Shared runtime session/IP-pool/RAS state: implemented.
+- Authentication + Accounting + Disconnect/CoA all enter through the same UDP transport boundary.
+- End-to-end production verification against a running PostgreSQL/RAS instance is still a deployment/integration test, not claimed as complete by unit CI alone.
+
+### Next unresolved priorities
+1. Finish source-derived RAS provider behavior parity and verify each provider against canonical A1.24 source.
+2. Complete RADIUS dictionary/attribute coverage from canonical A1.24 source.
+3. Strengthen live integration tests for UDP -> PostgreSQL -> auth/accounting/charge/connection-log and rollback atomicity.
+4. Continue billing/credit ledger, API/RBAC/audit, UI workflows, migration and deployment work.
