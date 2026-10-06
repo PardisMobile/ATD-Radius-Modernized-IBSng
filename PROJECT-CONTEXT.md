@@ -150,6 +150,12 @@ When a new ChatGPT conversation starts, do not ask the user to restate the proje
 - ATD InternetChargeSettlement now mirrors the source state machine conceptually: effective rule selection, per-rule time start, per-rule IN/OUT baseline, transition accumulation, final settlement, and credit decrement.
 - This checkpoint is source-traced but not yet full parity Verified: the remaining validation target is the exact implementation of the A1.24 InternetChargeRule.start/end hooks and the source of getTypeObj().getInOutBytes(instance) compared with ATD accounting counters.
 
+### Source-verification update — 2026-10-07
+- Canonical A1.24 `InternetChargeRule.start/end` is now directly verified from the extracted archive. `start()` calls the base rule start, captures `getTypeObj().getInOutBytes(instance)` into `rule_start_inout[instance-1]`, then applies bandwidth limits; `end()` calls the base end and removes bandwidth limits. `calcRuleInOutUsage()` subtracts that exact per-instance baseline and `calcRuleTransferUsage()` sums the deltas.
+- The source trace came from successful temporary GitHub Actions extraction; the temporary workflow was removed afterward. This is source evidence, not a parity-doc inference.
+- ATD's per-session charge state explicitly models the same baseline concept with input/output counters.
+- Transaction ownership is now understood: `infrastructure.db.connection()` wraps `psycopg.connect(...)` in a context manager, so normal exit commits and an escaping exception rolls the transaction back. `build_native_radius_runtime()` deliberately accepts a caller-owned connection so accounting persistence, credit settlement and repository reads share that transaction. `RadiusUDPServer` does not own a DB connection; production wiring must therefore preserve this single-connection/context boundary.
+
 ### Current ATD billing/accounting implementation
 - src/atd_radius/domain/accounting_charge.py contains the settlement state machine.
 - SessionState stores charge ID, effective rule ID, rule start time, per-rule input/output baselines, and accumulated charge.
@@ -158,11 +164,10 @@ When a new ChatGPT conversation starts, do not ask the user to restate the proje
 - Source-derived tests exist for charge calculation and accounting-charge settlement.
 
 ### Remaining charge validation
-1. Directly trace InternetChargeRule.start/end from the canonical archive.
-2. Directly trace getTypeObj().getInOutBytes(instance) and its accounting update path.
-3. Add source-derived tests for rule transition, counter reset, multiple instances, zero-credit commit and atomic credit/log persistence.
-4. Verify transaction/rollback boundaries so credit and connection-log settlement remain consistent on failure.
-5. Update accounting parity docs only after these checks pass.
+1. Validate an integration-level failure path proving that an exception after credit/log mutation escapes to the caller and causes the shared psycopg transaction to roll back.
+2. Continue source-derived billing edge cases only where new canonical-source evidence requires them.
+3. Keep the shared-connection requirement explicit in deployment/runtime wiring.
+4. Update accounting parity docs only with evidence-backed status.
 
 ### Charge implementation checkpoint — 2026-10-07 follow-up
 - Runtime charge settlement is now covered by source-derived tests for rule-start time/IN-OUT baselines, rule transition accumulation, independent per-session/multi-instance baselines, and A1.24 no_commit behavior.
@@ -172,4 +177,4 @@ When a new ChatGPT conversation starts, do not ask the user to restate the proje
 - Temporary source-trace workflow created during this follow-up was removed; no temporary workflow is intentionally left in main.
 
 - Follow-up tests now also cover counter reset (no negative transfer charge) and zero-credit settlement (A1.24-style zero-value credit commit remains observable).
-- Source verification via temporary GitHub Action could not be executed from the available connector because workflow dispatch/run retrieval is not exposed reliably; the temporary workflow was removed and no source claim was upgraded to Verified on that basis.
+- Source verification via temporary GitHub Action is now available from historical successful runs: the canonical archive trace directly verified `InternetChargeRule.start/end` and the `getTypeObj().getInOutBytes(instance)` baseline path. The temporary workflow was removed; no temporary workflow remains in `main`.
