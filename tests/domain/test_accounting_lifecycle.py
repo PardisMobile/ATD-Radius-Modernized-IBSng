@@ -10,3 +10,15 @@ def test_event_mapping_accepts_alive_alias():
     assert e.status is AccountingStatus.ALIVE and e.input_octets==12
 def test_unknown_status_rejected():
     with pytest.raises(ValueError): event_from_attributes({"Acct-Status-Type":"Bogus","User-Name":"u"})
+
+
+def test_event_from_attributes_preserves_native_packet_details():
+    event = event_from_attributes({
+        "Acct-Status-Type": "Start",
+        "User-Name": "alice",
+        "Acct-Session-Id": "sid-1",
+        "NAS-Port": "7",
+        "NAS-IP-Address": "192.0.2.1",
+    })
+    assert event.attributes["NAS-Port"] == "7"
+    assert event.attributes["NAS-IP-Address"] == "192.0.2.1"
