@@ -10,11 +10,11 @@ def test_ras_multilogin_source_defaults():
 
 
 def test_voip_ras_multilogin_attributes_match_a124():
-    assert ras_allows_multi_login("GnuGk", {}) is False
-    assert ras_allows_multi_login("GnuGk", {"gnugk_multiple_login": "1"}) is True
-    assert ras_allows_multi_login("Asterisk", {}) is False
-    assert ras_allows_multi_login("Asterisk", {"asterisk_multi_login": "1"}) is True
-    assert ras_allows_multi_login("Quintum Tenor", {}) is False
+    assert ras_allows_multi_login("GnuGk", {}, service="voip") is False
+    assert ras_allows_multi_login("GnuGk", {"gnugk_multiple_login": "1"}, service="voip") is True
+    assert ras_allows_multi_login("Asterisk", {}, service="voip") is False
+    assert ras_allows_multi_login("Asterisk", {"asterisk_multi_login": "1"}, service="voip") is True
+    assert ras_allows_multi_login("Quintum Tenor", {}, service="voip") is False
 
 
 def test_ras_does_not_override_user_limit_precedence():
