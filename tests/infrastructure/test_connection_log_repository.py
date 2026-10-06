@@ -1,7 +1,7 @@
 from datetime import datetime
 from unittest.mock import Mock
 
-from atd_radius.domain.connection_log import ConnectionLog
+from atd_radius.infrastructure.connection_log import ConnectionLog
 from atd_radius.infrastructure.connection_log_repository import ConnectionLogRepository
 
 
