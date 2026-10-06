@@ -13,7 +13,6 @@ class AuthenticationPolicy:
             return AAAResult(AAAAction.REJECT,reason="INVALID_CREDENTIALS")
         return None
 
-from .session_policy import ActiveSessionView,session_policy
 
 def _int_attr(attributes, name, default):
     raw = attributes.get(name, default)
