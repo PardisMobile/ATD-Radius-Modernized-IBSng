@@ -14,6 +14,12 @@ _CODE_TO_BYTE = {
     RadiusCode.ACCOUNTING_REQUEST: 4,
     RadiusCode.ACCOUNTING_RESPONSE: 5,
     RadiusCode.ACCESS_CHALLENGE: 11,
+    RadiusCode.DISCONNECT_REQUEST: 40,
+    RadiusCode.DISCONNECT_ACK: 41,
+    RadiusCode.DISCONNECT_NAK: 42,
+    RadiusCode.COA_REQUEST: 43,
+    RadiusCode.COA_ACK: 44,
+    RadiusCode.COA_NAK: 45,
 }
 _BYTE_TO_CODE = {value: key for key, value in _CODE_TO_BYTE.items()}
 _ATTR_NAMES = {
