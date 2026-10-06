@@ -13,12 +13,7 @@ class NativeRASSource(Protocol):
     def attributes(self, ras_id: int) -> list[tuple[str, str]]: ...
 
 class NativeAccessContext:
-    """Resolve native users and user_attrs for an Access-Request.
-
-    normal_users.normal_password is intentionally compared as stored because
-    that is the native A1.24 persistence contract; Argon2 is not substituted
-    for the legacy credential field.
-    """
+    """Resolve native users, RAS and native A1.24 RAS-bound IP pools."""
     def __init__(self, users: NativeUserSource, ras: NativeRASSource | None = None) -> None:
         self.users = users
         self.ras = ras
@@ -35,7 +30,6 @@ class NativeAccessContext:
         attrs["__password_ok"] = "1" if (
             not locked and packet.attributes.get("User-Password", "") == stored_password
         ) else "0"
-
         if self.ras is not None and source_ip:
             ras_record = self.ras.get_by_ip(source_ip)
             if ras_record is not None:
@@ -43,4 +37,6 @@ class NativeAccessContext:
                 attrs["__ras_multi_login_allowed"] = "1" if ras_allows_multi_login(
                     ras_record.ras_type, ras_attrs, "internet"
                 ) else "0"
+                if ras_record.ippool_ids:
+                    attrs["__ras_ippool_ids"] = ",".join(str(pool_id) for pool_id in ras_record.ippool_ids)
         return attrs
