@@ -21,14 +21,14 @@ def select_ras_ippools(ras_id: int) -> str:
     return "SELECT serial, ras_id, ippool_id FROM ras_ippools WHERE ras_id = %s ORDER BY serial"
 
 def upsert_ras_port() -> str:
-    return ("INSERT INTO ras_ports (ras_id, port_name, phone, type, comment) VALUES (%s,$2,$3,$4,$5) "
+    return ("INSERT INTO ras_ports (ras_id, port_name, phone, type, comment) VALUES (%s,%s,$3,$4,$5) "
             "ON CONFLICT (ras_id, port_name) DO UPDATE SET phone=EXCLUDED.phone, type=EXCLUDED.type, comment=EXCLUDED.comment")
 
 def delete_ras_port() -> str:
-    return "DELETE FROM ras_ports WHERE ras_id = %s AND port_name = $2"
+    return "DELETE FROM ras_ports WHERE ras_id = %s AND port_name = %s"
 
 def insert_ras_ippool() -> str:
-    return "INSERT INTO ras_ippools (ras_id, ippool_id) VALUES (%s, $2) RETURNING serial"
+    return "INSERT INTO ras_ippools (ras_id, ippool_id) VALUES (%s, %s) RETURNING serial"
 
 def delete_ras_ippool() -> str:
     return "DELETE FROM ras_ippools WHERE serial = %s"
