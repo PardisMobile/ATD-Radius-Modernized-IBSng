@@ -77,3 +77,26 @@ def test_native_access_context_authenticates_mschapv2():
     assert attrs["__auth_method"] == "mschapv2"
     assert attrs["__mschapv2_valid_shape"] == "1"
     assert attrs["__password_ok"] == "1"
+
+
+def test_native_access_context_emits_mschapv2_success():
+    class MSCHAPUsers(FakeUsers):
+        def __init__(self):
+            self.records = {"User": (9, "clientPass", False)}
+            self.attrs = {9: []}
+
+    auth_challenge = bytes.fromhex("5B5D7C7D7B3F2F3E3C2C602132262628")
+    peer_challenge = bytes.fromhex("21402324255E262A28295F2B3A337C7E")
+    nt_response = bytes.fromhex("82309ECD8D708B5EA08FAA3981CD83544233114A3D85D6DF")
+    response = b"\x01\x00" + peer_challenge + b"\x00" * 8 + nt_response
+    packet = RadiusPacket(
+        RadiusCode.ACCESS_REQUEST,
+        4,
+        {
+            "User-Name": "User",
+            "MS-CHAP-Challenge": auth_challenge,
+            "MS-CHAP2-Response": response,
+        },
+    )
+    attrs = NativeAccessContext(MSCHAPUsers()).enrich(packet)
+    assert attrs["__mschapv2_success"] == "S=407A5589115FD0D6209F510FE9C04566932CDA56"
