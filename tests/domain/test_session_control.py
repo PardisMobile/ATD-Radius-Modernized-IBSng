@@ -19,7 +19,8 @@ def test_matching_applies_to_all_sessions():
     r.start(SessionKey(1,2,"sid-2"),{"User-Name":"u","NAS-Identifier":"nas-1","Acct-Session-Id":"sid-2"})
     result=RegistrySessionControl(r).disconnect({"User-Name":"u","NAS-Identifier":"nas-1"})
     assert result.ok
-    assert r.get(SessionKey(1, 2, "sid-1")).stopped\n    assert r.get(SessionKey(1, 2, "sid-2")).stopped
+    assert r.get(SessionKey(1, 2, "sid-1")).stopped
+    assert r.get(SessionKey(1, 2, "sid-2")).stopped
 
 def test_unknown_session_returns_503():
     r=SessionRegistry()
