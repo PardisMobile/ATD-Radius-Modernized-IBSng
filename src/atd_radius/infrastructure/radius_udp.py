@@ -25,13 +25,17 @@ class RadiusUDPServer:
         port: int = 1812,
         max_packet_size: int = 4096,
         duplicate_cache: DuplicateRequestCache[bytes] | None = None,
+        duplicate_cache_max_age: float = 300.0,
     ) -> None:
         self.handler = handler
         self.secret_resolver = secret_resolver
         self.host = host
         self.port = port
         self.max_packet_size = max_packet_size
+        if duplicate_cache_max_age < 0:
+            raise ValueError("duplicate_cache_max_age must be non-negative")
         self.cache = duplicate_cache or DuplicateRequestCache()
+        self.duplicate_cache_max_age = duplicate_cache_max_age
         self._socket: socket.socket | None = None
 
     def serve_once(self) -> None:
@@ -45,6 +49,7 @@ class RadiusUDPServer:
         request = decode(data, secret)
         if request.code is RadiusCode.ACCOUNTING_REQUEST and not verify_accounting_request(data, secret):
             return
+        self.cache.purge_expired(self.duplicate_cache_max_age)
         key = RequestKey(peer[0], peer[1], request.identifier, int(data[0]), request.authenticator)
         cached = self.cache.get(key)
         if cached is not None:
