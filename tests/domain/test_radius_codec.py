@@ -64,3 +64,22 @@ def test_accounting_request_authenticator_is_verified():
     wire = header + authenticator + attrs
     assert verify_accounting_request(wire, "shared")
     assert not verify_accounting_request(wire, "wrong")
+
+
+def test_disconnect_and_coa_codes_round_trip():
+    from atd_radius.domain.radius import RadiusCode, RadiusPacket
+    from atd_radius.domain.radius_codec import decode, encode
+
+    for code in (
+        RadiusCode.DISCONNECT_REQUEST,
+        RadiusCode.DISCONNECT_ACK,
+        RadiusCode.DISCONNECT_NAK,
+        RadiusCode.COA_REQUEST,
+        RadiusCode.COA_ACK,
+        RadiusCode.COA_NAK,
+    ):
+        packet = RadiusPacket(code, 7, {"User-Name": "alice"}, bytes(16))
+        decoded = decode(encode(packet))
+        assert decoded.code is code
+        assert decoded.identifier == 7
+        assert decoded.attributes["User-Name"] == "alice"
