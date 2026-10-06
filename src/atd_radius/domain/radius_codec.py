@@ -346,21 +346,21 @@ def decode(data: bytes, secret: str | None = None) -> RadiusPacket:
 def _message_authenticator_offset(data: bytes) -> int | None:
     """Return the value offset of the unique Message-Authenticator attribute."""
     if len(data) < 20:
-        return None
+        raise RadiusCodecError("RADIUS packet is shorter than 20 bytes")
     length = unpack("!H", data[2:4])[0]
     if length < 20 or length > len(data):
-        return None
+        raise RadiusCodecError("invalid RADIUS packet length")
     offset = 20
     found = None
     while offset < length:
         if offset + 2 > length:
-            return None
+            raise RadiusCodecError("truncated attribute header")
         attr_length = data[offset + 1]
         if attr_length < 2 or offset + attr_length > length:
-            return None
+            raise RadiusCodecError("invalid attribute length")
         if data[offset] == 80:
             if attr_length != 18 or found is not None:
-                return None
+                raise RadiusCodecError("invalid or duplicate Message-Authenticator")
             found = offset + 2
         offset += attr_length
     return found
@@ -368,31 +368,18 @@ def _message_authenticator_offset(data: bytes) -> int | None:
 
 def verify_message_authenticator(data: bytes, secret: str) -> bool:
     """Verify RFC 2869/3579 Message-Authenticator when present."""
-    offset = _message_authenticator_offset(data)
+    try:
+        offset = _message_authenticator_offset(data)
+    except RadiusCodecError:
+        return False
     if offset is None:
-        # No Message-Authenticator is also valid for packet families where it
-        # is optional. Malformed/duplicate instances are rejected by the same
-        # parser path, so distinguish those cases before accepting absence.
-        if len(data) < 20:
-            return False
-        length = unpack("!H", data[2:4])[0]
-        if length < 20 or length > len(data):
-            return False
-        scan = 20
-        while scan < length:
-            if scan + 2 > length:
-                return False
-            attr_length = data[scan + 1]
-            if attr_length < 2 or scan + attr_length > length:
-                return False
-            scan += attr_length
         return True
+    length = unpack("!H", data[2:4])[0]
     supplied = data[offset : offset + 16]
-    mutable = bytearray(data[:unpack("!H", data[2:4])[0]])
+    mutable = bytearray(data[:length])
     mutable[offset : offset + 16] = bytes(16)
     expected = hmac.new(secret.encode("utf-8"), bytes(mutable), "md5").digest()
     return hmac.compare_digest(supplied, expected)
-
 
 def encode_response(response: RadiusPacket, request: RadiusPacket, secret: str) -> bytes:
     """Encode a RADIUS response, Message-Authenticator, and response authenticator."""
