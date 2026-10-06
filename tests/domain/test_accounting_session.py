@@ -29,3 +29,18 @@ def test_stop_without_session_is_rejected():
     except LookupError:
         return
     assert False, "expected LookupError"
+
+
+def test_accounting_session_persists_start_and_stop_using_connection_log_id():
+    from unittest.mock import Mock
+
+    persistence = Mock()
+    persistence.start.return_value = 99
+    service = AccountingSessionService(SessionRegistry(), persistence)
+    started = service.apply(event(AccountingStatus.START, "sid-p", 100, 200), 7, 3)
+    assert started.connection_log_id == 99
+    assert started.state.attributes["__connection_log_id"] == "99"
+    stopped = service.apply(event(AccountingStatus.STOP, "sid-p", 150, 260), 7, 3)
+    assert stopped.connection_log_id == 99
+    persistence.start.assert_called_once()
+    persistence.stop.assert_called_once_with(99, stopped_event := stopped and event(AccountingStatus.STOP, "sid-p", 150, 260))
