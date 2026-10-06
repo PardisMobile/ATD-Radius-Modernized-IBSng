@@ -1,183 +1,856 @@
-=== Charge references ===
-/tmp/ibsng/IBSng/addons/asterisk/agi-bin/lib/language.py:47:                      "pre_say_used_credit":[],
-/tmp/ibsng/IBSng/addons/asterisk/agi-bin/lib/language.py:48:                      "post_say_used_credit":[],
-/tmp/ibsng/IBSng/addons/asterisk/agi-bin/lib/language.py:218:    def sayCredit(self, credit):
-/tmp/ibsng/IBSng/addons/asterisk/agi-bin/states/get_current_credit.py:9:def getCurrentCredit():
-/tmp/ibsng/IBSng/addons/asterisk/agi-bin/states/call_end.py:17:        (duration,used_credit)=req.send("callEnd",True,duration=duration,dc_cause=status)
-/tmp/ibsng/IBSng/addons/asterisk/agi-bin/states/call_end.py:20:            toLog("CallEnd: duration %s used_credit %s"%(duration,used_credit))
-/tmp/ibsng/IBSng/addons/asterisk/agi-bin/states/call_end.py:24:        duration=used_credit=0
-/tmp/ibsng/IBSng/addons/asterisk/agi-bin/states/call_end.py:26:    return duration,used_credit
-/tmp/ibsng/IBSng/addons/asterisk/agi-bin/states/say_remaining_credit.py:7:def sayRemainingCredit(credit):
-/tmp/ibsng/IBSng/addons/asterisk/agi-bin/states/credit_announcement.py:7:def creditAnnouncement():
-/tmp/ibsng/IBSng/addons/asterisk/agi-bin/states/say_used_credit.py:5:    ibs_agi.getStateMachine().registerState("SAY_USED_CREDIT",sayUsedCredit)
-/tmp/ibsng/IBSng/addons/asterisk/agi-bin/states/say_used_credit.py:7:def sayUsedCredit(duration, used_credit):
-/tmp/ibsng/IBSng/addons/asterisk/agi-bin/states/say_used_credit.py:18:    for f in [lambda:ibs_agi.getSelectedLanguage().sayPrompt("pre_say_used_credit"),
-/tmp/ibsng/IBSng/addons/asterisk/agi-bin/states/say_used_credit.py:19:              lambda:ibs_agi.getSelectedLanguage().sayCredit(int(used_credit)),
-/tmp/ibsng/IBSng/addons/asterisk/agi-bin/states/say_used_credit.py:20:              lambda:ibs_agi.getSelectedLanguage().sayPrompt("post_say_used_credit")]:
-/tmp/ibsng/IBSng/addons/asterisk/agi-bin/states/dial.py:23:            (duration,used_credit)=ibs_agi.getStateMachine().gotoState("CALL_END",duration,status)
-/tmp/ibsng/IBSng/addons/asterisk/agi-bin/states/dial.py:29:            ibs_agi.getStateMachine().gotoState("SAY_USED_CREDIT",duration,used_credit)
-/tmp/ibsng/IBSng/addons/asterisk/agi-bin/languages/fa.py:23:                  "pre_say_used_credit":[],
-/tmp/ibsng/IBSng/addons/asterisk/agi-bin/languages/fa.py:24:                  "post_say_used_credit":["used_credit"],
-/tmp/ibsng/IBSng/addons/asterisk/agi-bin/languages/fa.py:107:    def sayCredit(self, credit):
-/tmp/ibsng/IBSng/addons/asterisk/agi-bin/languages/en.py:23:                  "pre_say_used_credit":["your_account_decreased"],
-/tmp/ibsng/IBSng/addons/asterisk/agi-bin/languages/en.py:24:                  "post_say_used_credit":[],
-/tmp/ibsng/IBSng/addons/asterisk/agi-bin/languages/en.py:106:    def sayCredit(self, credit):
-/tmp/ibsng/IBSng/core/ras/rases/asterisk.py:205:    def getUserCredit(self, request):
-/tmp/ibsng/IBSng/core/ras/rases/asterisk.py:351:        used_credit = ras_msg.send()
-/tmp/ibsng/IBSng/core/ras/rases/asterisk.py:353:        return (duration, used_credit)
-/tmp/ibsng/IBSng/core/ras/rases/gnugk.py:137:    def setSingleH323CreditTime(self,reply_pkt,credit_time):
-/tmp/ibsng/IBSng/core/ras/rases/gnugk.py:140:    def setSingleH323CreditAmount(self,reply_pkt,credit_amount):
-/tmp/ibsng/IBSng/core/ras/rases/mvts.py:182:    def setSingleH323CreditTime(self,reply_pkt,credit_time):
-/tmp/ibsng/IBSng/core/ras/rases/mvts.py:185:    def setSingleH323CreditAmount(self,reply_pkt,credit_amount):
-/tmp/ibsng/IBSng/core/ras/rases/tenor.py:196:    def setSingleH323CreditTime(self,reply_pkt,credit_time):
-/tmp/ibsng/IBSng/core/ras/rases/tenor.py:203:    def setSingleH323CreditAmount(self,reply_pkt,credit_amount):
-/tmp/ibsng/IBSng/core/ras/rases/cisco.py:537:    def setSingleH323CreditTime(self,reply_pkt,credit_time):
-/tmp/ibsng/IBSng/core/ras/rases/cisco.py:540:    def setSingleH323CreditAmount(self,reply_pkt,credit_amount):
-/tmp/ibsng/IBSng/core/ras/voip_ras.py:50:    def setSingleH323CreditTime(self,reply_pkt,credit_time, conv_to_int=False):
-/tmp/ibsng/IBSng/core/ras/voip_ras.py:60:    def setSingleH323CreditAmount(self,reply_pkt,credit_amount, precision=0):
-/tmp/ibsng/IBSng/core/ras/voip_ras.py:75:    def fixCreditPrecision(self, credit, precision):
-/tmp/ibsng/IBSng/core/user/online.py:217:    def __negCreditCheck(self, user_obj):
-/tmp/ibsng/IBSng/core/user/online.py:427:            used_credit=user_obj.logout(instance,ras_msg)
-/tmp/ibsng/IBSng/core/user/online.py:564:            used_credit=user_obj.logout(instance,ras_msg)
-/tmp/ibsng/IBSng/core/user/online.py:569:        return used_credit
-/tmp/ibsng/IBSng/core/user/user_main.py:98:def getCreditChangeLogActions():
-/tmp/ibsng/IBSng/core/user/plugins/charge.py:10:class ChargeUserPlugin(user_plugin.UserPlugin):
-/tmp/ibsng/IBSng/core/user/plugins/charge.py:77:            self.charge_obj.logout(self.user_obj,instance,self.user_obj.getInstanceInfo(instance)["no_commit"])
-/tmp/ibsng/IBSng/core/user/plugins/charge.py:84:    def calcCreditUsage(self,round_result):
-/tmp/ibsng/IBSng/core/user/plugins/charge.py:89:    def calcInstanceCreditUsage(self,instance,round_result):
-/tmp/ibsng/IBSng/core/user/user_handler.py:137:    def changeCredit(self,request):
-/tmp/ibsng/IBSng/core/user/user_handler.py:154:    def __canChangeCredit(self,loaded_user,requester):
-/tmp/ibsng/IBSng/core/user/user_type.py:18:            return an tuple of (ibs_query instance, used_credit)
-/tmp/ibsng/IBSng/core/user/credit_change_log.py:13:    def logCreditChangeQuery(self,action,admin_id,user_ids,per_user_credit,admin_credit,remote_address,comment):
-/tmp/ibsng/IBSng/core/user/credit_change_log.py:43:    def __getNewCreditChangeID(self):
-/tmp/ibsng/IBSng/core/user/credit_change_log.py:49:    def __creditChangeCheckInput(self,remote_address,credit_change_comment):
-/tmp/ibsng/IBSng/core/user/normal_user.py:49:        used_credit=0
-/tmp/ibsng/IBSng/core/user/normal_user.py:57:            used_credit=self.user_obj.charge.calcInstanceCreditUsage(instance,True)
-/tmp/ibsng/IBSng/core/user/normal_user.py:58:            query+=self.user_obj.commit(used_credit)
-/tmp/ibsng/IBSng/core/user/normal_user.py:60:        self.user_obj.getInstanceInfo(instance)["used_credit"]=used_credit
-/tmp/ibsng/IBSng/core/user/normal_user.py:63:        return (query, used_credit)
-/tmp/ibsng/IBSng/core/user/normal_user.py:68:        return user_main.getConnectionLogManager().logConnectionQuery(self.user_obj.getUserID(),
-/tmp/ibsng/IBSng/core/user/normal_user.py:69:                                                               instance_info["used_credit"],
-/tmp/ibsng/IBSng/core/user/connection_log.py:9:    def logConnectionQuery(self,user_id,credit_used,login_time,logout_time,successful,_type,ras_id,details):
-/tmp/ibsng/IBSng/core/user/connection_log.py:12:            credit_used(float): amount of credit used by user
-/tmp/ibsng/IBSng/core/user/connection_log.py:22:        return ibs_db.createFunctionCallQuery("insert_connection_log", \
-/tmp/ibsng/IBSng/core/user/connection_log.py:24:                                                 credit_used, 
-/tmp/ibsng/IBSng/core/user/voip_user.py:50:            used_credit=0
-/tmp/ibsng/IBSng/core/user/voip_user.py:53:            used_credit=self.user_obj.charge.calcInstanceCreditUsage(instance,True)
-/tmp/ibsng/IBSng/core/user/voip_user.py:56:            query+=self.user_obj.commit(used_credit)
-/tmp/ibsng/IBSng/core/user/voip_user.py:58:        instance_info["used_credit"]=used_credit
-/tmp/ibsng/IBSng/core/user/voip_user.py:61:        return (query, used_credit)
-/tmp/ibsng/IBSng/core/user/voip_user.py:97:        return user_main.getConnectionLogManager().logConnectionQuery(self.user_obj.getUserID(),
-/tmp/ibsng/IBSng/core/user/voip_user.py:98:                                                               instance_info["used_credit"],
-/tmp/ibsng/IBSng/core/user/voip_user.py:122:    def getSingleSessionRemainingCredit(self):
-/tmp/ibsng/IBSng/core/user/user_actions.py:69:    def addNewUsers(self,_count,credit,owner_name,creator_name,group_name,remote_address,credit_change_comment,user_ids=None):
-/tmp/ibsng/IBSng/core/user/user_actions.py:102:    def __addNewUsersCheckInput(self,_count,credit,owner_name,creator_name,group_name,remote_address,credit_change_comment,user_ids):
-/tmp/ibsng/IBSng/core/user/user_actions.py:124:    def addNewUsersQuery(self,_count,credit,owner_name,group_name,ibs_query,user_ids=None):
-/tmp/ibsng/IBSng/core/user/user_actions.py:148:    def __insertBasicUsersQueries(self,_count,user_ids,credit,owner_id,group_id,ibs_query):
-/tmp/ibsng/IBSng/core/user/user_actions.py:156:    def __insertBasicUserQuery(self,user_id,credit,owner_id,group_id):
-/tmp/ibsng/IBSng/core/user/user_actions.py:172:    def __addNewUserIASQuery(self,ibs_query,creator_name,credit,user_ids):
-/tmp/ibsng/IBSng/core/user/user_actions.py:178:    def changeCredit(self,user_ids,credit,changer_admin_name,remote_address,credit_change_comment,loaded_users):
-/tmp/ibsng/IBSng/core/user/user_actions.py:206:    def __changeCreditCheckInput(self,user_ids,credit,changer_admin_name,remote_address,credit_change_comment,loaded_users):
-/tmp/ibsng/IBSng/core/user/user_actions.py:222:    def __changeCreditQuery(self,user_ids,credit):
-/tmp/ibsng/IBSng/core/user/basic_user.py:11:    def __init__(self,user_id,owner_id,credit,group_id,creation_date):
-/tmp/ibsng/IBSng/core/user/basic_user.py:41:    def getInitialCredit(self):
-/tmp/ibsng/IBSng/core/user/basic_user.py:44:    def getCredit(self):
-/tmp/ibsng/IBSng/core/user/user.py:52:    def __setInitialCredit(self):
-/tmp/ibsng/IBSng/core/user/user.py:134:    def calcCurrentCredit(self,round_result=True):
-/tmp/ibsng/IBSng/core/user/user.py:137:    def calcInstanceCreditUsage(self,instance,round_result=True):
-/tmp/ibsng/IBSng/core/user/user.py:215:        (query,used_credit)=self.getTypeObj().logout(instance,ras_msg)
-/tmp/ibsng/IBSng/core/user/user.py:222:        return used_credit
-/tmp/ibsng/IBSng/core/user/user.py:237:    def commit(self,used_credit):
-/tmp/ibsng/IBSng/core/user/user.py:243:        query+=self.__commitCreditQuery(used_credit)
-/tmp/ibsng/IBSng/core/user/user.py:246:    def __commitCreditQuery(self,used_credit):
-/tmp/ibsng/IBSng/core/user/user.py:247:        return ibs_db.createFunctionCallQuery("change_user_credit",[self.getUserID(), -1*used_credit])
-/tmp/ibsng/IBSng/core/charge/charge_actions.py:17:class ChargeActions:
-/tmp/ibsng/IBSng/core/charge/voip_charge.py:157:    def calcInstanceCreditUsage(self,user_obj,instance,round_result):
-/tmp/ibsng/IBSng/core/charge/voip_charge.py:170:    def calcInstanceRuleCreditUsage(self,user_obj,instance,round_result):
-/tmp/ibsng/IBSng/core/charge/voip_charge.py:201:    def calcInstanceCreditUsageFromStart(self,user_obj,instance,round_result):
-/tmp/ibsng/IBSng/core/charge/charge_handler.py:7:class ChargeHandler(handler.Handler):
-/tmp/ibsng/IBSng/core/charge/charge.py:15:class Charge:
-/tmp/ibsng/IBSng/core/charge/charge.py:118:class ChargeWithRules(Charge):
-/tmp/ibsng/IBSng/core/charge/charge.py:157:        Charge.logout(self,user_obj,instance)
-/tmp/ibsng/IBSng/core/charge/charge.py:160:                user_obj.charge_info.credit_prev_usage += user_obj.getInstanceInfo(instance)["used_credit"]
-/tmp/ibsng/IBSng/core/charge/charge.py:162:        user_obj.charge_info.logout(instance)
-/tmp/ibsng/IBSng/core/charge/charge.py:225:    def calcInstanceCreditUsage(self,user_obj,instance,round_result):
-/tmp/ibsng/IBSng/core/charge/charge.py:231:    def calcCreditUsage(self,user_obj,round_result):
-/tmp/ibsng/IBSng/core/charge/charge.py:237:        credit_used=0
-/tmp/ibsng/IBSng/core/charge/charge.py:239:            credit_used+=self.calcInstanceCreditUsage(user_obj,_index+1,round_result)
-/tmp/ibsng/IBSng/core/charge/charge.py:240:        return credit_used + user_obj.charge_info.credit_prev_usage
-/tmp/ibsng/IBSng/core/charge/charge.py:281:    def calcInstanceRuleCreditUsage(self,user_obj,instance,round_result):
-/tmp/ibsng/IBSng/core/charge/internet_charge.py:85:    def calcInstanceRuleCreditUsage(self,user_obj,instance,round_result):
-/tmp/ibsng/IBSng/core/charge/internet_charge.py:92:        timely_credit_used=0
-/tmp/ibsng/IBSng/core/charge/internet_charge.py:93:        transfer_credit_used=0
-/tmp/ibsng/IBSng/core/charge/internet_charge.py:95:            timely_credit_used=effective_rule.cpm * (now - user_obj.charge_info.rule_start[instance-1]) / 60
-/tmp/ibsng/IBSng/core/charge/internet_charge.py:97:            transfer_credit_used=effective_rule.cpk * (effective_rule.calcRuleTransferUsage(user_obj,instance)) / 1024.0
-/tmp/ibsng/IBSng/core/charge/internet_charge.py:100:            toLog("user_id: %s timely_credit_used: %s transfer_credit_used: %s"%(user_obj.getUserID(),timely_credit_used,transfer_credit_used),LOG_DEBUG)
-/tmp/ibsng/IBSng/core/charge/internet_charge.py:102:        return timely_credit_used + transfer_credit_used
-/tmp/ibsng/IBSng/core/charge/user_charge.py:44:        UserCharge.logout(self,instance)
-/tmp/ibsng/IBSng/core/charge/user_charge.py:59:        UserCharge.logout(self,instance)
-/tmp/ibsng/IBSng/core/charge/charge_rule.py:7:class ChargeRule:
-/tmp/ibsng/IBSng/core/charge/charge_loader.py:11:class ChargeLoader:
-/tmp/ibsng/IBSng/core/charge/charge_loader.py:135:class ChargeRuleLoader:
-/tmp/ibsng/IBSng/core/admin/admin_actions.py:303:    def __delAdminUpdateCreditChangersQuery(self, admin_id):
-/tmp/ibsng/IBSng/core/admin/perms/CHARGE_ACCESS.py:10:class ChargeAccess (MultiValuePermission,ChargeCatPermission,Permission):
-/tmp/ibsng/IBSng/core/admin/admin_perm.py:223:class ChargeCatPermission:
-/tmp/ibsng/IBSng/core/admin/admin.py:128:    def consumeDeposit(self,credit): 
-/tmp/ibsng/IBSng/core/report/connection.py:62:        total_credit_used = self.__directQueryGetTotalCreditUsed(conditions)
-/tmp/ibsng/IBSng/core/report/connection.py:69:        return (total_rows, total_credit_used, total_duration, total_in, total_out, 
-/tmp/ibsng/IBSng/core/report/connection.py:86:    def __directQueryGetTotalCreditUsed(self, conditions):
-/tmp/ibsng/IBSng/core/report/connection.py:87:        if self.hasCondFor("show_total_credit_used"):
-/tmp/ibsng/IBSng/core/report/connection.py:88:            return db_main.getHandle().get("connection_log",conditions,0,-1,"",["sum(credit_used) as sum"])[0]["sum"]
-/tmp/ibsng/IBSng/core/report/connection.py:188:            total_credit_used = self.__tempTableGetTotalCreditUsed(db_handle)
-/tmp/ibsng/IBSng/core/report/connection.py:201:        return (total_rows, total_credit_used, total_duration, total_in, total_out, 
-/tmp/ibsng/IBSng/core/report/connection.py:223:    def __tempTableGetTotalCreditUsed(self,db_handle):
-/tmp/ibsng/IBSng/core/report/connection.py:224:        if self.hasCondFor("show_total_credit_used"):
-/tmp/ibsng/IBSng/core/report/connection.py:225:            return db_handle.selectQuery("select sum(credit_used) as sum from connection_log,connection_log_report where \
-/tmp/ibsng/IBSng/core/report/connection.py:483:        con_table.ltgtSearch(self.search_helper,"credit_used","credit_used_op","credit_used")
-/tmp/ibsng/IBSng/core/report/connection.py:571:        if order_by not in ["user_id","credit_used","login_time","logout_time","successful","service","ras_id"]:
-/tmp/ibsng/IBSng/core/report/connection_usage.py:127:    def getCreditUsages(self,_from,to):
-/tmp/ibsng/IBSng/core/report/connection_usage.py:132:        return self.__getUsageReport("credit_used", _from, to)
-/tmp/ibsng/IBSng/core/report/connection_usage.py:154:    def getCreditUsages(self, _from, to):
-/tmp/ibsng/IBSng/core/report/credit.py:39:    def getCreditChanges(self,_from,to,order_by,desc,date_type):
-/tmp/ibsng/IBSng/core/report/credit.py:56:    def __createReportResult(self,credit_changes,user_ids,date_type):
-/tmp/ibsng/IBSng/core/report/credit.py:61:    def __repairCreditChangeDic(self,credit_changes,user_ids,date_type):
-/tmp/ibsng/IBSng/core/report/credit.py:92:    def __getUserIDs(self,db_handle,credit_changes):
-/tmp/ibsng/IBSng/core/report/credit.py:98:    def __getCreditChanges(self,db_handle,_from,to,order_by,desc):
-/tmp/ibsng/IBSng/core/report/credit.py:112:    def __getTotalPerUserCredit(self,db_handle):
-/tmp/ibsng/IBSng/core/report/credit.py:118:    def __getTotalAdminCredit(self,db_handle):
-/tmp/ibsng/IBSng/core/report/credit.py:124:    def __createCreditChangeIDsQuery(self):
-/tmp/ibsng/IBSng/core/report/credit.py:178:    def getCreditChanges(self,_from,to,order_by,desc,date_type):
-/tmp/ibsng/IBSng/core/report/credit.py:191:    def __getCreditChangesCheckInput(self,_from,to,order_by,desc):
-/tmp/ibsng/IBSng/core/report/report_handler.py:151:    def getCreditChanges(self,request):
-/tmp/ibsng/IBSng/core/report/report_handler.py:173:    def __filterCreditChangesForUser(self,credit_changes):
-/tmp/ibsng/IBSng/core/report/report_handler.py:298:    def getCreditUsages(self,request):
-=== Candidate charge files ===
-/tmp/ibsng/IBSng/addons/asterisk/agi-bin/states/credit_announcement.py
-/tmp/ibsng/IBSng/addons/asterisk/agi-bin/states/get_current_credit.py
-/tmp/ibsng/IBSng/addons/asterisk/agi-bin/states/say_remaining_credit.py
-/tmp/ibsng/IBSng/addons/asterisk/agi-bin/states/say_used_credit.py
-/tmp/ibsng/IBSng/addons/client/test/charge_test.py
-/tmp/ibsng/IBSng/core/admin/perms/ACCESS_ALL_CHARGES.py
-/tmp/ibsng/IBSng/core/admin/perms/CHANGE_CHARGE.py
-/tmp/ibsng/IBSng/core/admin/perms/CHANGE_USER_CREDIT.py
-/tmp/ibsng/IBSng/core/admin/perms/CHARGE_ACCESS.py
-/tmp/ibsng/IBSng/core/admin/perms/SEE_CREDIT_CHANGES.py
-/tmp/ibsng/IBSng/core/charge/charge.py
-/tmp/ibsng/IBSng/core/charge/charge_actions.py
-/tmp/ibsng/IBSng/core/charge/charge_handler.py
-/tmp/ibsng/IBSng/core/charge/charge_loader.py
-/tmp/ibsng/IBSng/core/charge/charge_main.py
-/tmp/ibsng/IBSng/core/charge/charge_rule.py
-/tmp/ibsng/IBSng/core/charge/charge_types.py
-/tmp/ibsng/IBSng/core/charge/internet_charge.py
-/tmp/ibsng/IBSng/core/charge/internet_charge_rule.py
-/tmp/ibsng/IBSng/core/charge/user_charge.py
-/tmp/ibsng/IBSng/core/charge/voip_charge.py
-/tmp/ibsng/IBSng/core/charge/voip_charge_rule.py
-/tmp/ibsng/IBSng/core/report/credit.py
-/tmp/ibsng/IBSng/core/user/credit_change_log.py
-/tmp/ibsng/IBSng/core/user/plugins/charge.py
-/tmp/ibsng/IBSng/core/user/plugins/credit.py
-/tmp/ibsng/IBSng/core/user/plugins/normal_charge.py
-/tmp/ibsng/IBSng/core/user/plugins/voip_charge.py
-=== Logout / connection log references ===
+===== core/charge/charge.py =====
+import threading
+from core.lib.general import *
+from core.lib.time_lib import *
+from core import defs
+from core.errors import errorText
+from core.db import db_main
+from core.charge.user_charge import *
+from core.admin import admin_main
+from core.ibs_exceptions import *
+from core.errors import errorText
+
+
+
+#-----------------------------------------------------------------------------------------------------------
+class Charge:
+    def __init__(self,charge_id,name,comment,admin_id,visible_to_all,_type):
+        """
+            charge_id (integer): unique charge id, db will assign a new id to each charge
+            name (string): name of charge
+            comment (string): comment
+            admin_id (integer): id of admin who created this charge
+            visible_default (boolean): if visible default is set to 1 then all admins can use this group without a 
+                                       special permission
+            _type (string): _type of charge (VoIP or Internet) 
+        """
+
+        self.charge_id=charge_id
+        self.name=name
+        self.comment=comment
+        self.admin_id=admin_id
+        self.visible_to_all=visible_to_all
+        self._type=_type
+
+    def getType(self):
+        """
+            return string representation of group
+        """
+        return self._type
+
+    def isInternetCharge(self):
+        return self.getType()=="Internet"
+
+    def isVoIPCharge(self):
+        return self.getType()=="VoIP"
+        
+    def getChargeID(self):
+        return self.charge_id
+
+    def getChargeName(self):
+        return self.name
+
+    def isVisibleToAll(self):
+        return self.visible_to_all=="t"
+
+    def getChargeInfo(self):
+        return {"charge_id":self.getChargeID(),
+                "charge_name":self.getChargeName(),
+                "comment":self.comment,
+                "creator":admin_main.getLoader()[self.admin_id].getUsername(),
+                "charge_type":self._type,
+                "visible_to_all":self.visible_to_all
+                }
+
+    def __str__(self):
+        return "charge with name: %s"%(self.name)
+
+    def initUser(self,user_obj):
+        """
+            called when a user logins
+            
+            user_obj: object of user
+                    user_obj.instance show the instance of that logged in
+            
+        """
+        pass
+
+        
+    def startAccounting(self,user_obj,instance):
+        """
+            call to notify accounting of user should be started
+        """
+        user_obj.charge_info.accounting_started[instance-1]=time.time()
+        
+
+    def logout(self,user_obj,instance): 
+        """
+            called when logout event of user occures or when the user login was not successful
+        """
+        pass
+
+
+    def checkLimits(self,user_obj):
+        """     
+            called when an event (login,logout,rule change,credit finish..) occures, 
+                
+            returns (time_till_next_event,{dictionary of instance:kill reason}) 
+            time_till_next_event == 0 means no event should be set
+        """
+        return (0,"Limited group")
+        
+    def calcUserAvailableTime(self,user_obj):
+        """
+            return seconds that user can be online with current conditions
+            it may change during the user session because of credit change or login/logout of an instance of user.
+            Just useful for showing users.
+            return -1 for unlimited time
+        """
+        return -1
+
+    def commit(self,user_obj): 
+        """
+            saves all user info (rule usage) from memory into db
+        """
+        pass
+        
+
+#-----------------------------------------------------------------------------------------------------------
+class ChargeWithRules(Charge):
+
+    def __init__(self,charge_id,name,comment,admin_id,visible_to_all,_type):
+        Charge.__init__(self,charge_id,name,comment,admin_id,visible_to_all,_type)
+        self.rules={} #{rule_id=>rule_obj}
+
+    def getRules(self):
+        return self.rules
+    
+    def initUser(self,user_obj):
+        Charge.initUser(self,user_obj)
+
+        if user_obj.instances==1: #this is a new user_obj
+            if user_obj.initial_credit<=0:
+                raise LoginException(errorText("USER_LOGIN","CREDIT_FINISHED"))
+
+            if user_obj.isNormalUser():
+                user_obj.charge_info=InternetUserCharge()
+            else:
+                user_obj.charge_info=VoIPUserCharge()
+
+        user_obj.charge_info.login(user_obj.instances)
+
+        #check if user has an effective rule
+        self.getEffectiveRule(user_obj, user_obj.instances) 
+
+    
+    def startAccounting(self,user_obj,instance):
+        #effectice rule may have been changed
+        effective_rule=self.getEffectiveRule(user_obj, instance) 
+        user_obj.charge_info.setEffectiveRule(instance, effective_rule)
+
+        Charge.startAccounting(self,user_obj,instance)
+        user_obj.charge_info.effective_rules[instance-1].start(user_obj,user_obj.instances)
+
+    def logout(self,user_obj,instance,no_commit):
+        """
+            no_commit(boolean): don't commit this user data, and just let him go offline
+        """
+        Charge.logout(self,user_obj,instance)
+        if user_obj.charge_info.accounting_started[instance-1]:
+            if not no_commit:
+                user_obj.charge_info.credit_prev_usage += user_obj.getInstanceInfo(instance)["used_credit"]
+            user_obj.charge_info.effective_rules[instance-1].end(user_obj,instance)
+        user_obj.charge_info.logout(instance)
+
+    def getEffectiveRule(self,user_obj,instance):
+        """
+            return currently applicable rule
+            
+            user_obj (User.User instance):
+            instance(integer): instance of user which we want rule for
+        """
+        return self._getEffectiveRuleForTime(user_obj,instance,time.time())
+
+    def _getEffectiveRuleForTime(self,user_obj,instance,_time):
+        """
+            return applicable rule for _time
+            _time(int): epoch time in seconds
+        """     
+        max_priority=-1
+        max_applicable_rule=None
+        
+        for rule_id in self.rules:
+            rule=self.rules[rule_id]
+            if rule.priority > max_priority and rule.appliable(user_obj,instance,_time):
+                max_priority=rule.priority
+                max_applicable_rule=rule
+                
+        if max_priority==-1:
+            raise LoginException(errorText("USER_LOGIN","NO_APPLICABLE_RULE"))
+
+        return max_applicable_rule
+        
+    def getNextMoreApplicableRule(self,user_obj, instance):
+        """
+            return next more applicable rule or None when there's no next more applicable rule
+            
+            user_obj (User.User instance):
+            instance(integer): instance of user which we want rule for
+            
+        """
+        cur_rule=user_obj.charge_info.effective_rules[instance-1]
+        return self._getNextMoreApplicableRuleForTime(user_obj, instance, cur_rule, time.time())
+
+    def _getNextMoreApplicableRuleForTime(self,user_obj, instance, cur_rule, _time):
+        """
+            return next more applicable rule or None when there's no next more applicable rule
+            
+            user_obj (User.User instance):
+            instance(integer): instance of user which we want rule for
+            _time(long): seconds from epoch
+        """
+        
+        earliest_more_applicable_rule = None
+        secs=secondsFromMorning(_time)
+        
+        for rule_id in self.rules:
+            rule=self.rules[rule_id]
+            if rule.interval.containsDay(_time) and rule.interval > secs:
+                if rule.priority>cur_rule.priority and rule.anytimeAppliable(user_obj,instance):
+                    if earliest_more_applicable_rule==None or earliest_more_applicable_rule.interval > rule.interval:
+                        earliest_more_applicable_rule=rule
+                
+        return earliest_more_applicable_rule
+
+
+    def calcInstanceCreditUsage(self,user_obj,instance,round_result):
+        if not user_obj.charge_info.accounting_started[instance-1]:
+            return 0
+#       toLog("user_obj.Instances:%s Instance:%s user_obj.charge_info.credit_prev_usage_instance:%s"%(user_obj.instances,instance,user_obj.charge_info.credit_prev_usage_instance),LOG_DEBUG)
+        return user_obj.charge_info.credit_prev_usage_instance[instance-1] + self.calcInstanceRuleCreditUsage(user_obj,instance,round_result)
+
+    def calcCreditUsage(self,user_obj,round_result):
+        """
+            return credit usage amount of user_obj.
+            round_result(boolean): Should we round the result with tariff/rule attributes. Rounded result is 
+                                   useful for showing and saving while the real amount is needed for calculations
+        """
+        credit_used=0
+        for _index in range(user_obj.instances):
+            credit_used+=self.calcInstanceCreditUsage(user_obj,_index+1,round_result)
+        return credit_used + user_obj.charge_info.credit_prev_usage
+        
+
+    def commit(self,user_obj):
+        pass
+        
+    def __getRule(self,rule_id):
+        """
+            return rule object with id "rule_id"
+        """
+        return self.rules[integer(rule_id)]
+        
+    def setRules(self,rules):
+        """
+            set rules dic of this charge to rules
+            used for loading rules into this charge
+        """
+        self.rules=rules
+
+    def checkConflict(self,new_charge_rule_obj,ignore_rule_ids=[]):
+        """
+            check if rules of this charge rule has conflict with "new_charge_rule_obj"
+            it'll not check for conflict it rule_ids listed in "ignore_rule_ids"
+        """
+        for rule_id in self.rules:
+            if rule_id not in ignore_rule_ids and self.rules[rule_id].hasOverlap(new_charge_rule_obj):
+                raise GeneralException(errorText("CHARGES","RULE_HAS_OVERLAP")%self.rules[rule_id])
+
+
+    def checkChargeRuleID(self,charge_rule_id):
+        """
+            check if "charge_rule_id" is valid rule_id in this charge
+            raise a generalException if it's not
+        """
+        if charge_rule_id not in self.rules:
+            raise GeneralException(errorText("CHARGES","INVALID_RULE_ID_IN_CHARGE")%(charge_rule_id,self))
+
+
+    def checkLimits(self,user_obj):
+        pass
+
+    def calcInstanceRuleCreditUsage(self,user_obj,instance,round_result):
+        pass===== core/charge/internet_charge.py =====
+from core.charge.charge import ChargeWithRules
+from core.user.can_stay_online_result import CanStayOnlineResult
+from core import defs
+from core.lib.time_lib import *
+from core.ibs_exceptions import *
+from core.errors import errorText
+
+import time
+CHARGE_DEBUG=False
+
+class InternetCharge(ChargeWithRules):
+    def checkLimits(self,user_obj):
+        result=CanStayOnlineResult()
+
+        if CHARGE_DEBUG:
+            toLog("checkLimits called for %s"%user_obj.getUserID(),LOG_DEBUG)
+            
+        credit=user_obj.calcCurrentCredit()
+        if credit<=0: #now set reasons for all instances to credit finished
+            result.setKillForAllInstances(errorText("USER_LOGIN","CREDIT_FINISHED",False),user_obj.instances)
+            return result
+
+        credit_usage_per_second=0
+        earliest_rule_end=defs.MAXLONG
+        next_more_applicable=defs.MAXLONG
+        seconds_from_morning=secondsFromMorning()
+        
+        for _index in range(user_obj.instances):
+            if not user_obj.charge_info.accounting_started[_index]:
+                continue
+                
+            cur_rule = user_obj.charge_info.effective_rules[_index]
+            
+            # find new rule
+            try:
+                effective_rule = self.getEffectiveRule(user_obj,_index+1)
+            except LoginException,e:
+                result.addInstanceToKill(_index+1,e.getErrorText())
+                continue
+            
+            if cur_rule != effective_rule:
+
+                cur_rule.end(user_obj, _index+1)
+                effective_rule.start(user_obj,_index+1)
+        
+                #change current effective rule
+                user_obj.charge_info.setEffectiveRule(_index+1, effective_rule)
+        
+            # if effective_rule ras or port are wildcards
+            if effective_rule.priority < 3: 
+                #check if a more applicable rule (ras or ports are specified) 
+                #can be used before this rule ends
+                next_more_applicable_rule=self.getNextMoreApplicableRule(user_obj,_index+1) 
+                if next_more_applicable_rule!=None:
+                    next_more_applicable=min(next_more_applicable_rule.interval.getStartSeconds()-seconds_from_morning,next_more_applicable)
+                    
+        
+            earliest_rule_end=min(earliest_rule_end,effective_rule.interval.getEndSeconds()-seconds_from_morning+1)#+1 to ensure we don't run at 23:59:59 or such times
+
+            credit_usage_per_second += effective_rule.cpm / 60.0 + \
+                                        effective_rule.cpk * effective_rule.assumed_kps
+
+        #endfor
+        
+        if credit_usage_per_second!=0:
+            remained_time = credit / credit_usage_per_second
+        else:
+            remained_time = defs.MAXLONG
+
+        if CHARGE_DEBUG:
+            toLog("user_id: %s remained_time: %s earliest_rule_end: %s next_more_applicable: %s seconds_from_morning: %s"%
+            (user_obj.getUserID(),remained_time,earliest_rule_end,next_more_applicable,seconds_from_morning),LOG_DEBUG)
+
+
+        if remained_time<=0: 
+            result.setKillForAllInstances(errorText("USER_LOGIN","CREDIT_FINISHED"),user_obj.instances)
+        else:
+            next_event = min(remained_time,earliest_rule_end,next_more_applicable,seconds_from_morning)
+            # we should have at least one increment
+            next_event = max(1, next_event)
+            
+            result.newRemainingTime(next_event)
+        return result
+        
+    def calcInstanceRuleCreditUsage(self,user_obj,instance,round_result):
+        """
+            calculate and return amount of credit that this instance of user consumed
+            during --EFFECTIVE-- rule only
+        """
+        now=time.time()
+        effective_rule=user_obj.charge_info.effective_rules[instance-1]
+        timely_credit_used=0
+        transfer_credit_used=0
+        if effective_rule.cpm>0:
+            timely_credit_used=effective_rule.cpm * (now - user_obj.charge_info.rule_start[instance-1]) / 60
+        if effective_rule.cpk>0:
+            transfer_credit_used=effective_rule.cpk * (effective_rule.calcRuleTransferUsage(user_obj,instance)) / 1024.0
+
+        if CHARGE_DEBUG:
+            toLog("user_id: %s timely_credit_used: %s transfer_credit_used: %s"%(user_obj.getUserID(),timely_credit_used,transfer_credit_used),LOG_DEBUG)
+            
+        return timely_credit_used + transfer_credit_used
+===== core/user/normal_user.py =====
+from core.charge import charge_main
+from core.user import user_main,user_type
+from core.lib.time_lib import *
+from core.ibs_exceptions import *
+from core.errors import errorText
+from core.db import ibs_query
+import time
+import copy
+
+class NormalUser(user_type.UserType):
+    def getLoginTime(self,instance):
+        return self.user_obj.getInstanceInfo(instance)["login_time"]
+
+#############################################
+    def isPersistentLanClient(self,instance):
+        return self.user_obj.getInstanceInfo(instance)["attrs"].has_key("persistent_lan") \
+               and self.user_obj.getInstanceInfo(instance)["attrs"]["persistent_lan"]
+
+##############################################
+    def getInOutBytes(self,instance):
+        """
+            return (rx_bytes,tx_bytes,rx_rate,tx_rate) tuple of send/receive of "instance" of user
+        """
+        #in/out bytes is not meaningful before start accounting
+        if self.user_obj.getInstanceInfo(instance).has_key("start_accounting"):
+            user_msg=self.user_obj.createUserMsg(instance,"GET_INOUT_BYTES")
+            return user_msg.send()
+        else:
+            return (0,0,0,0)
+#############################################
+    def getClientAddr(self,instance):
+        """
+            return ip address of "instance" of user
+        """
+        user_attrs=self.user_obj.getInstanceInfo(instance)["attrs"]
+        if user_attrs.has_key("remote_ip"):
+            return user_attrs["remote_ip"]
+        elif user_attrs.has_key("ip_pool_assigned_ip"):
+            return user_attrs["ip_pool_assigned_ip"]
+        else:
+            raise GeneralException(errorText("USER_LOGIN","USER_IP_NOT_AVAILABLE")%self.user_obj.getUserID())
+
+##############################################
+    def getCharge(self):
+        return self.charge_obj
+
+##############################################
+    def logout(self,instance,ras_msg):
+        used_credit=0
+        query=ibs_query.IBSQuery()
+
+        no_commit=False #no commit flag
+        if ras_msg.hasAttr("no_commit") and ras_msg["no_commit"]:
+            no_commit=True
+
+        if self.user_obj.getInstanceInfo(instance)["successful_auth"] and not no_commit:
+            used_credit=self.user_obj.charge.calcInstanceCreditUsage(instance,True)
+            query+=self.user_obj.commit(used_credit)
+    
+        self.user_obj.getInstanceInfo(instance)["used_credit"]=used_credit
+        self.user_obj.getInstanceInfo(instance)["no_commit"]=no_commit
+        
+        return (query, used_credit)
+
+##############################################
+    def logToConnectionLog(self,instance):
+        instance_info=self.user_obj.getInstanceInfo(instance)
+        return user_main.getConnectionLogManager().logConnectionQuery(self.user_obj.getUserID(),
+                                                               instance_info["used_credit"],
+                                                               dbTimeFromEpoch(instance_info["login_time"]),
+                                                               dbTimeFromEpoch(self.__getLogoutTime(instance_info)),
+                                                               instance_info["successful_auth"],
+                                                               "internet",
+                                                               instance_info["ras_id"],
+                                                               self.__filter(instance,instance_info["attrs"])
+                                                              )
+                                                               
+    def __getLogoutTime(self,instance_info):
+        if not instance_info["successful_auth"]: #Failed Authentication
+            return instance_info["login_time"]
+
+        elif instance_info.has_key("logout_ras_msg"):
+            return instance_info["logout_ras_msg"].getTime()
+        else:
+            return time.time()
+
+    def __filter(self,instance,attrs):
+        inout=self.getInOutBytes(instance)
+        attrs["bytes_in"]=inout[0]
+        attrs["bytes_out"]=inout[1]
+        return attrs
+##############################################
+    def getOnlineReportDic(self,instance):
+        """
+            return a dic of name=>values to be appended to onlines user dic, when we are asked for 
+            online users report
+        """
+        (in_bytes,out_bytes,in_rate,out_rate)=self.getInOutBytes(instance)
+        if self.user_obj.getInstanceInfo(instance)["attrs"].has_key("username"):
+            normal_username = self.user_obj.getInstanceInfo(instance)["attrs"]["username"]
+        elif self.user_obj.getUserAttrs().hasAttr("normal_username"):
+            normal_username = self.user_obj.getUserAttrs()["normal_username"]
+        else:
+            normal_username = "_PLAN_"
+
+        return {"in_bytes":float(in_bytes),
+                "out_bytes":float(out_bytes),
+                "in_rate":in_rate,
+                "out_rate":out_rate,
+                "normal_username":normal_username}
+        ===== core/user/voip_user.py =====
+from core.user import user_type,user_main
+from core.lib.time_lib import *
+from core.db import ibs_query
+import time
+
+class VoIPUser(user_type.UserType):
+    def getLoginTime(self,instance):
+        return self.getCallStartTime(instance)
+
+    def getCalledNumber(self,instance):
+        """
+            return called_number of "instance" of user
+            if called_number isn't available(eg. on authentication phase) this will return an empty
+            string
+        """
+        try:
+            return self.user_obj.getInstanceInfo(instance)["attrs"]["called_number"]
+        except KeyError:
+            return ""
+
+    def getCallStartTime(self,instance):
+        instance_info=self.user_obj.getInstanceInfo(instance)
+        if instance_info.has_key("call_start_time"):
+            return instance_info["call_start_time"]
+        elif instance_info.has_key("start_accounting"):
+            return instance_info["start_accounting"]
+        else:
+            return instance_info["login_time"]
+        
+    def getCallEndTime(self,instance):
+        instance_info=self.user_obj.getInstanceInfo(instance)
+        if instance_info.has_key("call_end_time"):
+            return instance_info["call_end_time"]
+        else:
+            return time.time()
+    
+    ###########################################
+    def logout(self,instance,ras_msg):
+        instance_info = self.user_obj.getInstanceInfo(instance)
+    
+        query=ibs_query.IBSQuery()
+        #setup call_start_time and call_end_time
+        self.__setTimes(ras_msg,instance_info)
+    
+        no_commit=False
+        if ras_msg.hasAttr("no_commit") and ras_msg["no_commit"]:
+            no_commit=True
+    
+        if no_commit or instance_info.has_key("min_duration") and self.getCallEndTime(instance) - self.getCallStartTime(instance) < instance_info["min_duration"]:
+            used_credit=0
+            self.user_obj.setKillReason(instance,"Missed Call")
+        else:
+            used_credit=self.user_obj.charge.calcInstanceCreditUsage(instance,True)
+
+        if instance_info["successful_auth"] and not no_commit:
+            query+=self.user_obj.commit(used_credit)
+    
+        instance_info["used_credit"]=used_credit
+        instance_info["no_commit"]=no_commit
+
+        return (query, used_credit)
+
+
+    def __setTimes(self,ras_msg,instance_info):
+        """
+            check for connect_time and disconnect_time in ras_msg attribute, and assign
+            them to call_start_time and call_end_time in instance_info
+        """
+        if ras_msg.hasAttr("connect_time"):
+            instance_info["call_start_time"] = ras_msg["connect_time"]
+            #make charge smart, by using correct call_start_time
+            instance_info["lazy_charge"] = False 
+            
+        if ras_msg.hasAttr("disconnect_time"):
+            instance_info["call_end_time"] = ras_msg["disconnect_time"]
+
+    ###################################
+    
+    def getOnlineReportDic(self,instance):
+        online_dic={"voip_username":self.user_obj.getUserAttrs()["voip_username"]}
+        instance_info=self.user_obj.getInstanceInfo(instance)
+
+        if instance_info["attrs"].has_key("called_number"):
+            online_dic["called_number"]=instance_info["attrs"]["called_number"]
+        else:
+            online_dic["called_number"]="N/A"
+
+        if instance_info["attrs"].has_key("prefix_name"):
+            online_dic["prefix_name"]=instance_info["attrs"]["prefix_name"]
+        else:
+            online_dic["prefix_name"]="N/A"
+        return online_dic    
+
+    ########################################
+    def logToConnectionLog(self,instance):
+        instance_info=self.user_obj.getInstanceInfo(instance)
+        return user_main.getConnectionLogManager().logConnectionQuery(self.user_obj.getUserID(),
+                                                               instance_info["used_credit"],
+                                                               dbTimeFromEpoch(self.getCallStartTime(instance)),
+                                                               dbTimeFromEpoch(self.getCallEndTime(instance)),
+                                                               instance_info["successful_auth"],
+                                                               "voip",
+                                                               instance_info["ras_id"],
+                                                               self.__filter(instance,instance_info["attrs"])
+                                                              )
+    def __filter(self,instance,attrs):
+        return attrs
+
+    ###########################################
+    def getSingleSessionRemainingTime(self):
+        """
+            return calculated remaining time of user, for single h323 sessions.
+        """
+        return self.getRemainingTime(1) #single h323 implies multi_login = False
+
+    def getRemainingTime(self, instance):
+        """
+            return calculated remaining time of user and instance
+        """
+        return self.user_obj.getInstanceInfo(instance)["remaining_time"] 
+
+    def getSingleSessionRemainingCredit(self):
+        """
+            return amount of credit, for single h323 sessions.
+            WARNING: this method uses the fact, single h323 session users can't have multiple simulatenous calls
+        """
+        return self.user_obj.initial_credit
+===== core/user/user.py credit/logout =====
+
+##################################################
+    def getInstanceFromRasMsg(self,ras_msg):
+        ras_id=ras_msg.getRasID()
+        unique_id_val=ras_msg.getUniqueIDValue()
+        return self.getInstanceFromUniqueID(ras_id,unique_id_val)
+        
+    def getInstanceFromUniqueID(self,ras_id,unique_id_val):
+        for instance in range(1,self.instances+1):
+            instance_info=self.getInstanceInfo(instance)
+            if instance_info["ras_id"]==ras_id and instance_info["unique_id_val"]==unique_id_val:
+                return instance
+        return None
+##################################################
+    def calcCurrentCredit(self,round_result=True):
+        return self.initial_credit - self.charge.calcCreditUsage(round_result)
+
+    def calcInstanceCreditUsage(self,instance,round_result=True):
+        return self.charge.calcInstanceCreditUsage(instance,round_result)
+##################################################
+    def createUserMsg(self,instance,action):
+        """
+            create a UserMsg ready to send to a ras.
+            Information necessary for ras will be set from user "instance" information
+        """
+        instance_info=self.getInstanceInfo(instance)
+        msg=UserMsg()
+        msg["ras_id"]=instance_info["ras_id"]
+        msg["unique_id"]=instance_info["unique_id"]
+        msg[instance_info["unique_id"]]=instance_info["unique_id_val"]
+        msg["user_obj"]=self
+        msg["instance"]=instance
+        msg["instance_info"]=self.getInstanceInfo(instance)
+        msg.setAction(action)
+        return msg
+
+##################################################
+    def setKillReason(self,instance,reason):
+        instance_info=self.getInstanceInfo(instance)
+        if instance_info["attrs"].has_key("kill_reason"):
+            instance_info["attrs"]["kill_reason"]+=", %s"%reason
+        else:
+            instance_info["attrs"]["kill_reason"]=reason
+
+##################################################
+    def __filterRasAttrs(self,attrs):
+        cattrs=attrs.copy()
+        for attr_name in self.remove_ras_attrs:
+            if cattrs.has_key(attr_name):
+                del(cattrs[attr_name])
+        return cattrs
+##################################################
+    def login(self,ras_msg):
+        self.instances += 1
+        self.__instance_info.append({})
+
+        instance_info=self.getInstanceInfo(self.instances)
+        instance_info["auth_ras_msg"]=ras_msg
+        instance_info["unique_id"]=ras_msg["unique_id"]
+        instance_info["unique_id_val"]=ras_msg.getUniqueIDValue()
+        instance_info["attrs"]=self.__filterRasAttrs(ras_msg.getAttrs())
+        instance_info["ras_id"]=ras_msg.getRasID()
+        instance_info["check_online_fails"]=0
+        instance_info["login_time"]=time.time()
+        instance_info["successful_auth"]=False
+
+        try:
+            self.__checkNoLoginFlag()
+            user_main.getUserPluginManager().callHooks("USER_LOGIN",self,[ras_msg])
+        except Exception,e:
+            if isinstance(e,IBSError):
+                self.setKillReason(self.instances,e.getErrorText())
+            else:
+                self.setKillReason(self.instances,str(e))
+
+            self.logout(self.instances,ras_msg)
+            raise
+
+        instance_info["successful_auth"]=True
+
+    def __checkNoLoginFlag(self):
+        """
+            check if main no_login flag is set
+        """
+        if main.noLoginSet():
+            raise LoginException(errorText("USER_LOGIN","LOGIN_NOT_ALLOWED"))
+        
+    def logout(self,instance,ras_msg):
+        """
+            this method calls before user logout process start
+            we call plugins now, so they'll see the correct user object
+            that not changed for logout
+        """
+
+        self.getInstanceInfo(instance)["logout_ras_msg"]=ras_msg
+        (query,used_credit)=self.getTypeObj().logout(instance,ras_msg)
+        user_main.getUserPluginManager().callHooks("USER_LOGOUT",self,[instance,ras_msg])
+        if not ras_msg.hasAttr("no_connection_log"):
+            query += self.getTypeObj().logToConnectionLog(instance)
+        query.runQuery()
+        self.instances-=1
+        del(self.__instance_info[instance-1])
+        return used_credit
+
+    def update(self,ras_msg):
+        """
+            plugins can update themeselves whenever we recieved an update packet, with updated info 
+            from radius server
+            They can return True to cause a recalcEvent for user
+        """
+        ret=user_main.getUserPluginManager().callHooks("UPDATE",self,[ras_msg])
+        return True in ret
+
+    def canStayOnline(self):
+        results=filter(lambda x:x!=None,user_main.getUserPluginManager().callHooks("USER_CAN_STAY_ONLINE",self))
+        return reduce(operator.add,results)
+
+    def commit(self,used_credit):
+        """
+            saves all changed user info from memory into DB
+            commit is called before logout of each instance
+        """
+        query=reduce(operator.add,filter(lambda x:x!=None,user_main.getUserPluginManager().callHooks("USER_COMMIT",self)))
+        query+=self.__commitCreditQuery(used_credit)
+        return query
+        
+    def __commitCreditQuery(self,used_credit):
+        return ibs_db.createFunctionCallQuery("change_user_credit",[self.getUserID(), -1*used_credit])
+
+    
+    def _reload(self):
+        self.__setInitialCredit()
+        user_main.getUserPluginManager().callHooks("USER_RELOAD",self)
+
+===== core/user/plugins/charge.py =====
+from core.user import user_plugin,user_main,attribute
+from core.charge import charge_main
+from core.errors import *
+from core.ibs_exceptions import *
+import time
+
+def init():
+    user_main.getUserPluginManager().register("charge",ChargeUserPlugin,6)
+    
+class ChargeUserPlugin(user_plugin.UserPlugin):
+    def __init__(self,user_obj):
+        user_plugin.UserPlugin.__init__(self,user_obj)
+        self.charge_defined=True
+        self.charge_initialized=0 #number of instances with initialized charge
+        try:
+            if user_obj.isNormalUser():
+                self.charge_id=int(user_obj.getUserAttrs()["normal_charge"])
+            elif user_obj.isVoIPUser():
+                self.charge_id=int(user_obj.getUserAttrs()["voip_charge"])
+                    
+        except GeneralException:
+            self.charge_defined=False
+            
+        if self.charge_defined:
+            self.charge_obj=charge_main.getLoader().getChargeByID(self.charge_id)
+
+ 
+    def login(self,ras_msg):
+        if not self.charge_defined:
+            raise GeneralException(errorText("USER_LOGIN","NO_CHARGE_DEFINED")%self.user_obj.getType())
+
+        if ras_msg.hasAttr("called_number"):
+            self.__setCalledNumber(ras_msg)
+        
+        self.__initCharge()
+
+        self.__setRemainingTime(ras_msg)
+
+        if ras_msg.hasAttr("start_accounting"):
+            self.__startAccounting(ras_msg)
+
+    def __initCharge(self):
+        self.charge_obj.initUser(self.user_obj)
+        self.charge_initialized+=1
+        
+    def __startAccounting(self,ras_msg):
+        instance=self.user_obj.getInstanceFromRasMsg(ras_msg)
+        self.charge_obj.startAccounting(self.user_obj,instance)
+        self.user_obj.getInstanceInfo(instance)["start_accounting"]=time.time()
+
+    def __setCalledNumber(self,ras_msg):
+        instance=self.user_obj.getInstanceFromRasMsg(ras_msg)
+        if not ras_msg["called_number"]:
+            raise LoginException(errorText("USER_LOGIN","INVALID_CALLED_NUMBER"))
+        self.user_obj.getInstanceInfo(instance)["attrs"]["called_number"]=ras_msg["called_number"]
+
+
+    def __setRemainingTime(self, ras_msg):
+        instance=self.user_obj.getInstanceFromRasMsg(ras_msg)
+        if ras_msg.hasAttr("called_number") and ras_msg.hasAttr("calc_remaining_time") and ras_msg.getAction()=="VOIP_AUTHORIZE":
+            self.user_obj.getInstanceInfo(instance)["remaining_time"] = \
+                self.getChargeObj().checkLimits(self.user_obj,True).getRemainingTime()
+
+
+    def update(self,ras_msg):
+
+        if "called_number" in ras_msg["update_attrs"]:
+            self.__setCalledNumber(ras_msg)
+
+        if ras_msg.hasAttr("start_accounting"):
+            self.__startAccounting(ras_msg)
+            return True
+
+    def logout(self,instance,ras_msg):
+        if instance<=self.charge_initialized:
+
+            self.charge_obj.logout(self.user_obj,instance,self.user_obj.getInstanceInfo(instance)["no_commit"])
+            self.charge_initialized-=1
+
+    def canStayOnline(self):
+        if self.charge_initialized:
+            return self.charge_obj.checkLimits(self.user_obj)
+
+    def calcCreditUsage(self,round_result):
+        if self.charge_initialized:
+            return self.charge_obj.calcCreditUsage(self.user_obj,round_result)
+        return 0
+
+    def calcInstanceCreditUsage(self,instance,round_result):
+        if instance<=self.charge_initialized:
+            return self.charge_obj.calcInstanceCreditUsage(self.user_obj,instance,round_result)
+        return 0
+
+    def getChargeObj(self):
+        return self.charge_obj
+        
