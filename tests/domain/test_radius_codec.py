@@ -159,3 +159,15 @@ def test_mschapv2_vsa_rejects_noncanonical_response_length():
     except RadiusCodecError:
         return
     raise AssertionError("non-canonical MS-CHAP2-Response was accepted")
+
+
+def test_mschapv2_success_vsa_round_trip():
+    success = "S=407A5589115FD0D6209F510FE9C04566932CDA56"
+    packet = RadiusPacket(
+        RadiusCode.ACCESS_ACCEPT,
+        13,
+        {"MS-CHAP2-Success": success},
+        bytes(16),
+    )
+    decoded = decode(encode(packet))
+    assert decoded.attributes["MS-CHAP2-Success"] == success
