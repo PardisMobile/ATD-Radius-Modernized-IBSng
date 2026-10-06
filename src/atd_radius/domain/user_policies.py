@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from .aaa import AAAAction,AAAResult
 from .session_policy import ActiveSessionView,session_policy
+from .radius_auth import derive_mschapv2_mppe_keys
 
 @dataclass(frozen=True,slots=True)
 class AuthenticationPolicy:
@@ -11,8 +12,35 @@ class AuthenticationPolicy:
     def evaluate(self,request):
         if request.attributes.get("__user_found") != "1" or request.attributes.get("__password_ok") != "1":
             return AAAResult(AAAAction.REJECT,reason="INVALID_CREDENTIALS")
-        if request.attributes.get("__auth_method") == "mschapv2":
+        method = request.attributes.get("__auth_method")
+        if method == "mschapv1":
+            key = request.attributes.get("__mschapv1_mppe_key")
+            if key:
+                return AAAResult(
+                    AAAAction.ACCEPT,
+                    {
+                        "MS-CHAP-MPPE-Keys": key,
+                        "MS-MPPE-Encryption-Policy": "00000001",
+                        "MS-MPPE-Encryption-Types": "00000006",
+                    },
+                )
+        if method == "mschapv2":
             success = request.attributes.get("__mschapv2_success")
+            response = request.attributes.get("MS-CHAP2-Response")
+            password = request.attributes.get("__stored_password")
+            if success and response and password:
+                raw = response if isinstance(response, bytes) else bytes.fromhex(str(response))
+                send_key, recv_key = derive_mschapv2_mppe_keys(str(password), raw[26:50])
+                return AAAResult(
+                    AAAAction.ACCEPT,
+                    {
+                        "MS-CHAP2-Success": success,
+                        "MS-MPPE-Send-Key": send_key,
+                        "MS-MPPE-Recv-Key": recv_key,
+                        "MS-MPPE-Encryption-Policy": "00000001",
+                        "MS-MPPE-Encryption-Types": "00000006",
+                    },
+                )
             if success:
                 return AAAResult(AAAAction.ACCEPT, {"MS-CHAP2-Success": success})
         return None
