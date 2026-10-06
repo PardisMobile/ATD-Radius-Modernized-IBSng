@@ -7,7 +7,8 @@ from atd_radius.domain.aaa import PluginPipeline, PluginSpec
 from atd_radius.domain.accounting_session import AccountingSessionService
 from atd_radius.domain.radius import RadiusPacket
 from atd_radius.domain.radius_dispatch import DispatchResult, RadiusDispatcher
-from atd_radius.domain.user_policies import AuthenticationPolicy, LockPolicy, TimeoutPolicy
+from atd_radius.domain.session_policy import ActiveSessionView
+from atd_radius.domain.user_policies import AuthenticationPolicy, LockPolicy, MultiLoginPolicy, TimeoutPolicy
 
 
 class UserSource(Protocol):
@@ -46,7 +47,7 @@ class RadiusRuntimeHandler:
         return self.dispatcher.access(packet)
 
 
-def build_radius_dispatcher(users: UserSource) -> RadiusDispatcher:
+def build_radius_dispatcher(users: UserSource, active_sessions_provider=None) -> RadiusDispatcher:
     """Build the native authentication boundary without inventing a new schema."""
     from atd_radius.infrastructure.access_context import NativeAccessContext
 
@@ -54,6 +55,7 @@ def build_radius_dispatcher(users: UserSource) -> RadiusDispatcher:
         [
             PluginSpec(1, "authentication", AuthenticationPolicy()),
             PluginSpec(2, "lock", LockPolicy()),
+            PluginSpec(3, "multi_login", MultiLoginPolicy(active_sessions_provider=active_sessions_provider)),
             PluginSpec(5, "timeout", TimeoutPolicy()),
         ]
     )
@@ -74,3 +76,13 @@ class NativeAccountingIdentityResolver:
     def ras_id(self, source_ip: str) -> int | None:
         record = self.ras.get_by_ip(source_ip)
         return int(record.ras_id) if record else None
+
+
+def session_views(registry) -> callable:
+    """Return native policy views backed by the live runtime session registry."""
+    def provider(user_id: int) -> tuple[ActiveSessionView, ...]:
+        return tuple(
+            ActiveSessionView(state.key.unique_id)
+            for state in registry.active_for_user(user_id)
+        )
+    return provider
