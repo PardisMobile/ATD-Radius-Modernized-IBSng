@@ -32,6 +32,8 @@ def test_ras_repository_change_hook_is_called_for_mutations() -> None:
                 return FakeResult((9,))
             if "SELECT ras_id FROM ras_ippools" in sql:
                 return FakeResult((4,))
+            if "INSERT INTO ras_ippools" in sql:
+                return FakeResult((12,))
             return FakeResult()
 
     changed = []
@@ -44,4 +46,4 @@ def test_ras_repository_change_hook_is_called_for_mutations() -> None:
     repo.delete_attribute(9, "x")
     repo.add_ippool(9, 2)
     repo.delete_ippool(4)
-    assert changed == [9, 9, 9, 9, 9, 9]
+    assert changed == [9, 9, 9, 9, 9, 9, 4]
