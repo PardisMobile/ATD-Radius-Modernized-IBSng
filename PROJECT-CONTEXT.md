@@ -206,3 +206,156 @@ The production RADIUS path must not keep one PostgreSQL transaction open for the
 2. Complete RADIUS dictionary/attribute coverage from canonical A1.24 source.
 3. Strengthen live integration tests for UDP -> PostgreSQL -> auth/accounting/charge/connection-log and rollback atomicity.
 4. Continue billing/credit ledger, API/RBAC/audit, UI workflows, migration and deployment work.
+
+
+# MASTER PROJECT STATUS — 2026-10-07
+
+This section is the authoritative handoff/status index for the current ATD project state. It is a status ledger, not a behavioral source. For behavior, the canonical IBSng A1.24 archive remains authoritative.
+
+## A. DONE / IMPLEMENTED
+
+### Reference & architecture
+- [x] Canonical A1.24 archive retained and SHA recorded.
+- [x] Source-only authority rule documented.
+- [x] A1.24 source tree and major core/RAS architecture inspected.
+- [x] ATD Python 3 foundation established.
+- [x] PostgreSQL initial A1.24-shaped schema/migration foundation established.
+- [x] Architecture/context/handoff documentation established.
+
+### Core data & policy foundation
+- [x] Users/groups/services/RAS/IP pools/session domain foundations.
+- [x] User/group attribute inheritance and precedence boundary.
+- [x] PostgreSQL user repository.
+- [x] Group/service persistence repositories.
+- [x] Native A1.24 IP-pool membership/runtime allocation model.
+- [x] RAS-bound IP allocation and release lifecycle primitives.
+- [x] Argon2 credential boundary.
+- [x] Initial and searchable/paginated Users REST endpoints.
+- [x] User detail workspace API boundary.
+
+### RADIUS / AAA
+- [x] RADIUS packet codec and core packet families.
+- [x] PAP.
+- [x] CHAP authentication boundary.
+- [x] MS-CHAPv1 authentication boundary.
+- [x] MS-CHAPv2 authentication boundary.
+- [x] A1.24-aligned MS-CHAPv2 field consumption.
+- [x] RFC 2759 AuthenticatorResponse / MS-CHAP2-Success.
+- [x] RFC 3079 MPPE key derivation.
+- [x] RFC 2548-style MPPE encryption with per-key salts.
+- [x] Request-Authenticator context preserved for MPPE.
+- [x] Message-Authenticator verification for current UDP Access path.
+- [x] Duplicate-request identity/replay primitive.
+- [x] Disconnect/CoA runtime boundary and RFC 5176 selector handling.
+- [x] Source-compatible RAS runtime registry/loader.
+- [x] MultiLogin semantics source-traced, including default=1, explicit zero, user-over-group precedence and RAS capability.
+- [x] Session runtime registry.
+- [x] Accounting Start/Stop/Alive plus Interim compatibility.
+- [x] Native connection-log persistence boundary.
+- [x] no_connection_log and no_commit semantics.
+- [x] Internet charge-rule state machine and credit settlement runtime.
+- [x] Source verification of A1.24 InternetChargeRule.start/end and IN/OUT baseline path.
+- [x] Per-packet PostgreSQL transaction boundary for production UDP runtime.
+- [x] Persistent in-process Session/RAS/IP-pool state across packets.
+- [x] Auth listener wiring (1812) and Accounting listener wiring (1813), opt-in through ATD_RADIUS_ENABLED.
+- [x] RAS secret lookup from PostgreSQL per incoming source IP.
+
+### UI / product foundation
+- [x] Modern ATD design shell.
+- [x] Persian/English and RTL/LTR foundation.
+- [x] Light/dark theme foundation.
+- [x] HOME shell.
+- [x] USER shell/table/search/status/pagination.
+- [x] Read-only User Information surface.
+
+## B. SOURCE-VERIFIED / FIXED — DO NOT RE-INVESTIGATE
+
+- [x] MultiLogin default/explicit-zero/user-vs-group semantics.
+- [x] User-over-group attribute precedence.
+- [x] A1.24 attribute table ownership model.
+- [x] RAS-specific MultiLogin capability for inspected providers.
+- [x] Duplicate identity tuple.
+- [x] IP-pool membership versus runtime free/used state.
+- [x] Native connection_log logical structure.
+- [x] CHAP/MS-CHAPv1/v2 credential field consumption.
+- [x] A1.24 MS-CHAP2-Success / MPPE response path.
+- [x] InternetChargeRule.start/end and getTypeObj().getInOutBytes(instance) baseline path.
+- [x] A1.24 accounting Start/Stop/Alive source path and no_connection_log/no_commit behavior.
+
+## C. IN PROGRESS / PARTIAL
+
+- [~] User identity: core repository exists, full application CRUD/services and all source behavior are not complete.
+- [~] User/group/service policy parity.
+- [~] RAS mutation/reload and complete provider behavior parity.
+- [~] RADIUS authentication: runtime boundary exists, full source-derived end-to-end parity suite remains.
+- [~] CHAP/MS-CHAPv1/v2: core cryptographic/field behavior implemented; complete end-to-end provider/dictionary/reply parity remains.
+- [~] Accounting: live UDP wiring implemented; production PostgreSQL/RAS integration test suite and rollback/failure-path verification remain.
+- [~] IP pools: allocator/session lifecycle exists; exhaustive source/provider integration parity remains.
+- [~] Attribute system: modern policy engine exists; complete source-derived dictionary and mutation fixtures remain.
+- [~] Charging: Internet runtime integrated; broader A1.24 billing/credit/VoIP persistence parity remains.
+- [~] Admin UI and user portal.
+- [~] REST API surface.
+
+## D. TODO / NOT STARTED OR NOT COMPLETE
+
+### Phase 0
+- [ ] Complete DB relationship parity map.
+- [ ] Complete reuse/port/rewrite/drop matrix.
+
+### Phase 1
+- [ ] Full Users/Groups/Services CRUD application services.
+- [ ] Complete RAS provider registry/mutation workflow.
+- [ ] Permissions and audit enforcement.
+
+### Phase 2
+- [ ] Complete RAS provider behavior parity for every relevant A1.24 provider.
+- [ ] Complete source-derived RADIUS dictionary/attribute coverage.
+- [ ] End-to-end CHAP/MS-CHAPv1/v2 Access-Accept/Reject/provider tests.
+- [ ] Strong live UDP/PostgreSQL integration tests.
+- [ ] Transaction rollback integration test.
+- [ ] EAP state machine/methods only if desired as ATD extension; it is NOT an A1.24 parity requirement.
+
+### Phase 3
+- [ ] Full credit ledger/business rules.
+- [ ] PostgreSQL billing persistence parity.
+- [ ] Plans/usage integration.
+- [ ] Expiry/subscription state.
+- [ ] Full VoIP charging/accounting parity.
+
+### Phase 4
+- [ ] Complete REST resources.
+- [ ] XML-RPC compatibility adapter.
+- [ ] API authentication/RBAC/audit.
+
+### Phase 5
+- [ ] User Information editing/high-frequency actions.
+- [ ] GROUP and IBSng user/group policy workflows.
+- [ ] RAS/IPPool/Online Users/Connection Logs/Connection Usages/Charge/Report workflows.
+- [ ] Admin workflows.
+- [ ] User portal workflows.
+
+### Phase 6
+- [ ] IBSng database importer.
+- [ ] Migration validation/parity suite.
+- [ ] Rollback-safe migration process.
+
+### Phase 7
+- [ ] Modern installer.
+- [ ] systemd services.
+- [ ] Supported Ubuntu/Debian deployment matrix.
+- [ ] TLS/backup/upgrade procedures.
+- [ ] Free/Pro licensing enforcement.
+
+## E. IMPORTANT STATUS INTERPRETATION
+
+The project is **not complete as a full IBSng replacement**. The core RADIUS/AAA/accounting/charging engine is substantially implemented, but full provider parity, complete dictionary/attribute coverage, billing/credit business layer, API/RBAC, UI workflows, migration and deployment remain.
+
+Do not mark a subsystem Complete merely because its classes exist. Completion requires implementation + persistence mapping + source-derived behavior + tests/integration evidence appropriate to that subsystem.
+
+## F. IMMEDIATE NEXT BATCH
+
+1. Verify/complete all A1.24 RAS provider behavior from the canonical source.
+2. Complete the source-derived RADIUS dictionary/attribute inventory and implementation.
+3. Build stronger live UDP -> PostgreSQL integration tests, including rollback atomicity.
+4. Reconcile all parity docs against this status and remove stale claims.
+5. Continue into credit ledger/billing persistence and full CRUD/API/RBAC work.
