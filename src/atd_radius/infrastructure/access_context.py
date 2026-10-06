@@ -2,10 +2,15 @@
 from __future__ import annotations
 from typing import Mapping, Protocol
 from atd_radius.domain.radius import RadiusPacket
+from atd_radius.domain.user_policies import ras_allows_multi_login
 
 class NativeUserSource(Protocol):
     def get_authentication_record(self, username: str) -> tuple[int, str, bool] | None: ...
     def attributes(self, user_id: int) -> list[tuple[str, str]]: ...
+
+class NativeRASSource(Protocol):
+    def get_by_ip(self, ip: str): ...
+    def attributes(self, ras_id: int) -> list[tuple[str, str]]: ...
 
 class NativeAccessContext:
     """Resolve native users and user_attrs for an Access-Request.
@@ -14,10 +19,11 @@ class NativeAccessContext:
     that is the native A1.24 persistence contract; Argon2 is not substituted
     for the legacy credential field.
     """
-    def __init__(self, users: NativeUserSource) -> None:
+    def __init__(self, users: NativeUserSource, ras: NativeRASSource | None = None) -> None:
         self.users = users
+        self.ras = ras
 
-    def enrich(self, packet: RadiusPacket) -> Mapping[str, str]:
+    def enrich(self, packet: RadiusPacket, source_ip: str | None = None) -> Mapping[str, str]:
         username = packet.attributes.get("User-Name", "")
         record = self.users.get_authentication_record(username)
         if record is None:
@@ -29,4 +35,12 @@ class NativeAccessContext:
         attrs["__password_ok"] = "1" if (
             not locked and packet.attributes.get("User-Password", "") == stored_password
         ) else "0"
+
+        if self.ras is not None and source_ip:
+            ras_record = self.ras.get_by_ip(source_ip)
+            if ras_record is not None:
+                ras_attrs = {name: value for name, value in self.ras.attributes(ras_record.ras_id)}
+                attrs["__ras_multi_login_allowed"] = "1" if ras_allows_multi_login(
+                    ras_record.ras_type, ras_attrs, "internet"
+                ) else "0"
         return attrs
