@@ -1,0 +1,26 @@
+name: Inspect IBSng A1.24 Source (temporary)
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract canonical IBSng source
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/ibsng-src
+          mkdir -p /tmp/ibsng-src
+          tar -xjf "Source of Truth/IBSng-A1.24.tar.bz2" -C /tmp/ibsng-src
+          test -n "$(find /tmp/ibsng-src -type f -print -quit)"
+          tar -cjf /tmp/IBSng-A1.24-extracted.tar.bz2 -C /tmp/ibsng-src .
+      - name: Upload extracted source
+        uses: actions/upload-artifact@v4
+        with:
+          name: ibsng-a124-extracted-source
+          path: /tmp/IBSng-A1.24-extracted.tar.bz2
+          retention-days: 1
