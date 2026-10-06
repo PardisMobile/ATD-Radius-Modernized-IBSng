@@ -31,7 +31,7 @@ class MultiLoginPolicy:
     def evaluate(self,request):
         d=session_policy(_attrs(request),self.active_sessions)
         if not d.allowed and d.reason=="multi_login": return AAAResult(AAAAction.REJECT,reason="MAX_CONCURRENT")
-        if request.attributes.get("ras_multi_login") in (False,"0","false","False") and len(self.active_sessions)>0:
+        if request.attributes.get("ras_multi_login") in (False,"0","false","False") and len(sessions)>0:
             return AAAResult(AAAAction.REJECT,reason="RAS_DOESNT_ALLOW_MULTILOGIN")
         return None
 
