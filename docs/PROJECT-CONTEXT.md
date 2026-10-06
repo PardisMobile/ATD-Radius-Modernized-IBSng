@@ -74,6 +74,8 @@ Read this file, `ROADMAP.md`, `ARCHITECTURE.md`, `docs/DECISIONS.md`, `docs/phas
 - Codec tests cover common attribute round-trips, PAP, malformed packets, and response authenticator calculation.
 - Latest implementation checkpoint commit: `12a1c79a53be8405cc54e8be0b29fa0381608b25`.
 - CI must be re-checked after this batch; the GitHub combined-status endpoint currently reports no status entries for the latest commit, so this batch is not being marked CI-verified.
-- Remaining high-priority gaps are NAS/RAS secret lookup wiring, real dispatcher integration, Accounting request authenticator verification, duplicate request cache integration, Message-Authenticator/EAP boundary work, session/accounting persistence, permissions/audit, billing, remaining UI, installer verification, and migration/import testing.
+- RADIUS UDP transport now resolves active NAS/RAS secrets by source IP, verifies Accounting-Request authenticators, integrates duplicate-request replay, and feeds the decoded request into the supplied dispatcher handler.
+- Duplicate request identity includes source IP/port, RADIUS identifier/code, and request authenticator.
+- Remaining high-priority gaps are production dispatcher construction/wiring, cache expiry policy, Message-Authenticator/EAP boundary work, session/accounting persistence, permissions/audit, billing, remaining UI, installer verification, and migration/import testing.
 - Do not mark any subsystem Verified merely because an implementation exists; Verified requires source-derived behavior tests and/or database parity evidence.
 
