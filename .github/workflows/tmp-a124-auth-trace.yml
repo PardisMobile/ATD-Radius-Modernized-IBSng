@@ -1,0 +1,17 @@
+name: tmp-a124-auth-trace
+on:
+  push:
+    branches: [main]
+jobs:
+  trace:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: extract
+        run: |
+          mkdir -p /tmp/a124
+          tar -xjf 'Source of Truth/IBSng-A1.24.tar.bz2' -C /tmp/a124
+          echo '--- auth files ---'
+          find /tmp/a124/IBSng -type f | grep -Ei '/(auth|radius|user)/|mschap|chap' | head -200
+          echo '--- auth exception/error references ---'
+          grep -RniE 'MS-CHAP|MSCHAP|CHAP-Password|CHAP|Access-Reject|ACCESS_REJECT|AUTH_FAILED|WRONG_PASSWORD|INVALID_PASSWORD' /tmp/a124/IBSng --include='*.py' | head -500
