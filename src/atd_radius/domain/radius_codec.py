@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from hashlib import md5
+import hmac
 from ipaddress import IPv4Address
 from struct import pack, unpack
 
@@ -30,7 +31,7 @@ _ATTR_NAMES = {
     31:"Calling-Station-Id",32:"NAS-Identifier",40:"Acct-Status-Type",41:"Acct-Delay-Time",
     42:"Acct-Input-Octets",43:"Acct-Output-Octets",44:"Acct-Session-Id",45:"Acct-Authentic",
     46:"Acct-Session-Time",47:"Acct-Input-Packets",48:"Acct-Output-Packets",
-    49:"Acct-Terminate-Cause",61:"NAS-Port-Type",
+    49:"Acct-Terminate-Cause",61:"NAS-Port-Type",80:"Message-Authenticator",
 }
 _ATTR_NUMBERS = {name:number for number,name in _ATTR_NAMES.items()}
 _INTEGER_ATTRS = {
@@ -71,6 +72,11 @@ def decrypt_user_password(value: bytes, secret: str, authenticator: bytes) -> st
 
 
 def _encode_value(name: str, value: str, secret: str | None, authenticator: bytes) -> bytes:
+    if name in _HEX_ATTRS:
+        try:
+            return bytes.fromhex(value)
+        except ValueError as exc:
+            raise RadiusCodecError(f"invalid hex attribute {name}") from exc
     if name == "User-Password":
         if secret is None:
             raise RadiusCodecError("secret is required for User-Password")
@@ -89,6 +95,8 @@ def _encode_value(name: str, value: str, secret: str | None, authenticator: byte
 
 
 def _decode_value(name: str, value: bytes, secret: str | None, authenticator: bytes) -> str:
+    if name in _HEX_ATTRS:
+        return value.hex()
     if name == "User-Password" and secret is not None:
         return decrypt_user_password(value, secret, authenticator)
     if name in _IP_ATTRS:
@@ -177,3 +185,38 @@ def verify_accounting_request(data: bytes, secret: str) -> bool:
     unsigned = data[:4] + bytes(16) + data[20:length]
     expected = md5(unsigned + secret.encode("utf-8")).digest()
     return supplied == expected
+
+
+def verify_control_request(data: bytes, secret: str) -> bool:
+    """Verify RFC 5176 Disconnect/CoA Request-Authenticator and Message-Authenticator."""
+    if len(data) < 20:
+        return False
+    code, identifier, length = unpack("!BBH", data[:4])
+    if code not in (40, 43) or length < 20 or length > len(data):
+        return False
+    authenticator = data[4:20]
+    unsigned = data[:4] + bytes(16) + data[20:length]
+    if authenticator != md5(unsigned + secret.encode("utf-8")).digest():
+        return False
+    offset = 20
+    message_auth = None
+    message_start = None
+    while offset < length:
+        if offset + 2 > length:
+            return False
+        attr_length = data[offset + 1]
+        if attr_length < 2 or offset + attr_length > length:
+            return False
+        if data[offset] == 80:
+            if attr_length != 18:
+                return False
+            message_auth = data[offset + 2:offset + 18]
+            message_start = offset
+            break
+        offset += attr_length
+    if message_auth is None or message_start is None:
+        return False
+    mutable = bytearray(data[:length])
+    mutable[message_start + 2:message_start + 18] = bytes(16)
+    expected = hmac.new(secret.encode("utf-8"), bytes(mutable), "md5").digest()
+    return hmac.compare_digest(message_auth, expected)
