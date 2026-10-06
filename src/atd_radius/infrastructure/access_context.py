@@ -7,7 +7,9 @@ from atd_radius.domain.radius_auth import (
     detect_auth_method,
     validate_mschapv2_response,
     verify_chap,
+    verify_mschapv1,
     verify_mschapv2,
+    derive_mschapv1_mppe_key,
     generate_mschapv2_authenticator_response,
     verify_pap,
 )
@@ -55,6 +57,14 @@ class NativeAccessContext:
                     packet.attributes.get("CHAP-Challenge"),
                     packet_authenticator=packet.authenticator,
                 )
+            elif method is RadiusAuthMethod.MSCHAPV1:
+                password_ok = verify_mschapv1(
+                    packet.attributes.get("MS-CHAP-Response"),
+                    stored_password,
+                    packet.attributes.get("MS-CHAP-Challenge"),
+                )
+                if password_ok:
+                    attrs["__mschapv1_mppe_key"] = derive_mschapv1_mppe_key(stored_password).hex()
             elif method is RadiusAuthMethod.MSCHAPV2:
                 password_ok = verify_mschapv2(
                     packet.attributes.get("MS-CHAP2-Response"),
