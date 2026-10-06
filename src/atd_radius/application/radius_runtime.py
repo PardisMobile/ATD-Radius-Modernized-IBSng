@@ -100,7 +100,7 @@ class RadiusRuntimeHandler:
                 user_id = self.identities.user_id(event.username)
                 ras_id = self.identities.ras_id(peer[0])
                 if user_id is not None and ras_id is not None:
-                    self.accounting_sessions.apply(event, user_id, ras_id)
+                    accounting_result = self.accounting_sessions.apply(event, user_id, ras_id)
                     if self.ip_pool_sessions:
                         if event.status.value == "Start":
                             self.ip_pool_sessions.accounting_start(event, ras_id)
