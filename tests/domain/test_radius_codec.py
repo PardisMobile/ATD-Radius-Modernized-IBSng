@@ -38,10 +38,8 @@ def test_malformed_attribute_is_rejected():
     raise AssertionError("malformed attribute was accepted")
 
 
-
 def test_response_authenticator_is_derived_from_request():
     from hashlib import md5
-    from atd_radius.domain.radius_codec import encode_response
     request = RadiusPacket(
         RadiusCode.ACCESS_REQUEST, 9, {"User-Name":"alice"},
         bytes.fromhex("00112233445566778899aabbccddeeff"),
@@ -50,7 +48,6 @@ def test_response_authenticator_is_derived_from_request():
     wire = encode_response(response, request, "shared")
     expected = md5(wire[:4] + request.authenticator + wire[20:] + b"shared").digest()
     assert wire[4:20] == expected
-
 
 
 def test_accounting_request_authenticator_is_verified():
@@ -69,14 +66,9 @@ def test_accounting_request_authenticator_is_verified():
 def test_disconnect_and_coa_codes_round_trip():
     from atd_radius.domain.radius import RadiusCode, RadiusPacket
     from atd_radius.domain.radius_codec import decode, encode
-
     for code in (
-        RadiusCode.DISCONNECT_REQUEST,
-        RadiusCode.DISCONNECT_ACK,
-        RadiusCode.DISCONNECT_NAK,
-        RadiusCode.COA_REQUEST,
-        RadiusCode.COA_ACK,
-        RadiusCode.COA_NAK,
+        RadiusCode.DISCONNECT_REQUEST, RadiusCode.DISCONNECT_ACK, RadiusCode.DISCONNECT_NAK,
+        RadiusCode.COA_REQUEST, RadiusCode.COA_ACK, RadiusCode.COA_NAK,
     ):
         packet = RadiusPacket(code, 7, {"User-Name": "alice"}, bytes(16))
         decoded = decode(encode(packet))
@@ -90,22 +82,14 @@ def test_control_request_authenticator_and_message_authenticator_are_verified():
     from hashlib import md5
     from atd_radius.domain.radius_codec import verify_control_request
     from struct import pack
-
     secret = b"shared"
     sid = bytes((44, 5)) + b"sid"
     msg = bytes((80, 18)) + bytes(16)
     header = pack("!BBH", 40, 7, 20 + len(sid) + len(msg))
-
-    # RFC 5176: Message-Authenticator is calculated first with both
-    # Request-Authenticator and Message-Authenticator treated as zero.
     ma_input = header + bytes(16) + sid + msg
     message_auth = hmac.new(secret, ma_input, "md5").digest()
-    with_ma = header + bytes(16) + sid + bytes((80, 18)) + message_auth
-
-    # The Request-Authenticator is then calculated like Accounting-Request.
     request_auth = md5(header + bytes(16) + sid + bytes((80, 18)) + message_auth + secret).digest()
     wire = header + request_auth + sid + bytes((80, 18)) + message_auth
-
     assert verify_control_request(wire, "shared")
     assert not verify_control_request(wire[:-1] + bytes((wire[-1] ^ 1,)), "shared")
 
