@@ -1,0 +1,22 @@
+name: _tmp_source_trace_charge
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  trace:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract canonical source
+        run: |
+          rm -rf /tmp/ibsng
+          mkdir -p /tmp/ibsng
+          tar -xjf "Source of Truth/IBSng-A1.24.tar.bz2" -C /tmp/ibsng
+      - name: Trace Charge and logout
+        run: |
+          echo '=== Charge references ==='
+          grep -RniE 'class Charge|def .*credit|used_credit|credit_used|logout.*Charge|Charge.*logout|insert_connection_log|logConnection' /tmp/ibsng --include='*.py' | head -n 500
+          echo '=== Candidate charge files ==='
+          find /tmp/ibsng -type f -iname '*charge*.py' -o -iname '*credit*.py' | sort
