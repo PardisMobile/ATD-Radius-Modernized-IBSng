@@ -11,11 +11,13 @@ def test_user_sql_uses_native_a124_tables():
     assert "FROM user_attrs" in USER_ATTRS
     assert "::macaddr" in PERSISTENT_LAN
     assert "::cidr" in PERSISTENT_LAN
+    assert "$1" not in USERS + NORMAL_CREDENTIAL + UPSERT_NORMAL_CREDENTIAL + USER_ATTRS + PERSISTENT_LAN
 
 def test_group_sql_uses_native_a124_tables():
     assert "FROM groups" in GROUP
     assert "FROM group_attrs" in GROUP_ATTRS
     assert "ON CONFLICT (group_id, attr_name)" in UPSERT_GROUP_ATTR
+    assert "$1" not in GROUP + GROUP_ATTRS + UPSERT_GROUP_ATTR
 
 def test_ras_ippool_uses_database_serial():
     assert "SELECT serial, ras_id, ippool_id" in select_ras_ippools(1)
