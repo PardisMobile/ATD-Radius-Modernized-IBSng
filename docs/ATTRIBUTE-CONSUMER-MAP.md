@@ -10,7 +10,7 @@ An attribute is **not migrated** merely because its name exists in the catalog. 
 |---|---|---|---|
 | `ippool` | Policy | IP allocation service | implemented; integration pending |
 | `assign_ip` | Policy | IP allocation service | implemented; integration pending |
-| `multi_login` | Policy | Session admission / concurrency guard | catalogued; enforcement pending |
+| `multi_login` | Policy | Session admission / concurrency guard | implemented; source-semantic acceptance tests added |
 | `session_timeout` | RADIUS policy | `Session-Timeout` + session enforcement | catalogued; mapping pending |
 | `idle_timeout` | RADIUS policy | `Idle-Timeout` + session enforcement | catalogued; mapping pending |
 | `save_bw_usage` | Accounting policy | usage recorder | catalogued; implementation pending |
@@ -24,6 +24,10 @@ An attribute is **not migrated** merely because its name exists in the catalog. 
 | `rel_exp` | Account lifecycle | expiry calculator | catalogued; implementation pending |
 | `abs_exp` | Account lifecycle | expiry calculator | catalogued; implementation pending |
 | `lock` | Authentication policy | account admission guard | catalogued; implementation pending |
+
+### RAS-side MultiLogin
+
+`RAS_DOESNT_ALLOW_MULTILOGIN` is an IBSng login error produced after the per-user `multi_login` limit is evaluated. The RAS capability comes from the RAS implementation's `RasMsg["multi_login"]` flag; where that flag is absent, IBSng treats the RAS as allowing multi-login. ATD resolves verified RAS attributes/types into the same effective decision before the RADIUS acceptance boundary.
 
 ## Migration states
 
