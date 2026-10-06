@@ -70,3 +70,28 @@ def test_multiple_instances_keep_independent_charge_baselines():
     stop=start.replace(minute=1)
     assert settlement.settle(a,stop,3,None)==Decimal("61.953125")
     assert settlement.settle(b,stop,3,None)==Decimal("61.953125")
+
+
+def test_counter_reset_never_creates_negative_transfer_usage():
+    rule=InternetChargeRule(1,frozenset({0}),0,86399,cpm=Decimal("0"),cpk=Decimal("1"))
+    settlement=InternetChargeSettlement(Rules(rule),Policies(),Credits())
+    registry=SessionRegistry()
+    start=datetime(2026,1,5,10,0,tzinfo=timezone.utc)
+    state=registry.start(SessionKey(7,3,"reset"),input_octets=1000,output_octets=2000,started_at=start)
+    settlement.start(state,start,3,None)
+    state.input_octets=100
+    state.output_octets=200
+    stop=start.replace(minute=1)
+    assert settlement.settle(state,stop,3,None)==Decimal("0")
+
+def test_zero_credit_settlement_is_still_committed_as_zero():
+    rule=InternetChargeRule(1,frozenset({0}),0,86399,cpm=Decimal("0"),cpk=Decimal("0"))
+    credits=Credits()
+    settlement=InternetChargeSettlement(Rules(rule),Policies(),credits)
+    registry=SessionRegistry()
+    start=datetime(2026,1,5,10,0,tzinfo=timezone.utc)
+    state=registry.start(SessionKey(7,3,"zero"),input_octets=10,output_octets=20,started_at=start)
+    settlement.start(state,start,3,None)
+    used=settlement.settle(state,start.replace(minute=1),3,None)
+    assert used==Decimal("0")
+    assert credits.changes==[(7,Decimal("0"))]
