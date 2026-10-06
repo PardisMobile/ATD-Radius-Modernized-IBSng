@@ -62,7 +62,7 @@ def test_native_access_context_authenticates_mschapv2():
     auth_challenge = bytes.fromhex("5B5D7C7D7B3F2F3E3C2C602132262628")
     peer_challenge = bytes.fromhex("21402324255E262A28295F2B3A337C7E")
     nt_response = bytes.fromhex("82309ECD8D708B5EA08FAA3981CD83544233114A3D85D6DF")
-    response = peer_challenge + b"\x00" * 8 + nt_response + b"\x00"
+    response = b"\x01\x00" + peer_challenge + b"\x00" * 8 + nt_response
     ctx = NativeAccessContext(MSCHAPUsers())
     packet = RadiusPacket(
         RadiusCode.ACCESS_REQUEST,
