@@ -34,3 +34,20 @@ def test_native_access_context_marks_unknown_user():
     ctx = NativeAccessContext(FakeUsers())
     packet = RadiusPacket(RadiusCode.ACCESS_REQUEST, 1, {"User-Name": "missing", "User-Password": "secret"})
     assert ctx.enrich(packet) == {"__user_found": "0", "__password_ok": "0"}
+
+
+def test_native_access_context_prefers_effective_group_policy_attributes():
+    class EffectiveUsers(FakeUsers):
+        def policy_attributes(self, user_id):
+            return [("multi_login", "3"), ("session_timeout", "120"), ("group_only", "yes")]
+
+    ctx = NativeAccessContext(EffectiveUsers())
+    packet = RadiusPacket(
+        RadiusCode.ACCESS_REQUEST,
+        2,
+        {"User-Name": "alice", "User-Password": "secret"},
+    )
+    attrs = ctx.enrich(packet)
+    assert attrs["multi_login"] == "3"
+    assert attrs["session_timeout"] == "120"
+    assert attrs["group_only"] == "yes"
