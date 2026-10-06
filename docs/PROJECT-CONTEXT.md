@@ -134,6 +134,17 @@ Read this file, ROADMAP.md, ARCHITECTURE.md, docs/DECISIONS.md, docs/phase-0-inv
 - The code checkpoint immediately before this documentation update has green Python and CI workflow runs.
 - Do not mark a subsystem Verified merely because an implementation exists. Verified requires source-derived behavior tests and/or database parity evidence.
 
+## MS-CHAPv2 / MPPE continuation checkpoint — 2026-10-06
+
+- HEAD has advanced through the MS-CHAPv2 wire integration and the subsequent MPPE work; the latest documentation commit is tracked separately from the implementation commits.
+- MS-CHAPv2 now covers canonical RFC 2548 50-byte response validation, RFC 2759 NT-Response verification, AuthenticatorResponse generation and Access-Accept MS-CHAP2-Success construction.
+- RFC 3079-style 128-bit MPPE Send/Recv key derivation is now implemented from the NT-Response/password material.
+- RFC 2548 MS-MPPE-Send-Key and MS-MPPE-Recv-Key wire encryption is now implemented with unique per-packet salts and the corresponding Access-Request Request-Authenticator context.
+- Focused tests cover the MPPE derivation and RFC 2548 encrypt/decrypt structure.
+- This work is **not** marked Verified yet: the repository's GitHub workflow lookup reports no run for the latest commits, and direct extraction of the binary Source of Truth archive through the GitHub text API is unavailable. Source-first verification against the canonical archive remains an explicit gate.
+- MS-CHAP2-Success currently preserves the RFC 2548 Ident byte plus the 42-octet success string.
+- Access-Request Message-Authenticator and remaining source-derived MS-CHAP error/failure semantics remain open.
+
 ## Immediate continuation priorities
 1. Complete mutation-triggered RAS reload integration with transaction-safe source-derived semantics.
 2. Wire persistent connection history into the live Accounting-Request path and test idempotency/parity.
