@@ -140,3 +140,36 @@ def test_build_radius_dispatcher_allocates_from_ras_bound_native_pool():
     assert response.attributes["Framed-IP-Address"] == "192.0.2.20"
     assert response.attributes["Framed-IP-Netmask"] == "255.255.255.255"
     assert pools.get(1).used_ips == ("192.0.2.20",)
+
+
+def test_build_native_radius_runtime_composes_native_accounting_and_ip_pool_runtime():
+    from atd_radius.application.radius_runtime import build_native_radius_runtime
+    from atd_radius.infrastructure.ip_pool_repository import IPPoolRecord
+    from unittest.mock import Mock
+
+    class RASRepo:
+        on_change = None
+        def list(self):
+            return []
+        def get(self, ras_id):
+            return None
+
+    class PoolRepo:
+        def list(self):
+            return [IPPoolRecord(1, "pool-a", None)]
+        def get(self, pool_id):
+            return IPPoolRecord(1, "pool-a", None)
+        def list_addresses(self, pool_id):
+            return ("192.0.2.30",)
+
+    users = Mock()
+    handler = build_native_radius_runtime(
+        Mock(),
+        users=users,
+        ras_repository=RASRepo(),
+        pool_repository=PoolRepo(),
+    )
+
+    assert handler.accounting_sessions.persistence is not None
+    assert handler.ip_pool_sessions is not None
+    assert handler.dispatcher.access_context.ras is not None
