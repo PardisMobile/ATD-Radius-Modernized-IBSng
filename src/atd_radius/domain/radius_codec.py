@@ -5,6 +5,7 @@ from hashlib import md5
 import hmac
 from ipaddress import IPv4Address
 from struct import pack, unpack
+import secrets
 
 from .radius import RadiusCode, RadiusPacket
 
@@ -100,6 +101,9 @@ _MICROSOFT_VSA_NAMES = {
     26: "MS-CHAP2-Success",
     27: "MS-CHAP2-CPW",
     16: "MS-MPPE-Send-Key",
+    7: "MS-MPPE-Encryption-Policy",
+    8: "MS-MPPE-Encryption-Types",
+    12: "MS-CHAP-MPPE-Keys",
     17: "MS-MPPE-Recv-Key",
     18: "MS-RAS-Version",
 }
@@ -214,10 +218,12 @@ def _encode_microsoft_vsa(
 ) -> bytes:
     vendor_type = _MICROSOFT_VSA_TYPES[name]
     raw = _octets(value)
-    if name == "MS-CHAP-Challenge" and len(raw) != 16:
-        raise RadiusCodecError("MS-CHAP-Challenge must be 16 bytes for MS-CHAPv2")
     if name == "MS-CHAP2-Response" and len(raw) != 50:
         raise RadiusCodecError("MS-CHAP2-Response must be 50 bytes")
+    if name == "MS-CHAP-MPPE-Keys":
+        if secret is None:
+            raise RadiusCodecError("secret is required for MS-CHAP-MPPE-Keys")
+        raw = _crypt_password(raw, secret.encode("utf-8"), authenticator)
     if name in {"MS-MPPE-Send-Key", "MS-MPPE-Recv-Key"}:
         if secret is None:
             raise RadiusCodecError(f"secret is required for {name}")
@@ -258,7 +264,7 @@ def _decode_vendor_specific(value: bytes) -> tuple[str, str]:
     vendor_value = value[6 : 4 + vendor_length]
     if vendor_id == _MICROSOFT_VENDOR_ID:
         name = _MICROSOFT_VSA_NAMES.get(vendor_type, f"Microsoft-{vendor_type}")
-        if name in {"MS-CHAP-Response", "MS-CHAP-Challenge", "MS-CHAP2-Response", "MS-MPPE-Send-Key", "MS-MPPE-Recv-Key"}:
+        if name in {"MS-CHAP-Response", "MS-CHAP-Challenge", "MS-CHAP2-Response", "MS-CHAP-MPPE-Keys", "MS-MPPE-Send-Key", "MS-MPPE-Recv-Key", "MS-MPPE-Encryption-Policy", "MS-MPPE-Encryption-Types"}:
             return name, vendor_value.hex()
         if name in _MICROSOFT_VSA_TEXT_NAMES:
             try:
@@ -276,16 +282,18 @@ def encode(packet: RadiusPacket, secret: str | None = None) -> bytes:
         raise RadiusCodecError("authenticator must be empty or 16 bytes")
     authenticator = packet.authenticator or bytes(16)
     body = bytearray()
-    mppe_salt = 0x8000
+    used_mppe_salts: set[bytes] = set()
     for name, value in packet.attributes.items():
         if name in _MICROSOFT_VSA_TYPES:
             number = 26
             salt = None
             if name in {"MS-MPPE-Send-Key", "MS-MPPE-Recv-Key"}:
-                mppe_salt += 1
-                if mppe_salt > 0xFFFF:
-                    raise RadiusCodecError("exhausted MS-MPPE salt space")
-                salt = pack("!H", mppe_salt)
+                while True:
+                    candidate = bytes((0x80 | secrets.randbelow(0x80), secrets.randbelow(0x100)))
+                    if candidate not in used_mppe_salts:
+                        used_mppe_salts.add(candidate)
+                        salt = candidate
+                        break
             raw = _encode_microsoft_vsa(
                 name,
                 value,
