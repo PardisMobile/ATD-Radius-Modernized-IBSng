@@ -63,8 +63,10 @@ class MultiLoginPolicy:
         d=session_policy(_attrs(request),sessions)
         if not d.allowed and d.reason=="multi_login":
             return AAAResult(AAAAction.REJECT,reason="MAX_CONCURRENT")
-        if request.attributes.get("__ras_multi_login_allowed") in (False,"0","false","False") and len(sessions)>0:
-            return AAAResult(AAAAction.REJECT,reason="RAS_DOESNT_ALLOW_MULTILOGIN")
+        ras_multi_login = request.attributes.get("__ras_multi_login_allowed",
+            request.attributes.get("ras_multi_login"))
+        if ras_multi_login in (False, "0", "false", "False") and len(sessions) > 0:
+            return AAAResult(AAAAction.REJECT, reason="RAS_DOESNT_ALLOW_MULTILOGIN")
         return None
 
 @dataclass(frozen=True,slots=True)
