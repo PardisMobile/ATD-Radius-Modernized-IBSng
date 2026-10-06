@@ -25,6 +25,7 @@ class NativeAccessContext:
         user_id, stored_password, locked = record
         attrs = {name: value for name, value in self.users.attributes(user_id)}
         attrs["__user_found"] = "1"
+        attrs["__user_id"] = str(user_id)
         attrs["__password_ok"] = "1" if (
             not locked and packet.attributes.get("User-Password", "") == stored_password
         ) else "0"
