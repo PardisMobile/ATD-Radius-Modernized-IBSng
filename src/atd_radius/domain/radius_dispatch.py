@@ -16,16 +16,22 @@ class DispatchResult:
     response:RadiusPacket
     accounting:AccountingEvent|None=None
 
+class AccessContext(Protocol):
+    def enrich(self, packet: RadiusPacket) -> Mapping[str, str]: ...
+
 class SessionControl(Protocol):
     def disconnect(self,attributes:Mapping[str,str])->bool: ...
     def change_of_authorization(self,attributes:Mapping[str,str])->bool: ...
 
 class RadiusDispatcher:
-    def __init__(self,pipeline:PluginPipeline,session_control:SessionControl|None=None):
-        self.pipeline=pipeline; self.session_control=session_control
+    def __init__(self,pipeline:PluginPipeline,session_control:SessionControl|None=None,access_context:AccessContext|None=None):
+        self.pipeline=pipeline; self.session_control=session_control; self.access_context=access_context
     def access(self,packet:RadiusPacket)->RadiusPacket:
         if packet.code is not RadiusCode.ACCESS_REQUEST: raise ValueError("expected Access-Request")
-        result=self.pipeline.evaluate(AAARequest(packet.attributes.get("User-Name",""),packet.attributes))
+        attributes=dict(packet.attributes)
+        if self.access_context is not None:
+            attributes.update(self.access_context.enrich(packet))
+        result=self.pipeline.evaluate(AAARequest(attributes.get("User-Name",""),attributes))
         return response_for_access(packet,result.action.value,result.attributes)
     def accounting(self,packet:RadiusPacket)->DispatchResult:
         if packet.code is not RadiusCode.ACCOUNTING_REQUEST: raise ValueError("expected Accounting-Request")
