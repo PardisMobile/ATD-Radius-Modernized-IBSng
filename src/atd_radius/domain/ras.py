@@ -3,8 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Mapping
 
-PORT_TYPES = frozenset({"Internet", "Voice-Origination", "Voice-Termination"})
-
 class RASError(ValueError):
     pass
 
@@ -17,8 +15,6 @@ class RASPort:
     def __post_init__(self):
         if not self.name:
             raise RASError("port name is required")
-        if self.type is not None and self.type not in PORT_TYPES:
-            raise RASError(f"unsupported A1.24 port type: {self.type}")
 
 @dataclass(frozen=True, slots=True)
 class RAS:
