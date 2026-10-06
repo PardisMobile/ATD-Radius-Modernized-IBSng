@@ -90,6 +90,10 @@ class RASRuntimeRegistry:
     def get_by_ip(self, ip: str) -> RAS | None:
         return next((ras for ras in self._ras_by_id.values() if ras.ip == ip), None)
 
+    def attributes(self, ras_id: int) -> list[tuple[str, str]]:
+        ras = self._ras_by_id.get(ras_id)
+        return list(ras.attributes.items()) if ras is not None else []
+
     def active(self) -> tuple[RAS, ...]:
         return tuple(self._ras_by_id[key] for key in sorted(self._ras_by_id))
 
