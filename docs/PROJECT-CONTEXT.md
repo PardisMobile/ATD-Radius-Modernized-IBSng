@@ -130,13 +130,12 @@ Read this file, ROADMAP.md, ARCHITECTURE.md, docs/DECISIONS.md, docs/phase-0-inv
 - Do not mark a subsystem Verified merely because an implementation exists. Verified requires source-derived behavior tests and/or database parity evidence.
 
 ## Immediate continuation priorities
-1. Complete mutation-triggered RAS reload integration from source-derived semantics.
-2. Wire native IP-pool allocation/claim/release into live Access and Accounting/session lifecycle, preserving `ras_ippools` ordering.
-3. Wire persistent connection history into the live Accounting-Request path and test idempotency/parity.
-4. Strengthen live session admission/termination integration against A1.24 online/session behavior.
-5. Complete RADIUS authentication protocol coverage and source-derived attribute handling.
-6. Complete billing/credit persistence and effective-rule integration.
-7. Continue UI/API parity without changing established IBSng terminology.
-8. Complete migration/import, installer, permissions/audit and XML-RPC boundaries only from source-confirmed behavior.
+1. Complete mutation-triggered RAS reload integration with transaction-safe source-derived semantics.
+2. Wire persistent connection history into the live Accounting-Request path and test idempotency/parity.
+3. Strengthen live session admission/termination integration against A1.24 online/session behavior.
+4. Complete RADIUS authentication protocol coverage and source-derived attribute handling.
+5. Complete billing/credit persistence and effective-rule integration.
+6. Continue UI/API parity without changing established IBSng terminology.
+7. Complete migration/import, installer, permissions/audit and XML-RPC boundaries only from source-confirmed behavior.
 
 All work above must be driven by repository documents and the A1.24 Source of Truth before implementation.
