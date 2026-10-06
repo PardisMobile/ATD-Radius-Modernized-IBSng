@@ -20,7 +20,7 @@ def rule(cpm="60", cpk="0.5"):
 def test_internet_charge_matches_a124_time_and_transfer_formula():
     assert calculate_internet_instance_usage(
         rule(), elapsed_seconds=120, input_octets=1024, output_octets=2048
-    ) == Decimal("121")
+    ) == Decimal("121.5")
 
 
 def test_internet_charge_rejects_negative_usage():
