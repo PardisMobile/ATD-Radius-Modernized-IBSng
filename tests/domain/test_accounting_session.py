@@ -2,8 +2,8 @@ from atd_radius.domain.accounting_lifecycle import AccountingEvent, AccountingSt
 from atd_radius.domain.accounting_session import AccountingSessionService
 from atd_radius.domain.radius_runtime import SessionRegistry
 
-def event(status, sid="s", inp=0, out=0):
-    return AccountingEvent(status, "alice", sid, input_octets=inp, output_octets=out)
+def event(status, sid="s", inp=0, out=0, attributes=None):
+    return AccountingEvent(status, "alice", sid, input_octets=inp, output_octets=out, attributes=attributes or {})
 
 def test_accounting_session_start_interim_stop_tracks_deltas():
     service = AccountingSessionService(SessionRegistry())
