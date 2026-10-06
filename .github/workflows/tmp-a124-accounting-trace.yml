@@ -1,4 +1,4 @@
-name: tmp-a124-accounting-focus
+name: tmp-a124-accounting-detail
 on:
   push:
     branches: [main]
@@ -10,7 +10,7 @@ jobs:
       - run: |
           rm -rf /tmp/a124 && mkdir -p /tmp/a124
           tar -xjf 'Source of Truth/IBSng-A1.24.tar.bz2' -C /tmp/a124
-          for f in core/ras/rases/mikrotik.py core/ras/rases/bsae.py core/ras/rases/cisco.py core/ras/rases/pppd.py core/user/connection_log.py core/user/user.py core/user/plugins/charge.py core/charge/charge.py db/tables.sql; do
+          for f in core/ras/rases/mikrotik.py core/ras/rases/bsae.py core/ras/rases/cisco.py core/ras/rases/pppd.py core/user/connection_log.py core/user/user.py core/user/plugins/charge.py core/charge/charge.py; do
             echo "===== $f ====="
-            sed -n '1,430p' "/tmp/a124/IBSng/$f" | grep -nE 'status_type|Start|Stop|Alive|connection_log|insert_connection_log|credit_used|bytes_in|bytes_out|startAccounting|stopAccounting|updateAccounting|Accounting'
+            sed -n '1,430p' "/tmp/a124/IBSng/$f" | sed -n '/def handleRadAcctPacket/,/def /p;/def logConnectionQuery/,/def /p;/def __handleStartAccounting/,/def /p;/def __handleStopAccounting/,/def /p;/def startAccounting/,/def /p' | head -260
           done
