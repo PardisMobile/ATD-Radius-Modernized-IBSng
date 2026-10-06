@@ -76,3 +76,10 @@ def test_registry_targeted_reload_removes_deactivated_ras():
 
     assert registry.get(2) is None
     assert registry.get(1) is not None
+
+
+def test_registry_exposes_explicit_ras_attributes_to_access_consumers():
+    repo = FakeRASRepository()
+    registry = RASRuntimeRegistry(repo)
+    registry.reload()
+    assert registry.attributes(1) == [("online_check", "0"), ("ras_multi_login", "0")]
