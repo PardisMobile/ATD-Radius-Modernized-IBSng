@@ -7,6 +7,7 @@ not create an invented ip_allocations schema.
 from atd_radius.domain.ip_pool import (
     IPPoolFullError,
     IPPoolIPNotInUseError,
+    IPPoolIPNotInPoolError,
     IPPoolRuntime,
     IPPoolRuntimeRegistry,
 )
@@ -14,6 +15,7 @@ from atd_radius.domain.ip_pool import (
 __all__ = [
     "IPPoolFullError",
     "IPPoolIPNotInUseError",
+    "IPPoolIPNotInPoolError",
     "IPPoolRuntime",
     "IPPoolRuntimeRegistry",
 ]
