@@ -2,6 +2,13 @@
 from __future__ import annotations
 from typing import Mapping, Protocol
 from atd_radius.domain.radius import RadiusPacket
+from atd_radius.domain.radius_auth import (
+    RadiusAuthMethod,
+    detect_auth_method,
+    validate_mschapv2_response,
+    verify_chap,
+    verify_pap,
+)
 from atd_radius.domain.user_policies import ras_allows_multi_login
 
 class NativeUserSource(Protocol):
@@ -32,14 +39,33 @@ class NativeAccessContext:
             loaded_attrs = loader(user_id)
             attrs = {name: value for name, value in loaded_attrs}
         except TypeError:
-            # Compatibility with simple/mock user sources that only implement
-            # attributes(); native UserRepository always supplies policy_attributes.
             attrs = {name: value for name, value in self.users.attributes(user_id)}
+
+        method = detect_auth_method(packet.attributes)
+        password_ok = False
+        if not locked:
+            if method is RadiusAuthMethod.PAP:
+                password_ok = verify_pap(str(packet.attributes.get("User-Password", "")), stored_password)
+            elif method is RadiusAuthMethod.CHAP:
+                password_ok = verify_chap(
+                    packet.attributes.get("CHAP-Password"),
+                    stored_password,
+                    packet.attributes.get("CHAP-Challenge"),
+                    packet_authenticator=packet.authenticator,
+                )
+            elif method is RadiusAuthMethod.MSCHAPV2:
+                # Structural validation is intentionally separate from cryptographic
+                # verification until the A1.24 MS-CHAPv2 source path is available.
+                password_ok = False
+                attrs["__mschapv2_valid_shape"] = "1" if validate_mschapv2_response(
+                    packet.attributes.get("MS-CHAP2-Response"),
+                    packet.attributes.get("MS-CHAP-Challenge"),
+                ) else "0"
+
         attrs["__user_found"] = "1"
         attrs["__user_id"] = str(user_id)
-        attrs["__password_ok"] = "1" if (
-            not locked and packet.attributes.get("User-Password", "") == stored_password
-        ) else "0"
+        attrs["__auth_method"] = method.value
+        attrs["__password_ok"] = "1" if password_ok else "0"
         if self.ras is not None and source_ip:
             ras_record = self.ras.get_by_ip(source_ip)
             if ras_record is not None:
