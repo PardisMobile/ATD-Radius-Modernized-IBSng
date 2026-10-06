@@ -17,7 +17,7 @@ This is the master parity ledger. A feature is not considered migrated merely be
 | User attributes | user/plugin attribute system | Typed Attribute Policy Engine | Implemented boundary / parity fixtures pending |
 | Group policy | core/group/* and group plugins | Group policy + resolver | In progress |
 | Service policy | service/plugin behavior | Service policy + resolver | In progress |
-| RAS/NAS | core/ras/*, radius_server/* | RAS registry/adapters | Foundation / lifecycle integration pending |
+| RAS/NAS | core/ras/*, radius_server/* | RAS registry/adapters | Runtime registry implemented / mutation-reload integration pending |
 | IP pools | core/ippool/* | Transaction-safe allocator | Implemented boundary / lifecycle integration pending |
 | Sessions | session/accounting plugins | Session domain + accounting store | Runtime implemented / persistence and source parity pending |
 | RADIUS authentication | radius_server/* | Python RADIUS server | Runtime boundary implemented / full parity pending |
