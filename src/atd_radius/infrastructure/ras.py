@@ -45,8 +45,13 @@ class RASIPPoolRecord:
 class RASRepository:
     """Persistence contract for the native A1.24 ras family of tables."""
 
-    def __init__(self, conn) -> None:
+    def __init__(self, conn, on_change=None) -> None:
         self.conn = conn
+        self.on_change = on_change
+
+    def _changed(self, ras_id: int) -> None:
+        if self.on_change is not None:
+            self.on_change(ras_id)
 
     def list(self) -> list[RASRecord]:
         rows = self.conn.execute(
@@ -89,7 +94,9 @@ class RASRepository:
             "VALUES (%s,%s,%s,%s,%s,%s,%s)",
             (ras_id, description, ip, ras_type, radius_secret, active, comment),
         )
-        return RASRecord(ras_id, description, ip, ras_type, radius_secret, active, comment)
+        record = RASRecord(ras_id, description, ip, ras_type, radius_secret, active, comment)
+        self._changed(ras_id)
+        return record
 
     def update(
         self,
@@ -108,7 +115,9 @@ class RASRepository:
             "WHERE ras_id=%s",
             (description, ip, ras_type, radius_secret, active, comment, ras_id),
         )
-        return RASRecord(ras_id, description, ip, ras_type, radius_secret, active, comment)
+        record = RASRecord(ras_id, description, ip, ras_type, radius_secret, active, comment)
+        self._changed(ras_id)
+        return record
 
     def delete(self, ras_id: int) -> None:
         if self.get(ras_id) is None:
@@ -117,6 +126,7 @@ class RASRepository:
         self.conn.execute("DELETE FROM ras_ports WHERE ras_id=%s", (ras_id,))
         self.conn.execute("DELETE FROM ras_attrs WHERE ras_id=%s", (ras_id,))
         self.conn.execute("DELETE FROM ras WHERE ras_id=%s", (ras_id,))
+        self._changed(ras_id)
 
     def ports(self, ras_id: int) -> list[RASPortRecord]:
         rows = self.conn.execute(select_ras_ports(ras_id)).fetchall()
@@ -124,9 +134,11 @@ class RASRepository:
 
     def upsert_port(self, ras_id: int, port_name: str, phone: str | None, port_type: str | None, comment: str | None) -> None:
         self.conn.execute(upsert_ras_port(), (ras_id, port_name, phone, port_type, comment))
+        self._changed(ras_id)
 
     def delete_port(self, ras_id: int, port_name: str) -> None:
         self.conn.execute(delete_ras_port(), (ras_id, port_name))
+        self._changed(ras_id)
 
     def attributes(self, ras_id: int) -> list[tuple[str, str]]:
         rows = self.conn.execute(
@@ -141,9 +153,11 @@ class RASRepository:
             "ON CONFLICT (ras_id, attr_name) DO UPDATE SET attr_value=EXCLUDED.attr_value",
             (ras_id, name, value),
         )
+        self._changed(ras_id)
 
     def delete_attribute(self, ras_id: int, name: str) -> None:
         self.conn.execute("DELETE FROM ras_attrs WHERE ras_id=%s AND attr_name=%s", (ras_id, name))
+        self._changed(ras_id)
 
     def ippools(self, ras_id: int) -> list[RASIPPoolRecord]:
         rows = self.conn.execute(select_ras_ippools(ras_id)).fetchall()
@@ -151,10 +165,15 @@ class RASRepository:
 
     def add_ippool(self, ras_id: int, ippool_id: int) -> int:
         row = self.conn.execute(insert_ras_ippool(), (ras_id, ippool_id)).fetchone()
-        return int(row[0])
+        serial = int(row[0])
+        self._changed(ras_id)
+        return serial
 
     def delete_ippool(self, serial: int) -> None:
         self.conn.execute(delete_ras_ippool(), (serial,))
+        row = self.conn.execute("SELECT ras_id FROM ras_ippools WHERE serial=%s", (serial,)).fetchone()
+        if row is not None:
+            self._changed(int(row[0]))
 
     @staticmethod
     def _ras(row) -> RASRecord:
