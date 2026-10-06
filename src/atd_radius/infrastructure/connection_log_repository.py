@@ -7,7 +7,7 @@ from typing import Iterable
 
 import psycopg
 
-from atd_radius.domain.connection_log import ConnectionLog
+from atd_radius.infrastructure.connection_log import ConnectionLog
 
 
 @dataclass(frozen=True, slots=True)
@@ -61,7 +61,7 @@ class ConnectionLogRepository:
         connection_log_id: int,
         logout_time: datetime,
         credit_used: str | None,
-        successful: bool,
+        successful: bool | None = None,
     ) -> None:
         self.conn.execute(
             """
@@ -70,4 +70,37 @@ class ConnectionLogRepository:
             WHERE connection_log_id=%s
             """,
             (logout_time, credit_used, successful, connection_log_id),
+        )
+
+    def get(self, connection_log_id: int) -> ConnectionLog | None:
+        row = self.conn.execute(
+            """
+            SELECT connection_log_id, user_id, credit_used::text, login_time,
+                   logout_time, successful, service, ras_id
+            FROM connection_log
+            WHERE connection_log_id=%s
+            """,
+            (connection_log_id,),
+        ).fetchone()
+        if row is None:
+            return None
+        details = self.conn.execute(
+            """
+            SELECT name, value
+            FROM connection_log_details
+            WHERE connection_log_id=%s
+            ORDER BY name
+            """,
+            (connection_log_id,),
+        ).fetchall()
+        return ConnectionLog(
+            connection_log_id=int(row[0]),
+            user_id=int(row[1]) if row[1] is not None else None,
+            credit_used=str(row[2]) if row[2] is not None else None,
+            login_time=row[3],
+            logout_time=row[4],
+            successful=bool(row[5]),
+            service=int(row[6]),
+            ras_id=int(row[7]) if row[7] is not None else None,
+            details={str(name): str(value) for name, value in details},
         )
