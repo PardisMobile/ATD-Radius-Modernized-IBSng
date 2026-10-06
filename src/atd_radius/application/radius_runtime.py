@@ -11,6 +11,12 @@ from atd_radius.domain.user_policies import AuthenticationPolicy, LockPolicy, Mu
 from atd_radius.domain.ras import RASRuntimeRegistry
 from atd_radius.domain.ip_pool import IPPoolRuntimeRegistry
 from atd_radius.domain.ip_pool_policy import IPPoolAllocationPolicy
+from atd_radius.domain.radius_runtime import SessionRegistry
+from atd_radius.infrastructure.accounting_persistence import NativeAccountingPersistence
+from atd_radius.infrastructure.connection_log_repository import ConnectionLogRepository
+from atd_radius.infrastructure.ip_pool_repository import PostgresIPPoolRepository
+from atd_radius.infrastructure.ras import RASRepository
+from atd_radius.infrastructure import UserRepository
 
 class UserSource(Protocol):
     def get_authentication_record(self, username: str) -> tuple[int, str, bool] | None: ...
@@ -150,3 +156,36 @@ def build_ras_runtime(repository, type_defaults=None) -> RASRuntimeRegistry:
     if getattr(repository, "on_change", None) is None:
         repository.on_change = registry.on_repository_change
     return registry
+
+
+def build_native_radius_runtime(conn, type_defaults=None, users=None, ras_repository=None, pool_repository=None):
+    """Compose the native RADIUS runtime over the A1.24 PostgreSQL schema.
+
+    The connection is intentionally supplied by the caller so the runtime,
+    accounting persistence and repository reads share one transaction boundary.
+    """
+    users = users or UserRepository(conn)
+    ras_repository = ras_repository or RASRepository(conn)
+    pool_repository = pool_repository or PostgresIPPoolRepository(conn)
+
+    ras = build_ras_runtime(ras_repository, type_defaults)
+    pools = IPPoolRuntimeRegistry(pool_repository)
+    pools.reload()
+
+    sessions = SessionRegistry()
+    persistence = NativeAccountingPersistence(ConnectionLogRepository(conn))
+    accounting = AccountingSessionService(sessions, persistence)
+    dispatcher = build_radius_dispatcher(
+        users,
+        active_sessions_provider=session_views(sessions),
+        ras=ras,
+        ip_pools=pools,
+    )
+    identities = NativeAccountingIdentityResolver(users, ras)
+    ip_pool_sessions = IPPoolSessionManager(pools, ras)
+    return RadiusRuntimeHandler(
+        dispatcher,
+        accounting,
+        identities,
+        ip_pool_sessions=ip_pool_sessions,
+    )
