@@ -31,7 +31,7 @@ _ATTR_NAMES = {
     31:"Calling-Station-Id",32:"NAS-Identifier",40:"Acct-Status-Type",41:"Acct-Delay-Time",
     42:"Acct-Input-Octets",43:"Acct-Output-Octets",44:"Acct-Session-Id",45:"Acct-Authentic",
     46:"Acct-Session-Time",47:"Acct-Input-Packets",48:"Acct-Output-Packets",
-    49:"Acct-Terminate-Cause",61:"NAS-Port-Type",80:"Message-Authenticator",
+    49:"Acct-Terminate-Cause",50:"Acct-Multi-Session-Id",55:"Event-Timestamp",61:"NAS-Port-Type",80:"Message-Authenticator",87:"NAS-Port-Id",89:"Chargeable-User-Identity",95:"NAS-IPv6-Address",96:"Framed-Interface-Id",97:"Framed-IPv6-Prefix",101:"Error-Cause",
 }
 _ATTR_NUMBERS = {name:number for number,name in _ATTR_NAMES.items()}
 _INTEGER_ATTRS = {
@@ -40,6 +40,7 @@ _INTEGER_ATTRS = {
     "Acct-Session-Time","Acct-Input-Packets","Acct-Output-Packets","Acct-Terminate-Cause","NAS-Port-Type",
 }
 _IP_ATTRS = {"NAS-IP-Address","Framed-IP-Address","Framed-IP-Netmask"}
+_HEX_ATTRS = {"Message-Authenticator"}
 
 
 class RadiusCodecError(ValueError):
