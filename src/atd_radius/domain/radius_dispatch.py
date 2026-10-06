@@ -26,11 +26,11 @@ class SessionControl(Protocol):
 class RadiusDispatcher:
     def __init__(self,pipeline:PluginPipeline,session_control:SessionControl|None=None,access_context:AccessContext|None=None):
         self.pipeline=pipeline; self.session_control=session_control; self.access_context=access_context
-    def access(self,packet:RadiusPacket)->RadiusPacket:
+    def access(self,packet:RadiusPacket, source_ip: str | None = None)->RadiusPacket:
         if packet.code is not RadiusCode.ACCESS_REQUEST: raise ValueError("expected Access-Request")
         attributes=dict(packet.attributes)
         if self.access_context is not None:
-            attributes.update(self.access_context.enrich(packet))
+            attributes.update(self.access_context.enrich(packet, source_ip))
         result=self.pipeline.evaluate(AAARequest(attributes.get("User-Name",""),attributes))
         return response_for_access(packet,result.action.value,result.attributes)
     def accounting(self,packet:RadiusPacket)->DispatchResult:
