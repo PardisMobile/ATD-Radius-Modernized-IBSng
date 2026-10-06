@@ -1,3 +1,4 @@
+from decimal import Decimal
 from atd_radius.domain.accounting_lifecycle import AccountingEvent, AccountingStatus
 from atd_radius.domain.accounting_session import AccountingSessionService
 from atd_radius.domain.radius_runtime import SessionRegistry
@@ -125,4 +126,4 @@ def test_no_commit_skips_charge_settlement_and_reports_zero_credit():
     assert result.credit_used=="0"
     charge.settle.assert_not_called()
     persistence.stop.assert_called_once()
-    assert persistence.stop.call_args.args[2]=="0"
+    assert persistence.stop.call_args.args[2]==Decimal("0")
