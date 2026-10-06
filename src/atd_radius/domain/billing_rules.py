@@ -78,6 +78,10 @@ def select_effective_rule(
     candidates = [rule for rule in rules if rule.applies_to(when, ras_id, port)]
     if not candidates:
         raise BillingError("no applicable charge rule")
-    # A1.24 selects the highest specificity priority. Stable rule_id ordering
-    # makes equal-priority selection deterministic for ATD.
-    return max(candidates, key=lambda rule: (rule.priority, -rule.rule_id))
+    # A1.24 replaces the selected rule only when priority is strictly greater;
+    # equal-priority rules therefore retain loader/input order.
+    selected = candidates[0]
+    for rule in candidates[1:]:
+        if rule.priority > selected.priority:
+            selected = rule
+    return selected
