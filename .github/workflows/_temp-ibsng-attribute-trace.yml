@@ -13,17 +13,13 @@ jobs:
           tar -xjf "Source of Truth/IBSng-A1.24.tar.bz2" -C /tmp/i
           echo '=== multi_login refs ==='
           grep -Rni --exclude='*.pyc' -E 'multi_login|MultiLogin|instances|USER_LOGIN' /tmp/i | head -n 500 || true
-          echo '=== multilogin.py ==='
-          sed -n '1,260p' /tmp/i/IBSng/core/user/plugins/multilogin.py
-          echo '=== attribute.py ==='
-          sed -n '1,320p' /tmp/i/IBSng/core/user/attribute.py
-          echo '=== user_plugin.py hooks ==='
-          sed -n '1,220p' /tmp/i/IBSng/core/user/user_plugin.py
-          echo '=== group/user attribute loading ==='
-          sed -n '1,180p' /tmp/i/IBSng/core/user/attribute_manager.py
-          echo '=== normal_user.py ==='
-          sed -n '1,260p' /tmp/i/IBSng/core/user/normal_user.py
-          echo '=== user.py attribute/instance refs ==='
-          grep -n -E 'getAttribute|attribute|instances|USER_LOGIN|login' /tmp/i/IBSng/core/user/user.py | head -n 250
+          echo '=== MULTILOGIN SOURCE ==='
+          cat /tmp/i/IBSng/core/user/plugins/multilogin.py
+          echo '=== ATTRIBUTE CLASS ==='
+          cat /tmp/i/IBSng/core/user/attribute.py
+          echo '=== USER ATTRIBUTE ACCESS ==='
+          grep -n -B5 -A12 -E 'def getUserAttrs|def getAttribute|def getAttrs|def login' /tmp/i/IBSng/core/user/user.py
+          echo '=== RAS MSG ATTR DOC ==='
+          cat /tmp/i/IBSng/docs/ras_msg_attrs
           echo '=== RAS internet multi-login refs ==='
           grep -Rni --include='*.py' -E 'multi_login|ras_msg\["multi_login"\]|getAttribute\(".*multi_login' /tmp/i/IBSng/core/ras/rases
