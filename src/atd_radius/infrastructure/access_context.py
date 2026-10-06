@@ -10,6 +10,7 @@ from atd_radius.domain.radius_auth import (
     verify_mschapv1,
     verify_mschapv2,
     derive_mschapv1_mppe_key,
+    derive_mschapv2_mppe_keys,
     generate_mschapv2_authenticator_response,
     verify_pap,
 )
@@ -90,6 +91,11 @@ class NativeAccessContext:
                             username,
                         )
                     )
+                    send_key, recv_key = derive_mschapv2_mppe_keys(
+                        stored_password, raw_response[26:50]
+                    )
+                    attrs["__mschapv2_send_key"] = send_key.hex()
+                    attrs["__mschapv2_recv_key"] = recv_key.hex()
 
         attrs["__user_found"] = "1"
         attrs["__user_id"] = str(user_id)
