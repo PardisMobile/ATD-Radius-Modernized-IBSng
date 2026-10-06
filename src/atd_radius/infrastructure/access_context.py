@@ -7,6 +7,7 @@ from atd_radius.domain.radius_auth import (
     detect_auth_method,
     validate_mschapv2_response,
     verify_chap,
+    verify_mschapv2,
     verify_pap,
 )
 from atd_radius.domain.user_policies import ras_allows_multi_login
@@ -54,9 +55,12 @@ class NativeAccessContext:
                     packet_authenticator=packet.authenticator,
                 )
             elif method is RadiusAuthMethod.MSCHAPV2:
-                # Structural validation is intentionally separate from cryptographic
-                # verification until the A1.24 MS-CHAPv2 source path is available.
-                password_ok = False
+                password_ok = verify_mschapv2(
+                    packet.attributes.get("MS-CHAP2-Response"),
+                    stored_password,
+                    username,
+                    packet.attributes.get("MS-CHAP-Challenge"),
+                )
                 attrs["__mschapv2_valid_shape"] = "1" if validate_mschapv2_response(
                     packet.attributes.get("MS-CHAP2-Response"),
                     packet.attributes.get("MS-CHAP-Challenge"),
