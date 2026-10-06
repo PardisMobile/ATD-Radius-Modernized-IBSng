@@ -8,6 +8,7 @@ from atd_radius.domain.radius_auth import (
     validate_mschapv2_response,
     verify_chap,
     verify_mschapv2,
+    generate_mschapv2_authenticator_response,
     verify_pap,
 )
 from atd_radius.domain.user_policies import ras_allows_multi_login
@@ -61,10 +62,24 @@ class NativeAccessContext:
                     username,
                     packet.attributes.get("MS-CHAP-Challenge"),
                 )
-                attrs["__mschapv2_valid_shape"] = "1" if validate_mschapv2_response(
+                valid_shape = validate_mschapv2_response(
                     packet.attributes.get("MS-CHAP2-Response"),
                     packet.attributes.get("MS-CHAP-Challenge"),
-                ) else "0"
+                )
+                attrs["__mschapv2_valid_shape"] = "1" if valid_shape else "0"
+                if password_ok and valid_shape:
+                    response = packet.attributes.get("MS-CHAP2-Response")
+                    raw_response = response if isinstance(response, bytes) else bytes.fromhex(str(response))
+                    attrs["__mschapv2_success"] = (
+                        chr(raw_response[0]) +
+                        generate_mschapv2_authenticator_response(
+                            stored_password,
+                            raw_response[26:50],
+                            raw_response[2:18],
+                            packet.attributes.get("MS-CHAP-Challenge"),
+                            username,
+                        )
+                    )
 
         attrs["__user_found"] = "1"
         attrs["__user_id"] = str(user_id)
