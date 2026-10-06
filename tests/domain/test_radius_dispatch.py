@@ -38,3 +38,16 @@ def test_access_context_enriches_request_before_plugins():
         RadiusPacket(RadiusCode.ACCESS_REQUEST, 2, {"User-Name": "original"})
     )
     assert r.code is RadiusCode.ACCESS_ACCEPT
+
+
+def test_control_returns_error_cause_from_session_control():
+    from atd_radius.domain.session_control import RegistrySessionControl
+    from atd_radius.domain.radius_runtime import SessionKey, SessionRegistry
+    registry = SessionRegistry()
+    registry.start(SessionKey(1, 2, "sid"), {"User-Name":"alice", "Acct-Session-Id":"sid"})
+    dispatcher = RadiusDispatcher(PluginPipeline([]), RegistrySessionControl(registry))
+    response = dispatcher.control(RadiusPacket(
+        RadiusCode.DISCONNECT_REQUEST, 3, {"Acct-Session-Id":"missing"}
+    ))
+    assert response.code is RadiusCode.DISCONNECT_NAK
+    assert response.attributes["Error-Cause"] == "503"
