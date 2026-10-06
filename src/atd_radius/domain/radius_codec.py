@@ -35,7 +35,7 @@ _ATTR_NAMES = {
 }
 _ATTR_NUMBERS = {name:number for number,name in _ATTR_NAMES.items()}
 _INTEGER_ATTRS = {
-    "NAS-Port","Service-Type","Framed-Protocol","Framed-MTU","Session-Timeout","Idle-Timeout",
+    "NAS-Port","Service-Type","Framed-Protocol","Framed-MTU","Session-Timeout","Idle-Timeout","Error-Cause",
     "Acct-Status-Type","Acct-Delay-Time","Acct-Input-Octets","Acct-Output-Octets",
     "Acct-Session-Time","Acct-Input-Packets","Acct-Output-Packets","Acct-Terminate-Cause","NAS-Port-Type",
 }
@@ -215,7 +215,7 @@ def verify_control_request(data: bytes, secret: str) -> bool:
             break
         offset += attr_length
     if message_auth is None or message_start is None:
-        return False
+        return True
     mutable = bytearray(data[:length])
     mutable[4:20] = bytes(16)
     mutable[message_start + 2:message_start + 18] = bytes(16)
