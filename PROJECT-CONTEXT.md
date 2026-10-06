@@ -359,3 +359,12 @@ Do not mark a subsystem Complete merely because its classes exist. Completion re
 3. Build stronger live UDP -> PostgreSQL integration tests, including rollback atomicity.
 4. Reconcile all parity docs against this status and remove stale claims.
 5. Continue into credit ledger/billing persistence and full CRUD/API/RBAC work.
+
+
+## RAS provider source-audit checkpoint — 2026-10-07
+- Direct canonical-source extraction completed for the concrete A1.24 RAS implementations under `core/ras/rases/`.
+- Provider inventory and major provider-specific distinctions are recorded in `docs/A1.24-RAS-PROVIDER-AUDIT.md`.
+- Source confirms that full parity cannot be represented by only a generic RAS boolean/profile: providers have distinct identity keys, attribute extraction, accounting lifecycle, byte/rate handling, IP-assignment behavior and disconnect/kill integrations; VoIP providers additionally have H323/SIP/Asterisk-specific behavior.
+- The existing generic ATD RAS registry and common RADIUS/accounting lifecycle remain valid as the common layer.
+- The next implementation target is a provider-adapter contract plus source-derived provider profiles/fixtures, starting with representative internet providers (MikroTik, BSAE, ChilliSpot, Cisco) before expanding to Cisco VPDN, PortMaster, PortSlave, Total Control and VoIP providers.
+- Temporary source-inspection workflows used for this checkpoint were removed; none is intentionally left in `main`.
