@@ -7,6 +7,7 @@ from atd_radius.domain.radius_auth import (
     verify_chap,
     verify_mschapv2,
     generate_mschapv2_authenticator_response,
+    derive_mschapv2_mppe_keys,
     verify_pap,
 )
 
@@ -66,3 +67,10 @@ def test_mschapv2_rfc2759_authenticator_response():
         auth_challenge,
         "User",
     ) == "S=407A5589115FD0D6209F510FE9C04566932CDA56"
+
+
+def test_mschapv2_mppe_server_keys_are_rfc3079_derived():
+    nt_response = bytes.fromhex("82309ECD8D708B5EA08FAA3981CD83544233114A3D85D6DF")
+    send_key, recv_key = derive_mschapv2_mppe_keys("clientPass", nt_response)
+    assert send_key.hex() == "8b7cdc149b993a1ba118cb153f56dccb"
+    assert recv_key.hex() == "d5f0e9521e3ea9589645e86051c82226"
