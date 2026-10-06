@@ -1,0 +1,14 @@
+name: tmp-a124-accounting-trace
+on:
+  push:
+    branches: [main]
+jobs:
+  trace:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          rm -rf /tmp/a124 && mkdir -p /tmp/a124
+          tar -xjf 'Source of Truth/IBSng-A1.24.tar.bz2' -C /tmp/a124
+          echo '--- accounting core references ---'
+          grep -RniE 'Acct-Status-Type|Acct-Session-Id|Accounting|connection_log|insert_connection_log|INTERIM|ALIVE|Alive' /tmp/a124/IBSng/core /tmp/a124/IBSng/radius_server --include='*.py' | head -700
