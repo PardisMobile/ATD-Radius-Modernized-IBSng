@@ -62,7 +62,9 @@ Read this file, ROADMAP.md, ARCHITECTURE.md, docs/DECISIONS.md, docs/phase-0-inv
 - Control responses emit Message-Authenticator when the request contained one.
 - Dynamic authorization attributes needed by the current control path are registered in the codec.
 - Focused codec and RFC 5176 tests exist.
-- This is not yet a claim of full A1.24 RADIUS parity: CHAP/MS-CHAPv2, full RAS coverage, complete attribute dictionary coverage and end-to-end parity remain open.
+- CHAP verification is implemented against the RFC 2865 response format.
+- MS-CHAPv2 verification now implements the RFC 2759 challenge-hash, NT-password MD4 hash and DES-based NT-Response check, with a published RFC test vector and native Access-Request coverage.
+- This is not yet a claim of full A1.24 RADIUS parity: full RAS coverage, complete attribute dictionary coverage, source-derived MS-CHAPv2 integration parity and end-to-end parity remain open.
 
 ### RADIUS runtime composition
 - Native RadiusDispatcher handles Access-Request, Accounting-Request, Disconnect-Request and CoA-Request.
@@ -97,7 +99,8 @@ Read this file, ROADMAP.md, ARCHITECTURE.md, docs/DECISIONS.md, docs/phase-0-inv
 - Stop marks the runtime session inactive.
 - Accounting events preserve RADIUS attributes needed for later session selection.
 - Native accounting persistence/repository adapters exist, including idempotent connection-log detail upserts.
-- The live Accounting-Request path is not yet a complete PostgreSQL connection-log persistence implementation; persistent connection history must still be wired and parity-tested end-to-end.
+- Native Accounting persistence is composed into the live RADIUS runtime and persists connection_log plus connection_log_details through the native schema.
+- The live path still needs source-derived credit_used settlement, transaction/error semantics and end-to-end connection-history parity tests.
 - A1.24 online state is primarily runtime state; internet_onlines_snapshot / voip_onlines_snapshot are the source-confirmed persistence surfaces.
 
 ### IP pools / RAS
@@ -115,7 +118,9 @@ Read this file, ROADMAP.md, ARCHITECTURE.md, docs/DECISIONS.md, docs/phase-0-inv
 - Equal-priority rules retain loader/input order, matching A1.24 replacement semantics.
 - Internet charging primitives implement CPM and CPK formulas from the source audit.
 - VoIP tariff primitives and charge-rule boundaries exist.
-- Full PostgreSQL mapping, effective-rule integration, charge persistence, credit ledger behavior and end-to-end A1.24 billing parity remain open.
+- Native PostgreSQL mapping for internet_charge_rules, charge_rule_day_of_weeks and charge_rule_ports is implemented.
+- Native users.credit read/change persistence is implemented through the existing A1.24 change_user_credit() function.
+- Effective-rule integration into active accounting, charge persistence/credit settlement, VoIP tariff/prefix runtime parity and end-to-end A1.24 billing parity remain open.
 
 ### UI/API
 - Initial REST users resources, search/pagination and read-only user workspace exist.
@@ -123,8 +128,8 @@ Read this file, ROADMAP.md, ARCHITECTURE.md, docs/DECISIONS.md, docs/phase-0-inv
 - User Information edit actions, high-frequency IBSng workflows, GROUP/RAS/IPPool/REPORT/GRAPH/ADMIN workflows and full user portal parity remain open.
 
 ### Current repository head
-- Current main branch head at this checkpoint: e259364f8d0984ef01238812b0c3f922d65ba9ca
-- Latest code checkpoint: native RAS-bound IP pool allocation, session lease lifecycle, and production RADIUS composition with persistent Connection Log wiring.
+- Current main branch head at this checkpoint: bd7e48582530e5b584e446b7cd5960425289ce7b
+- Latest code checkpoint: native MS-CHAPv2 verification and Access-Request integration, alongside the existing RAS-bound IP pool allocation, session lease lifecycle, billing repositories and production RADIUS composition.
 - Older checkpoint references are historical and must not be treated as current HEAD.
 - The code checkpoint immediately before this documentation update has green Python and CI workflow runs.
 - Do not mark a subsystem Verified merely because an implementation exists. Verified requires source-derived behavior tests and/or database parity evidence.
@@ -133,8 +138,8 @@ Read this file, ROADMAP.md, ARCHITECTURE.md, docs/DECISIONS.md, docs/phase-0-inv
 1. Complete mutation-triggered RAS reload integration with transaction-safe source-derived semantics.
 2. Wire persistent connection history into the live Accounting-Request path and test idempotency/parity.
 3. Strengthen live session admission/termination integration against A1.24 online/session behavior.
-4. Complete RADIUS authentication protocol coverage and source-derived attribute handling.
-5. Complete billing/credit persistence and effective-rule integration.
+4. Complete source-derived RADIUS authentication attributes and remaining protocol coverage.
+5. Complete billing/credit settlement, effective-rule integration and connection_log credit_used parity.
 6. Continue UI/API parity without changing established IBSng terminology.
 7. Complete migration/import, installer, permissions/audit and XML-RPC boundaries only from source-confirmed behavior.
 
