@@ -130,6 +130,24 @@ class UserRepository:
         ).fetchall()
         return [(str(row[0]), str(row[1])) for row in rows]
 
+    def policy_attributes(self, user_id: int) -> list[tuple[str, str]]:
+        """Return effective A1.24 policy: group defaults, then user overrides."""
+        row = self.conn.execute(
+            "SELECT group_id FROM users WHERE user_id=%s",
+            (user_id,),
+        ).fetchone()
+        group_id = row[0] if row else None
+        effective: dict[str, str] = {}
+        if group_id is not None:
+            rows = self.conn.execute(
+                "SELECT attr_name, attr_value FROM group_attrs WHERE group_id=%s ORDER BY attr_name",
+                (group_id,),
+            ).fetchall()
+            effective.update((str(name), str(value)) for name, value in rows)
+        for name, value in self.attributes(user_id):
+            effective[name] = value
+        return list(effective.items())
+
     def find_by_username(self, username: str) -> UserRecord | None:
         return self.get_by_username(username)
 
