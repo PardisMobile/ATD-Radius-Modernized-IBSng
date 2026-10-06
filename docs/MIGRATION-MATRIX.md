@@ -7,7 +7,7 @@ This is the master parity checklist. Implemented means ATD code exists; Verified
 | Admin/auth | admins, admin_perms | A1.24 ADMIN implementation | Schema native / runtime pending |
 | RAS | ras, ras_ports, ras_attrs | A1.24 RAS implementation | Schema native / runtime lifecycle pending |
 | RAS schema | ras, ras_attrs, ras_ports, ras_ippools | RAS repository + runtime registry | Native / runtime registry implemented; mutation reload integration pending |
-| IP pools | ippool, ippool_ips, ras_ippools | IP allocation service | Runtime implemented / DB lifecycle integration pending |
+| IP pools | ippool, ippool_ips, ras_ippools | IP allocation service | Native ippool/ippool_ips repository + runtime state implemented / RAS binding and live session lifecycle integration pending |
 | Users | users, normal_users, voip_users | A1.24 USER implementation | Schema native / USER API refactor in progress |
 | Groups | groups, group_attrs | A1.24 GROUP implementation | Schema native / runtime pending |
 | Attribute system | user_attrs, group_attrs, ras_attrs | typed compatibility attribute engine | Implemented boundary / parity pending |
