@@ -7,6 +7,7 @@ from atd_radius.domain.user_policies import ras_allows_multi_login
 class NativeUserSource(Protocol):
     def get_authentication_record(self, username: str) -> tuple[int, str, bool] | None: ...
     def attributes(self, user_id: int) -> list[tuple[str, str]]: ...
+    def policy_attributes(self, user_id: int) -> list[tuple[str, str]]: ...
 
 class NativeRASSource(Protocol):
     def get_by_ip(self, ip: str): ...
@@ -24,7 +25,8 @@ class NativeAccessContext:
         if record is None:
             return {"__user_found": "0", "__password_ok": "0"}
         user_id, stored_password, locked = record
-        attrs = {name: value for name, value in self.users.attributes(user_id)}
+        loader = getattr(self.users, "policy_attributes", self.users.attributes)
+        attrs = {name: value for name, value in loader(user_id)}
         attrs["__user_found"] = "1"
         attrs["__user_id"] = str(user_id)
         attrs["__password_ok"] = "1" if (
