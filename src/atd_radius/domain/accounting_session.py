@@ -77,7 +77,7 @@ class AccountingSessionService:
             raise LookupError("RADIUS session not found")
 
         log_id = int(current.attributes["__connection_log_id"]) if "__connection_log_id" in current.attributes else None
-        if event.status is AccountingStatus.INTERIM:
+        if event.status in (AccountingStatus.INTERIM, AccountingStatus.ALIVE):
             di, do = self.registry.update(key, event.input_octets, event.output_octets)
             if self.persistence and log_id is not None:
                 self.persistence.update(log_id, event)
