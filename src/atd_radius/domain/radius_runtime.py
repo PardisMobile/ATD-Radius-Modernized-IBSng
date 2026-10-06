@@ -75,5 +75,42 @@ class SessionRegistry:
             if state.key.unique_id == unique_id:
                 return state
         return None
+    def matching(self, attributes: Mapping[str, str]) -> tuple[SessionState, ...]:
+        """Return active sessions matching every supplied NAS/session identifier."""
+        nas_names = {"NAS-IP-Address", "NAS-Identifier"}
+        session_names = {
+            "User-Name", "NAS-Port", "Framed-IP-Address", "Calling-Station-Id",
+            "Called-Station-Id", "Acct-Session-Id", "Acct-Multi-Session-Id",
+            "NAS-Port-Id", "Chargeable-User-Identity",
+        }
+        identifiers = {k: v for k, v in attributes.items() if k in nas_names | session_names}
+        if not identifiers:
+            return ()
+        return tuple(
+            state for state in self._sessions.values()
+            if state.started and not state.stopped
+            and all(state.attributes.get(name) == value for name, value in identifiers.items())
+        )
+
+    def disconnect_matching(self, attributes: Mapping[str, str]) -> tuple[SessionState, ...]:
+        matches = self.matching(attributes)
+        for state in matches:
+            state.stopped = True
+        return matches
+
+    def apply_authorization(self, attributes: Mapping[str, str]) -> tuple[SessionState, ...]:
+        matches = self.matching(attributes)
+        changes = {
+            name: value for name, value in attributes.items()
+            if name in {"Filter-Id", "NAS-Filter-Rule"}
+        }
+        if not changes:
+            return ()
+        for state in matches:
+            updated = dict(state.attributes)
+            updated.update(changes)
+            state.attributes = updated
+        return matches
+
     def active_for_user(self,user_id:int)->tuple[SessionState,...]:
         return tuple(s for s in self._sessions.values() if s.key.user_id==user_id and s.started and not s.stopped)
