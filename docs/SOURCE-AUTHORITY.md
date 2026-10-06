@@ -20,6 +20,37 @@ For every source-sensitive change:
 
 If a parity document conflicts with the source archive, **the source archive wins**.
 
+## Durable continuation checkpoint
+
+The following findings are already source-traced and must not be re-investigated from scratch unless new contradictory source evidence appears:
+
+### Authentication / MPPE
+- CHAP, MS-CHAPv1 and MS-CHAPv2 source paths are directly traced.
+- MS-CHAPv2 uses Peer-Challenge [2:18] and NT-Response [26:].
+- Flags/Reserved are not rejected merely for being nonzero.
+- Username is used as supplied for the challenge hash.
+- AuthenticatorResponse and MS-CHAP/MPPE response generation are source-traced.
+- MPPE uses the original Access-Request Request-Authenticator and source-style random high-bit salts.
+
+### MultiLogin / Attributes
+- multi_login defaults to 1 only when the effective attribute is absent.
+- Explicit multi_login=0 is a real zero limit and rejects the first login.
+- User attribute overrides group attribute; group value is effective when user has no override.
+- multi_login is stored as an attribute, not a dedicated users-table column.
+- User.login() increments instances before USER_LOGIN hooks.
+- RAS multi-login capability is provider-specific and separate from the user limit.
+- Duplicate request identity is (source_ip, source_port, packet_id, packet_code).
+
+### Database / persistence structure
+- users, normal_users, voip_users, user_attrs, groups, group_attrs, and ras_attrs are separate A1.24 structures.
+- User/group/RAS attribute tables use composite owner/name keys and text values.
+- User loading combines generic and subtype/auxiliary data; user_attrs is not the entire user attribute source.
+- RAS attribute mutation includes reload behavior.
+- IP-pool free/used state is runtime state; PostgreSQL stores membership.
+- connection_log and connection_log_details are the native connection-history structures.
+
+These are fixed source-traced checkpoints. Do not restart these investigations in later chats unless new source evidence contradicts them.
+
 ## Direct source inspection access
 
 The repository archive is binary, so the GitHub text API cannot decode it directly. For source inspection, the canonical archive was extracted in a temporary GitHub Actions runner and downloaded as an artifact. The extracted A1.24 tree contains 2,295 files and is the same repository archive content; it is not a substitute source.
