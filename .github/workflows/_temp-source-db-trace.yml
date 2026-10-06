@@ -1,0 +1,21 @@
+name: _temp-source-db-trace
+on: workflow_dispatch
+jobs:
+  trace:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract and trace
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/ibs
+          tar -xjf "Source of Truth/IBSng-A1.24.tar.bz2" -C /tmp/ibs
+          ROOT="$(find /tmp/ibs -maxdepth 2 -type d -name IBSng | head -1)"
+          echo "ROOT=$ROOT"
+          echo "=== SQL/schema files ==="
+          find "$ROOT" -type f \( -iname '*.sql' -o -iname '*schema*' -o -iname '*database*' \) | sort | head -200
+          echo "=== multi_login/attribute source ==="
+          grep -RniE "multi_login|getUserAttrs|AttributeManager|AttrUpdater|group.*attr|user.*attr" "$ROOT/core/user" "$ROOT/core/ras" 2>/dev/null | head -500
+          echo "=== DB table definitions / attrs ==="
+          grep -RniE "CREATE TABLE|multi_login|user.*attribute|group.*attribute|attribute" "$ROOT" --include='*.sql' --include='*.py' 2>/dev/null | head -700
