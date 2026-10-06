@@ -1,0 +1,19 @@
+name: temp-source-transfer
+on:
+  push:
+    paths:
+      - ".github/workflows/_tmp_source_transfer.yml"
+jobs:
+  trace:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          mkdir -p /tmp/src
+          tar -xjf "Source of Truth/IBSng-A1.24.tar.bz2" -C /tmp/src
+          f=$(find /tmp/src -path '*/core/charge/internet_charge_rule.py' | head -1)
+          grep -n -B 20 -A 60 "calcRuleTransferUsage" "$f" > /tmp/trace.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: charge-transfer-source
+          path: /tmp/trace.txt
