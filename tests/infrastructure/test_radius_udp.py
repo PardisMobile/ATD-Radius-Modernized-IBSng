@@ -1,7 +1,12 @@
+from hashlib import md5
+import hmac
+from struct import pack
 from unittest.mock import Mock
 
 import pytest
 
+from atd_radius.domain.radius import RadiusCode, RadiusPacket
+from atd_radius.domain.radius_codec import decode
 from atd_radius.infrastructure.radius_udp import RadiusUDPServer
 
 
@@ -9,24 +14,19 @@ def test_udp_server_rejects_negative_duplicate_cache_age():
     with pytest.raises(ValueError, match="duplicate_cache_max_age"):
         RadiusUDPServer(Mock(), Mock(), duplicate_cache_max_age=-1)
 
-from hashlib import md5
-import hmac
-from struct import pack
-
-from atd_radius.domain.radius import RadiusCode, RadiusPacket
-from atd_radius.domain.radius_codec import decode
-from atd_radius.infrastructure.radius_udp import RadiusUDPServer
-
 
 class FakeSocket:
     def __init__(self, data, peer=("192.0.2.1", 45000)):
         self.data = data
         self.peer = peer
         self.sent = []
+
     def recvfrom(self, size):
         return self.data, self.peer
+
     def sendto(self, data, peer):
         self.sent.append((data, peer))
+
     def close(self):
         pass
 
@@ -49,6 +49,7 @@ def _control_request(code=40):
 
 def test_udp_control_request_reaches_handler_and_returns_wire_response():
     calls = []
+
     def handler(packet, peer):
         calls.append((packet, peer))
         return RadiusPacket(RadiusCode.DISCONNECT_ACK, packet.identifier, {}, packet.authenticator)
@@ -67,6 +68,7 @@ def test_udp_control_request_reaches_handler_and_returns_wire_response():
 
 def test_udp_control_request_with_bad_authenticator_is_dropped():
     calls = []
+
     def handler(packet, peer):
         calls.append(packet)
         return RadiusPacket(RadiusCode.DISCONNECT_ACK, packet.identifier, {}, packet.authenticator)
