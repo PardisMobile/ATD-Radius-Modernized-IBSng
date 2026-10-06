@@ -6,7 +6,8 @@ from atd_radius.domain.session_policy import ActiveSessionView
 def test_ras_multilogin_source_defaults():
     assert ras_allows_multi_login("BSAE", {}) is False
     assert ras_allows_multi_login("Mikrotik", {}) is True
-    assert ras_allows_multi_login("Cisco", {}) is True
+    assert ras_allows_multi_login("Cisco", {}) is False
+    assert ras_allows_multi_login("Quintum Tenor", {}) is False
 
 
 def test_voip_ras_multilogin_attributes_match_a124():
