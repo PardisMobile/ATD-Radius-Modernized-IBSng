@@ -34,17 +34,6 @@ jobs:
         run: python -m compileall -q src tests
       - name: Ruff
         run: ruff check src tests
-      - name: TEMP A1.24 source trace
-        run: |
-          rm -rf /tmp/a124 && mkdir -p /tmp/a124
-          tar -xjf 'Source of Truth/IBSng-A1.24.tar.bz2' -C /tmp/a124
-          echo '=== no_connection_log ==='
-          grep -Rni 'no_connection_log' /tmp/a124/IBSng/core | head -n 100
-          echo '=== logToConnectionLog ==='
-          grep -Rni 'def logToConnectionLog\|logConnectionQuery' /tmp/a124/IBSng/core/user /tmp/a124/IBSng/core/ras | head -n 100
-          echo '=== credit/log call sites ==='
-          grep -RniE 'calcCreditUsage\(|logToConnectionLog\(|logConnectionQuery\(' /tmp/a124/IBSng/core/user /tmp/a124/IBSng/core/charge | head -n 200
-
       - name: PHP syntax
         run: |
           find ui -type f -name '*.php' -print0 | xargs -0 -n1 php -l
