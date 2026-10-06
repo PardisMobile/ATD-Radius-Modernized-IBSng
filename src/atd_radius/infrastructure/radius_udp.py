@@ -45,7 +45,7 @@ class RadiusUDPServer:
         request = decode(data, secret)
         if request.code is RadiusCode.ACCOUNTING_REQUEST and not verify_accounting_request(data, secret):
             return
-        key = RequestKey(peer[0], peer[1], request.identifier, int(data[0]))
+        key = RequestKey(peer[0], peer[1], request.identifier, int(data[0]), request.authenticator)
         cached = self.cache.get(key)
         if cached is not None:
             if cached.response is not None:
