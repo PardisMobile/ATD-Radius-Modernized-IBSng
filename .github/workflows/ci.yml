@@ -34,6 +34,15 @@ jobs:
         run: python -m compileall -q src tests
       - name: Ruff
         run: ruff check src tests
+      - name: TEMP A1.24 source trace
+        run: |
+          rm -rf /tmp/a124 && mkdir -p /tmp/a124
+          tar -xjf 'Source of Truth/IBSng-A1.24.tar.bz2' -C /tmp/a124
+          for f in core/user/user.py core/user/plugins/charge.py core/charge/charge.py core/charge/*.py core/ras/rases/mikrotik.py; do
+            echo "===== $f ====="
+            sed -n '1,430p' "/tmp/a124/IBSng/$f"
+          done
+
       - name: PHP syntax
         run: |
           find ui -type f -name '*.php' -print0 | xargs -0 -n1 php -l
