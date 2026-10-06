@@ -368,3 +368,10 @@ Do not mark a subsystem Complete merely because its classes exist. Completion re
 - The existing generic ATD RAS registry and common RADIUS/accounting lifecycle remain valid as the common layer.
 - The next implementation target is a provider-adapter contract plus source-derived provider profiles/fixtures, starting with representative internet providers (MikroTik, BSAE, ChilliSpot, Cisco) before expanding to Cisco VPDN, PortMaster, PortSlave, Total Control and VoIP providers.
 - Temporary source-inspection workflows used for this checkpoint were removed; none is intentionally left in `main`.
+
+
+### RAS provider profile implementation checkpoint — 2026-10-07
+- Added `domain/ras_provider.py` with source-derived provider identity/capability profiles and aliases.
+- Added source-derived tests covering provider unique-id keys, explicit multi-login/IP-assignment capabilities, aliases and Start/Stop/Alive status support.
+- `ras_allows_multi_login()` now consumes the provider profile for explicit source-defined restrictions while preserving Asterisk/GnuGk attribute overrides and the A1.24 default behavior for providers without an explicit restriction.
+- This is the common provider-profile layer only; provider-specific packet normalization, accounting, disconnect/kill and VoIP integrations remain open.
