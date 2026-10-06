@@ -19,6 +19,7 @@
 - [x] Attribute inheritance foundation
 - [x] IP allocation service contract
 - [x] PostgreSQL user repository and native A1.24 IP pool membership/runtime allocation
+- [x] Native RAS-bound IP pool allocation and session lease lifecycle
 - [x] Initial users REST resource
 - [x] Searchable/paginated users REST resource
 - [x] Argon2 credential boundary
@@ -32,12 +33,14 @@
 - [x] PAP User-Password RFC algorithm
 - [x] Native Access-Request authentication boundary
 - [x] Accounting Start/Interim/Stop runtime lifecycle
+- [x] RAS-bound IP allocation on Access-Accept and lease release on Accounting-Stop/Disconnect
 - [x] Duplicate request identity/replay boundary and expiry primitive
 - [x] Disconnect/CoA runtime boundary and RFC 5176 selectors
 - [x] RFC 5176 Message-Authenticator boundary for current control path
 - [ ] Full CHAP/MS-CHAPv2 parity
 - [x] Source-compatible RAS runtime registry/loader
 - [ ] Full RAS provider behavior parity
+- [x] Native psycopg SQL placeholder contracts for user/group/attribute persistence
 - [ ] PostgreSQL connection-log persistence on the live Accounting-Request path
 - [ ] Complete source-derived RADIUS attribute/dictionary coverage
 - [ ] EAP state machine and supported methods
