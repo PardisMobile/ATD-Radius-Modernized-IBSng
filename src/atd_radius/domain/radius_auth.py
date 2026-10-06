@@ -196,6 +196,31 @@ def verify_mschapv2(
 
 
 
+def derive_mschapv2_mppe_keys(password: str, nt_response: object) -> tuple[bytes, bytes]:
+    """Derive the RFC 3079 128-bit server Send/Recv MPPE keys."""
+    nt = _octets(nt_response)
+    if len(nt) != 24:
+        raise ValueError("MS-CHAPv2 NT-Response must be 24 bytes")
+    password_hash = _md4(password.encode("utf-16le"))
+    password_hash_hash = _md4(password_hash)
+    master_key = sha1(
+        password_hash_hash + nt + b"This is the MPPE Master Key"
+    ).digest()[:16]
+    pad1 = b"\x00" * 40
+    pad2 = b"\xf2" * 40
+    send_magic = (
+        b"On the client side, this is the receive key; "
+        b"on the server side, it is the send key."
+    )
+    recv_magic = (
+        b"On the client side, this is the send key; "
+        b"on the server side, it is the receive key."
+    )
+    send_key = sha1(master_key + pad1 + send_magic + pad2).digest()[:16]
+    recv_key = sha1(master_key + pad1 + recv_magic + pad2).digest()[:16]
+    return send_key, recv_key
+
+
 def generate_mschapv2_authenticator_response(
     password: str,
     nt_response: object,
