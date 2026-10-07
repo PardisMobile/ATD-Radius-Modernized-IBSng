@@ -25,7 +25,7 @@
 - [x] Argon2 credential boundary
 - [x] Group/service persistence repositories
 - [ ] Users/groups/services full CRUD application services
-- [ ] RAS provider registry
+- [x] RAS provider registry
 - [ ] permissions and audit enforcement
 
 ## Phase 2 — AAA
