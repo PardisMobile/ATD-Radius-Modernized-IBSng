@@ -1,0 +1,18 @@
+name: audit-a124-usr-pyrad
+on:
+  push:
+    branches: [audit/a124-usr-pyrad]
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect canonical pyrad VSA implementation
+        run: |
+          set -e
+          rm -rf /tmp/ibsng && mkdir -p /tmp/ibsng
+          tar -xjf "Source of Truth/IBSng-A1.24.tar.bz2" -C /tmp/ibsng
+          echo "=== dictionary parser ==="
+          sed -n '1,420p' /tmp/ibsng/IBSng/radius_server/pyrad/dictionary.py
+          echo "=== packet VSA handling ==="
+          sed -n '300,390p' /tmp/ibsng/IBSng/radius_server/pyrad/packet.py
