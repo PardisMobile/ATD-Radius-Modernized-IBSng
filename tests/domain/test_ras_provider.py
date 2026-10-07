@@ -48,6 +48,7 @@ def test_provider_aliases_and_statuses():
     assert provider_profile("chilli spot").name == "chilli_spot"
     assert provider_supports_status("Mikrotik", "Alive")
     assert provider_supports_status("BSAE", "Start")
+    assert provider_supports_status("ChilliSpot", "Alive")
 
 
 def test_provider_session_identity_uses_source_defined_keys():
