@@ -284,3 +284,52 @@ def test_mschapv1_mppe_key_and_policy_vsas_are_a124_encrypted():
     ).hex()
     assert decoded.attributes["MS-MPPE-Encryption-Policy"] == "00000001"
     assert decoded.attributes["MS-MPPE-Encryption-Types"] == "00000006"
+
+
+def test_a124_core_dictionary_extended_attributes_round_trip():
+    packet = RadiusPacket(
+        RadiusCode.ACCESS_ACCEPT,
+        16,
+        {
+            "Framed-Compression": "1",
+            "Login-IP-Host": "192.0.2.20",
+            "Login-Service": "3",
+            "Login-TCP-Port": "23",
+            "Framed-Route": "192.0.2.0/24",
+            "Acct-Input-Gigawords": "2",
+            "Acct-Output-Gigawords": "3",
+            "Event-Timestamp": "1700000000",
+            "Acct-Interim-Interval": "300",
+            "EAP-Message": "01020304",
+            "Framed-IPv6-Prefix": "20010db8000000000000000000000000",
+        },
+        bytes(16),
+    )
+    decoded = decode(encode(packet))
+    assert decoded.attributes["Framed-Compression"] == "1"
+    assert decoded.attributes["Login-IP-Host"] == "192.0.2.20"
+    assert decoded.attributes["Login-Service"] == "3"
+    assert decoded.attributes["Login-TCP-Port"] == "23"
+    assert decoded.attributes["Acct-Input-Gigawords"] == "2"
+    assert decoded.attributes["Acct-Output-Gigawords"] == "3"
+    assert decoded.attributes["Event-Timestamp"] == "1700000000"
+    assert decoded.attributes["Acct-Interim-Interval"] == "300"
+    assert decoded.attributes["EAP-Message"] == "01020304"
+    assert decoded.attributes["Framed-IPv6-Prefix"] == "20010db8000000000000000000000000"
+
+
+def test_microsoft_dns_vendor_attributes_round_trip():
+    packet = RadiusPacket(
+        RadiusCode.ACCESS_ACCEPT,
+        17,
+        {
+            "MS-Primary-DNS-Server": "1.1.1.1",
+            "MS-Secondary-DNS-Server": "8.8.8.8",
+            "MS-CHAP-Error": "E=691 R=0",
+        },
+        bytes(16),
+    )
+    decoded = decode(encode(packet, "shared"), "shared")
+    assert decoded.attributes["MS-Primary-DNS-Server"] == "1.1.1.1"
+    assert decoded.attributes["MS-Secondary-DNS-Server"] == "8.8.8.8"
+    assert decoded.attributes["MS-CHAP-Error"] == "E=691 R=0"
