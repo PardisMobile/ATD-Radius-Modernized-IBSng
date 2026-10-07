@@ -174,6 +174,25 @@ _MICROSOFT_VSA_NAMES = {
 _MICROSOFT_VSA_TYPES = {name: vendor_type for vendor_type, name in _MICROSOFT_VSA_NAMES.items()}
 _MICROSOFT_VSA_TEXT_NAMES = {"MS-CHAP-Domain", "MS-CHAP2-Success", "MS-CHAP-Error", "MS-RAS-Version"}
 _MICROSOFT_VSA_IP_NAMES = {"MS-Primary-DNS-Server", "MS-Secondary-DNS-Server", "MS-Primary-NBNS-Server", "MS-Secondary-NBNS-Server"}
+_PROVIDER_VSAS = {
+    "Cisco-AVPair": (9, 1, "string"),
+    "Cisco-NAS-Port": (9, 2, "string"),
+    "H323-remote-address": (9, 23, "string"),
+    "H323-conf-id": (9, 24, "string"),
+    "H323-disconnect-cause": (9, 30, "string"),
+    "H323-incoming-conf-id": (9, 35, "string"),
+    "Quintum-AVPair": (6618, 1, "string"),
+    "Quintum-NAS-Port": (6618, 2, "string"),
+    "Quintum-h323-conf-id": (6618, 24, "string"),
+    "Quintum-h323-disconnect-cause": (6618, 30, "string"),
+    "Recv-Limit": (14988, 1, "integer"),
+    "Xmit-Limit": (14988, 2, "integer"),
+    "Group": (14988, 3, "string"),
+    "Rate-Limit": (14988, 8, "string"),
+    "Host-IP": (14988, 10, "ipaddr"),
+}
+_PROVIDER_VSA_REVERSE = {(vendor, typ): (name, kind) for name, (vendor, typ, kind) in _PROVIDER_VSAS.items()}
+
 
 
 class RadiusCodecError(ValueError):
@@ -273,6 +292,22 @@ def _encrypt_ms_mppe_key(
     return salt + bytes(encrypted)
 
 
+def _encode_provider_vsa(name: str, value: object) -> bytes | None:
+    definition = _PROVIDER_VSAS.get(name)
+    if definition is None:
+        return None
+    vendor, vendor_type, kind = definition
+    if kind == "integer":
+        raw = pack("!I", int(value))
+    elif kind == "ipaddr":
+        raw = IPv4Address(str(value)).packed
+    else:
+        raw = _octets(value)
+    length = len(raw) + 2
+    if length > 255:
+        raise RadiusCodecError(f"VSA is too long: {name}")
+    return pack("!I", vendor) + bytes((vendor_type, length)) + raw
+
 def _encode_microsoft_vsa(
     name: str,
     value: object,
@@ -333,6 +368,21 @@ def _decode_vendor_specific(value: bytes) -> tuple[str, str]:
     if vendor_length < 2 or 4 + vendor_length > len(value):
         raise RadiusCodecError("invalid Vendor-Specific sub-attribute length")
     vendor_value = value[6 : 4 + vendor_length]
+    known_provider = _PROVIDER_VSA_REVERSE.get((vendor_id, vendor_type))
+    if known_provider is not None:
+        name, kind = known_provider
+        if kind == "integer":
+            if len(vendor_value) != 4:
+                raise RadiusCodecError(f"invalid integer VSA length for {name}")
+            return name, str(unpack("!I", vendor_value)[0])
+        if kind == "ipaddr":
+            if len(vendor_value) != 4:
+                raise RadiusCodecError(f"invalid IPv4 VSA length for {name}")
+            return name, str(IPv4Address(vendor_value))
+        try:
+            return name, vendor_value.decode("utf-8")
+        except UnicodeDecodeError:
+            return name, vendor_value.hex()
     if vendor_id == _MICROSOFT_VENDOR_ID:
         name = _MICROSOFT_VSA_NAMES.get(vendor_type, f"Microsoft-{vendor_type}")
         if name in {"MS-CHAP-Response", "MS-CHAP-Challenge", "MS-CHAP2-Response", "MS-CHAP-MPPE-Keys", "MS-MPPE-Send-Key", "MS-MPPE-Recv-Key", "MS-MPPE-Encryption-Policy", "MS-MPPE-Encryption-Types"}:
@@ -377,7 +427,12 @@ def encode(packet: RadiusPacket, secret: str | None = None) -> bytes:
                 salt=salt,
             )
         else:
-            number = _ATTR_NUMBERS.get(name)
+            provider_vsa = _encode_provider_vsa(name, value)
+            if provider_vsa is not None:
+                number = 26
+                raw = provider_vsa
+            else:
+                number = _ATTR_NUMBERS.get(name)
             if number is None and name.startswith("Attr-"):
                 try:
                     number = int(name[5:])
