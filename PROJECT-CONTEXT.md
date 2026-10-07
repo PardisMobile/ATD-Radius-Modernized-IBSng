@@ -478,3 +478,14 @@ Do not mark a subsystem Complete merely because its classes exist. Completion re
 - Total Control remains intentionally incomplete at the wire-dictionary layer: canonical source says it consumes `USR-Interface-Index` (vendor 429), but the exact vendor sub-attribute number/type has not been re-established in the current tool-visible source extraction. No guessed VSA number was added.
 - Next batch must re-establish the exact canonical `dictionary.usr` tuple for `USR-Interface-Index`, then implement vendor-aware USR decoding/encoding and Total Control packet normalization + wire tests in one pass.
 - Commits in this batch: `e9ff3348cdbcbf9404054a11ec1ebac5a5c0f627` (SIP codec), `401a16221b4f1ddfabce5a95e3f6e4003e853c25` (SIP tests), `1e34ba01f3450a9c19fff25076c0af5723689e9c` (SER normalization), `ab8dbde8ccf2a1571f64a3247fce428e22205d5d` (SER tests).
+
+
+### Permanent source-of-truth / continuation rule — 2026-10-07
+- **ONLY the original IBSng A1.24 source code in `Source of Truth/IBSng-A1.24.tar.bz2` is the behavioral Source of Truth.**
+- All repository Markdown files (root docs, `docs/**`, UI/project notes, matrices, audits, roadmaps, decisions and inventories) are mandatory project-context/record artifacts. They explain scope, decisions, status and completed verification, but **never override the canonical IBSng source**.
+- For every source-sensitive implementation: inspect the canonical source call path/consumer, implement only source-supported behavior, add tests, and record the verified result and commit here/appropriate parity ledger so future chats do not redo the work.
+- A behavior is marked **Verified** only when implementation/test evidence is traceable to the A1.24 source (and integration evidence where required).
+- If any Markdown document conflicts with A1.24 source, the source wins and the documentation must be corrected.
+- Current repository HEAD before this checkpoint: `806ae8f112691807f597fb3475fb25615c616b0e`.
+- The canonical archive is present in the repository at `Source of Truth/IBSng-A1.24.tar.bz2`; its recorded SHA-256 is `c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839614bb9349d18a8`.
+- Repository documentation inventory has been re-checked at this checkpoint; future work must read the relevant Markdown records before changing an already-audited subsystem.
