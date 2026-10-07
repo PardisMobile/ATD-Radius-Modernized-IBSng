@@ -469,3 +469,12 @@ Do not mark a subsystem Complete merely because its classes exist. Completion re
 - Commit: `401a16221b4f1ddfabce5a95e3f6e4003e853c25`.
 - CI status was not yet reported by GitHub at checkpoint time; do not call this checkpoint CI-green until a completed run is observed.
 - Remaining immediately after this checkpoint: source-trace actual SER/MVTS consumer call paths and implement only the provider-consumed SIP attributes/semantics; then source-trace Total Control's `USR-Interface-Index` wire format and add only the required USR-429 VSA support.
+
+
+### Provider consumer batch checkpoint — 2026-10-07
+- Source-audited SER behavior is now represented in ATD provider normalization: SIP called-number derivation from `Sip-Req-URI` / translated URI and a source-scoped Digest/SIP attribute extraction set.
+- Added provider-level tests for SER called-number derivation and Digest attribute consumption.
+- SIP codec context and SER normalization are now separate from the core RADIUS dictionary, preserving A1.24's numeric collision boundary.
+- Total Control remains intentionally incomplete at the wire-dictionary layer: canonical source says it consumes `USR-Interface-Index` (vendor 429), but the exact vendor sub-attribute number/type has not been re-established in the current tool-visible source extraction. No guessed VSA number was added.
+- Next batch must re-establish the exact canonical `dictionary.usr` tuple for `USR-Interface-Index`, then implement vendor-aware USR decoding/encoding and Total Control packet normalization + wire tests in one pass.
+- Commits in this batch: `e9ff3348cdbcbf9404054a11ec1ebac5a5c0f627` (SIP codec), `401a16221b4f1ddfabce5a95e3f6e4003e853c25` (SIP tests), `1e34ba01f3450a9c19fff25076c0af5723689e9c` (SER normalization), `ab8dbde8ccf2a1571f64a3247fce428e22205d5d` (SER tests).
