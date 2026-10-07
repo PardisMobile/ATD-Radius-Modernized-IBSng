@@ -138,6 +138,7 @@ _INTEGER_ATTRS = {
     "Acct-Session-Time",
     "Acct-Input-Packets",
     "Acct-Output-Packets",
+    "Event-Timestamp",
     "Acct-Terminate-Cause",
     "NAS-Port-Type",
 }
@@ -158,9 +159,20 @@ _MICROSOFT_VSA_NAMES = {
     12: "MS-CHAP-MPPE-Keys",
     17: "MS-MPPE-Recv-Key",
     18: "MS-RAS-Version",
+    19: "MS-Old-ARAP-Password",
+    20: "MS-New-ARAP-Password",
+    21: "MS-ARAP-PW-Change-Reason",
+    22: "MS-Filter",
+    23: "MS-Acct-Auth-Type",
+    24: "MS-Acct-EAP-Type",
+    28: "MS-Primary-DNS-Server",
+    29: "MS-Secondary-DNS-Server",
+    30: "MS-Primary-NBNS-Server",
+    31: "MS-Secondary-NBNS-Server",
 }
 _MICROSOFT_VSA_TYPES = {name: vendor_type for vendor_type, name in _MICROSOFT_VSA_NAMES.items()}
-_MICROSOFT_VSA_TEXT_NAMES = {"MS-CHAP-Domain", "MS-CHAP2-Success"}
+_MICROSOFT_VSA_TEXT_NAMES = {"MS-CHAP-Domain", "MS-CHAP2-Success", "MS-CHAP-Error", "MS-RAS-Version"}
+_MICROSOFT_VSA_IP_NAMES = {"MS-Primary-DNS-Server", "MS-Secondary-DNS-Server", "MS-Primary-NBNS-Server", "MS-Secondary-NBNS-Server"}
 
 
 class RadiusCodecError(ValueError):
@@ -318,6 +330,10 @@ def _decode_vendor_specific(value: bytes) -> tuple[str, str]:
         name = _MICROSOFT_VSA_NAMES.get(vendor_type, f"Microsoft-{vendor_type}")
         if name in {"MS-CHAP-Response", "MS-CHAP-Challenge", "MS-CHAP2-Response", "MS-CHAP-MPPE-Keys", "MS-MPPE-Send-Key", "MS-MPPE-Recv-Key", "MS-MPPE-Encryption-Policy", "MS-MPPE-Encryption-Types"}:
             return name, vendor_value.hex()
+        if name in _MICROSOFT_VSA_IP_NAMES:
+            if len(vendor_value) != 4:
+                raise RadiusCodecError(f"invalid IPv4 length for {name}")
+            return name, str(IPv4Address(vendor_value))
         if name in _MICROSOFT_VSA_TEXT_NAMES:
             try:
                 return name, vendor_value.decode("ascii")
