@@ -282,7 +282,13 @@ def _encode_microsoft_vsa(
     salt: bytes | None = None,
 ) -> bytes:
     vendor_type = _MICROSOFT_VSA_TYPES[name]
-    raw = _octets(value)
+    if name in _MICROSOFT_VSA_IP_NAMES:
+        try:
+            raw = IPv4Address(str(value)).packed
+        except ValueError as exc:
+            raise RadiusCodecError(f"invalid IPv4 attribute {name}") from exc
+    else:
+        raw = _octets(value)
     if name == "MS-CHAP2-Response" and len(raw) != 50:
         raise RadiusCodecError("MS-CHAP2-Response must be 50 bytes")
     if name == "MS-CHAP-MPPE-Keys":
