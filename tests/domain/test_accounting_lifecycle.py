@@ -22,3 +22,17 @@ def test_event_from_attributes_preserves_native_packet_details():
     })
     assert event.attributes["NAS-Port"] == "7"
     assert event.attributes["NAS-IP-Address"] == "192.0.2.1"
+
+
+def test_event_from_attributes_combines_octets_and_gigawords():
+    event = event_from_attributes({
+        "Acct-Status-Type": "Alive",
+        "User-Name": "alice",
+        "Acct-Session-Id": "sid",
+        "Acct-Input-Octets": "10",
+        "Acct-Output-Octets": "20",
+        "Acct-Input-Gigawords": "2",
+        "Acct-Output-Gigawords": "3",
+    })
+    assert event.input_octets == 2 * (2 ** 32) + 10
+    assert event.output_octets == 3 * (2 ** 32) + 20
