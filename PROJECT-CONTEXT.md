@@ -541,3 +541,16 @@ Do not mark a subsystem Complete merely because its classes exist. Completion re
 - This checkpoint is explicitly marked source-verified so a future chat must not restore the old Alive=false assumption from an outdated document.
 
 - Follow-up test correction commit: 0b5cf8758c3a1ca614f9477591a147dfa67914f9 — updated two legacy ChilliSpot assertions from Alive=false to Alive=true after the direct A1.24 source verification. Python workflow 745 completed successfully; latest CI workflow 680 is still in progress and must not yet be called green.
+
+
+### Direct A1.24 source verification checkpoint — Cisco / Cisco VPDN — 2026-10-08
+- Canonical source files directly inspected: `IBSng/core/ras/rases/cisco.py` and `IBSng/core/ras/rases/cisco_vpdn.py` from `Source of Truth/IBSng-A1.24.tar.bz2`.
+- Cisco Internet identity is `port`; source derives it from Cisco-NAS-Port when present, otherwise NAS-Port-Type + NAS-Port, including Async normalization.
+- Cisco VoIP identity is `h323_conf_id`; source explicitly sets VoIP multi-login false and single-session-H323 true.
+- Cisco auth consumes User-Name, PAP, CHAP, MS-CHAP, MS-CHAP2 and Calling-Station-Id; Internet accounting handles Start/Stop/Alive and VoIP has its own Start/Stop/Alive path.
+- Cisco kill/disconnect behavior is SNMP-or-RSH. Cisco VPDN uses Acct-Session-Id, handles Start/Stop/Alive, and uses RSH interface discovery/kill.
+- ATD implementation commit: `e50d29758f4f6bc2d21a4f9f9b4f47f16ea03dd4` — added service-aware provider session identity so Cisco VoIP uses H323 conference ID while Internet remains port-based.
+- Regression commit: `b13a2b0ba6fa47a6b96a251cb481f6fe981fb545` — added Cisco Internet/VoIP identity tests.
+- Documentation commit: `126012b47d3d49851ff839eae2bc8e653771bda5` — recorded the direct Cisco/Cisco VPDN source facts in the provider audit.
+- Temporary Cisco source-audit workflow remains isolated to `audit/a124-cisco-source`; it was not merged to `main`.
+- Source-of-truth rule remains absolute: canonical A1.24 source overrides Markdown audits.
