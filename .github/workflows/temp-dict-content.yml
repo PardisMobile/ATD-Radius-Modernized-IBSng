@@ -1,0 +1,17 @@
+name: temp-dict-content
+on:
+  push:
+    paths: [".github/workflows/temp-dict-content.yml"]
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          set -euo pipefail
+          mkdir -p /tmp/ibs
+          tar -xjf "Source of Truth/IBSng-A1.24.tar.bz2" -C /tmp/ibs
+          for f in dictionary dictionary.ser dictionary.sip dictionary.usr; do
+            echo "===== $f ====="
+            cat "/tmp/ibs/IBSng/radius_server/$f"
+          done
