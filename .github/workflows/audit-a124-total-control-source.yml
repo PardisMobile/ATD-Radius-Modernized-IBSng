@@ -1,0 +1,25 @@
+name: audit-a124-total-control-source
+on:
+  push:
+    branches: [audit/a124-total-control-source]
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract canonical Total Control and USR source
+        run: |
+          set -e
+          rm -rf /tmp/ibsng
+          mkdir -p /tmp/ibsng
+          tar -xjf "Source of Truth/IBSng-A1.24.tar.bz2" -C /tmp/ibsng
+          echo "=== Total Control source ==="
+          find /tmp/ibsng/IBSng/core/ras -type f \( -iname '*total*control*' -o -iname '*total_control*' \) -print
+          grep -Rni "USR-Interface-Index\|interface_index\|Total Control" /tmp/ibsng/IBSng/core/ras --include='*.py' | head -300
+          for f in $(find /tmp/ibsng/IBSng/core/ras -type f \( -iname '*total*control*' -o -iname '*total_control*' \)); do
+            echo "----- $f -----"
+            sed -n '1,360p' "$f"
+          done
+          echo "=== USR dictionary entries ==="
+          grep -n -i "Interface-Index\|USR-Interface" /tmp/ibsng/IBSng/radius_server/dictionary.usr || true
+          sed -n '1,260p' /tmp/ibsng/IBSng/radius_server/dictionary.usr
