@@ -194,6 +194,7 @@ _PROVIDER_VSAS = {
     "Group": (14988, 3, "string"),
     "Rate-Limit": (14988, 8, "string"),
     "Host-IP": (14988, 10, "ipaddr"),
+    "USR-Interface-Index": (429, 0x9843, "integer"),
 }
 _PROVIDER_VSA_REVERSE = {(vendor, typ): (name, kind) for name, (vendor, typ, kind) in _PROVIDER_VSAS.items()}
 _USR_VENDOR_ID = 429
