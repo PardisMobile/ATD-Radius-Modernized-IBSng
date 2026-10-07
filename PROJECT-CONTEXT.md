@@ -506,3 +506,26 @@ Do not mark a subsystem Complete merely because its classes exist. Completion re
 - Direct source also confirms BSAE auth packet handling consumes User-Password, CHAP-Password, MS-CHAP-Response, and MS-CHAP2-Response.
 - A temporary isolated audit branch/workflow was used only to extract the canonical archive in GitHub Actions and inspect the source; the temporary workflow was deleted afterward and was never merged to main.
 - Source-sensitive rule remains absolute: Markdown audits are records only; canonical A1.24 source overrides them.
+
+
+### Direct A1.24 source verification checkpoint — Total Control / USR VSA — 2026-10-07
+- This batch was verified against the canonical archive itself, not against Markdown audits.
+- Canonical files inspected: IBSng/core/ras/rases/total_control.py, IBSng/radius_server/dictionary.usr, IBSng/radius_server/pyrad/dictionary.py, and IBSng/radius_server/pyrad/packet.py.
+- Source facts:
+  - Total Control sets unique_id="interface_index".
+  - interface_index comes from USR-Interface-Index.
+  - dictionary.usr: VENDOR USR 429; USR-Interface-Index 0x9843 integer.
+  - Canonical pyrad represents vendor attributes as (vendor_id, attribute_code) tuples.
+  - Canonical packet encoding prepends the vendor ID as 32-bit; for USR vendor 429, the sub-attribute code is also encoded as 32-bit, followed directly by the value. Normal vendors use the standard one-byte type/length form.
+  - Canonical decoding has the matching USR-specific 32-bit path.
+- ATD implementation:
+  - added USR-Interface-Index as (429, 0x9843, integer);
+  - added USR-specific 32-bit VSA encode/decode handling;
+  - added exact wire-level regression coverage.
+- Commits:
+  - e08aa4473b0d6b7363e8b77a8800a9265b093056 — source-derived USR 429 VSA codec
+  - 4d28ff5b78ae186ab975f36513a1f570c683b659 — register USR interface VSA
+  - 9d2d9dfe0068221aab2e68165b92d2930f867f55 — wire-level regression test
+  - c326bd00a58339e199e3e0fb84d7381f855eb455 — source verification audit checkpoint
+- Important: this does not mark the entire RADIUS dictionary complete. It closes only the directly verified USR-Interface-Index gap needed by Total Control.
+- Temporary source-audit workflows were isolated on audit branches and are not present on main.
