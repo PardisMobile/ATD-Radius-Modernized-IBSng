@@ -458,3 +458,14 @@ Do not mark a subsystem Complete merely because its classes exist. Completion re
 - Current project estimate: the core RADIUS/AAA/accounting/charging engine is roughly **75-80% of the technical core**, while the full IBSng replacement/product is roughly **55-60% complete**. Remaining work is concentrated in provider parity, remaining dictionary/context codec work, billing/credit business layer, CRUD/API/RBAC, UI workflows, migration and deployment/licensing.
 - Immediate next batch: (1) trace concrete provider consumers in canonical A1.24, (2) implement context-aware SIP/SER codec/catalog, (3) implement only consumed USR-429 VSAs, (4) add provider-specific wire/integration tests, (5) reconcile parity ledger and run CI before moving to the next subsystem.
 - Do not restart the completed dictionary audit, MS-CHAPv1/v2 core semantics, accounting rollback integration, or provider profile foundation unless new source evidence contradicts them.
+
+
+### SIP/SER context-aware codec checkpoint — 2026-10-07
+- Canonical A1.24 SIP/SER dictionary names/types were source-traced and the numeric collision with core attributes was preserved rather than overwritten.
+- Added a dedicated SIP/SER codec context in `radius_codec.py`: `encode_sip()` / `decode_sip()`.
+- Implemented source-derived SIP wire catalog for 101-119, 206-208, 210-213 and 225; internal Digest attributes 1063+ remain intentionally non-wire and are not encoded as ordinary one-octet RADIUS attributes.
+- Core `encode()/decode()` mapping remains unchanged; core 101 is still `Error-Cause`.
+- Added round-trip/collision tests in `tests/test_radius_sip_codec.py`.
+- Commit: `401a16221b4f1ddfabce5a95e3f6e4003e853c25`.
+- CI status was not yet reported by GitHub at checkpoint time; do not call this checkpoint CI-green until a completed run is observed.
+- Remaining immediately after this checkpoint: source-trace actual SER/MVTS consumer call paths and implement only the provider-consumed SIP attributes/semantics; then source-trace Total Control's `USR-Interface-Index` wire format and add only the required USR-429 VSA support.
