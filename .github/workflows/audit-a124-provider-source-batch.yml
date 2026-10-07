@@ -12,7 +12,8 @@ jobs:
           set -e
           rm -rf /tmp/ibsng && mkdir -p /tmp/ibsng
           tar -xjf "Source of Truth/IBSng-A1.24.tar.bz2" -C /tmp/ibsng
-          for f in /tmp/ibsng/IBSng/core/ras/rases/chillispot.py /tmp/ibsng/IBSng/core/ras/rases/cisco.py; do
+          find /tmp/ibsng/IBSng/core/ras/rases -type f \( -iname "*chilli*" -o -iname "*cisco*" \) -print
+          for f in $(find /tmp/ibsng/IBSng/core/ras/rases -type f \( -iname "*chilli*" -o -iname "*cisco*" \)); do
             echo "===== $f ====="
             sed -n '1,420p' "$f"
           done
