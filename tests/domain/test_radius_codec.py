@@ -333,3 +333,16 @@ def test_microsoft_dns_vendor_attributes_round_trip():
     assert decoded.attributes["MS-Primary-DNS-Server"] == "1.1.1.1"
     assert decoded.attributes["MS-Secondary-DNS-Server"] == "8.8.8.8"
     assert decoded.attributes["MS-CHAP-Error"] == "E=691 R=0"
+
+
+def test_provider_vsa_round_trip():
+    packet = RadiusPacket(
+        RadiusCode.ACCOUNTING_REQUEST,
+        18,
+        {"H323-conf-id": "session-a", "Rate-Limit": "10M/10M", "Recv-Limit": "1000"},
+        bytes(16),
+    )
+    decoded = decode(encode(packet))
+    assert decoded.attributes["H323-conf-id"] == "session-a"
+    assert decoded.attributes["Rate-Limit"] == "10M/10M"
+    assert decoded.attributes["Recv-Limit"] == "1000"
