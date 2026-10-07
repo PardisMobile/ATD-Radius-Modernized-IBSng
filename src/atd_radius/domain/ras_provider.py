@@ -23,7 +23,7 @@ class RASProviderProfile:
 _PROFILES: tuple[RASProviderProfile, ...] = (
     RASProviderProfile("asterisk", unique_id="h323_conf_id", voip_multi_login=False),
     RASProviderProfile("bsae", unique_id="port", internet_multi_login=False),
-    RASProviderProfile("chilli_spot", unique_id="port", ip_assignment=False, accounting_statuses=("Start", "Stop"), disconnect_strategy="provider-port"),
+    RASProviderProfile("chilli_spot", unique_id="port", ip_assignment=False, accounting_statuses=("Start", "Stop", "Alive"), disconnect_strategy="provider-port"),
     RASProviderProfile("cisco", unique_id="port", internet_multi_login=False, voip_multi_login=False, disconnect_strategy="snmp-or-rsh"),
     RASProviderProfile("cisco_vpdn", unique_id="acct_session_id", disconnect_strategy="rsh-interface"),
     RASProviderProfile("gnugk", unique_id="h323_conf_id", voip_multi_login=False),
