@@ -346,3 +346,19 @@ def test_provider_vsa_round_trip():
     assert decoded.attributes["H323-conf-id"] == "session-a"
     assert decoded.attributes["Rate-Limit"] == "10M/10M"
     assert decoded.attributes["Recv-Limit"] == "1000"
+
+
+def test_a124_usr_interface_index_vendor_vsa_round_trip():
+    packet = RadiusPacket(
+        RadiusCode.ACCESS_REQUEST,
+        19,
+        {"USR-Interface-Index": "37"},
+        bytes(16),
+    )
+    wire = encode(packet)
+    value = wire[22:]
+    assert value[:4] == (429).to_bytes(4, "big")
+    assert value[4:8] == (0x9843).to_bytes(4, "big")
+    assert value[8:] == (37).to_bytes(4, "big")
+    decoded = decode(wire)
+    assert decoded.attributes["USR-Interface-Index"] == "37"
