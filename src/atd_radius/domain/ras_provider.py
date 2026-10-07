@@ -64,8 +64,8 @@ class RASProviderRegistry:
     def profile(self, ras_type: str | None) -> RASProviderProfile | None:
         return provider_profile(ras_type)
 
-    def session_id(self, ras_type: str | None, attributes: Mapping[str, object]) -> str | None:
-        return provider_session_id(ras_type, attributes)
+    def session_id(self, ras_type: str | None, attributes: Mapping[str, object], service: str = "internet") -> str | None:
+        return provider_session_id(ras_type, attributes, service)
 
     def ip_assignment(self, ras_type: str | None, attributes: Mapping[str, object]) -> bool | None:
         return provider_ip_assignment_for_attributes(ras_type, attributes)
@@ -128,7 +128,7 @@ _ID_ATTRIBUTES = {
 }
 
 
-def provider_session_id(ras_type: str | None, attributes: Mapping[str, object]) -> str | None:
+def provider_session_id(ras_type: str | None, attributes: Mapping[str, object], service: str = "internet") -> str | None:
     """Return the A1.24 provider online identity when the source defines one.
 
     Falls back to the standard Acct-Session-Id only when the provider has no
@@ -138,6 +138,12 @@ def provider_session_id(ras_type: str | None, attributes: Mapping[str, object]) 
     if profile is None:
         raw = attributes.get("Acct-Session-Id")
         return str(raw) if raw not in (None, "") else None
+    # Cisco uses a different identity for VoIP than Internet in A1.24.
+    if profile.name == "cisco" and service == "voip":
+        for name in _ID_ATTRIBUTES["h323_conf_id"]:
+            raw = attributes.get(name)
+            if raw not in (None, ""):
+                return str(raw)
     # A1.24 BSAE exception: its provider port is User-Name, not NAS-Port.
     if profile.name == "bsae":
         raw = attributes.get("User-Name")
