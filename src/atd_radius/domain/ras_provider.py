@@ -53,6 +53,39 @@ _ALIASES = {
 }
 
 
+class RASProviderRegistry:
+    """Common adapter facade over source-derived provider behavior.
+
+    This registry intentionally exposes only behavior already traced to A1.24.
+    Concrete provider side effects (SNMP/RSH/launcher/H323/Asterisk) remain
+    separate adapter work and must not be inferred from this facade.
+    """
+
+    def profile(self, ras_type: str | None) -> RASProviderProfile | None:
+        return provider_profile(ras_type)
+
+    def session_id(self, ras_type: str | None, attributes: Mapping[str, object]) -> str | None:
+        return provider_session_id(ras_type, attributes)
+
+    def ip_assignment(self, ras_type: str | None, attributes: Mapping[str, object]) -> bool | None:
+        return provider_ip_assignment_for_attributes(ras_type, attributes)
+
+    def supports_status(self, ras_type: str | None, status: str) -> bool:
+        return provider_supports_status(ras_type, status)
+
+    def disconnect_strategy(self, ras_type: str | None) -> str | None:
+        return provider_disconnect_strategy(ras_type)
+
+    def sip_called_number(self, attributes: Mapping[str, object]) -> str | None:
+        return provider_sip_called_number(attributes)
+
+    def sip_digest_attributes(self, attributes: Mapping[str, object]) -> dict[str, object]:
+        return provider_sip_digest_attributes(attributes)
+
+
+PROVIDER_REGISTRY = RASProviderRegistry()
+
+
 def normalize_ras_type(ras_type: str | None) -> str:
     key = (ras_type or "").strip().lower()
     return _ALIASES.get(key, key.replace("-", "_").replace(" ", "_"))
