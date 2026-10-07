@@ -440,7 +440,8 @@ def encode(packet: RadiusPacket, secret: str | None = None) -> bytes:
                     number = None
             if number is None or not 1 <= number <= 255:
                 raise RadiusCodecError(f"unsupported RADIUS attribute: {name}")
-            raw = _encode_value(name, value, secret, authenticator)
+            if provider_vsa is None:
+                raw = _encode_value(name, value, secret, authenticator)
         if len(raw) > 253:
             raise RadiusCodecError(f"attribute too long: {name}")
         body.extend(bytes((number, len(raw) + 2)))
