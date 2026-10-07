@@ -143,6 +143,10 @@ _INTEGER_ATTRS = {
     "NAS-Port-Type",
 }
 _IP_ATTRS = {"NAS-IP-Address", "Framed-IP-Address", "Framed-IP-Netmask", "Login-IP-Host", "Framed-IPX-Network"}
+_ENUM_VALUES = {
+    "Acct-Status-Type": {1: "Start", 2: "Stop", 3: "Interim-Update", 7: "Accounting-On", 8: "Accounting-Off", 15: "Failed"},
+    "NAS-Port-Type": {5: "Virtual", 15: "Ethernet", 19: "Wireless-802.11"},
+}
 _HEX_ATTRS = {"CHAP-Password", "CHAP-Challenge", "Message-Authenticator", "State", "Class", "Proxy-State", "EAP-Message", "ARAP-Challenge-Response", "Framed-Interface-Id", "Framed-IPv6-Prefix", "Login-IPv6-Host", "Digest-Attributes"}
 
 _MICROSOFT_VENDOR_ID = 311
@@ -352,7 +356,8 @@ def _decode_value(name: str, value: bytes, secret: str | None, authenticator: by
     if name in _INTEGER_ATTRS:
         if len(value) != 4:
             raise RadiusCodecError(f"invalid integer length for {name}")
-        return str(unpack("!I", value)[0])
+        number = unpack("!I", value)[0]
+        return _ENUM_VALUES.get(name, {}).get(number, str(number))
     try:
         return value.decode("utf-8")
     except UnicodeDecodeError:
