@@ -237,7 +237,7 @@ def test_live_transaction_rolls_back_connection_log_and_credit_on_settlement_fai
             },
             "shared",
         )
-        thread = threading.Thread(target=_serve_one, args=(server,), daemon=True)
+        thread = threading.Thread(target=_serve_one, args=(server, errors), daemon=True)
         thread.start()
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as client:
             client.settimeout(3)
