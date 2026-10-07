@@ -12,6 +12,8 @@ class IPPoolAllocationPolicy:
     def evaluate(self, request):
         if request.attributes.get("Framed-IP-Address") not in (None, ""):
             return None
+        if str(request.attributes.get("__ras_ip_assignment", "1")) == "0":
+            return None
         raw_pool_ids = request.attributes.get("__ras_ippool_ids", "")
         if not raw_pool_ids:
             return None
