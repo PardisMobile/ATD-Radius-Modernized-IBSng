@@ -14,14 +14,9 @@ jobs:
           mkdir -p /tmp/a124
           tar -xjf "Source of Truth/IBSng-A1.24.tar.bz2" -C /tmp/a124
           echo '--- CANDIDATE FILES ---'
-          find /tmp/a124 -type f | grep -Ei '/(cisco|cisco_vpdn|.*cisco.*)\\.py$' | sort
+          find /tmp/a124 -type f | grep -Ei 'cisco.*\.py$' | sort
           echo '--- CISCO SOURCE ---'
-          for f in $(find /tmp/a124 -type f | grep -Ei '/cisco\\.py$' | sort); do
+          while IFS= read -r f; do
             echo "===== $f ====="
             sed -n '1,360p' "$f"
-          done
-          echo '--- CISCO VPDN SOURCE ---'
-          for f in $(find /tmp/a124 -type f | grep -Ei '/cisco.*vpdn.*\\.py$' | sort); do
-            echo "===== $f ====="
-            sed -n '1,360p' "$f"
-          done
+          done < <(find /tmp/a124 -type f | grep -Ei 'cisco.*\.py$' | sort)
