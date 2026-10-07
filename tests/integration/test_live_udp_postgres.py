@@ -12,8 +12,6 @@ import pytest
 from atd_radius.application.radius_runtime import NativeRadiusPacketHandler, NativeRadiusRuntimeState
 from atd_radius.domain.radius import RadiusCode, RadiusPacket
 from atd_radius.domain.radius_codec import decode, encode
-from atd_radius.infrastructure.ras import RASRepository
-from atd_radius.infrastructure.ip_pool_repository import PostgresIPPoolRepository
 from atd_radius.infrastructure.radius_udp import RadiusUDPServer
 
 
@@ -26,6 +24,8 @@ def live_db():
     if not dsn:
         pytest.skip("ATD_TEST_DATABASE_URL is not configured")
     with psycopg.connect(dsn) as conn:
+        conn.execute("DROP SCHEMA public CASCADE")
+        conn.execute("CREATE SCHEMA public")
         for name in ("migrations/001_initial.sql", "migrations/002_functions.sql"):
             conn.execute(Path(name).read_text(encoding="utf-8"))
         conn.execute(
@@ -63,8 +63,11 @@ def _accounting_request(identifier: int, attrs: dict[str, object], secret: str) 
     return bytes(wire)
 
 
-def _serve_one(server: RadiusUDPServer) -> None:
-    server.serve_once()
+def _serve_one(server: RadiusUDPServer, errors: list[BaseException]) -> None:
+    try:
+        server.serve_once()
+    except BaseException as exc:
+        errors.append(exc)
 
 
 def test_live_udp_accounting_round_trip_persists_connection_log(live_db):
@@ -91,7 +94,8 @@ def test_live_udp_accounting_round_trip_persists_connection_log(live_db):
             },
             "shared",
         )
-        thread = threading.Thread(target=_serve_one, args=(server,), daemon=True)
+        errors: list[BaseException] = []
+        thread = threading.Thread(target=_serve_one, args=(server, errors), daemon=True)
         thread.start()
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as client:
             client.settimeout(3)
@@ -199,6 +203,7 @@ def test_live_transaction_rolls_back_connection_log_and_credit_on_settlement_fai
     destination = sock.getsockname()
 
     try:
+        errors: list[BaseException] = []
         start = _accounting_request(
             20,
             {
@@ -241,6 +246,7 @@ def test_live_transaction_rolls_back_connection_log_and_credit_on_settlement_fai
             with pytest.raises(socket.timeout):
                 client.recvfrom(4096)
         thread.join(timeout=3)
+        assert errors and "forced settlement failure" in str(errors[0])
 
         with psycopg.connect(live_db) as verify:
             assert verify.execute("SELECT credit FROM users WHERE user_id=1").fetchone() == (100,)
