@@ -5,6 +5,7 @@ from atd_radius.domain.ras_provider import (
     provider_profile,
     provider_supports_status,
     provider_unique_id,
+    provider_session_id,
 )
 
 
@@ -43,3 +44,10 @@ def test_provider_aliases_and_statuses():
     assert provider_profile("chilli spot").name == "chilli_spot"
     assert provider_supports_status("Mikrotik", "Alive")
     assert provider_supports_status("BSAE", "Start")
+
+
+def test_provider_session_identity_uses_source_defined_keys():
+    assert provider_session_id("Mikrotik", {"NAS-Port": "17", "Acct-Session-Id": "abc"}) == "17"
+    assert provider_session_id("Total Control", {"USR-Interface-Index": "9", "Acct-Session-Id": "abc"}) == "9"
+    assert provider_session_id("SER", {"Call-ID": "sip-123", "Acct-Session-Id": "abc"}) == "sip-123"
+    assert provider_session_id("Cisco VPDN", {"Acct-Session-Id": "abc"}) == "abc"
