@@ -291,7 +291,7 @@ This section is the authoritative handoff/status index for the current ATD proje
 - [~] CHAP/MS-CHAPv1/v2: core cryptographic/field behavior implemented; complete end-to-end provider/dictionary/reply parity remains.
 - [x] Accounting: live UDP -> PostgreSQL integration path and rollback/failure-path verification are implemented and CI-verified; provider-specific parity remains partial.
 - [~] IP pools: allocator/session lifecycle exists; exhaustive source/provider integration parity remains.
-- [~] Attribute system: modern policy engine exists; complete source-derived dictionary and mutation fixtures remain.
+- [~] Attribute system: modern policy engine and core wire dictionary are implemented; SIP/SER context-aware and USR vendor dictionary coverage remain.
 - [~] Charging: Internet runtime integrated; broader A1.24 billing/credit/VoIP persistence parity remains.
 - [~] Admin UI and user portal.
 - [~] REST API surface.
@@ -309,7 +309,7 @@ This section is the authoritative handoff/status index for the current ATD proje
 
 ### Phase 2
 - [ ] Complete RAS provider behavior parity for every relevant A1.24 provider.
-- [ ] Complete source-derived RADIUS dictionary/attribute coverage.
+- [~] Complete source-derived RADIUS dictionary/attribute coverage; core/MS/provider-critical wire catalog is expanded, while SIP/SER context-aware and USR vendor coverage remain.
 - [ ] End-to-end CHAP/MS-CHAPv1/v2 Access-Accept/Reject/provider tests.
 - [x] Strong live UDP/PostgreSQL integration tests.
 - [x] Transaction rollback integration test.
@@ -355,12 +355,19 @@ Do not mark a subsystem Complete merely because its classes exist. Completion re
 ## F. IMMEDIATE NEXT BATCH
 
 1. Verify/complete all A1.24 RAS provider behavior from the canonical source.
-2. Complete the source-derived RADIUS dictionary/attribute inventory and implementation.
+2. Implement the context-aware SIP/SER dictionary/codec path, then add only provider-consumed USR vendor attributes.
 3. Build stronger live UDP -> PostgreSQL integration tests, including rollback atomicity.
 4. Reconcile all parity docs against this status and remove stale claims.
 5. Continue into credit ledger/billing persistence and full CRUD/API/RBAC work.
 
 
+
+
+## RADIUS dictionary context checkpoint — 2026-10-07
+- Canonical source extraction directly verified SIP/SER dictionary types for attributes 101-119, 206-213 and 225, plus the internal 1063-1072 digest attributes.
+- The source also confirms a real numeric collision between SIP 101-119 and core dictionary meanings such as Error-Cause 101. ATD therefore must not globally overwrite the core mapping; the remaining implementation is a context-aware SIP/SER dictionary and codec path with provider-aware tests.
+- Canonical USR dictionary vendor id 429 was re-inspected. It is large and mixed-type; no guessed global USR mapping was added. Provider-consumed USR attributes remain a source-driven follow-up.
+- The temporary source extraction workflow was removed immediately after the inspection; no temporary workflow remains intentionally in main.
 
 ## Live UDP/PostgreSQL + transaction atomicity checkpoint — 2026-10-07
 - Fixed numeric RADIUS enum decoding for Acct-Status-Type and NAS-Port-Type, including MikroTik Ethernet/Virtual/Wireless assignment behavior on decoded wire values.
