@@ -411,3 +411,12 @@ Do not mark a subsystem Complete merely because its classes exist. Completion re
 - Added wire round-trip coverage for provider VSAs.
 - CI is green on commit `ae22c00098d9ca6c77c524f2907643fe85aed497`; Python workflow passes 218 tests.
 - Temporary provider dictionary workflow was removed.
+
+
+### Provider VSA checkpoint — 2026-10-07
+- Added source-derived provider-critical VSA wire support for Cisco, Quintum and MikroTik.
+- Covered Cisco H323 conference identity/disconnect fields, Quintum H323 conference identity/disconnect fields, and MikroTik limits/rate/group/host fields.
+- Extended provider session identity lookup to accept canonical Quintum H323 conference identity.
+- Added wire round-trip coverage for provider VSAs.
+- CI is green on commit `ae22c00098d9ca6c77c524f2907643fe85aed497`; Python workflow passes 218 tests.
+- Temporary provider dictionary workflow was removed.
