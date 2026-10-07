@@ -1,0 +1,17 @@
+name: temporary-usr-source-inspection
+on:
+  push:
+    paths:
+      - ".github/workflows/temporary-usr-source-inspection.yml"
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract canonical USR dictionary
+        run: |
+          mkdir -p /tmp/ibsng
+          tar -xjf "Source of Truth/IBSng-A1.24.tar.bz2" -C /tmp/ibsng
+          find /tmp/ibsng -type f -name dictionary.usr -print -exec sed -n '1,260p' {} \;
+          echo "=== Total Control source references ==="
+          grep -Rni "USR-Interface-Index\|Interface-Index" /tmp/ibsng --include='*.py' --include='*.txt' --include='dictionary*' | head -100
