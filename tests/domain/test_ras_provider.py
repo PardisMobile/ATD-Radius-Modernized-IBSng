@@ -8,6 +8,8 @@ from atd_radius.domain.ras_provider import (
     provider_session_id,
     provider_ip_assignment_for_attributes,
     provider_disconnect_strategy,
+    RASProviderRegistry,
+    PROVIDER_REGISTRY,
 )
 
 
@@ -73,3 +75,15 @@ def test_provider_disconnect_strategies_are_source_derived():
     assert provider_disconnect_strategy("PortMaster") == "snmp-port"
     assert provider_disconnect_strategy("PortSlave") == "launcher"
     assert provider_disconnect_strategy("Quintum Tenor") == "h323-cause"
+
+
+def test_provider_registry_facade_exposes_only_source_derived_behavior():
+    registry = RASProviderRegistry()
+    assert registry is not None
+    assert registry.profile("Mikrotik").name == "mikrotik"
+    assert registry.session_id("Mikrotik", {"NAS-Port": "17"}) == "17"
+    assert registry.ip_assignment("Mikrotik", {"NAS-Port-Type": "Wireless-802.11"}) is False
+    assert registry.supports_status("ChilliSpot", "Alive") is False
+    assert registry.disconnect_strategy("Cisco") == "snmp-or-rsh"
+    assert registry.sip_called_number({"Sip-Req-URI": "sip:12345@example.net;user=phone"}) == "12345"
+    assert PROVIDER_REGISTRY.profile("Total Control").unique_id == "interface_index"
