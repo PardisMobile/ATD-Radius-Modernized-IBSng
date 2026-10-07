@@ -393,3 +393,12 @@ Do not mark a subsystem Complete merely because its classes exist. Completion re
 - Added `docs/A1.24-RADIUS-DICTIONARY-AUDIT.md` with the source-derived inventory and implementation sequence.
 - Temporary dictionary inspection workflows were removed.
 - Next implementation step is the source-derived wire dictionary catalog/codec expansion, prioritizing attributes actually consumed by current RAS adapters and Accounting/AAA paths rather than blindly importing every legacy attribute.
+
+
+### RADIUS codec dictionary expansion checkpoint — 2026-10-07
+- Expanded the wire codec with canonical A1.24 core attributes: Framed-Compression, Login-* family, Framed-Route/IPX, Termination-Action, Proxy-State, LAT/AppleTalk, Acct-Link/Gigawords, ARAP/Prompt/Connect/EAP, Acct-Interim-Interval, Framed-Pool and IPv6 attributes, plus Digest-Response/Digest-Attributes.
+- Expanded the Microsoft VSA catalog with source-defined MS-CHAP error, ARAP, accounting/EAP and DNS/NBNS attributes.
+- Microsoft IPv4 VSAs are encoded as binary IPv4 values per the canonical dictionary type.
+- Added wire round-trip tests for the new core and Microsoft attributes.
+- CI is green on commit `b8649746bbb4dbac0956a20f16cb6c9eb74edd62`; Python workflow reports 217 passing tests.
+- Temporary source-inspection workflow was removed.
