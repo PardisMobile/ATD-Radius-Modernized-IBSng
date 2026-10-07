@@ -496,3 +496,13 @@ Do not mark a subsystem Complete merely because its classes exist. Completion re
 - Current repository HEAD before this checkpoint: `806ae8f112691807f597fb3475fb25615c616b0e`.
 - The canonical archive is present in the repository at `Source of Truth/IBSng-A1.24.tar.bz2`; its recorded SHA-256 is `c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839614bb9349d18a8`.
 - Repository documentation inventory has been re-checked at this checkpoint; future work must read the relevant Markdown records before changing an already-audited subsystem.
+
+
+### Direct A1.24 source verification checkpoint — BSAE — 2026-10-07
+- Re-verified BSAE directly from the canonical Source of Truth/IBSng-A1.24.tar.bz2.
+- Canonical file inspected: IBSng/core/ras/rases/bsae.py.
+- Exact source behavior: __addUniqueIDToRasMsg() sets unique_id to port and derives port from getRequestPacket()["User-Name"][0].
+- This confirms the ATD BSAE identity exception (User-Name instead of NAS-Port) against the actual A1.24 source.
+- Direct source also confirms BSAE auth packet handling consumes User-Password, CHAP-Password, MS-CHAP-Response, and MS-CHAP2-Response.
+- A temporary isolated audit branch/workflow was used only to extract the canonical archive in GitHub Actions and inspect the source; the temporary workflow was deleted afterward and was never merged to main.
+- Source-sensitive rule remains absolute: Markdown audits are records only; canonical A1.24 source overrides them.
