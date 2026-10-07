@@ -198,6 +198,37 @@ _PROVIDER_VSAS = {
 _PROVIDER_VSA_REVERSE = {(vendor, typ): (name, kind) for name, (vendor, typ, kind) in _PROVIDER_VSAS.items()}
 
 
+_SIP_ATTR_NAMES = {
+    101: "Sip-Method",
+    102: "Sip-Response-Code",
+    103: "Sip-CSeq",
+    104: "Sip-To-Tag",
+    105: "Sip-From-Tag",
+    106: "Sip-Branch-ID",
+    107: "Sip-Translated-Request-URI",
+    108: "Sip-Source-IP-Address",
+    109: "Sip-Source-Port",
+    110: "Sip-User-ID",
+    111: "Sip-Realm",
+    112: "Sip-Nonce",
+    113: "Sip-Method-Name",
+    114: "Sip-Digest-URI",
+    115: "Sip-Nonce-Count",
+    116: "Sip-QOP",
+    117: "Sip-Opaque",
+    118: "Sip-Response",
+    119: "Sip-CNonce",
+    208: "Sip-URI-User",
+    210: "Sip-Req-URI",
+    211: "Sip-Group",
+    212: "Sip-CC",
+    213: "Sip-RPId",
+    225: "SIP-AVP",
+}
+_SIP_ATTR_NUMBERS = {name: number for number, name in _SIP_ATTR_NAMES.items()}
+_SIP_INTEGER_ATTRS = {"Sip-Method", "Sip-Response-Code", "Sip-Source-Port"}
+_SIP_IP_ATTRS = {"Sip-Source-IP-Address"}
+
 
 class RadiusCodecError(ValueError):
     pass
