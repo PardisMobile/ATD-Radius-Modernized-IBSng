@@ -539,3 +539,5 @@ Do not mark a subsystem Complete merely because its classes exist. Completion re
 - Regression test added for provider_supports_status("ChilliSpot", "Alive").
 - Audit correction commit: 2d59f39abf2a328a4fbbbad88c75073288e64a34.
 - This checkpoint is explicitly marked source-verified so a future chat must not restore the old Alive=false assumption from an outdated document.
+
+- Follow-up test correction commit: 0b5cf8758c3a1ca614f9477591a147dfa67914f9 — updated two legacy ChilliSpot assertions from Alive=false to Alive=true after the direct A1.24 source verification. Python workflow 745 completed successfully; latest CI workflow 680 is still in progress and must not yet be called green.
