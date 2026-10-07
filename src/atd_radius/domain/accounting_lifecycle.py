@@ -39,9 +39,15 @@ class SessionUsage:
     def stop(self,event): return self.interim(event)
 
 def event_from_attributes(attrs:Mapping[str,object])->AccountingEvent:
-    raw=str(attrs.get("Acct-Status-Type",""))
-    try: status=AccountingStatus(raw)
-    except ValueError as exc: raise ValueError(f"unsupported Acct-Status-Type: {raw}") from exc
+    raw = attrs.get("Acct-Status-Type", "")
+    status_value = str(raw)
+    try:
+        status = AccountingStatus(status_value)
+    except ValueError:
+        numeric_status = {"1": AccountingStatus.START, "2": AccountingStatus.STOP, "3": AccountingStatus.INTERIM}.get(status_value)
+        if numeric_status is None:
+            raise ValueError(f"unsupported Acct-Status-Type: {raw}")
+        status = numeric_status
     def integer(name):
         value=attrs.get(name,0); return int(value[0] if isinstance(value,(list,tuple)) else value)
 
