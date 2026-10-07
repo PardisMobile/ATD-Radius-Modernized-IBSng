@@ -204,7 +204,7 @@ The production RADIUS path must not keep one PostgreSQL transaction open for the
 ### Next unresolved priorities
 1. Finish source-derived RAS provider behavior parity and verify each provider against canonical A1.24 source.
 2. Complete RADIUS dictionary/attribute coverage from canonical A1.24 source.
-3. Strengthen live integration tests for UDP -> PostgreSQL -> auth/accounting/charge/connection-log and rollback atomicity.
+3. Continue source-derived RADIUS dictionary coverage and begin the credit-ledger/billing persistence layer.
 4. Continue billing/credit ledger, API/RBAC/audit, UI workflows, migration and deployment work.
 
 
@@ -289,7 +289,7 @@ This section is the authoritative handoff/status index for the current ATD proje
 - [~] RAS mutation/reload and complete provider behavior parity.
 - [~] RADIUS authentication: runtime boundary exists, full source-derived end-to-end parity suite remains.
 - [~] CHAP/MS-CHAPv1/v2: core cryptographic/field behavior implemented; complete end-to-end provider/dictionary/reply parity remains.
-- [~] Accounting: live UDP wiring implemented; production PostgreSQL/RAS integration test suite and rollback/failure-path verification remain.
+- [x] Accounting: live UDP -> PostgreSQL integration path and rollback/failure-path verification are implemented and CI-verified; provider-specific parity remains partial.
 - [~] IP pools: allocator/session lifecycle exists; exhaustive source/provider integration parity remains.
 - [~] Attribute system: modern policy engine exists; complete source-derived dictionary and mutation fixtures remain.
 - [~] Charging: Internet runtime integrated; broader A1.24 billing/credit/VoIP persistence parity remains.
@@ -311,8 +311,8 @@ This section is the authoritative handoff/status index for the current ATD proje
 - [ ] Complete RAS provider behavior parity for every relevant A1.24 provider.
 - [ ] Complete source-derived RADIUS dictionary/attribute coverage.
 - [ ] End-to-end CHAP/MS-CHAPv1/v2 Access-Accept/Reject/provider tests.
-- [ ] Strong live UDP/PostgreSQL integration tests.
-- [ ] Transaction rollback integration test.
+- [x] Strong live UDP/PostgreSQL integration tests.
+- [x] Transaction rollback integration test.
 - [ ] EAP state machine/methods only if desired as ATD extension; it is NOT an A1.24 parity requirement.
 
 ### Phase 3
@@ -360,6 +360,15 @@ Do not mark a subsystem Complete merely because its classes exist. Completion re
 4. Reconcile all parity docs against this status and remove stale claims.
 5. Continue into credit ledger/billing persistence and full CRUD/API/RBAC work.
 
+
+
+## Live UDP/PostgreSQL + transaction atomicity checkpoint — 2026-10-07
+- Fixed numeric RADIUS enum decoding for Acct-Status-Type and NAS-Port-Type, including MikroTik Ethernet/Virtual/Wireless assignment behavior on decoded wire values.
+- Fixed the RAS SQL repository boundary so parameterized select_ras, select_ras_ports and select_ras_ippools queries bind their parameters through psycopg instead of being executed as raw %s SQL.
+- Added real live UDP -> PostgreSQL integration coverage using a PostgreSQL 16 CI service, actual UDP sockets, canonical RADIUS Accounting-Request authenticators, native RAS/user records, connection-log persistence and Stop lifecycle.
+- Added a real failure-path test with a PostgreSQL trigger that forces credit settlement to fail; the test proves the shared packet transaction rolls back the accounting mutation and credit change atomically.
+- CI now provisions PostgreSQL for the integration suite. Final green commit: 6028f21d6f6ca4f2e7abdd1be31da9e6d000bcc2; Python and CI workflows both succeeded, with 225 tests passing in the CI test matrix.
+- This checkpoint upgrades live UDP/PostgreSQL integration and rollback atomicity from TODO to implemented + integration-verified. It does not claim full RAS provider parity or complete billing/credit ledger parity.
 
 ## RAS provider source-audit checkpoint — 2026-10-07
 - Direct canonical-source extraction completed for the concrete A1.24 RAS implementations under `core/ras/rases/`.
