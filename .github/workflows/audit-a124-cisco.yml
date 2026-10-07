@@ -22,3 +22,7 @@ jobs:
             echo "--- relevant source windows ---"
             grep -nE 'unique_id|setInAttrs|setInAttrsIfExists|Acct-Status-Type|setAction|Cisco-NAS-Port|MS-CHAP|CHAP-Password|User-Password|Acct-Session-Id|H323|h323_conf_id|Calling-Station-Id|Framed-IP-Address|Acct-Terminate-Cause|disconnect|snmp|rsh' "$f" || true
           done
+          echo '--- CISCO INTERNET/VOIP WINDOWS ---'
+          sed -n '160,305p' /tmp/a124/IBSng/core/ras/rases/cisco.py
+          echo '--- CISCO VPDN WINDOWS ---'
+          sed -n '120,230p' /tmp/a124/IBSng/core/ras/rases/cisco_vpdn.py
