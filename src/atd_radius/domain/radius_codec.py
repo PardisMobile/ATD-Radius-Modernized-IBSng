@@ -196,6 +196,9 @@ _PROVIDER_VSAS = {
     "Host-IP": (14988, 10, "ipaddr"),
 }
 _PROVIDER_VSA_REVERSE = {(vendor, typ): (name, kind) for name, (vendor, typ, kind) in _PROVIDER_VSAS.items()}
+_USR_VENDOR_ID = 429
+_USR_VSA_NAMES = {0x9843: "USR-Interface-Index"}
+_USR_VSA_TYPES = {"USR-Interface-Index": 0x9843}
 
 
 _SIP_ATTR_NAMES = {
@@ -333,6 +336,16 @@ def _encode_provider_vsa(name: str, value: object) -> bytes | None:
     if definition is None:
         return None
     vendor, vendor_type, kind = definition
+    if vendor == _USR_VENDOR_ID:
+        if vendor_type > 0xFFFFFFFF:
+            raise RadiusCodecError(f"invalid USR VSA type: {name}")
+        if kind == "integer":
+            raw = pack("!I", int(value))
+        elif kind == "ipaddr":
+            raw = IPv4Address(str(value)).packed
+        else:
+            raw = _octets(value)
+        return pack("!II", vendor, vendor_type) + raw
     if kind == "integer":
         raw = pack("!I", int(value))
     elif kind == "ipaddr":
@@ -400,6 +413,22 @@ def _decode_vendor_specific(value: bytes) -> tuple[str, str]:
     if len(value) < 6:
         raise RadiusCodecError("Vendor-Specific attribute is too short")
     vendor_id = unpack("!I", value[:4])[0]
+    if vendor_id == _USR_VENDOR_ID:
+        if len(value) < 8:
+            raise RadiusCodecError("USR Vendor-Specific attribute is too short")
+        vendor_type = unpack("!I", value[4:8])[0]
+        vendor_value = value[8:]
+        name = _USR_VSA_NAMES.get(vendor_type)
+        if name is not None:
+            if name == "USR-Interface-Index":
+                if len(vendor_value) != 4:
+                    raise RadiusCodecError("invalid integer VSA length for USR-Interface-Index")
+                return name, str(unpack("!I", vendor_value)[0])
+            try:
+                return name, vendor_value.decode("utf-8")
+            except UnicodeDecodeError:
+                return name, vendor_value.hex()
+        return f"VSA-{vendor_id}-{vendor_type}", vendor_value.hex()
     vendor_type = value[4]
     vendor_length = value[5]
     if vendor_length < 2 or 4 + vendor_length > len(value):
