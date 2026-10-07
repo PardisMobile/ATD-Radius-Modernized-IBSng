@@ -375,3 +375,12 @@ Do not mark a subsystem Complete merely because its classes exist. Completion re
 - Added source-derived tests covering provider unique-id keys, explicit multi-login/IP-assignment capabilities, aliases and Start/Stop/Alive status support.
 - `ras_allows_multi_login()` now consumes the provider profile for explicit source-defined restrictions while preserving Asterisk/GnuGk attribute overrides and the A1.24 default behavior for providers without an explicit restriction.
 - This is the common provider-profile layer only; provider-specific packet normalization, accounting, disconnect/kill and VoIP integrations remain open.
+
+
+### RAS provider identity checkpoint — 2026-10-07
+- Added source-derived provider session identity resolution for providers whose A1.24 implementation keys online state by provider-specific identity rather than a generic session identifier.
+- Implemented source-derived identity mappings for port, Acct-Session-Id, H323 conference id, Persistent-LAN mac/ip identity, Total Control interface index and SIP Call-ID, with standard Acct-Session-Id fallback.
+- Wired the identity adapter into the live Accounting UDP path before SessionRegistry/charge/connection-log processing.
+- Added unit coverage for representative provider identities.
+- CI is green on commit `7aabfe7917d6399129052a57ff9de330c18a9e66`.
+- Current test count: 214 passing in the Python workflow.
