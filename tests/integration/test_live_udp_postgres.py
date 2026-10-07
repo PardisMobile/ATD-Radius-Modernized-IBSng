@@ -102,6 +102,7 @@ def test_live_udp_accounting_round_trip_persists_connection_log(live_db):
             client.sendto(start, destination)
             response, _ = client.recvfrom(4096)
         thread.join(timeout=3)
+        assert not errors
         assert decode(response, "shared").code is RadiusCode.ACCOUNTING_RESPONSE
 
         with psycopg.connect(live_db) as verify:
@@ -127,7 +128,7 @@ def test_live_udp_accounting_round_trip_persists_connection_log(live_db):
             },
             "shared",
         )
-        thread = threading.Thread(target=_serve_one, args=(server,), daemon=True)
+        thread = threading.Thread(target=_serve_one, args=(server, errors), daemon=True)
         thread.start()
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as client:
             client.settimeout(3)
