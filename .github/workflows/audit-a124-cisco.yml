@@ -7,16 +7,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Inspect canonical Cisco source
+      - name: Extract Cisco parity facts
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p /tmp/a124
           tar -xjf "Source of Truth/IBSng-A1.24.tar.bz2" -C /tmp/a124
-          echo '--- CANDIDATE FILES ---'
-          find /tmp/a124 -type f | grep -Ei 'cisco.*\.py$' | sort
-          echo '--- CISCO SOURCE ---'
-          while IFS= read -r f; do
-            echo "===== $f ====="
-            sed -n '1,360p' "$f"
-          done < <(find /tmp/a124 -type f | grep -Ei 'cisco.*\.py$' | sort)
+          for f in /tmp/a124/IBSng/core/ras/rases/cisco.py /tmp/a124/IBSng/core/ras/rases/cisco_vpdn.py; do
+            echo "===== FILE: $f ====="
+            echo "--- class/type_attrs ---"
+            grep -nE 'class .*Ras|type_attrs|def init\(' "$f" || true
+            echo "--- auth/accounting/identity ---"
+            grep -nE 'def (__addUniqueIDToRasMsg|handleRadAuthPacket|handleRadAcctPacket|__internetAcct(Start|Stop|Update)|__voipAcct(Start|Stop|Update)|killUser|__killUser|__killBy|disconnect|tryToReOnline)' "$f" || true
+            echo "--- relevant source windows ---"
+            grep -nE 'unique_id|setInAttrs|setInAttrsIfExists|Acct-Status-Type|setAction|Cisco-NAS-Port|MS-CHAP|CHAP-Password|User-Password|Acct-Session-Id|H323|h323_conf_id|Calling-Station-Id|Framed-IP-Address|Acct-Terminate-Cause|disconnect|snmp|rsh' "$f" || true
+          done
