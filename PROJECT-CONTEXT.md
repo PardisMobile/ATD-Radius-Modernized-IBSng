@@ -446,3 +446,15 @@ Do not mark a subsystem Complete merely because its classes exist. Completion re
 - The Access context passes this provider decision into the IP-pool policy so provider-disabled assignment does not consume a native pool address.
 - CI and Python workflows are green on commit `b5afca85474a`.
 - A provider-specific Access-context test fixture was not added because the tool rejected that fixture operation; no test coverage is being claimed for that exact fixture yet.
+
+
+### Chat handoff verification — 2026-10-07
+- Verified against current `main` HEAD `e7e64321abe3e3e40a2d693f1e896a3877da4882` that the two previously announced dictionary/provider tasks were **partial, not complete**.
+- Completed: canonical A1.24 core/SIP/SER/USR dictionary source audit; core standard + Microsoft + Cisco/Quintum/MikroTik provider-critical wire catalog expansion; numeric enum decoding; provider profile/identity/normalization layers; wire round-trip tests for implemented attributes; CI green.
+- Still open: a context-aware SIP/SER dictionary+codec boundary because SIP 101-119 collide with core meanings; provider-consumed SIP/SER attribute integration/tests; source-driven selection of required USR vendor-429 attributes and their VSA codec; provider-specific wire-level tests for those paths.
+- Therefore the earlier phrase “dictionary واقعی + providerهای واقعاً مصرف‌کننده attributeها + source/wire-level validation” must be treated as **not fully delivered**. Only the audited/implemented subset is verified.
+- Current codec still has one global core mapping for each standard attribute and generic `Attr-N` fallback; this is intentionally unchanged until the context-aware SIP/SER boundary is implemented.
+- Current RAS provider layer is also a common source-derived profile/normalization layer, not full provider-adapter parity. Provider-specific accounting/disconnect/VoIP behavior remains open.
+- Current project estimate: the core RADIUS/AAA/accounting/charging engine is roughly **75-80% of the technical core**, while the full IBSng replacement/product is roughly **55-60% complete**. Remaining work is concentrated in provider parity, remaining dictionary/context codec work, billing/credit business layer, CRUD/API/RBAC, UI workflows, migration and deployment/licensing.
+- Immediate next batch: (1) trace concrete provider consumers in canonical A1.24, (2) implement context-aware SIP/SER codec/catalog, (3) implement only consumed USR-429 VSAs, (4) add provider-specific wire/integration tests, (5) reconcile parity ledger and run CI before moving to the next subsystem.
+- Do not restart the completed dictionary audit, MS-CHAPv1/v2 core semantics, accounting rollback integration, or provider profile foundation unless new source evidence contradicts them.
