@@ -384,3 +384,12 @@ Do not mark a subsystem Complete merely because its classes exist. Completion re
 - Added unit coverage for representative provider identities.
 - CI is green on commit `7aabfe7917d6399129052a57ff9de330c18a9e66`.
 - Current test count: 214 passing in the Python workflow.
+
+
+### RADIUS dictionary source-audit checkpoint — 2026-10-07
+- Direct canonical-source extraction completed for `radius_server/dictionary`, `dictionary.ser`, `dictionary.sip` and `dictionary.usr`.
+- Source confirms the ATD codec currently covers only a subset of the A1.24 wire dictionary.
+- The missing coverage includes standard accounting/IPv6/EAP/ARAP attributes, SIP/Digest attributes and a large USR vendor dictionary.
+- Added `docs/A1.24-RADIUS-DICTIONARY-AUDIT.md` with the source-derived inventory and implementation sequence.
+- Temporary dictionary inspection workflows were removed.
+- Next implementation step is the source-derived wire dictionary catalog/codec expansion, prioritizing attributes actually consumed by current RAS adapters and Accounting/AAA paths rather than blindly importing every legacy attribute.
