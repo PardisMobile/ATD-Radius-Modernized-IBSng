@@ -1,0 +1,19 @@
+name: temp-mikrotik-source
+on:
+  push:
+    paths: [".github/workflows/temp-mikrotik-source.yml"]
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          set -euo pipefail
+          mkdir -p /tmp/ibs
+          tar -xjf "Source of Truth/IBSng-A1.24.tar.bz2" -C /tmp/ibs
+          f=/tmp/ibs/IBSng/core/ras/rases/mikrotik.py
+          sed -n '1,280p' "$f"
+          echo "=== CHILLISPOT ==="
+          sed -n '1,220p' /tmp/ibs/IBSng/core/ras/rases/chillispot.py
+          echo "=== BSAE ==="
+          sed -n '1,220p' /tmp/ibs/IBSng/core/ras/rases/bsae.py
