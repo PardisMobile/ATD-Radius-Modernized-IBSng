@@ -13,4 +13,4 @@ jobs:
           rm -rf /tmp/ibsng && mkdir -p /tmp/ibsng
           tar -xjf "Source of Truth/IBSng-A1.24.tar.bz2" -C /tmp/ibsng
           grep -n "_Pkt.*Vendor\|VendorAttribute\|vendor.*code\|vendor.*type" /tmp/ibsng/IBSng/radius_server/pyrad/packet.py
-          sed -n '270,320p' /tmp/ibsng/IBSng/radius_server/pyrad/packet.py
+          sed -n '235,285p' /tmp/ibsng/IBSng/radius_server/pyrad/packet.py
