@@ -480,6 +480,13 @@ Do not mark a subsystem Complete merely because its classes exist. Completion re
 - Commits in this batch: `e9ff3348cdbcbf9404054a11ec1ebac5a5c0f627` (SIP codec), `401a16221b4f1ddfabce5a95e3f6e4003e853c25` (SIP tests), `1e34ba01f3450a9c19fff25076c0af5723689e9c` (SER normalization), `ab8dbde8ccf2a1571f64a3247fce428e22205d5d` (SER tests).
 
 
+### RAS provider registry facade checkpoint — 2026-10-07
+- Added RASProviderRegistry plus the shared PROVIDER_REGISTRY instance over behavior already source-traced in docs/A1.24-RAS-PROVIDER-AUDIT.md.
+- The facade exposes profile lookup, provider session identity, IP-assignment decision, supported accounting status, disconnect strategy, and SER SIP helpers without inventing new provider behavior.
+- Added registry-level tests covering representative internet, ChilliSpot, Cisco, Total Control and SER behavior.
+- This checkpoint does **not** claim concrete SNMP/RSH/launcher/H323/Asterisk provider adapters; those remain source-driven implementation work.
+- Commits: 0bdfc601d2a971badb54d50da220500922761fb4 (registry), a9f9bb2b3bbc212a5d8502953957700f18aaff8b (tests), bb5971d4c415241e5866513bdb83ad19c3f37844 (audit doc).
+
 ### Permanent source-of-truth / continuation rule — 2026-10-07
 - **ONLY the original IBSng A1.24 source code in `Source of Truth/IBSng-A1.24.tar.bz2` is the behavioral Source of Truth.**
 - All repository Markdown files (root docs, `docs/**`, UI/project notes, matrices, audits, roadmaps, decisions and inventories) are mandatory project-context/record artifacts. They explain scope, decisions, status and completed verification, but **never override the canonical IBSng source**.
