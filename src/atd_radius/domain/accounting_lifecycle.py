@@ -44,11 +44,19 @@ def event_from_attributes(attrs:Mapping[str,object])->AccountingEvent:
     except ValueError as exc: raise ValueError(f"unsupported Acct-Status-Type: {raw}") from exc
     def integer(name):
         value=attrs.get(name,0); return int(value[0] if isinstance(value,(list,tuple)) else value)
+
+    def octets(name, gigawords_name):
+        value = integer(name)
+        gigawords = integer(gigawords_name)
+        if gigawords < 0 or value < 0:
+            raise ValueError(f"negative accounting counter: {name}")
+        return gigawords * (2 ** 32) + value
+
     return AccountingEvent(
         status=status, username=str(attrs.get("User-Name","")),
         session_id=str(attrs["Acct-Session-Id"]) if attrs.get("Acct-Session-Id") is not None else None,
         remote_ip=str(attrs["Framed-IP-Address"]) if attrs.get("Framed-IP-Address") is not None else None,
-        input_octets=integer("Acct-Input-Octets"), output_octets=integer("Acct-Output-Octets"),
+        input_octets=octets("Acct-Input-Octets", "Acct-Input-Gigawords"), output_octets=octets("Acct-Output-Octets", "Acct-Output-Gigawords"),
         terminate_cause=str(attrs["Acct-Terminate-Cause"]) if attrs.get("Acct-Terminate-Cause") is not None else None,
         attributes={str(name):str(value) for name,value in attrs.items()},
     )
