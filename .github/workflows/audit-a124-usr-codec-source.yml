@@ -1,0 +1,20 @@
+name: audit-a124-usr-codec-source
+on:
+  push:
+    branches: [audit/a124-usr-codec-source]
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect canonical USR codec and dictionary consumers
+        run: |
+          set -e
+          rm -rf /tmp/ibsng
+          mkdir -p /tmp/ibsng
+          tar -xjf "Source of Truth/IBSng-A1.24.tar.bz2" -C /tmp/ibsng
+          echo "=== USR dictionary exact references ==="
+          grep -Rni "0x9843\|USR-Interface-Index" /tmp/ibsng/IBSng --exclude='*.pyc' --exclude='*.pyo' | head -200
+          echo "=== RADIUS dictionary/codec implementation ==="
+          find /tmp/ibsng/IBSng -type f -iname '*.py' | grep -E 'radius|dictionary' | head -100
+          grep -Rni "VENDOR_SPECIFIC\|Vendor-Specific\|vendor-specific\|VSA\|vendor_type\|dictionary.usr" /tmp/ibsng/IBSng --include='*.py' | head -400
