@@ -529,3 +529,13 @@ Do not mark a subsystem Complete merely because its classes exist. Completion re
   - c326bd00a58339e199e3e0fb84d7381f855eb455 — source verification audit checkpoint
 - Important: this does not mark the entire RADIUS dictionary complete. It closes only the directly verified USR-Interface-Index gap needed by Total Control.
 - Temporary source-audit workflows were isolated on audit branches and are not present on main.
+
+
+### Direct A1.24 source correction checkpoint — ChilliSpot — 2026-10-07
+- Canonical source file inspected directly: IBSng/core/ras/rases/chilli_spot.py.
+- Source proves ChilliSpot uses unique_id=port, derives port from NAS-Port, sets ip_assignment=False, consumes PAP/CHAP/MS-CHAP/MS-CHAP2, handles Start/Stop/Alive, and can re-online on Alive when configured. Disconnect uses a RADIUS Disconnect-Request to the configured disconnect IP/port with User-Name.
+- A prior ATD profile statement that ChilliSpot did not support Alive was incorrect and has now been corrected. This was a real source-vs-audit discrepancy; source wins.
+- Implementation commit: the ChilliSpot profile now exposes accounting statuses Start/Stop/Alive.
+- Regression test added for provider_supports_status("ChilliSpot", "Alive").
+- Audit correction commit: 2d59f39abf2a328a4fbbbad88c75073288e64a34.
+- This checkpoint is explicitly marked source-verified so a future chat must not restore the old Alive=false assumption from an outdated document.
