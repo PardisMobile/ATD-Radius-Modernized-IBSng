@@ -138,6 +138,11 @@ def provider_session_id(ras_type: str | None, attributes: Mapping[str, object]) 
     if profile is None:
         raw = attributes.get("Acct-Session-Id")
         return str(raw) if raw not in (None, "") else None
+    # A1.24 BSAE exception: its provider port is User-Name, not NAS-Port.
+    if profile.name == "bsae":
+        raw = attributes.get("User-Name")
+        if raw not in (None, ""):
+            return str(raw)
     for name in _ID_ATTRIBUTES.get(profile.unique_id or "", ()):
         raw = attributes.get(name)
         if raw not in (None, ""):
