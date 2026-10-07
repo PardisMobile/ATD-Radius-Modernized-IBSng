@@ -17,24 +17,25 @@ class RASProviderProfile:
     voip_multi_login: bool | None = None
     ip_assignment: bool | None = None
     accounting_statuses: tuple[str, ...] = ("Start", "Stop", "Alive")
+    disconnect_strategy: str | None = None
 
 
 _PROFILES: tuple[RASProviderProfile, ...] = (
     RASProviderProfile("asterisk", unique_id="h323_conf_id", voip_multi_login=False),
     RASProviderProfile("bsae", unique_id="port", internet_multi_login=False),
-    RASProviderProfile("chilli_spot", unique_id="port", ip_assignment=False),
-    RASProviderProfile("cisco", unique_id="port", internet_multi_login=False, voip_multi_login=False),
-    RASProviderProfile("cisco_vpdn", unique_id="acct_session_id"),
+    RASProviderProfile("chilli_spot", unique_id="port", ip_assignment=False, accounting_statuses=("Start", "Stop"), disconnect_strategy="provider-port"),
+    RASProviderProfile("cisco", unique_id="port", internet_multi_login=False, voip_multi_login=False, disconnect_strategy="snmp-or-rsh"),
+    RASProviderProfile("cisco_vpdn", unique_id="acct_session_id", disconnect_strategy="rsh-interface"),
     RASProviderProfile("gnugk", unique_id="h323_conf_id", voip_multi_login=False),
-    RASProviderProfile("mikrotik", unique_id="port"),
+    RASProviderProfile("mikrotik", unique_id="port", disconnect_strategy="rsh-port"),
     RASProviderProfile("mvts", unique_id="h323_conf_id"),
     RASProviderProfile("plan", unique_id="mac_ip", ip_assignment=False),
-    RASProviderProfile("portmaster", unique_id="port"),
-    RASProviderProfile("portslave", unique_id="port"),
+    RASProviderProfile("portmaster", unique_id="port", disconnect_strategy="snmp-port"),
+    RASProviderProfile("portslave", unique_id="port", disconnect_strategy="launcher"),
     RASProviderProfile("pppd", unique_id="port"),
     RASProviderProfile("ser", unique_id="call_id"),
-    RASProviderProfile("tenor", unique_id="h323_conf_id", internet_multi_login=False, voip_multi_login=False),
-    RASProviderProfile("total_control", unique_id="interface_index"),
+    RASProviderProfile("tenor", unique_id="h323_conf_id", internet_multi_login=False, voip_multi_login=False, disconnect_strategy="h323-cause"),
+    RASProviderProfile("total_control", unique_id="interface_index", disconnect_strategy="snmp-interface"),
 )
 
 _ALIASES = {
@@ -110,3 +111,23 @@ def provider_session_id(ras_type: str | None, attributes: Mapping[str, object]) 
             return str(raw)
     raw = attributes.get("Acct-Session-Id")
     return str(raw) if raw not in (None, "") else None
+
+
+def provider_ip_assignment_for_attributes(ras_type: str | None, attributes: Mapping[str, object]) -> bool | None:
+    profile = provider_profile(ras_type)
+    if profile is None:
+        return None
+    if profile.ip_assignment is not None:
+        return profile.ip_assignment
+    if profile.name == "mikrotik":
+        port_type = str(attributes.get("NAS-Port-Type", "")).strip()
+        if port_type == "Wireless-802.11":
+            return False
+        if port_type in {"Ethernet", "Virtual"}:
+            return True
+    return None
+
+
+def provider_disconnect_strategy(ras_type: str | None) -> str | None:
+    profile = provider_profile(ras_type)
+    return profile.disconnect_strategy if profile else None
