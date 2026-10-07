@@ -1,0 +1,24 @@
+name: audit-a124-bsae-source
+on:
+  push:
+    branches: [audit/a124-bsae-source]
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract canonical BSAE source
+        run: |
+          set -e
+          rm -rf /tmp/ibsng
+          mkdir -p /tmp/ibsng
+          tar -xjf "Source of Truth/IBSng-A1.24.tar.bz2" -C /tmp/ibsng
+          echo "=== BSAE candidate files ==="
+          find /tmp/ibsng/IBSng/core/ras -type f -iname '*bsae*' -print
+          echo "=== BSAE references ==="
+          grep -Rni "BSAE\|bsae" /tmp/ibsng/IBSng/core/ras --include='*.py' | head -200
+          echo "=== BSAE source files ==="
+          for f in $(find /tmp/ibsng/IBSng/core/ras -type f -iname '*bsae*'); do
+            echo "----- $f -----"
+            sed -n '1,320p' "$f"
+          done
