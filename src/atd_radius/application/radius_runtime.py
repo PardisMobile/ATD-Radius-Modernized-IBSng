@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from typing import Callable, Protocol
+from dataclasses import replace
 
 from atd_radius.domain.aaa import PluginPipeline, PluginSpec
 from atd_radius.domain.accounting_session import AccountingSessionService
@@ -15,6 +16,7 @@ from atd_radius.domain.ras import RASRuntimeRegistry
 from atd_radius.domain.ip_pool import IPPoolRuntimeRegistry
 from atd_radius.domain.ip_pool_policy import IPPoolAllocationPolicy
 from atd_radius.domain.radius_runtime import SessionRegistry
+from atd_radius.domain.ras_provider import provider_session_id
 from atd_radius.infrastructure.accounting_persistence import NativeAccountingPersistence
 from atd_radius.infrastructure.connection_log_repository import ConnectionLogRepository
 from atd_radius.infrastructure.billing_rules import PostgresInternetChargeRuleRepository
@@ -110,6 +112,11 @@ class RadiusRuntimeHandler:
                 user_id = self.identities.user_id(event.username)
                 ras_id = self.identities.ras_id(peer[0])
                 if user_id is not None and ras_id is not None:
+                    ras_record = self.identities.ras.get(ras_id)
+                    if ras_record is not None:
+                        session_id = provider_session_id(ras_record.ras_type, event.attributes)
+                        if session_id is not None:
+                            event = replace(event, session_id=session_id)
                     self.accounting_sessions.apply(event, user_id, ras_id)
                     if self.ip_pool_sessions:
                         if event.status.value == "Start":
