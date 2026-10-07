@@ -1,0 +1,17 @@
+name: temp-vendor-dict
+on:
+  push:
+    paths: [".github/workflows/temp-vendor-dict.yml"]
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          set -euo pipefail
+          mkdir -p /tmp/ibs
+          tar -xjf "Source of Truth/IBSng-A1.24.tar.bz2" -C /tmp/ibs
+          for f in dictionary.ser dictionary.sip dictionary.usr; do
+            echo "===== $f ATTRIBUTES ====="
+            grep -E '^(ATTRIBUTE|VENDOR)' "/tmp/ibs/IBSng/radius_server/$f" | head -400
+          done
