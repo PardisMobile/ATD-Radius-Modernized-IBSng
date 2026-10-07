@@ -121,6 +121,7 @@ def provider_ip_assignment_for_attributes(ras_type: str | None, attributes: Mapp
         return profile.ip_assignment
     if profile.name == "mikrotik":
         port_type = str(attributes.get("NAS-Port-Type", "")).strip()
+        port_type = {"5": "Virtual", "15": "Ethernet", "19": "Wireless-802.11"}.get(port_type, port_type)
         if port_type == "Wireless-802.11":
             return False
         if port_type in {"Ethernet", "Virtual"}:
