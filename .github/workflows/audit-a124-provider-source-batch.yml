@@ -1,0 +1,18 @@
+name: audit-a124-provider-source-batch
+on:
+  push:
+    branches: [audit/a124-provider-source-batch]
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect canonical ChilliSpot and Cisco sources
+        run: |
+          set -e
+          rm -rf /tmp/ibsng && mkdir -p /tmp/ibsng
+          tar -xjf "Source of Truth/IBSng-A1.24.tar.bz2" -C /tmp/ibsng
+          for f in /tmp/ibsng/IBSng/core/ras/rases/chillispot.py /tmp/ibsng/IBSng/core/ras/rases/cisco.py; do
+            echo "===== $f ====="
+            sed -n '1,420p' "$f"
+          done
