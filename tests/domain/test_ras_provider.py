@@ -57,6 +57,13 @@ def test_provider_session_identity_uses_source_defined_keys():
     assert provider_session_id("Cisco VPDN", {"Acct-Session-Id": "abc"}) == "abc"
 
 
+def test_bsae_provider_port_comes_from_user_name():
+    assert provider_session_id(
+        "BSAE",
+        {"User-Name": "alice", "NAS-Port": "17", "Acct-Session-Id": "acct-1"},
+    ) == "alice"
+
+
 def test_mikrotik_ip_assignment_follows_a124_nas_port_type():
     assert provider_ip_assignment_for_attributes("Mikrotik", {"NAS-Port-Type": "Wireless-802.11"}) is False
     assert provider_ip_assignment_for_attributes("Mikrotik", {"NAS-Port-Type": "Ethernet"}) is True
