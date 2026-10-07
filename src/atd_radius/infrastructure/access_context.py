@@ -15,6 +15,7 @@ from atd_radius.domain.radius_auth import (
     verify_pap,
 )
 from atd_radius.domain.user_policies import ras_allows_multi_login
+from atd_radius.domain.ras_provider import provider_ip_assignment_for_attributes
 
 class NativeUserSource(Protocol):
     def get_authentication_record(self, username: str) -> tuple[int, str, bool] | None: ...
@@ -108,6 +109,11 @@ class NativeAccessContext:
                 attrs["__ras_multi_login_allowed"] = "1" if ras_allows_multi_login(
                     ras_record.ras_type, ras_attrs, "internet"
                 ) else "0"
-                if ras_record.ippool_ids:
+                ip_assignment = provider_ip_assignment_for_attributes(
+                    ras_record.ras_type, {**ras_attrs, **packet.attributes}
+                )
+                if ip_assignment is not None:
+                    attrs["__ras_ip_assignment"] = "1" if ip_assignment else "0"
+                if ras_record.ippool_ids and ip_assignment is not False:
                     attrs["__ras_ippool_ids"] = ",".join(str(pool_id) for pool_id in ras_record.ippool_ids)
         return attrs
