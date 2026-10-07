@@ -87,7 +87,7 @@ def provider_supports_status(ras_type: str | None, status: str) -> bool:
 _ID_ATTRIBUTES = {
     "port": ("NAS-Port", "NAS-Port-Id"),
     "acct_session_id": ("Acct-Session-Id",),
-    "h323_conf_id": ("h323-conf-id", "H323-Conf-ID", "Acct-Session-Id"),
+    "h323_conf_id": ("h323-conf-id", "H323-Conf-ID", "Quintum-h323-conf-id", "Acct-Session-Id"),
     "mac_ip": ("mac_ip", "Calling-Station-Id"),
     "interface_index": ("USR-Interface-Index", "NAS-Port"),
     "call_id": ("Sip-Call-ID", "Call-ID", "Acct-Session-Id"),
