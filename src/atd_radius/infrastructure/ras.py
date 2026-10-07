@@ -76,7 +76,7 @@ class RASRepository:
         return str(row[0]) if row else None
 
     def get(self, ras_id: int) -> RASRecord | None:
-        row = self.conn.execute(select_ras(ras_id)).fetchone()
+        row = self.conn.execute(select_ras(ras_id), (ras_id,)).fetchone()
         return self._ras(row) if row else None
 
     def create(
@@ -129,7 +129,7 @@ class RASRepository:
         self._changed(ras_id)
 
     def ports(self, ras_id: int) -> list[RASPortRecord]:
-        rows = self.conn.execute(select_ras_ports(ras_id)).fetchall()
+        rows = self.conn.execute(select_ras_ports(ras_id), (ras_id,)).fetchall()
         return [RASPortRecord(int(r[0]), r[1], r[2], r[3], r[4]) for r in rows]
 
     def upsert_port(self, ras_id: int, port_name: str, phone: str | None, port_type: str | None, comment: str | None) -> None:
@@ -160,7 +160,7 @@ class RASRepository:
         self._changed(ras_id)
 
     def ippools(self, ras_id: int) -> list[RASIPPoolRecord]:
-        rows = self.conn.execute(select_ras_ippools(ras_id)).fetchall()
+        rows = self.conn.execute(select_ras_ippools(ras_id), (ras_id,)).fetchall()
         return [RASIPPoolRecord(int(r[0]), int(r[1]), int(r[2])) for r in rows]
 
     def add_ippool(self, ras_id: int, ippool_id: int) -> int:
