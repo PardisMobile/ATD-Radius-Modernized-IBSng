@@ -71,8 +71,8 @@ def test_mikrotik_ip_assignment_follows_a124_nas_port_type():
     assert provider_ip_assignment_for_attributes("Mikrotik", {"NAS-Port-Type": "Virtual"}) is True
 
 
-def test_chillispot_rejects_alive_and_exposes_provider_disconnect():
-    assert provider_supports_status("ChilliSpot", "Alive") is False
+def test_chillispot_accepts_alive_and_exposes_provider_disconnect():
+    assert provider_supports_status("ChilliSpot", "Alive") is True
     assert provider_supports_status("ChilliSpot", "Start") is True
     assert provider_disconnect_strategy("ChilliSpot") == "provider-port"
 
@@ -91,7 +91,7 @@ def test_provider_registry_facade_exposes_only_source_derived_behavior():
     assert registry.profile("Mikrotik").name == "mikrotik"
     assert registry.session_id("Mikrotik", {"NAS-Port": "17"}) == "17"
     assert registry.ip_assignment("Mikrotik", {"NAS-Port-Type": "Wireless-802.11"}) is False
-    assert registry.supports_status("ChilliSpot", "Alive") is False
+    assert registry.supports_status("ChilliSpot", "Alive") is True
     assert registry.disconnect_strategy("Cisco") == "snmp-or-rsh"
     assert registry.sip_called_number({"Sip-Req-URI": "sip:12345@example.net;user=phone"}) == "12345"
     assert PROVIDER_REGISTRY.profile("Total Control").unique_id == "interface_index"
