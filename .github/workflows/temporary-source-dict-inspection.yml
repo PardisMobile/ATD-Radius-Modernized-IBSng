@@ -1,0 +1,20 @@
+name: temporary-source-dict-inspection
+on:
+  push:
+    paths:
+      - ".github/workflows/temporary-source-dict-inspection.yml"
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract canonical dictionary
+        run: |
+          mkdir -p /tmp/ibsng
+          tar -xjf "Source of Truth/IBSng-A1.24.tar.bz2" -C /tmp/ibsng
+          echo "=== dictionary.sip ==="
+          sed -n '1,260p' /tmp/ibsng/**/radius_server/dictionary.sip 2>/dev/null || true
+          echo "=== dictionary.ser ==="
+          sed -n '1,220p' /tmp/ibsng/**/radius_server/dictionary.ser 2>/dev/null || true
+          echo "=== dictionary.usr ==="
+          sed -n '1,260p' /tmp/ibsng/**/radius_server/dictionary.usr 2>/dev/null || true
