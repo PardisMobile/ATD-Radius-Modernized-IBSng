@@ -132,3 +132,35 @@ def provider_ip_assignment_for_attributes(ras_type: str | None, attributes: Mapp
 def provider_disconnect_strategy(ras_type: str | None) -> str | None:
     profile = provider_profile(ras_type)
     return profile.disconnect_strategy if profile else None
+
+
+def provider_sip_called_number(attributes: Mapping[str, object]) -> str | None:
+    """Derive SER/MVTS called-number input from the source-defined SIP URI field."""
+    uri = str(attributes.get("Sip-Req-URI") or attributes.get("Sip-Translated-Request-URI") or "").strip()
+    if not uri:
+        return None
+    value = uri
+    if value.lower().startswith("sip:"):
+        value = value[4:]
+    value = value.split("?", 1)[0].split(";", 1)[0]
+    value = value.rsplit("@", 1)[0]
+    return value or None
+
+
+def provider_sip_digest_attributes(attributes: Mapping[str, object]) -> dict[str, object]:
+    """Return only the source-defined SIP/Digest fields consumed by SER."""
+    names = (
+        "Digest-Response",
+        "Digest-Attributes",
+        "Sip-User-ID",
+        "Sip-User-Realm",
+        "Sip-User-Nonce",
+        "Sip-User-Method",
+        "Sip-User-Digest-URI",
+        "Sip-User-Nonce-Count",
+        "Sip-User-QOP",
+        "Sip-User-Opaque",
+        "Sip-User-Response",
+        "Sip-User-CNonce",
+    )
+    return {name: attributes[name] for name in names if name in attributes}
