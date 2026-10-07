@@ -6,6 +6,7 @@ They are metadata for adapters; they do not replace the canonical source.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Mapping
 
 
 @dataclass(frozen=True, slots=True)
@@ -81,3 +82,31 @@ def provider_ip_assignment(ras_type: str | None) -> bool | None:
 def provider_supports_status(ras_type: str | None, status: str) -> bool:
     profile = provider_profile(ras_type)
     return profile is not None and status in profile.accounting_statuses
+
+
+_ID_ATTRIBUTES = {
+    "port": ("NAS-Port", "NAS-Port-Id"),
+    "acct_session_id": ("Acct-Session-Id",),
+    "h323_conf_id": ("h323-conf-id", "H323-Conf-ID", "Acct-Session-Id"),
+    "mac_ip": ("mac_ip", "Calling-Station-Id"),
+    "interface_index": ("USR-Interface-Index", "NAS-Port"),
+    "call_id": ("Sip-Call-ID", "Call-ID", "Acct-Session-Id"),
+}
+
+
+def provider_session_id(ras_type: str | None, attributes: Mapping[str, object]) -> str | None:
+    """Return the A1.24 provider online identity when the source defines one.
+
+    Falls back to the standard Acct-Session-Id only when the provider has no
+    source-defined identity attribute available.
+    """
+    profile = provider_profile(ras_type)
+    if profile is None:
+        raw = attributes.get("Acct-Session-Id")
+        return str(raw) if raw not in (None, "") else None
+    for name in _ID_ATTRIBUTES.get(profile.unique_id or "", ()):
+        raw = attributes.get(name)
+        if raw not in (None, ""):
+            return str(raw)
+    raw = attributes.get("Acct-Session-Id")
+    return str(raw) if raw not in (None, "") else None
