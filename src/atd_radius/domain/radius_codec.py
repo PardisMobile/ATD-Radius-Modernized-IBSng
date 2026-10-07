@@ -209,15 +209,17 @@ _SIP_ATTR_NAMES = {
     108: "Sip-Source-IP-Address",
     109: "Sip-Source-Port",
     110: "Sip-User-ID",
-    111: "Sip-Realm",
-    112: "Sip-Nonce",
-    113: "Sip-Method-Name",
-    114: "Sip-Digest-URI",
-    115: "Sip-Nonce-Count",
-    116: "Sip-QOP",
-    117: "Sip-Opaque",
-    118: "Sip-Response",
-    119: "Sip-CNonce",
+    111: "Sip-User-Realm",
+    112: "Sip-User-Nonce",
+    113: "Sip-User-Method",
+    114: "Sip-User-Digest-URI",
+    115: "Sip-User-Nonce-Count",
+    116: "Sip-User-QOP",
+    117: "Sip-User-Opaque",
+    118: "Sip-User-Response",
+    119: "Sip-User-CNonce",
+    206: "Digest-Response",
+    207: "Digest-Attributes",
     208: "Sip-URI-User",
     210: "Sip-Req-URI",
     211: "Sip-Group",
@@ -228,7 +230,6 @@ _SIP_ATTR_NAMES = {
 _SIP_ATTR_NUMBERS = {name: number for number, name in _SIP_ATTR_NAMES.items()}
 _SIP_INTEGER_ATTRS = {"Sip-Method", "Sip-Response-Code", "Sip-Source-Port"}
 _SIP_IP_ATTRS = {"Sip-Source-IP-Address"}
-
 
 class RadiusCodecError(ValueError):
     pass
@@ -434,6 +435,78 @@ def _decode_vendor_specific(value: bytes) -> tuple[str, str]:
                 return name, vendor_value.hex()
         return name, _decode_value(name, vendor_value, None, b"")
     return f"VSA-{vendor_id}-{vendor_type}", vendor_value.hex()
+
+
+def encode_sip(packet: RadiusPacket) -> bytes:
+    """Encode a SIP/SER-context RADIUS packet using the canonical A1.24 SIP dictionary.
+
+    This context is deliberately separate from the core dictionary because A1.24
+    reuses attribute numbers such as 101-119 with different meanings.
+    """
+    if packet.code not in _CODE_TO_BYTE:
+        raise RadiusCodecError(f"unsupported RADIUS code: {packet.code}")
+    if len(packet.authenticator) not in (0, 16):
+        raise RadiusCodecError("authenticator must be empty or 16 bytes")
+    authenticator = packet.authenticator or bytes(16)
+    body = bytearray()
+    for name, value in packet.attributes.items():
+        number = _SIP_ATTR_NUMBERS.get(name)
+        if number is None:
+            raise RadiusCodecError(f"unsupported SIP/SER attribute: {name}")
+        if name in _SIP_INTEGER_ATTRS:
+            raw = pack("!I", int(value))
+        elif name in _SIP_IP_ATTRS:
+            raw = IPv4Address(str(value)).packed
+        else:
+            raw = _octets(value)
+        if len(raw) > 253:
+            raise RadiusCodecError(f"attribute too long: {name}")
+        body.extend(bytes((number, len(raw) + 2)))
+        body.extend(raw)
+    length = 20 + len(body)
+    if length > 4096:
+        raise RadiusCodecError("RADIUS packet exceeds 4096 bytes")
+    return pack("!BBH", _CODE_TO_BYTE[packet.code], packet.identifier, length) + authenticator + body
+
+
+def decode_sip(data: bytes) -> RadiusPacket:
+    """Decode a RADIUS packet using the canonical A1.24 SIP/SER dictionary context."""
+    if len(data) < 20:
+        raise RadiusCodecError("RADIUS packet is shorter than 20 bytes")
+    code_byte, identifier, length = unpack("!BBH", data[:4])
+    if length < 20 or length > len(data):
+        raise RadiusCodecError("invalid RADIUS packet length")
+    try:
+        code = _BYTE_TO_CODE[code_byte]
+    except KeyError as exc:
+        raise RadiusCodecError(f"unsupported RADIUS code: {code_byte}") from exc
+    authenticator = data[4:20]
+    attrs = {}
+    offset = 20
+    while offset < length:
+        if offset + 2 > length:
+            raise RadiusCodecError("truncated attribute header")
+        number, attr_length = data[offset], data[offset + 1]
+        if attr_length < 2 or offset + attr_length > length:
+            raise RadiusCodecError("invalid attribute length")
+        raw = data[offset + 2 : offset + attr_length]
+        name = _SIP_ATTR_NAMES.get(number, f"Attr-{number}")
+        if name in _SIP_INTEGER_ATTRS:
+            if len(raw) != 4:
+                raise RadiusCodecError(f"invalid integer length for {name}")
+            value = str(unpack("!I", raw)[0])
+        elif name in _SIP_IP_ATTRS:
+            if len(raw) != 4:
+                raise RadiusCodecError(f"invalid IPv4 length for {name}")
+            value = str(IPv4Address(raw))
+        else:
+            try:
+                value = raw.decode("utf-8")
+            except UnicodeDecodeError:
+                value = raw.hex()
+        attrs[name] = value
+        offset += attr_length
+    return RadiusPacket(code, identifier, attrs, authenticator)
 
 
 def encode(packet: RadiusPacket, secret: str | None = None) -> bytes:
