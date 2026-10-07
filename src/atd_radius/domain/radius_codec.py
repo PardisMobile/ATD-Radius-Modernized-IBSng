@@ -148,6 +148,7 @@ _HEX_ATTRS = {"CHAP-Password", "CHAP-Challenge", "Message-Authenticator", "State
 _MICROSOFT_VENDOR_ID = 311
 _MICROSOFT_VSA_NAMES = {
     1: "MS-CHAP-Response",
+    2: "MS-CHAP-Error",
     10: "MS-CHAP-Domain",
     11: "MS-CHAP-Challenge",
     25: "MS-CHAP2-Response",
