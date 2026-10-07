@@ -420,3 +420,13 @@ Do not mark a subsystem Complete merely because its classes exist. Completion re
 - Added wire round-trip coverage for provider VSAs.
 - CI is green on commit `ae22c00098d9ca6c77c524f2907643fe85aed497`; Python workflow passes 218 tests.
 - Temporary provider dictionary workflow was removed.
+
+
+### Accounting + provider normalization checkpoint — 2026-10-07
+- Canonical A1.24 provider inspection confirmed Accounting Alive uses 32-bit octets plus Gigawords counters; ATD now composes `Acct-Input/Output-Octets` with corresponding Gigawords into full counters before session/charge processing.
+- Added source-derived provider normalization metadata for ChilliSpot, Cisco, Cisco VPDN, MikroTik, PortMaster, PortSlave, Quintum Tenor and Total Control.
+- ChilliSpot now has explicit source-derived Start/Stop-only status support in the provider profile.
+- MikroTik IP-assignment behavior is now resolved from canonical `NAS-Port-Type`: Wireless-802.11 disables assignment; Ethernet/Virtual allow assignment.
+- The Access context passes this provider decision into the IP-pool policy so provider-disabled assignment does not consume a native pool address.
+- CI and Python workflows are green on commit `b5afca85474a`.
+- A provider-specific Access-context test fixture was not added because the tool rejected that fixture operation; no test coverage is being claimed for that exact fixture yet.
