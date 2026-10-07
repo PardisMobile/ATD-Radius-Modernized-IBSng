@@ -45,3 +45,9 @@ The final migration target is lossless restoration of an IBSng backup into ATD s
 
 ## Completion gate
 No subsystem is marked complete until its source inventory, ATD implementation, database mapping, permissions, UI workflow and automated/integration tests are linked from this document or its subsystem ledger.
+
+
+### 2026-10-07 Dictionary parity update
+- Core wire attribute catalog expanded from the earlier subset to the source-defined A1.24 standard attributes used by AAA/Accounting, including EAP-Message, Acct-Interim-Interval, Gigawords, IPv6 and Digest attributes.
+- Microsoft RFC 2548 VSA catalog expanded for MS-CHAP error/ARAP/accounting/EAP and DNS/NBNS attributes.
+- Full legacy/vendor dictionary parity remains open; Cisco, Quintum, MikroTik and USR vendor catalogs still require adapter-specific wire fixtures before being marked complete.
