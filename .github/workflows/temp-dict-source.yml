@@ -1,0 +1,17 @@
+name: temp-dict-source
+on:
+  push:
+    paths: [".github/workflows/temp-dict-source.yml"]
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          set -euo pipefail
+          mkdir -p /tmp/ibs
+          tar -xjf "Source of Truth/IBSng-A1.24.tar.bz2" -C /tmp/ibs
+          echo "=== DICTIONARY FILES ==="
+          find /tmp/ibs -type f | grep -Ei 'dictionary|radius.*dict|dict.*radius|attributes|vendor' | sort | head -500
+          echo "=== RADIUS ATTRIBUTE REFERENCES ==="
+          grep -RInE 'ATTRIBUTE|Vendor-Specific|NAS-Port|Framed-|Acct-|MS-MPPE|MS-CHAP|Message-Authenticator|Error-Cause|Calling-Station|Called-Station|NAS-Identifier|NAS-IP' /tmp/ibs/IBSng --include='*.py' --include='*.php' --include='*.conf' 2>/dev/null | head -2500
