@@ -10,6 +10,7 @@ from atd_radius.domain.ras_provider import (
     provider_disconnect_strategy,
     RASProviderRegistry,
     PROVIDER_REGISTRY,
+    provider_packet_context,
 )
 
 
@@ -99,3 +100,41 @@ def test_provider_registry_facade_exposes_only_source_derived_behavior():
     assert registry.disconnect_strategy("Cisco") == "snmp-or-rsh"
     assert registry.sip_called_number({"Sip-Req-URI": "sip:12345@example.net;user=phone"}) == "12345"
     assert PROVIDER_REGISTRY.profile("Total Control").unique_id == "interface_index"
+
+
+def test_provider_packet_context_is_side_effect_free_and_source_derived():
+    ctx = provider_packet_context(
+        "Cisco",
+        {"H323-Conf-ID": "h323-42", "NAS-Port": "17"},
+        service="voip",
+        accounting_status="Alive",
+    )
+    assert ctx is not None
+    assert ctx.profile.name == "cisco"
+    assert ctx.service == "voip"
+    assert ctx.session_id == "h323-42"
+    assert ctx.multi_login is False
+    assert ctx.accounting_supported is True
+    assert ctx.disconnect_strategy == "snmp-or-rsh"
+
+
+def test_provider_packet_context_preserves_bsae_user_name_identity():
+    ctx = provider_packet_context(
+        "BSAE",
+        {"User-Name": "alice", "NAS-Port": "17"},
+        accounting_status="Start",
+    )
+    assert ctx is not None
+    assert ctx.session_id == "alice"
+    assert ctx.multi_login is False
+    assert ctx.accounting_supported is True
+
+
+def test_provider_packet_context_rejects_unverified_status_without_side_effect():
+    ctx = provider_packet_context(
+        "Cisco",
+        {"NAS-Port": "17"},
+        accounting_status="Not-A-Status",
+    )
+    assert ctx is not None
+    assert ctx.accounting_supported is False
