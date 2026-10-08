@@ -53,3 +53,22 @@ def test_recording_transport_has_no_external_side_effect():
 
     assert transport.execute(request) is None
     assert transport.requests == [request]
+
+
+def test_provider_disconnect_builder_preserves_source_parameters():
+    from atd_radius.domain.ras_external import build_provider_disconnect_request
+
+    request = build_provider_disconnect_request(
+        "chilli_spot",
+        "provider-port",
+        source_parameters={
+            "disconnect_ip": "192.0.2.20",
+            "disconnect_port": 1700,
+            "User-Name": "alice",
+        },
+    )
+
+    assert request is not None
+    assert request.operation is ExternalOperation.RADIUS_DISCONNECT
+    assert request.parameters["User-Name"] == "alice"
+    assert request.parameters["disconnect_port"] == 1700
