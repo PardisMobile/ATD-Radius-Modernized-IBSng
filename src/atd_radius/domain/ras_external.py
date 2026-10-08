@@ -10,6 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 from ipaddress import IPv4Address
+from types import MappingProxyType
 from typing import Mapping, Protocol
 
 
@@ -29,6 +30,13 @@ class ProviderOperationRequest:
     operation: ExternalOperation
     action: str
     parameters: Mapping[str, object]
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.provider, str) or not self.provider.strip():
+            raise ValueError("provider must not be empty")
+        if not isinstance(self.action, str) or not self.action.strip():
+            raise ValueError("action must not be empty")
+        object.__setattr__(self, "parameters", MappingProxyType(dict(self.parameters)))
 
 
 class ExternalTransport(Protocol):
