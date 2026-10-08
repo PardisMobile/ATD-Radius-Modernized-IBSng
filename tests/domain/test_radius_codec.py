@@ -449,3 +449,47 @@ def test_control_response_message_authenticator_is_verified():
     tampered = bytearray(wire)
     tampered[-1] ^= 1
     assert not verify_control_response(bytes(tampered), request, "shared")
+
+
+
+def _signed_control_request_with_raw_attributes(attributes, message_authenticator_offset):
+    import hmac
+    from hashlib import md5
+    from struct import pack
+
+    secret = b"shared"
+    length = 20 + len(attributes)
+    header = pack("!BBH", 40, 19, length)
+    wire = bytearray(header + bytes(16) + attributes)
+    ma_start = 20 + message_authenticator_offset
+    wire[ma_start : ma_start + 16] = hmac.new(
+        secret, bytes(wire), "md5"
+    ).digest()
+    wire[4:20] = md5(bytes(wire[:4]) + bytes(16) + bytes(wire[20:]) + secret).digest()
+    return bytes(wire)
+
+
+def test_control_request_rejects_malformed_attribute_after_message_authenticator():
+    username = bytes((1, 7)) + b"alice"
+    message_authenticator = bytes((80, 18)) + bytes(16)
+    malformed_tail = bytes((1, 1))
+    attributes = username + message_authenticator + malformed_tail
+    wire = _signed_control_request_with_raw_attributes(
+        attributes, len(username) + 2
+    )
+    from atd_radius.domain.radius_codec import verify_control_request
+
+    assert not verify_control_request(wire, "shared")
+
+
+def test_control_request_rejects_duplicate_message_authenticators():
+    username = bytes((1, 7)) + b"alice"
+    first_message_authenticator = bytes((80, 18)) + bytes(16)
+    second_message_authenticator = bytes((80, 18)) + b"\\x11" * 16
+    attributes = username + first_message_authenticator + second_message_authenticator
+    wire = _signed_control_request_with_raw_attributes(
+        attributes, len(username) + 2
+    )
+    from atd_radius.domain.radius_codec import verify_control_request
+
+    assert not verify_control_request(wire, "shared")
