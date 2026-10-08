@@ -61,6 +61,7 @@ def test_accounting_request_authenticator_is_verified():
     wire = header + authenticator + attrs
     assert verify_accounting_request(wire, "shared")
     assert not verify_accounting_request(wire, "wrong")
+    assert not verify_accounting_request(wire + bytes((0,)), "shared")
 
 
 def test_disconnect_and_coa_codes_round_trip():
@@ -493,3 +494,32 @@ def test_control_request_rejects_duplicate_message_authenticators():
     from atd_radius.domain.radius_codec import verify_control_request
 
     assert not verify_control_request(wire, "shared")
+
+
+def test_control_request_rejects_bytes_beyond_declared_packet_length():
+    from atd_radius.domain.radius_codec import encode_control_request, verify_control_request
+
+    request = RadiusPacket(
+        RadiusCode.DISCONNECT_REQUEST, 91, {"User-Name": "alice"}, bytes(16)
+    )
+    wire = encode_control_request(request, "shared")
+    assert verify_control_request(wire, "shared")
+    assert not verify_control_request(wire + bytes((0,)), "shared")
+
+
+def test_control_response_rejects_bytes_beyond_declared_packet_length():
+    from atd_radius.domain.radius_codec import (
+        encode_control_request,
+        verify_control_response,
+    )
+
+    request_packet = RadiusPacket(
+        RadiusCode.DISCONNECT_REQUEST, 92, {"User-Name": "alice"}, bytes(16)
+    )
+    request = decode(encode_control_request(request_packet, "shared"), "shared")
+    response = RadiusPacket(
+        RadiusCode.DISCONNECT_ACK, request.identifier, {}, request.authenticator
+    )
+    wire = encode_response(response, request, "shared")
+    assert verify_control_response(wire, request, "shared")
+    assert not verify_control_response(wire + bytes((0,)), request, "shared")
