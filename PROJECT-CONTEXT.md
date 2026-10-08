@@ -843,3 +843,12 @@ The earlier OPEN ledger line saying live PostgreSQL transaction rollback proof i
 - Added regression tests for invalid destination classes, timeout/retry edge cases, and the ChilliSpot builder's IPv4 boundary.
 - No frozen authentication, CHAP/MS-CHAPv2, MPPE, MultiLogin, attribute inheritance, persistence, or accounting-core behavior was changed.
 - The batch's CI is pending until the final HEAD's workflow runs complete; do not mark it green before verifying the runs.
+
+
+## IPv4 control-transport batch — CI confirmation — 2026-10-09
+
+- Final implementation/test HEAD before this context-only update: `e406c5ffabd23c6a0ee344e0dfcc118072448b4c`.
+- Python workflow #845 (run `37857664848`): success.
+- CI workflow #771 (run `37857664923`): success on both Python 3.11 and 3.12; compile, Ruff, PHP syntax and full test steps all passed.
+- During the batch, an intermediate commit briefly failed test collection because the newly added parametrized tests lacked a module-level pytest import; this was fixed in `e406c5f`, and both workflows passed on that final implementation HEAD.
+- Since this context file update itself triggers CI, the new HEAD must be checked again before claiming the repository's current HEAD is green.
