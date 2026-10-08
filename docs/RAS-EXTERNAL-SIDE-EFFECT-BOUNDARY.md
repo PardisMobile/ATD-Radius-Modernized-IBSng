@@ -91,3 +91,13 @@ to the authenticated UDP control client. It sends to the configured
 disconnect endpoint, identifies the target with User-Name, and returns the
 authenticated Disconnect-ACK/NAK to the caller. Tests use a fake UDP socket;
 a live ChilliSpot integration test is still outstanding.
+
+
+## Control transport regression hardening — 2026-10-09
+
+Expanded fake-socket coverage for the shared Disconnect/CoA UDP client:
+CoA-ACK/NAK and Disconnect-NAK response handling, wrong-peer rejection,
+retry-after-timeout behavior, and invalid timeout/retry bounds. These tests
+validate the common protocol transport independently of any provider-specific
+operation. No frozen authentication, MultiLogin, accounting, or persistence
+behavior was changed.

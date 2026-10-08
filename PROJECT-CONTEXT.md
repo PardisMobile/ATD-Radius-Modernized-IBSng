@@ -831,3 +831,5 @@ The earlier OPEN ledger line saying live PostgreSQL transaction rollback proof i
 - 2026-10-09 follow-up: added verification for outbound Disconnect/CoA responses (including Message-Authenticator when applicable) and a UDP client with endpoint matching, timeout/retry bounds, and authenticated ACK/NAK handling. Fake-socket tests avoid live network effects. ChilliSpot packet creation is limited to the source-audited User-Name selector; real RAS integration remains open.
 
 - 2026-10-09: wired ChilliSpot's source-derived User-Name Disconnect-Request packet to the authenticated UDP control client via ChilliSpotDisconnectClient. The adapter returns validated ACK/NAK responses and is covered by fake-socket tests. Live-RAS integration remains open.
+
+- 2026-10-09: expanded shared control-transport regression coverage for CoA ACK/NAK, Disconnect NAK, spoofed-peer rejection, retry-after-timeout, and timeout/retry bounds. This is protocol transport hardening; provider-specific source fields remain separately scoped.

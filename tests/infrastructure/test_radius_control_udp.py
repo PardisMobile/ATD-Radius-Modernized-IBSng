@@ -91,3 +91,76 @@ def test_udp_control_client_rejects_access_request():
     )
     with pytest.raises(ValueError):
         client.send(("192.0.2.20", 1700), request, "shared")
+
+
+
+@pytest.mark.parametrize(
+    ("request_code", "response_code"),
+    [
+        (RadiusCode.COA_REQUEST, RadiusCode.COA_ACK),
+        (RadiusCode.COA_REQUEST, RadiusCode.COA_NAK),
+        (RadiusCode.DISCONNECT_REQUEST, RadiusCode.DISCONNECT_NAK),
+    ],
+)
+def test_udp_control_client_supports_coa_and_authenticated_nak(request_code, response_code):
+    fake = FakeSocket(response_code=response_code)
+    client = RadiusControlUDPClient(socket_factory=lambda *_args: fake)
+    request = RadiusPacket(request_code, 73, {"User-Name": "alice"}, bytes(16))
+    response = client.send(("192.0.2.20", 1700), request, "shared")
+    assert response.code is response_code
+    assert response.identifier == 73
+
+
+def test_udp_control_client_ignores_packet_from_unconfigured_peer():
+    class SpoofedPeerSocket(FakeSocket):
+        def recvfrom(self, size):
+            wire, _peer = super().recvfrom(size)
+            return wire, ("192.0.2.99", 1700)
+
+    fake = SpoofedPeerSocket()
+    client = RadiusControlUDPClient(
+        timeout=0.01,
+        retries=1,
+        socket_factory=lambda *_args: fake,
+    )
+    request = RadiusPacket(
+        RadiusCode.DISCONNECT_REQUEST, 74, {"User-Name": "alice"}, bytes(16)
+    )
+    with pytest.raises(TimeoutError):
+        client.send(("192.0.2.20", 1700), request, "shared")
+
+
+def test_udp_control_client_retries_after_timeout():
+    class DropFirstReplySocket(FakeSocket):
+        def __init__(self):
+            super().__init__()
+            self.calls = 0
+
+        def sendto(self, wire, destination):
+            self.calls += 1
+            if self.calls == 1:
+                self.sent.append((wire, destination))
+                return
+            super().sendto(wire, destination)
+
+    fake = DropFirstReplySocket()
+    client = RadiusControlUDPClient(
+        timeout=0.01,
+        retries=2,
+        socket_factory=lambda *_args: fake,
+    )
+    request = RadiusPacket(
+        RadiusCode.DISCONNECT_REQUEST, 75, {"User-Name": "alice"}, bytes(16)
+    )
+    response = client.send(("192.0.2.20", 1700), request, "shared")
+    assert response.code is RadiusCode.DISCONNECT_ACK
+    assert fake.calls == 2
+
+
+@pytest.mark.parametrize(
+    ("timeout", "retries"),
+    [(0, 1), (-1, 1), (1, 0), (1, -1)],
+)
+def test_udp_control_client_rejects_invalid_timeout_and_retry_bounds(timeout, retries):
+    with pytest.raises(ValueError):
+        RadiusControlUDPClient(timeout=timeout, retries=retries)
