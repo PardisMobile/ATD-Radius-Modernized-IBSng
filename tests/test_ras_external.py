@@ -125,3 +125,27 @@ def test_chillispot_disconnect_datagram_is_authenticated_and_source_scoped():
     assert decoded.attributes == {"User-Name": "alice"}
     assert verify_control_request(wire, "shared")
     assert not verify_control_request(wire, "wrong")
+
+
+@pytest.mark.parametrize(
+    "address",
+    ["radius.example.test", "2001:db8::1", "999.1.1.1"],
+)
+def test_chillispot_disconnect_builder_requires_ipv4_address(address):
+    import pytest
+
+    with pytest.raises(ValueError, match="IPv4"):
+        build_chillispot_disconnect_request(
+            disconnect_ip=address,
+            disconnect_port=1700,
+            username="alice",
+        )
+
+
+def test_chillispot_disconnect_builder_preserves_canonical_ipv4_address():
+    request = build_chillispot_disconnect_request(
+        disconnect_ip="192.0.2.20",
+        disconnect_port=1700,
+        username="alice",
+    )
+    assert request.parameters["disconnect_ip"] == "192.0.2.20"
