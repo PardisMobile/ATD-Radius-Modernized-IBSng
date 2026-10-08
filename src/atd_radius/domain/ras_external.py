@@ -110,3 +110,34 @@ def build_provider_disconnect_request(
         strategy,
         parameters=source_parameters,
     )
+
+def build_chillispot_disconnect_request(
+    *,
+    disconnect_ip: str,
+    disconnect_port: int,
+    username: str,
+) -> ProviderOperationRequest:
+    """Build the source-derived ChilliSpot disconnect envelope.
+
+    A1.24 sends a RADIUS Disconnect-Request to the configured disconnect
+    endpoint and identifies the subscriber with User-Name. Wire encoding and
+    transport remain the responsibility of the concrete RADIUS transport.
+    """
+    if not disconnect_ip.strip():
+        raise ValueError("disconnect_ip must not be empty")
+    if isinstance(disconnect_port, bool) or not isinstance(disconnect_port, int):
+        raise ValueError("disconnect_port must be an integer")
+    if not 1 <= disconnect_port <= 65535:
+        raise ValueError("disconnect_port must be between 1 and 65535")
+    if not username.strip():
+        raise ValueError("username must not be empty")
+    return ProviderOperationRequest(
+        provider="chilli_spot",
+        operation=ExternalOperation.RADIUS_DISCONNECT,
+        action="disconnect",
+        parameters={
+            "disconnect_ip": disconnect_ip,
+            "disconnect_port": disconnect_port,
+            "User-Name": username,
+        },
+    )
