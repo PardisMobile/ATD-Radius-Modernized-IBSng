@@ -189,6 +189,23 @@ def provider_accounting_action(
     if service != "internet":
         return None
 
+    # Only providers whose Internet RAS accounting branch has been directly
+    # traced in A1.24 may enter this mapping. VoIP-only profiles must not
+    # inherit an Internet action merely because the profile has Start/Stop/Alive
+    # as generic status metadata.
+    internet_providers = {
+        "mikrotik",
+        "bsae",
+        "chilli_spot",
+        "cisco",
+        "cisco_vpdn",
+        "portmaster",
+        "portslave",
+        "total_control",
+    }
+    if profile.name not in internet_providers:
+        return None
+
     # The inspected internet providers use INTERNET_UPDATE for Start/Alive
     # and INTERNET_STOP for Stop. PortMaster/PortSlave additionally route
     # their non-Start/non-Stop branch to INTERNET_UPDATE, which is the
