@@ -833,3 +833,13 @@ The earlier OPEN ledger line saying live PostgreSQL transaction rollback proof i
 - 2026-10-09: wired ChilliSpot's source-derived User-Name Disconnect-Request packet to the authenticated UDP control client via ChilliSpotDisconnectClient. The adapter returns validated ACK/NAK responses and is covered by fake-socket tests. Live-RAS integration remains open.
 
 - 2026-10-09: expanded shared control-transport regression coverage for CoA ACK/NAK, Disconnect NAK, spoofed-peer rejection, retry-after-timeout, and timeout/retry bounds. This is protocol transport hardening; provider-specific source fields remain separately scoped.
+
+
+## RADIUS control destination validation batch — 2026-10-09
+
+- Hardened `RadiusControlUDPClient`: the AF_INET client now accepts literal IPv4 destinations only, normalizes the address before sending and peer comparison, and rejects invalid/boolean/out-of-range ports before socket creation.
+- Timeout must be finite and positive; retry count must be a positive integer. This explicitly rejects NaN, infinities, booleans and fractional/string retry values rather than relying on downstream socket/loop errors.
+- ChilliSpot's source-derived disconnect request builder validates and canonicalizes the configured IPv4 address. The provider contract remains IPv4/UDP and uses only the source-audited User-Name selector.
+- Added regression tests for invalid destination classes, timeout/retry edge cases, and the ChilliSpot builder's IPv4 boundary.
+- No frozen authentication, CHAP/MS-CHAPv2, MPPE, MultiLogin, attribute inheritance, persistence, or accounting-core behavior was changed.
+- The batch's CI is pending until the final HEAD's workflow runs complete; do not mark it green before verifying the runs.
