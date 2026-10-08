@@ -35,6 +35,19 @@ Core direction:
 - RADIUS, REST, XML-RPC compatibility, modern PHP UI
 - Future extension points: EAP, LDAP/SQL auth, OAuth/OIDC, MFA, observability/exporters, webhooks, HA/multi-tenancy and product integrations.
 
+## Permanent Freeze Rule — DO NOT TOUCH VERIFIED WORK
+
+**This is a permanent project rule.** Any subsystem, feature, behavior, attribute flow, protocol path, provider behavior, persistence contract, or other implementation that has already been **directly compared against the canonical IBSng A1.24 source, tested, and confirmed correct** is considered **FROZEN**.
+
+- Do **not** modify, refactor, rewrite, simplify, rename, reorganize, or otherwise touch a verified/frozen area merely because a new chat starts or because a different implementation seems cleaner.
+- Do **not** re-open a completed source-parity investigation just to re-check it. Reuse the established verified result as a dependency.
+- A frozen area may be changed **only** when new, direct evidence from the canonical A1.24 Source of Truth proves that the current implementation is incorrect or incomplete.
+- When such contradictory source evidence exists, record the evidence and scope the change strictly to what the source requires; do not use architectural preference or assumptions as justification.
+- This rule applies across **all future ChatGPT conversations** and must be preserved in every handoff/checkpoint.
+- In particular, **MultiLogin and any other previously source-verified behavior must not be altered without new canonical-source evidence**.
+
+The working principle is: **VERIFY ONCE → TEST → FREEZE → BUILD AROUND IT.**
+
 ## Mandatory project rules
 - Never claim full parity/Verified merely because similarly named code exists.
 - Keep CHAP and MS-CHAPv2 first-class authentication paths.
