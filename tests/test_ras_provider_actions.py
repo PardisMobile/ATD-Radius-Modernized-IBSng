@@ -22,3 +22,9 @@ def test_unsupported_provider_or_status_is_not_mapped():
 def test_voip_mapping_is_not_guessed():
     assert provider_accounting_action("Cisco", "Start", "voip") is None
     assert provider_accounting_action("SER", "Alive", "voip") is None
+
+
+def test_voip_only_profiles_do_not_inherit_internet_actions():
+    for provider in ("Asterisk", "GnuGk", "MVTS", "SER", "Quintum Tenor"):
+        assert provider_accounting_action(provider, "Start", "internet") is None
+        assert provider_accounting_action(provider, "Stop", "internet") is None
