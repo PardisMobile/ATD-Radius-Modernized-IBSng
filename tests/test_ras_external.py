@@ -1,3 +1,5 @@
+import pytest
+
 from atd_radius.domain.ras_external import (
     ExternalOperation,
     ProviderOperationRequest,
