@@ -144,3 +144,57 @@ ASTERISK_ADAPTER = AsteriskPacketAdapter()
 GNUGK_ADAPTER = GnuGkPacketAdapter()
 MVTS_ADAPTER = MVTSChannelAdapter()
 QUINTUM_TENOR_ADAPTER = QuintumTenorAdapter()
+
+
+@dataclass(frozen=True, slots=True)
+class ExternalSideEffectAdapter:
+    """Transport-neutral boundary for one source-traced provider strategy."""
+
+    provider: str
+
+    def disconnect_strategy(self) -> str | None:
+        return provider_disconnect_strategy(self.provider)
+
+    def disconnect_request(
+        self, source_parameters: Mapping[str, object]
+    ) -> ProviderOperationRequest | None:
+        return build_provider_disconnect_request(
+            self.provider,
+            self.disconnect_strategy(),
+            source_parameters=source_parameters,
+        )
+
+
+CHILLISPOT_EXTERNAL_ADAPTER = ExternalSideEffectAdapter("chilli_spot")
+CISCO_VPDN_EXTERNAL_ADAPTER = ExternalSideEffectAdapter("cisco_vpdn")
+MIKROTIK_EXTERNAL_ADAPTER = ExternalSideEffectAdapter("mikrotik")
+PORTMASTER_EXTERNAL_ADAPTER = ExternalSideEffectAdapter("portmaster")
+PORTSLAVE_EXTERNAL_ADAPTER = ExternalSideEffectAdapter("portslave")
+TOTAL_CONTROL_EXTERNAL_ADAPTER = ExternalSideEffectAdapter("total_control")
+QUINTUM_TENOR_EXTERNAL_ADAPTER = ExternalSideEffectAdapter("tenor")
+
+
+@dataclass(frozen=True, slots=True)
+class CiscoExternalSideEffectAdapter:
+    """Cisco keeps two possible external disconnect mechanisms in A1.24.
+
+    The source-derived boundary intentionally does not choose between SNMP and
+    RSH until the concrete source branch is available to the runtime adapter.
+    """
+
+    provider: str = "cisco"
+
+    def disconnect_strategy(self) -> str | None:
+        return provider_disconnect_strategy(self.provider)
+
+    def disconnect_request(
+        self, source_parameters: Mapping[str, object]
+    ) -> ProviderOperationRequest | None:
+        return build_provider_disconnect_request(
+            self.provider,
+            self.disconnect_strategy(),
+            source_parameters=source_parameters,
+        )
+
+
+CISCO_EXTERNAL_ADAPTER = CiscoExternalSideEffectAdapter()
