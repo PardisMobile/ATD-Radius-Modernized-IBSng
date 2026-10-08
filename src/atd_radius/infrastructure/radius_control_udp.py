@@ -42,6 +42,7 @@ class RadiusControlUDPClient:
         if not host or not 1 <= port <= 65535:
             raise ValueError("invalid RADIUS control destination")
         wire = encode_control_request(request, secret)
+        authenticated_request = decode(wire, secret)
         with self.socket_factory(socket.AF_INET, socket.SOCK_DGRAM) as udp:
             udp.settimeout(self.timeout)
             for _ in range(self.retries):
@@ -53,7 +54,7 @@ class RadiusControlUDPClient:
                         break
                     if peer != destination:
                         continue
-                    if not verify_control_response(response_wire, request, secret):
+                    if not verify_control_response(response_wire, authenticated_request, secret):
                         continue
                     return decode(response_wire, secret)
         raise TimeoutError(
