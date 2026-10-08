@@ -2,6 +2,7 @@ from atd_radius.domain.ras_external import (
     ExternalOperation,
     ProviderOperationRequest,
     RecordingExternalTransport,
+    build_chillispot_disconnect_request,
     build_disconnect_request,
     disconnect_operations,
 )
