@@ -141,3 +141,35 @@ def build_chillispot_disconnect_request(
             "User-Name": username,
         },
     )
+
+def encode_chillispot_disconnect_datagram(
+    *,
+    disconnect_ip: str,
+    disconnect_port: int,
+    username: str,
+    identifier: int,
+    secret: str,
+) -> tuple[tuple[str, int], bytes]:
+    """Build the known-source-field ChilliSpot Disconnect-Request datagram.
+
+    The source audit establishes the configured endpoint and User-Name
+    selector. No additional provider attributes are inferred here.
+    """
+    from .radius import RadiusCode, RadiusPacket
+    from .radius_codec import encode_control_request
+
+    build_chillispot_disconnect_request(
+        disconnect_ip=disconnect_ip,
+        disconnect_port=disconnect_port,
+        username=username,
+    )
+    packet = RadiusPacket(
+        code=RadiusCode.DISCONNECT_REQUEST,
+        identifier=identifier,
+        attributes={"User-Name": username},
+        authenticator=bytes(16),
+    )
+    return (
+        (disconnect_ip, disconnect_port),
+        encode_control_request(packet, secret),
+    )
