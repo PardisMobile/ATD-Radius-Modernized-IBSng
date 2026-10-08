@@ -83,6 +83,48 @@ class RASProviderRegistry:
         return provider_sip_digest_attributes(attributes)
 
 
+@dataclass(frozen=True, slots=True)
+class RASPacketContext:
+    """Source-derived provider context for one RADIUS message.
+
+    This object is side-effect free. Provider-specific SNMP/RSH/launcher or
+    telephony operations remain concrete adapter responsibilities and must be
+    backed by canonical A1.24 source evidence before implementation.
+    """
+    profile: RASProviderProfile
+    service: str
+    session_id: str | None
+    multi_login: bool | None
+    ip_assignment: bool | None
+    accounting_supported: bool
+    disconnect_strategy: str | None
+
+
+def provider_packet_context(
+    ras_type: str | None,
+    attributes: Mapping[str, object],
+    *,
+    service: str = "internet",
+    accounting_status: str | None = None,
+) -> RASPacketContext | None:
+    """Build the source-derived provider context without side effects."""
+    profile = provider_profile(ras_type)
+    if profile is None:
+        return None
+    return RASPacketContext(
+        profile=profile,
+        service=service,
+        session_id=provider_session_id(ras_type, attributes, service),
+        multi_login=provider_multi_login(ras_type, service),
+        ip_assignment=provider_ip_assignment_for_attributes(ras_type, attributes),
+        accounting_supported=(
+            accounting_status is None
+            or provider_supports_status(ras_type, accounting_status)
+        ),
+        disconnect_strategy=provider_disconnect_strategy(ras_type),
+    )
+
+
 PROVIDER_REGISTRY = RASProviderRegistry()
 
 
