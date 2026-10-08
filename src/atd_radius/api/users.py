@@ -49,6 +49,24 @@ class ConnectionLogView(BaseModel):
     credit_used: str | None
 
 
+class NativeCredentialView(BaseModel):
+    username: str
+    password: str
+
+
+class PersistentLANView(BaseModel):
+    mac: str
+    ip: str
+    ras_id: int | None
+
+
+class UserComponentsView(BaseModel):
+    normal: NativeCredentialView | None
+    voip: NativeCredentialView | None
+    caller_ids: list[str]
+    persistent_lan: list[PersistentLANView]
+
+
 class CreditChangeView(BaseModel):
     id: int
     action: int | None
@@ -64,6 +82,7 @@ class UserDetailView(BaseModel):
     has_password: bool
     groups: list[GroupView]
     attributes: list[AttributeView]
+    components: UserComponentsView
     connection_logs: list[ConnectionLogView]
     credit_changes: list[CreditChangeView]
 
@@ -118,6 +137,23 @@ def get_user_detail(username: str) -> UserDetailView:
         if user is None:
             raise HTTPException(status_code=404, detail="user not found")
         detail = UserDetailRepository(conn)
+        components = UserComponentsView(
+            normal=(
+                NativeCredentialView(username=x[0], password=x[1])
+                if (x := repository.normal_credentials(user.id)) is not None
+                else None
+            ),
+            voip=(
+                NativeCredentialView(username=x[0], password=x[1])
+                if (x := repository.voip_credentials(user.id)) is not None
+                else None
+            ),
+            caller_ids=repository.caller_ids(user.id),
+            persistent_lan=[
+                PersistentLANView(mac=x[0], ip=x[1], ras_id=x[2])
+                for x in repository.persistent_lan(user.id)
+            ],
+        )
         credential = conn.execute(
             "SELECT normal_password IS NOT NULL AND normal_password <> '' FROM normal_users WHERE user_id = %s",
             (user.id,),
@@ -134,6 +170,7 @@ def get_user_detail(username: str) -> UserDetailView:
         has_password=bool(credential[0]) if credential else False,
         groups=[GroupView(id=g.id, name=g.name, comment=g.comment) for g in groups],
         attributes=[AttributeView(name=a.name, value=a.value) for a in attributes],
+        components=components,
         connection_logs=[
             ConnectionLogView(
                 id=x.id,
