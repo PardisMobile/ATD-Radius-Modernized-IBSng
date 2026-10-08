@@ -815,3 +815,12 @@ The earlier OPEN ledger line saying live PostgreSQL transaction rollback proof i
 - These adapters are pure normalization/capability boundaries. They do not perform SNMP, RSH, launcher, Asterisk Manager, H323, SIP or other external side effects.
 - Frozen authentication, MultiLogin core semantics, attribute inheritance, persistence contracts, IP-pool runtime state and generic RAS registry behavior were not reopened or modified.
 - CI is not claimed green for this batch; the available workflow lookup does not expose a completed push run.
+
+### Continuation checkpoint — 2026-10-09
+
+- Added build_chillispot_disconnect_request() in src/atd_radius/domain/ras_external.py.
+- The builder is limited to source-traced facts: configured disconnect IP/port and subscriber User-Name; it validates endpoint port bounds and emits a transport-neutral RADIUS-disconnect request.
+- Added regression coverage for the exact request envelope and invalid inputs in tests/test_ras_external.py.
+- This does not yet implement RADIUS Disconnect-Request wire encoding or real network I/O; those remain open.
+- Frozen authentication, MultiLogin, MPPE, persistence and existing provider identity/accounting contracts were not changed.
+- CI must be checked on the new HEAD before describing this increment as passing.
