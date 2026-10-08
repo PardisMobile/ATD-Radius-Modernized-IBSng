@@ -2,7 +2,7 @@ name: Python
 
 on:
   push:
-    branches: [main]
+    branches: [main, "audit/a124-portmaster-portslave-source"]
   pull_request:
 
 jobs:
@@ -16,3 +16,4 @@ jobs:
       - run: python -m pip install --upgrade pip
       - run: pip install -e '.[test]'
       - run: python -m pytest -q
+
