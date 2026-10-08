@@ -826,3 +826,4 @@ The earlier OPEN ledger line saying live PostgreSQL transaction rollback proof i
 - CI must be checked on the new HEAD before describing this increment as passing.
 
 - Follow-up increment on 2026-10-09: added a separate encode_control_request() codec path for outbound RFC 5176 Disconnect/CoA requests, including request-authenticator generation and Message-Authenticator recomputation when present. Added round-trip/verifier regression tests. This does not alter the frozen inbound control path; provider-specific network dispatch remains open.
+- Further ChilliSpot increment: encode_chillispot_disconnect_datagram() now builds an authenticated Disconnect-Request datagram using the configured endpoint and source-audited User-Name selector. Regression coverage verifies packet code, identifier, destination, decoded attributes, and request authenticator. It deliberately does not open a socket; dispatch/retry/ACK handling remains open.
