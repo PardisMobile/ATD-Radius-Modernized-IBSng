@@ -72,3 +72,35 @@ def test_provider_disconnect_builder_preserves_source_parameters():
     assert request.operation is ExternalOperation.RADIUS_DISCONNECT
     assert request.parameters["User-Name"] == "alice"
     assert request.parameters["disconnect_port"] == 1700
+
+
+
+def test_chillispot_disconnect_builder_requires_source_fields():
+    import pytest
+
+    from atd_radius.domain.ras_external import build_chillispot_disconnect_request
+
+    request = build_chillispot_disconnect_request(
+        disconnect_ip="192.0.2.20",
+        disconnect_port=1700,
+        username="alice",
+    )
+    assert request == ProviderOperationRequest(
+        provider="chilli_spot",
+        operation=ExternalOperation.RADIUS_DISCONNECT,
+        action="disconnect",
+        parameters={
+            "disconnect_ip": "192.0.2.20",
+            "disconnect_port": 1700,
+            "User-Name": "alice",
+        },
+    )
+    for kwargs in (
+        {"disconnect_ip": "", "disconnect_port": 1700, "username": "alice"},
+        {"disconnect_ip": "192.0.2.20", "disconnect_port": 0, "username": "alice"},
+        {"disconnect_ip": "192.0.2.20", "disconnect_port": 65536, "username": "alice"},
+        {"disconnect_ip": "192.0.2.20", "disconnect_port": True, "username": "alice"},
+        {"disconnect_ip": "192.0.2.20", "disconnect_port": 1700, "username": ""},
+    ):
+        with pytest.raises(ValueError):
+            build_chillispot_disconnect_request(**kwargs)
