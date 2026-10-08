@@ -765,3 +765,13 @@ These are the active work areas. Implement them in batches, using the canonical 
 ### Accounting status correction
 
 The earlier OPEN ledger line saying live PostgreSQL transaction rollback proof is still pending is stale relative to the verified checkpoint at commit 6028f21d6f6ca4f2e7abdd1be31da9e6d000bcc2, which included a real PostgreSQL trigger failure-path test and passed 225 tests in the CI matrix. The open item is therefore removed from the active TODO list; future work should focus on provider-specific accounting parity rather than redoing the already-verified rollback test.
+
+
+## Provider action-layer hardening — 2026-10-08
+
+- Corrected the provider accounting action layer so only the eight Internet providers whose Internet accounting branches were directly traced in A1.24 can produce Internet session actions: MikroTik, BSAE, ChilliSpot, Cisco, Cisco VPDN, PortMaster, PortSlave and Total Control.
+- VoIP-oriented profiles (Asterisk, GnuGk, MVTS, SER, Quintum Tenor) no longer inherit Internet Start/Stop actions merely because their profile metadata contains generic accounting statuses.
+- Added regression coverage for this boundary.
+- Implementation: 21c95b0badd5014c1ddbc37ee8814020bcc93e6a.
+- Regression: 4e681ecae529c91ea04b10a40d32b4745dc88c06.
+- CI for this new hardening commit has not been independently confirmed yet.
