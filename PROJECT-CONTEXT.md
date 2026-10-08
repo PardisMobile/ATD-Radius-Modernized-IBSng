@@ -852,3 +852,12 @@ The earlier OPEN ledger line saying live PostgreSQL transaction rollback proof i
 - CI workflow #771 (run `37857664923`): success on both Python 3.11 and 3.12; compile, Ruff, PHP syntax and full test steps all passed.
 - During the batch, an intermediate commit briefly failed test collection because the newly added parametrized tests lacked a module-level pytest import; this was fixed in `e406c5f`, and both workflows passed on that final implementation HEAD.
 - Since this context file update itself triggers CI, the new HEAD must be checked again before claiming the repository's current HEAD is green.
+
+
+## RADIUS control-request attribute-stream validation — 2026-10-09
+
+- Fixed `verify_control_request()` to validate the complete attribute stream via the shared Message-Authenticator offset parser before accepting a request.
+- This closes an early-exit gap: the previous verifier stopped scanning after the first Message-Authenticator and could overlook a duplicate authenticator or malformed trailing attribute.
+- Added regression tests that create packets with valid request and Message-Authenticator signatures but deliberately duplicate the authenticator or append an invalid attribute. These test malformed structure specifically, not just a bad signature.
+- No source-frozen authentication, CHAP/MS-CHAPv2, MPPE, MultiLogin, persistence, attribute inheritance, or accounting behavior was changed.
+- Implementation/test commits: `603b905ac03f0c56e6043bf558188422c124bdbe`, `cbf8567980c79780976c0cf9257422c25c4f4c16`. CI for this batch is pending until the newest HEAD's workflows complete.
