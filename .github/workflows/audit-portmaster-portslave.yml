@@ -1,0 +1,20 @@
+name: A1.24 PortMaster PortSlave source audit
+on:
+  push:
+    branches: ["audit/a124-portmaster-portslave-source"]
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract source facts
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/a124
+          tar -xjf "Source of Truth/IBSng-A1.24.tar.bz2" -C /tmp/a124
+          for f in /tmp/a124/IBSng/core/ras/rases/portmaster.py /tmp/a124/IBSng/core/ras/rases/portslave.py; do
+            echo "===== FILE: $f ====="
+            grep -nE 'class .*Ras|type_attrs|def (__addUniqueIDToRasMsg|handleRadAuthPacket|handleRadAcctPacket|__internetAcct(Start|Stop|Update)|killUser|__kill|disconnect|tryToReOnline)' "$f" || true
+            grep -nE 'unique_id|setInAttrs|setInAttrsIfExists|Acct-Status-Type|setAction|User-Name|User-Password|CHAP-Password|MS-CHAP|NAS-Port|Acct-Session-Id|Framed-IP-Address|Acct-Terminate-Cause|multi_login|ip_assignment|snmp|launcher' "$f" || true
+          done
