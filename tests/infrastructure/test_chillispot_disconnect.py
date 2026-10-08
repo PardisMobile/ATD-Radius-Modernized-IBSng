@@ -69,3 +69,25 @@ def test_chillispot_disconnect_preserves_authenticated_nak_for_caller():
         secret="shared",
     )
     assert response.code is RadiusCode.DISCONNECT_NAK
+
+
+
+def test_chillispot_disconnect_rejects_invalid_destination_before_socket_creation():
+    import pytest
+
+    client = ChilliSpotDisconnectClient(
+        RadiusControlUDPClient(
+            socket_factory=lambda *_args: (_ for _ in ()).throw(
+                AssertionError("socket must not be created for invalid destination")
+            )
+        )
+    )
+    for address, port in (("", 1700), ("192.0.2.20", 0), ("192.0.2.20", True)):
+        with pytest.raises(ValueError):
+            client.disconnect(
+                disconnect_ip=address,
+                disconnect_port=port,
+                username="alice",
+                identifier=63,
+                secret="shared",
+            )
