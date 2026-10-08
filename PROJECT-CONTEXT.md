@@ -562,3 +562,15 @@ Do not mark a subsystem Complete merely because its classes exist. Completion re
 - CI workflow #685: **SUCCESS**; both Python 3.11 and 3.12 test jobs passed, including Ruff, PHP syntax and the full test step.
 - Therefore the Cisco service-aware identity change and its regression tests are CI-verified on main.
 - PortMaster/PortSlave source audit has been started on isolated branch `audit/a124-portmaster-portslave-source`; no provider implementation has been changed from assumptions before direct source extraction.
+
+
+### Direct A1.24 source verification checkpoint — PortMaster / PortSlave — 2026-10-08
+- Canonical source files inspected: `IBSng/core/ras/rases/portmaster.py`, `IBSng/core/ras/rases/portslave.py`.
+- Both use `unique_id=port` and derive port from NAS-Port.
+- Both consume PAP/CHAP/MS-CHAP/MS-CHAP2 authentication inputs.
+- Both handle Start, Stop and the non-Start/non-Stop accounting path as INTERNET_UPDATE; therefore A1.24 Alive is supported even though the source does not name a separate Alive branch.
+- PortMaster kill/disconnect is SNMP port-based; PortSlave kill/disconnect uses its external launcher command with RAS IP.
+- ATD implementation: `d2fae102448a1d9812c3a142f1accfeb67917f41` adds Start/Stop/Alive to both provider profiles.
+- Regression tests: `236071cfbe5238bb8ba0d8885f3aa3393752142e`.
+- Audit record: `c0f23b98cb207432241d3de7a0ccda7b06527598`.
+- Source-audit branch `audit/a124-portmaster-portslave-source` was used only for extraction; no audit workflow was merged to main.
