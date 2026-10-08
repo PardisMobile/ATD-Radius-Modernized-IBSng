@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from atd_radius.domain.radius import RadiusCode, RadiusPacket
-from atd_radius.domain.ras_external import build_chillispot_disconnect_packet
+from atd_radius.domain.ras_external import (\n    build_chillispot_disconnect_packet,\n    build_chillispot_disconnect_request,\n)
 from atd_radius.infrastructure.radius_control_udp import RadiusControlUDPClient
 
 
@@ -21,6 +21,11 @@ class ChilliSpotDisconnectClient:
         identifier: int,
         secret: str,
     ) -> RadiusPacket:
+        build_chillispot_disconnect_request(
+            disconnect_ip=disconnect_ip,
+            disconnect_port=disconnect_port,
+            username=username,
+        )
         packet = build_chillispot_disconnect_packet(
             username=username,
             identifier=identifier,
