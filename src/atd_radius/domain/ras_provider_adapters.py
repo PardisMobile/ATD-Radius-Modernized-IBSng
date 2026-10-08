@@ -74,3 +74,61 @@ class SERPacketAdapter:
 
 PERSISTENT_LAN_ADAPTER = PersistentLanPacketAdapter()
 SER_ADAPTER = SERPacketAdapter()
+
+
+@dataclass(frozen=True, slots=True)
+class AsteriskPacketAdapter:
+    """Source-traced Asterisk identity/capability boundary."""
+
+    def session_id(self, attributes: Mapping[str, object]) -> str | None:
+        return provider_session_id("asterisk", attributes, "voip")
+
+    def multi_login(self, attributes: Mapping[str, object]) -> bool:
+        value = attributes.get("asterisk_multi_login", 0)
+        try:
+            return int(value) != 0
+        except (TypeError, ValueError):
+            return False
+
+
+@dataclass(frozen=True, slots=True)
+class GnuGkPacketAdapter:
+    """Source-traced GnuGk identity/capability boundary."""
+
+    def session_id(self, attributes: Mapping[str, object]) -> str | None:
+        return provider_session_id("gnugk", attributes, "voip")
+
+    def multi_login(self, attributes: Mapping[str, object]) -> bool:
+        value = attributes.get("gnugk_multiple_login", 0)
+        try:
+            return int(value) != 0
+        except (TypeError, ValueError):
+            return False
+
+
+@dataclass(frozen=True, slots=True)
+class MVTSChannelAdapter:
+    """Source-traced MVTS H323 conference identity boundary."""
+
+    def session_id(self, attributes: Mapping[str, object]) -> str | None:
+        return provider_session_id("mvts", attributes, "voip")
+
+
+@dataclass(frozen=True, slots=True)
+class QuintumTenorAdapter:
+    """Source-traced Quintum Tenor identity and single-session boundary."""
+
+    def session_id(self, attributes: Mapping[str, object]) -> str | None:
+        return provider_session_id("tenor", attributes, "voip")
+
+    def multi_login(self) -> bool:
+        return False
+
+    def single_session_h323(self) -> bool:
+        return True
+
+
+ASTERISK_ADAPTER = AsteriskPacketAdapter()
+GNUGK_ADAPTER = GnuGkPacketAdapter()
+MVTS_ADAPTER = MVTSChannelAdapter()
+QUINTUM_TENOR_ADAPTER = QuintumTenorAdapter()
