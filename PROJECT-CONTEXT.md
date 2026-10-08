@@ -622,10 +622,3 @@ CI status: must be evaluated on the final checkpoint commit before declaring gre
 
 Latest implementation checkpoint before this continuation: d95c2d8eb33d711a5b79c3910dcb2e349fd53a92.
 CI had not reported a workflow run for that checkpoint; this remains historical status only.
-
-## 2026-10-08 MultiLogin regression checkpoint
-
-- Added regression coverage for the source-traced A1.24 distinction between an absent multi_login attribute (effective default 1) and an explicit multi_login=0 (real zero limit, rejecting the first login).
-- Kept the test at the policy boundary: group-vs-user attribute resolution is already source-traced upstream in UserLoader/UserAttributes and is not duplicated or guessed in the policy test.
-- Implementation commits: 899f7f5a52cf0fccc789a42edf5ac14cf915c071 and f2e99221c1b20fc189bd5d8a311e189de966151a.
-- CI status for the new checkpoint must be checked from the actual GitHub Actions run; no green claim is made here.
