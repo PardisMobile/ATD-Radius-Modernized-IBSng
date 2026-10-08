@@ -34,3 +34,12 @@ The next concrete provider adapters must be built only after exact canonical sou
 This checkpoint does not modify any frozen authentication, MultiLogin, attribute, persistence, accounting core, or provider identity behavior.
 
 CI must be independently observed before this batch is described as CI-green.
+
+
+## Adapter wiring checkpoint — 2026-10-08
+
+Provider adapter objects now expose the already-audited disconnect strategy without executing external I/O. Covered: ChilliSpot, Cisco VPDN, MikroTik, PortMaster, PortSlave, Total Control, Quintum Tenor and Cisco.
+
+Cisco intentionally remains unresolved at request-building level because its source-traced strategy has two alternatives. No parameter names or values are synthesized; callers must provide source-derived parameters.
+
+The accidental literal-escape import corruption in the RAS adapter module was corrected and the current main file was re-read successfully. Frozen behavior was not changed.
