@@ -64,3 +64,10 @@ Regression tests verify the generated request with the existing control-request
 verifier and reject non-control packet codes. This is protocol plumbing only;
 provider-specific network dispatch and exact A1.24 per-provider fields remain
 separate work.
+
+The ChilliSpot path now also exposes a datagram builder that returns the
+configured destination and an authenticated Disconnect-Request wire packet.
+It includes only the source-audited User-Name selector and does not open a
+socket or perform network I/O. The caller remains responsible for transport,
+timeouts/retries and interpreting Disconnect-ACK/NAK; those details are not
+claimed complete by this increment.
