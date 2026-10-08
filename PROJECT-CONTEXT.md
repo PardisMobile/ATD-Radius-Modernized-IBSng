@@ -597,3 +597,16 @@ ATD change committed in b47719ff2ef4ae7256f6ad4cdc078200e7ef72b4: UserRepository
 Regression coverage committed in fe3dd1d97d9e8494745e4b24b022f075addbff21: repository tests verify all four native component reads and their PostgreSQL column/table contracts.
 
 CI status for this checkpoint must be checked against the new commit before claiming green. No CI result is claimed here yet.
+
+
+## Large User/DB/API parity batch — 2026-10-08
+
+Extended the source-driven user persistence work through the API boundary. A1.24 native subscriber components remain separated across normal_users, voip_users, caller_id_users and persistent_lan_users; ATD now exposes those components in the user detail contract while keeping passwords out of the API. The API reports username plus has_password for normal/VoIP credentials, caller IDs, and persistent-LAN bindings (MAC/IP/RAS).
+
+Implementation commits: b47719ff2ef4ae7256f6ad4cdc078200e7ef72b4, 27a6363c77cb04cb2eb75e75cde174db1766c843, ae3c63e4baa0ef40c7c8f5ed784f1c02fa76c25.
+
+Regression commits: fe3dd1d97d9e8494745e4b24b022f075addbff21 and ee4b9c5147d7f0feb07d12f6a82249f59e71d9b0. The latter explicitly prevents a password field from entering the public user component API contract.
+
+Source-first note: no new Service/Plan behavior was invented in this batch. The existing RouteBox service catalog is a separate application/product layer and is not being conflated with IBSng A1.24 core Service semantics until the canonical service source is mapped directly.
+
+CI status: must be evaluated on the final checkpoint commit before declaring green.
