@@ -43,3 +43,13 @@ Provider adapter objects now expose the already-audited disconnect strategy with
 Cisco intentionally remains unresolved at request-building level because its source-traced strategy has two alternatives. No parameter names or values are synthesized; callers must provide source-derived parameters.
 
 The accidental literal-escape import corruption in the RAS adapter module was corrected and the current main file was re-read successfully. Frozen behavior was not changed.
+
+## ChilliSpot request-envelope implementation — 2026-10-09
+
+Added a provider-specific, transport-neutral request builder for the directly
+source-traced ChilliSpot disconnect path. It requires the configured
+disconnect_ip, disconnect_port, and subscriber User-Name, validates the endpoint
+port, and emits the RADIUS-disconnect operation envelope. It does not claim to
+encode or send the RADIUS Disconnect-Request; wire construction and network
+I/O remain open until connected to the existing source-backed RADIUS transport.
+Regression tests cover the exact envelope and invalid inputs.
