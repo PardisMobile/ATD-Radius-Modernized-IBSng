@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import socket
 from collections.abc import Callable
+from ipaddress import IPv4Address
+from math import isfinite
 
 from atd_radius.domain.radius import RadiusCode, RadiusPacket
 from atd_radius.domain.radius_codec import (
@@ -22,10 +24,10 @@ class RadiusControlUDPClient:
         retries: int = 1,
         socket_factory: Callable[..., object] = socket.socket,
     ) -> None:
-        if timeout <= 0:
-            raise ValueError("timeout must be positive")
-        if retries < 1:
-            raise ValueError("retries must be at least one")
+        if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or not isfinite(timeout) or timeout <= 0:
+            raise ValueError("timeout must be a finite positive number")
+        if isinstance(retries, bool) or not isinstance(retries, int) or retries < 1:
+            raise ValueError("retries must be a positive integer")
         self.timeout = timeout
         self.retries = retries
         self.socket_factory = socket_factory
@@ -39,8 +41,15 @@ class RadiusControlUDPClient:
         if request.code not in {RadiusCode.DISCONNECT_REQUEST, RadiusCode.COA_REQUEST}:
             raise ValueError("expected Disconnect-Request or CoA-Request")
         host, port = destination
-        if not host or not 1 <= port <= 65535:
-            raise ValueError("invalid RADIUS control destination")
+        if not isinstance(host, str) or not host.strip():
+            raise ValueError("RADIUS control destination must be an IPv4 address")
+        try:
+            host = str(IPv4Address(host))
+        except ValueError as exc:
+            raise ValueError("RADIUS control destination must be an IPv4 address") from exc
+        if isinstance(port, bool) or not isinstance(port, int) or not 1 <= port <= 65535:
+            raise ValueError("RADIUS control destination port must be an integer from 1 to 65535")
+        destination = (host, port)
         wire = encode_control_request(request, secret)
         authenticated_request = decode(wire, secret)
         with self.socket_factory(socket.AF_INET, socket.SOCK_DGRAM) as udp:
