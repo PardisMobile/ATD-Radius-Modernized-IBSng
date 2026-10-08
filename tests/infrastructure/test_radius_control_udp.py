@@ -164,3 +164,36 @@ def test_udp_control_client_retries_after_timeout():
 def test_udp_control_client_rejects_invalid_timeout_and_retry_bounds(timeout, retries):
     with pytest.raises(ValueError):
         RadiusControlUDPClient(timeout=timeout, retries=retries)
+
+
+@pytest.mark.parametrize("destination", [
+    ("", 1700),
+    ("radius.example.test", 1700),
+    ("2001:db8::1", 1700),
+    ("192.0.2.20", 0),
+    ("192.0.2.20", True),
+    ("192.0.2.20", 65536),
+])
+def test_udp_control_client_rejects_invalid_destination_before_socket_creation(destination):
+    client = RadiusControlUDPClient(
+        socket_factory=lambda *_args: (_ for _ in ()).throw(
+            AssertionError("socket must not be created for an invalid destination")
+        )
+    )
+    request = RadiusPacket(
+        RadiusCode.DISCONNECT_REQUEST, 76, {"User-Name": "alice"}, bytes(16)
+    )
+    with pytest.raises(ValueError):
+        client.send(destination, request, "shared")
+
+
+@pytest.mark.parametrize("timeout", [float("nan"), float("inf"), float("-inf"), True])
+def test_udp_control_client_rejects_non_finite_or_boolean_timeout(timeout):
+    with pytest.raises(ValueError):
+        RadiusControlUDPClient(timeout=timeout)
+
+
+@pytest.mark.parametrize("retries", [True, 1.5, "2"])
+def test_udp_control_client_rejects_non_integer_retry_count(retries):
+    with pytest.raises(ValueError):
+        RadiusControlUDPClient(retries=retries)
