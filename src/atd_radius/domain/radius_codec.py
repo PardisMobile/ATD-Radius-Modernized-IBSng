@@ -738,27 +738,16 @@ def verify_control_request(data: bytes, secret: str) -> bool:
     unsigned = data[:4] + bytes(16) + data[20:length]
     if authenticator != md5(unsigned + secret.encode("utf-8")).digest():
         return False
-    offset = 20
-    message_auth = None
-    message_start = None
-    while offset < length:
-        if offset + 2 > length:
-            return False
-        attr_length = data[offset + 1]
-        if attr_length < 2 or offset + attr_length > length:
-            return False
-        if data[offset] == 80:
-            if attr_length != 18:
-                return False
-            message_auth = data[offset + 2 : offset + 18]
-            message_start = offset
-            break
-        offset += attr_length
-    if message_auth is None or message_start is None:
+    try:
+        message_start = _message_authenticator_offset(data[:length])
+    except RadiusCodecError:
+        return False
+    if message_start is None:
         return True
+    message_auth = data[message_start : message_start + 16]
     mutable = bytearray(data[:length])
     mutable[4:20] = bytes(16)
-    mutable[message_start + 2 : message_start + 18] = bytes(16)
+    mutable[message_start : message_start + 16] = bytes(16)
     expected = hmac.new(secret.encode("utf-8"), bytes(mutable), "md5").digest()
     return hmac.compare_digest(message_auth, expected)
 
