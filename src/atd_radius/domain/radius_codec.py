@@ -719,7 +719,7 @@ def verify_accounting_request(data: bytes, secret: str) -> bool:
     if len(data) < 20:
         return False
     code, identifier, length = unpack("!BBH", data[:4])
-    if code != 4 or length < 20 or length > len(data):
+    if code != 4 or length < 20 or length != len(data):
         return False
     supplied = data[4:20]
     unsigned = data[:4] + bytes(16) + data[20:length]
@@ -732,7 +732,7 @@ def verify_control_request(data: bytes, secret: str) -> bool:
     if len(data) < 20:
         return False
     code, identifier, length = unpack("!BBH", data[:4])
-    if code not in (40, 43) or length < 20 or length > len(data):
+    if code not in (40, 43) or length < 20 or length != len(data):
         return False
     authenticator = data[4:20]
     unsigned = data[:4] + bytes(16) + data[20:length]
@@ -767,7 +767,7 @@ def verify_control_response(data: bytes, request: RadiusPacket, secret: str) -> 
         40 if request.code is RadiusCode.DISCONNECT_REQUEST else 43, set()
     ):
         return False
-    if identifier != request.identifier or length < 20 or length > len(data):
+    if identifier != request.identifier or length < 20 or length != len(data):
         return False
     expected_authenticator = md5(
         data[:4] + request.authenticator + data[20:length] + secret.encode("utf-8")
