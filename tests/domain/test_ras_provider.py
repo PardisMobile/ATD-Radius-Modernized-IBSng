@@ -75,6 +75,8 @@ def test_mikrotik_ip_assignment_follows_a124_nas_port_type():
 
 def test_chillispot_accepts_alive_and_exposes_provider_disconnect():
     assert provider_supports_status("ChilliSpot", "Alive") is True
+    assert provider_supports_status("PortMaster", "Alive") is True
+    assert provider_supports_status("PortSlave", "Alive") is True
     assert provider_supports_status("ChilliSpot", "Start") is True
     assert provider_disconnect_strategy("ChilliSpot") == "provider-port"
 
