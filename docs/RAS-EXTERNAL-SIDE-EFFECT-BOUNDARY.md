@@ -108,3 +108,8 @@ behavior was changed.
 The shared RADIUS control UDP client now validates that its configured destination is a literal IPv4 address before creating a socket, validates the UDP port as a non-boolean integer in range, and rejects non-finite/non-positive timeouts or non-integer retry counts. This matches the implementation's explicit AF_INET transport and prevents hostname resolution from creating a peer-comparison mismatch.
 
 The ChilliSpot disconnect envelope applies the same IPv4-only contract and stores the canonical IPv4 representation. Regression tests cover hostnames, IPv6, malformed IPv4, invalid ports, NaN/infinite/boolean timeouts, and non-integer retry counts. No live network calls are used by these tests.
+
+
+## Full control-request attribute validation — 2026-10-09
+
+The RFC 5176 control-request verifier now validates the entire attribute stream when checking Message-Authenticator, rather than stopping at the first such attribute. This rejects duplicate Message-Authenticator attributes and malformed attributes trailing the authenticator, even when the packet's request authenticator and first Message-Authenticator are otherwise valid. Regression fixtures construct correctly signed malformed packets so the tests exercise parser validation rather than merely failing an authentication check.
