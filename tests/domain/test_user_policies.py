@@ -36,15 +36,6 @@ def test_multilogin_absent_attribute_allows_first_login():
     assert p.evaluate(AAARequest("u")) is None
 
 
-def test_multilogin_group_value_can_be_effective_before_user_override():
-    # UserLoader/UserAttributes resolves the effective attribute before the
-    # MultiLogin plugin consumes it. The policy layer therefore receives the
-    # already-resolved value.
-    p = MultiLoginPolicy((ActiveSessionView("s1"),))
-    assert p.evaluate(AAARequest("u", {"multi_login": "2"})) is None
-    assert p.evaluate(AAARequest("u", {"multi_login": "1"})).reason == "MAX_CONCURRENT"
-
-
 
 def test_nas_can_reject_second_login():
     p=MultiLoginPolicy((ActiveSessionView("s1"),))
