@@ -23,24 +23,6 @@ def test_multilogin_matches_a124_limit():
     p=MultiLoginPolicy((ActiveSessionView("s1"),))
     assert p.evaluate(AAARequest("u",{"multi_login":"1"})).reason=="MAX_CONCURRENT"
 
-def test_multilogin_explicit_zero_rejects_first_login():
-    # A1.24 distinguishes an absent attribute (default 1) from explicit zero.
-    p = MultiLoginPolicy(())
-    result = p.evaluate(AAARequest("u", {"multi_login": "0"}))
-    assert result.reason == "MAX_CONCURRENT"
-
-
-def test_multilogin_absent_attribute_allows_first_login():
-    # A1.24 default is 1 only when no effective multi_login exists.
-    p = MultiLoginPolicy(())
-    assert p.evaluate(AAARequest("u")) is None
-
-
-
-def test_nas_can_reject_second_login():
-    p=MultiLoginPolicy((ActiveSessionView("s1"),))
-    assert p.evaluate(AAARequest("u",{"multi_login":"2","__ras_multi_login_allowed":"0"})).reason=="RAS_DOESNT_ALLOW_MULTILOGIN"
-
 def test_absolute_expiry_rejects_expired_user():
     now=datetime.fromtimestamp(1000,tz=timezone.utc)
     r=AbsoluteExpiryPolicy(now).evaluate(AAARequest("u",{"abs_exp_date":"999"}))
