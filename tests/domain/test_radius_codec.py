@@ -404,3 +404,48 @@ def test_outbound_control_encoder_rejects_non_control_packets():
     except RadiusCodecError:
         return
     raise AssertionError("non-control request was accepted by control encoder")
+
+
+def test_control_response_authenticator_is_verified():
+    from atd_radius.domain.radius_codec import (
+        encode_control_request,
+        verify_control_response,
+    )
+
+    original = RadiusPacket(
+        RadiusCode.DISCONNECT_REQUEST, 47, {"User-Name": "alice"}, bytes(16)
+    )
+    request_wire = encode_control_request(original, "shared")
+    request = decode(request_wire, "shared")
+    response = RadiusPacket(
+        RadiusCode.DISCONNECT_ACK, request.identifier, {}, request.authenticator
+    )
+    response_wire = encode_response(response, request, "shared")
+    assert verify_control_response(response_wire, request, "shared")
+    assert not verify_control_response(response_wire, request, "wrong")
+    assert not verify_control_response(response_wire, RadiusPacket(
+        RadiusCode.DISCONNECT_REQUEST, 48, {"User-Name": "alice"}, request.authenticator
+    ), "shared")
+
+
+def test_control_response_message_authenticator_is_verified():
+    from atd_radius.domain.radius_codec import (
+        encode_control_request,
+        verify_control_response,
+    )
+
+    original = RadiusPacket(
+        RadiusCode.DISCONNECT_REQUEST,
+        49,
+        {"User-Name": "alice", "Message-Authenticator": "00" * 16},
+        bytes(16),
+    )
+    request = decode(encode_control_request(original, "shared"), "shared")
+    response = RadiusPacket(
+        RadiusCode.DISCONNECT_ACK, request.identifier, {}, request.authenticator
+    )
+    wire = encode_response(response, request, "shared")
+    assert verify_control_response(wire, request, "shared")
+    tampered = bytearray(wire)
+    tampered[-1] ^= 1
+    assert not verify_control_response(bytes(tampered), request, "shared")

@@ -761,3 +761,47 @@ def verify_control_request(data: bytes, secret: str) -> bool:
     mutable[message_start + 2 : message_start + 18] = bytes(16)
     expected = hmac.new(secret.encode("utf-8"), bytes(mutable), "md5").digest()
     return hmac.compare_digest(message_auth, expected)
+
+
+def verify_control_response(data: bytes, request: RadiusPacket, secret: str) -> bool:
+    """Verify a Disconnect/CoA response against its originating request."""
+    if request.code not in {RadiusCode.DISCONNECT_REQUEST, RadiusCode.COA_REQUEST}:
+        return False
+    if len(request.authenticator) != 16 or len(data) < 20:
+        return False
+    code, identifier, length = unpack("!BBH", data[:4])
+    expected_codes = {
+        40: {41, 42},
+        43: {44, 45},
+    }
+    if code not in expected_codes.get(
+        40 if request.code is RadiusCode.DISCONNECT_REQUEST else 43, set()
+    ):
+        return False
+    if identifier != request.identifier or length < 20 or length > len(data):
+        return False
+    expected_authenticator = md5(
+        data[:4] + request.authenticator + data[20:length] + secret.encode("utf-8")
+    ).digest()
+    if not hmac.compare_digest(data[4:20], expected_authenticator):
+        return False
+    try:
+        message_offset = _message_authenticator_offset(data[:length])
+    except RadiusCodecError:
+        return False
+    request_has_message_authenticator = "Message-Authenticator" in request.attributes
+    if request_has_message_authenticator and message_offset is None:
+        return False
+    if message_offset is not None:
+        mutable = bytearray(data[:length])
+        mutable[4:20] = request.authenticator
+        mutable[message_offset : message_offset + 16] = bytes(16)
+        expected_message_authenticator = hmac.new(
+            secret.encode("utf-8"), bytes(mutable), "md5"
+        ).digest()
+        if not hmac.compare_digest(
+            data[message_offset : message_offset + 16],
+            expected_message_authenticator,
+        ):
+            return False
+    return True

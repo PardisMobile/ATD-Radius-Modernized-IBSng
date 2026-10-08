@@ -71,3 +71,14 @@ It includes only the source-audited User-Name selector and does not open a
 socket or perform network I/O. The caller remains responsible for transport,
 timeouts/retries and interpreting Disconnect-ACK/NAK; those details are not
 claimed complete by this increment.
+
+
+## Authenticated control-response and UDP transport boundary — 2026-10-09
+
+Added response-authenticator and optional Message-Authenticator verification
+for Disconnect/CoA responses, plus a UDP client that sends outbound control
+requests and accepts only authenticated replies from the configured endpoint.
+The client supports bounded retries/timeouts and is tested through a fake socket;
+no live provider is contacted by tests. ChilliSpot packet construction remains
+limited to the source-audited User-Name selector. The code does not claim
+production deployment validation against a real ChilliSpot RAS.

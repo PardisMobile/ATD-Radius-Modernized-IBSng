@@ -142,6 +142,24 @@ def build_chillispot_disconnect_request(
         },
     )
 
+def build_chillispot_disconnect_packet(
+    *,
+    username: str,
+    identifier: int,
+):
+    """Build the minimal ChilliSpot Disconnect-Request from source-known fields."""
+    from .radius import RadiusCode, RadiusPacket
+
+    if not username.strip():
+        raise ValueError("username must not be empty")
+    return RadiusPacket(
+        code=RadiusCode.DISCONNECT_REQUEST,
+        identifier=identifier,
+        attributes={"User-Name": username},
+        authenticator=bytes(16),
+    )
+
+
 def encode_chillispot_disconnect_datagram(
     *,
     disconnect_ip: str,
@@ -155,7 +173,6 @@ def encode_chillispot_disconnect_datagram(
     The source audit establishes the configured endpoint and User-Name
     selector. No additional provider attributes are inferred here.
     """
-    from .radius import RadiusCode, RadiusPacket
     from .radius_codec import encode_control_request
 
     build_chillispot_disconnect_request(
@@ -163,11 +180,9 @@ def encode_chillispot_disconnect_datagram(
         disconnect_port=disconnect_port,
         username=username,
     )
-    packet = RadiusPacket(
-        code=RadiusCode.DISCONNECT_REQUEST,
+    packet = build_chillispot_disconnect_packet(
+        username=username,
         identifier=identifier,
-        attributes={"User-Name": username},
-        authenticator=bytes(16),
     )
     return (
         (disconnect_ip, disconnect_port),
