@@ -2,7 +2,10 @@
 from __future__ import annotations
 
 from atd_radius.domain.radius import RadiusPacket
-from atd_radius.domain.ras_external import (\n    build_chillispot_disconnect_packet,\n    build_chillispot_disconnect_request,\n)
+from atd_radius.domain.ras_external import (
+    build_chillispot_disconnect_packet,
+    build_chillispot_disconnect_request,
+)
 from atd_radius.infrastructure.radius_control_udp import RadiusControlUDPClient
 
 
