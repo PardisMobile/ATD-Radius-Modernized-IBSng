@@ -116,7 +116,7 @@ def edit_ras_port(ras_id: int, port_name: str, payload: RASPortPayload) -> dict[
         repo = RASRepository(conn)
         if repo.get(ras_id) is None:
             raise HTTPException(status_code=404, detail="RAS not found")
-        repo.upsert_port(ras_id, port_name, payload.phone, payload.type, payload.comment)
+        repo.upsert_port(ras_id, payload.port_name, payload.phone, payload.type, payload.comment)
         conn.commit()
     return {"ok": True}
 
