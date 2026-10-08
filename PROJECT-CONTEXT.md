@@ -635,3 +635,113 @@ CI status: must be evaluated on the final checkpoint commit before declaring gre
 
 Latest implementation checkpoint before this continuation: d95c2d8eb33d711a5b79c3910dcb2e349fd53a92.
 CI had not reported a workflow run for that checkpoint; this remains historical status only.
+
+
+## MASTER FREEZE / OPEN-WORK LEDGER — 2026-10-08
+
+**This is the handoff contract for every future ChatGPT conversation. Read this section before touching code.**
+
+### 🔒 FROZEN — source-verified + implemented + tested
+
+The following areas are CLOSED. Do not modify, refactor, simplify, rename, reinterpret, or re-investigate them merely because work continues in a new chat. Treat them as trusted dependencies.
+
+#### Authentication / RADIUS core
+- [x] PAP authentication boundary.
+- [x] CHAP source semantics: CHAP-Identifier + password + CHAP-Challenge, with packet-authenticator fallback when challenge is absent.
+- [x] MS-CHAPv1 source field consumption and NT-Response semantics.
+- [x] MS-CHAPv2 source field consumption: Peer-Challenge `[2:18]`, NT-Response `[26:]`.
+- [x] MS-CHAPv2 username/challenge-hash semantics, including no domain-prefix stripping.
+- [x] MS-CHAPv2 Flags/Reserved handling as source-traced.
+- [x] MS-CHAP2-Success / AuthenticatorResponse generation.
+- [x] MS-CHAP/MPPE response-material generation path.
+- [x] MPPE Send/Recv key derivation.
+- [x] MPPE encryption context using the original Access-Request Request-Authenticator.
+- [x] A1.24-style random high-bit MPPE salts and distinct Send/Receive salts.
+- [x] RADIUS duplicate identity: `(source_ip, source_port, packet_id, packet_code)`.
+
+#### Attributes / user loading / MultiLogin
+- [x] `multi_login` is an attribute, not a users-table column.
+- [x] Absent `multi_login` => default limit 1.
+- [x] Explicit `multi_login=0` => real zero limit; first login is rejected.
+- [x] User attribute overrides group attribute.
+- [x] Group attribute is effective when no user override exists.
+- [x] UserLoader/UserAttributes aggregation boundary.
+- [x] Native attribute table structure: `user_attrs`, `group_attrs`, `ras_attrs`.
+- [x] User instance increment occurs before USER_LOGIN hooks.
+- [x] RAS MultiLogin capability is provider-specific and separate from user `multi_login`.
+- [x] Existing ATD MultiLogin implementation and its source-derived tests are frozen. **Do not touch MultiLogin without new contradictory A1.24 source evidence.**
+
+#### Database / persistence
+- [x] Native subscriber split: `users`, `normal_users`, `voip_users`, `user_attrs`, `caller_id_users`, `persistent_lan_users`.
+- [x] Native user/group/RAS attribute persistence contract.
+- [x] IP-pool membership in PostgreSQL versus runtime free/used state.
+- [x] Native `connection_log` / `connection_log_details` structure.
+
+#### Accounting / charging
+- [x] A1.24 provider accounting lifecycle concept: Start/Stop/Alive.
+- [x] Native connection-log persistence boundary.
+- [x] `no_connection_log` behavior.
+- [x] `no_commit` zero-settlement behavior.
+- [x] Internet charge-rule source state model: effective rule, rule-start time, per-instance IN/OUT baseline, transition accumulation, final settlement.
+- [x] Direct source verification of `InternetChargeRule.start/end` and `getTypeObj().getInOutBytes(instance)` baseline path.
+- [x] Shared DB transaction ownership model for runtime composition.
+
+#### Directly verified RAS providers
+- [x] BSAE: unique identity = User-Name-derived port; PAP/CHAP/MS-CHAP/MS-CHAP2 inputs.
+- [x] Total Control / USR: interface-index identity and exact USR vendor-429 `0x9843` 32-bit wire encoding/decoding.
+- [x] ChilliSpot: port identity, IP assignment false, PAP/CHAP/MS-CHAP/MS-CHAP2, Start/Stop/Alive.
+- [x] Cisco / Cisco VPDN: source-derived identities, service-specific Cisco VoIP identity, Start/Stop/Alive, source-derived disconnect strategy.
+- [x] PortMaster / PortSlave: port identity, PAP/CHAP/MS-CHAP/MS-CHAP2, Start/Stop/Alive behavior and source-derived disconnect strategy.
+
+#### RAS architecture already source-derived
+- [x] RAS provider profile/registry foundation.
+- [x] RASPacketContext / provider_packet_context boundary and its tested source-derived fields.
+- [x] UI sequencing decision: UI remains frozen while core/source-parity work is active.
+
+**Freeze rule:** changing any item above requires direct canonical A1.24 evidence showing the current behavior is wrong/incomplete. Architectural preference, cleanup, refactoring, or a new-chat re-check is NOT sufficient.
+
+### 🟡 OPEN — do NOT treat as complete
+
+These are the active work areas. Implement them in batches, using the canonical A1.24 source first, without reopening the frozen ledger.
+
+#### RADIUS / provider parity
+- [ ] Remaining A1.24 RAS providers and their concrete runtime adapters.
+- [ ] Concrete SNMP/RSH/launcher/H323/Asterisk/SIP provider side effects where required by source.
+- [ ] Full provider-specific wire/integration fixtures.
+- [ ] Complete RADIUS dictionary coverage and context-aware provider attribute handling.
+- [ ] Remaining SIP/SER provider-consumed attribute semantics/integration.
+- [ ] EAP and other unimplemented authentication families.
+
+#### Accounting / billing
+- [ ] PostgreSQL credit-ledger persistence.
+- [ ] Full billing/credit business layer and expiry/subscription state.
+- [ ] VoIP tariff/prefix runtime parity where still unimplemented.
+- [ ] Bandwidth-limit side effects and remaining charge-rule edge cases where source requires them.
+- [ ] Integration-level transaction rollback proof against a live PostgreSQL runtime.
+
+#### API / product
+- [ ] Full CRUD for remaining native A1.24 resources.
+- [ ] Permissions/RBAC/audit.
+- [ ] XML-RPC compatibility.
+- [ ] Remaining REST resource workflows and mutation coverage.
+- [ ] Group workflows, RAS/IP-pool/online/logs/usage/charge/report workflows.
+- [ ] ADMIN and user-portal workflows.
+
+#### Migration / deployment / licensing
+- [ ] A1.24 migration/import tooling.
+- [ ] Validation/parity migration tests and rollback-safe migration.
+- [ ] Installer/systemd/Ubuntu-Debian deployment.
+- [ ] TLS/backup/upgrade workflows.
+- [ ] Licensing / product edition limits.
+
+#### Service / Plan semantics
+- [ ] Do not invent generic Service/Plan persistence. Current schema inventory has no generic `services` or `plans` tables.
+- [ ] If Service/Plan parity is required, trace the exact canonical A1.24 source first; RouteBox service catalog is not automatically IBSng Service/Plan parity.
+
+### ⚠️ STATUS DISCIPLINE
+- "Source-traced" means canonical source was inspected.
+- "Tested" means ATD regression/unit/integration coverage exists.
+- "CI-green" means a completed CI run passed; never infer it from local tests.
+- "Frozen" in this ledger means source-traced + implemented + tested and must not be touched without contradictory source evidence.
+- Historical commits/checkpoints remain records; current `main` code is the only implementation state.
+- If a future chat is uncertain whether something is frozen, **do not change it**; inspect this ledger and the canonical source first.
