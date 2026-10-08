@@ -618,7 +618,14 @@ CI status: must be evaluated on the final checkpoint commit before declaring gre
 - Re-reviewed native subscriber persistence: users, normal_users, voip_users, user_attrs, caller_id_users, persistent_lan_users and group_attrs remain separate native boundaries.
 - Found and corrected a regression in the new user-detail API where the VoIP credential path still exposed the raw password. It now exposes only username + has_password, matching the normal credential contract.
 - Added an explicit VoIP API privacy regression test.
-- Important remaining source-first gate: exact A1.24 UserLoader attribute inheritance/runtime merge must be traced from canonical source before changing NativeAccessContext policy resolution. Existing policy_attributes behavior is therefore retained but not declared newly source-verified in this checkpoint.
+- Superseded by the durable source-traced finding in docs/SOURCE-AUTHORITY.md: A1.24 UserLoader/UserAttributes inheritance is already directly traced. User attributes override group attributes; when absent at user scope, the group value is effective. NativeAccessContext may therefore consume the existing policy_attributes boundary; no re-investigation is required unless contradictory canonical evidence appears.
 
-Latest implementation checkpoint: d95c2d8eb33d711a5b79c3910dcb2e349fd53a92.
-CI has not yet reported a workflow run for this latest checkpoint; do not mark green until an actual run exists.
+Latest implementation checkpoint before this continuation: d95c2d8eb33d711a5b79c3910dcb2e349fd53a92.
+CI had not reported a workflow run for that checkpoint; this remains historical status only.
+
+## 2026-10-08 MultiLogin regression checkpoint
+
+- Added regression coverage for the source-traced A1.24 distinction between an absent multi_login attribute (effective default 1) and an explicit multi_login=0 (real zero limit, rejecting the first login).
+- Kept the test at the policy boundary: group-vs-user attribute resolution is already source-traced upstream in UserLoader/UserAttributes and is not duplicated or guessed in the policy test.
+- Implementation commits: 899f7f5a52cf0fccc789a42edf5ac14cf915c071 and f2e99221c1b20fc189bd5d8a311e189de966151a.
+- CI status for the new checkpoint must be checked from the actual GitHub Actions run; no green claim is made here.
