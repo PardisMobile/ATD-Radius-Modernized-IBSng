@@ -104,3 +104,24 @@ def test_chillispot_disconnect_builder_requires_source_fields():
     ):
         with pytest.raises(ValueError):
             build_chillispot_disconnect_request(**kwargs)
+
+
+def test_chillispot_disconnect_datagram_is_authenticated_and_source_scoped():
+    from atd_radius.domain.radius import RadiusCode
+    from atd_radius.domain.radius_codec import decode, verify_control_request
+    from atd_radius.domain.ras_external import encode_chillispot_disconnect_datagram
+
+    destination, wire = encode_chillispot_disconnect_datagram(
+        disconnect_ip="192.0.2.20",
+        disconnect_port=1700,
+        username="alice",
+        identifier=71,
+        secret="shared",
+    )
+    decoded = decode(wire, "shared")
+    assert destination == ("192.0.2.20", 1700)
+    assert decoded.code is RadiusCode.DISCONNECT_REQUEST
+    assert decoded.identifier == 71
+    assert decoded.attributes == {"User-Name": "alice"}
+    assert verify_control_request(wire, "shared")
+    assert not verify_control_request(wire, "wrong")
