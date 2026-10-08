@@ -82,3 +82,12 @@ The client supports bounded retries/timeouts and is tested through a fake socket
 no live provider is contacted by tests. ChilliSpot packet construction remains
 limited to the source-audited User-Name selector. The code does not claim
 production deployment validation against a real ChilliSpot RAS.
+
+
+## ChilliSpot operation wiring — 2026-10-09
+
+Added ChilliSpotDisconnectClient to connect the source-derived packet factory
+to the authenticated UDP control client. It sends to the configured
+disconnect endpoint, identifies the target with User-Name, and returns the
+authenticated Disconnect-ACK/NAK to the caller. Tests use a fake UDP socket;
+a live ChilliSpot integration test is still outstanding.

@@ -829,3 +829,5 @@ The earlier OPEN ledger line saying live PostgreSQL transaction rollback proof i
 - Further ChilliSpot increment: encode_chillispot_disconnect_datagram() now builds an authenticated Disconnect-Request datagram using the configured endpoint and source-audited User-Name selector. Regression coverage verifies packet code, identifier, destination, decoded attributes, and request authenticator. It deliberately does not open a socket; dispatch/retry/ACK handling remains open.
 
 - 2026-10-09 follow-up: added verification for outbound Disconnect/CoA responses (including Message-Authenticator when applicable) and a UDP client with endpoint matching, timeout/retry bounds, and authenticated ACK/NAK handling. Fake-socket tests avoid live network effects. ChilliSpot packet creation is limited to the source-audited User-Name selector; real RAS integration remains open.
+
+- 2026-10-09: wired ChilliSpot's source-derived User-Name Disconnect-Request packet to the authenticated UDP control client via ChilliSpotDisconnectClient. The adapter returns validated ACK/NAK responses and is covered by fake-socket tests. Live-RAS integration remains open.
