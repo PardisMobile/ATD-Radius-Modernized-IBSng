@@ -574,3 +574,15 @@ Do not mark a subsystem Complete merely because its classes exist. Completion re
 - Regression tests: `236071cfbe5238bb8ba0d8885f3aa3393752142e`.
 - Audit record: `c0f23b98cb207432241d3de7a0ccda7b06527598`.
 - Source-audit branch `audit/a124-portmaster-portslave-source` was used only for extraction; no audit workflow was merged to main.
+
+
+### Batch checkpoint — RAS packet-context boundary — 2026-10-08
+- UI remains **FROZEN** by the established project decision. No new UI implementation is part of the active core batches; final UI work starts only after the core, persistence, APIs, migration and deployment are stable and the real IBSng A1.24 UI has been fully reviewed.
+- Added `RASPacketContext` / `provider_packet_context()` as a side-effect-free boundary between generic RADIUS dispatch and future concrete A1.24 provider adapters.
+- The context exposes only behavior already source-traced: provider profile, service, provider session identity, multi-login capability, IP-assignment behavior, accounting-status support and disconnect strategy.
+- Deliberately **not** implemented here: SNMP/RSH/launcher/Asterisk/H323/SIP side effects. Those require concrete adapter implementations backed by canonical A1.24 source evidence and integration fixtures.
+- Regression coverage added for Cisco VoIP context, BSAE User-Name identity and accounting-status gating.
+- Commits:
+  - `879fac8c0f671d23989071ba55c8a9448481873e` — provider packet-context boundary
+  - `c2db9089e40d5eaa6f63cf7e2e2879a3aa62aa6b` — regression coverage
+- This batch does not reopen or redo the already source-verified BSAE, Total Control/USR, ChilliSpot, Cisco/Cisco VPDN, or PortMaster/PortSlave audits.
