@@ -113,3 +113,8 @@ The ChilliSpot disconnect envelope applies the same IPv4-only contract and store
 ## Full control-request attribute validation — 2026-10-09
 
 The RFC 5176 control-request verifier now validates the entire attribute stream when checking Message-Authenticator, rather than stopping at the first such attribute. This rejects duplicate Message-Authenticator attributes and malformed attributes trailing the authenticator, even when the packet's request authenticator and first Message-Authenticator are otherwise valid. Regression fixtures construct correctly signed malformed packets so the tests exercise parser validation rather than merely failing an authentication check.
+
+
+## Strict packet-length checks — 2026-10-09
+
+RADIUS Accounting-Request, Disconnect/CoA request, and Disconnect/CoA response authentication checks now require the datagram length to exactly match the RADIUS Length field. Trailing bytes beyond the declared packet are rejected rather than silently ignored. Regression tests cover validly signed packets with an appended byte, and control-request tests also cover duplicate Message-Authenticator attributes and malformed attributes after Message-Authenticator.
