@@ -144,7 +144,7 @@ def get_user_detail(username: str) -> UserDetailView:
                 else None
             ),
             voip=(
-                NativeCredentialView(username=x[0], password=x[1])
+                NativeCredentialView(username=x[0], has_password=bool(x[1]))
                 if (x := repository.voip_credentials(user.id)) is not None
                 else None
             ),
