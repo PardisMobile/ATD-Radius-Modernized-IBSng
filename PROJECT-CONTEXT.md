@@ -745,3 +745,23 @@ These are the active work areas. Implement them in batches, using the canonical 
 - "Frozen" in this ledger means source-traced + implemented + tested and must not be touched without contradictory source evidence.
 - Historical commits/checkpoints remain records; current `main` code is the only implementation state.
 - If a future chat is uncertain whether something is frozen, **do not change it**; inspect this ledger and the canonical source first.
+
+
+## Provider action-layer checkpoint — 2026-10-08
+
+- Added provider_accounting_action() and the corresponding RASProviderRegistry.accounting_action() facade.
+- This layer maps only accounting branches already directly traced in the A1.24 provider source/audit:
+  - Internet Start -> INTERNET_UPDATE
+  - Internet Alive -> INTERNET_UPDATE
+  - Internet Stop -> INTERNET_STOP
+  - Persistent LAN Start/Stop -> the source-native persistent-LAN actions.
+- The mapping is deliberately side-effect free. It does not implement or infer SNMP, RSH, launcher, Asterisk, H323 or SIP network operations.
+- VoIP accounting is intentionally not mapped here where the exact source action sequencing has not yet been re-established; tests explicitly prevent accidental guessed behavior.
+- Added regression coverage in tests/test_ras_provider_actions.py for representative internet providers, Persistent LAN, unsupported status/provider handling, and the deliberate VoIP non-guessing boundary.
+- Implementation commit: 7fd00008105e52ab867a1f7d16476084f8f4b76d.
+- Test commit: 7ebf26b29979e88aa85e51b570cf54f788c384d3.
+- CI status for these new commits has not been independently confirmed yet; do not call this batch CI-green.
+
+### Accounting status correction
+
+The earlier OPEN ledger line saying live PostgreSQL transaction rollback proof is still pending is stale relative to the verified checkpoint at commit 6028f21d6f6ca4f2e7abdd1be31da9e6d000bcc2, which included a real PostgreSQL trigger failure-path test and passed 225 tests in the CI matrix. The open item is therefore removed from the active TODO list; future work should focus on provider-specific accounting parity rather than redoing the already-verified rollback test.
