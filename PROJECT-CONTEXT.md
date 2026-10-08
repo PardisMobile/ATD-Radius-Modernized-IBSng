@@ -870,3 +870,12 @@ The earlier OPEN ledger line saying live PostgreSQL transaction rollback proof i
 - Corrected the duplicate Message-Authenticator test fixture to use a second structurally valid attribute, ensuring it exercises duplicate-attribute detection rather than accidentally testing malformed trailing bytes.
 - This remains protocol-boundary validation; frozen A1.24 auth/session/accounting semantics and CHAP/MS-CHAPv2/MPPE behavior are unchanged.
 - Implementation/test commits for this continuation: `130e6eb58b6c17aa8ef3ede09e6927e6dc7b3330`, `657228a49a1e41e0910ebb73f586fbd85264fbf3`, `3f4325fade1b10480c6cf92d3843e482c6ed720f`. CI remains pending until newest HEAD workflows finish.
+
+
+## Immutable provider operation request boundary — 2026-10-09
+
+- `ProviderOperationRequest` now snapshots incoming parameters and wraps them in a read-only mapping. Mutation of the caller's original dictionary no longer changes a queued request, and consumers cannot mutate the request's parameter mapping.
+- Provider and action identifiers must be non-empty strings.
+- Added tests for source-parameter snapshot isolation, read-only request parameters, and invalid empty identity fields.
+- No external command/OID/launcher argument was invented, and no frozen A1.24 authentication, CHAP/MS-CHAPv2, MPPE, MultiLogin, persistence, or accounting behavior was changed.
+- Code/test commits: `93bd725705b672392280ef1aecc409523278f60c`, `15cf3c218927a62e3ace70c96b96183b8d02d54f`. The newest HEAD must pass CI before this batch is marked green.
