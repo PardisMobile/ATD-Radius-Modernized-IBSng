@@ -554,3 +554,11 @@ Do not mark a subsystem Complete merely because its classes exist. Completion re
 - Documentation commit: `126012b47d3d49851ff839eae2bc8e653771bda5` — recorded the direct Cisco/Cisco VPDN source facts in the provider audit.
 - Temporary Cisco source-audit workflow remains isolated to `audit/a124-cisco-source`; it was not merged to `main`.
 - Source-of-truth rule remains absolute: canonical A1.24 source overrides Markdown audits.
+
+
+### CI verification checkpoint — Cisco parity batch — 2026-10-08
+- HEAD: `a95a9c934b4ccbac924d55ccf042888009931f63`.
+- Python workflow #757: **SUCCESS**.
+- CI workflow #685: **SUCCESS**; both Python 3.11 and 3.12 test jobs passed, including Ruff, PHP syntax and the full test step.
+- Therefore the Cisco service-aware identity change and its regression tests are CI-verified on main.
+- PortMaster/PortSlave source audit has been started on isolated branch `audit/a124-portmaster-portslave-source`; no provider implementation has been changed from assumptions before direct source extraction.
