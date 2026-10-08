@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
+from ipaddress import IPv4Address
 from typing import Mapping, Protocol
 
 
@@ -123,8 +124,12 @@ def build_chillispot_disconnect_request(
     endpoint and identifies the subscriber with User-Name. Wire encoding and
     transport remain the responsibility of the concrete RADIUS transport.
     """
-    if not disconnect_ip.strip():
-        raise ValueError("disconnect_ip must not be empty")
+    if not isinstance(disconnect_ip, str) or not disconnect_ip.strip():
+        raise ValueError("disconnect_ip must be an IPv4 address")
+    try:
+        disconnect_ip = str(IPv4Address(disconnect_ip))
+    except ValueError as exc:
+        raise ValueError("disconnect_ip must be an IPv4 address") from exc
     if isinstance(disconnect_port, bool) or not isinstance(disconnect_port, int):
         raise ValueError("disconnect_port must be an integer")
     if not 1 <= disconnect_port <= 65535:
