@@ -824,3 +824,5 @@ The earlier OPEN ledger line saying live PostgreSQL transaction rollback proof i
 - This does not yet implement RADIUS Disconnect-Request wire encoding or real network I/O; those remain open.
 - Frozen authentication, MultiLogin, MPPE, persistence and existing provider identity/accounting contracts were not changed.
 - CI must be checked on the new HEAD before describing this increment as passing.
+
+- Follow-up increment on 2026-10-09: added a separate encode_control_request() codec path for outbound RFC 5176 Disconnect/CoA requests, including request-authenticator generation and Message-Authenticator recomputation when present. Added round-trip/verifier regression tests. This does not alter the frozen inbound control path; provider-specific network dispatch remains open.
