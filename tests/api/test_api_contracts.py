@@ -29,3 +29,15 @@ def test_user_native_component_contract_never_contains_password_field():
     assert view.normal.username == "alice"
     assert view.normal.has_password is True
     assert "password" not in view.normal.model_fields
+
+
+def test_user_component_contract_covers_voip_without_password():
+    from atd_radius.api.users import NativeCredentialView, UserComponentsView
+    view = UserComponentsView(
+        normal=NativeCredentialView(username="alice", has_password=True),
+        voip=NativeCredentialView(username="1001", has_password=True),
+        caller_ids=[], persistent_lan=[],
+    )
+    assert view.voip.username == "1001"
+    assert view.voip.has_password is True
+    assert "password" not in view.voip.model_fields
