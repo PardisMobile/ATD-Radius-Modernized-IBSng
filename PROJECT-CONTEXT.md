@@ -586,3 +586,14 @@ Do not mark a subsystem Complete merely because its classes exist. Completion re
   - `879fac8c0f671d23989071ba55c8a9448481873e` — provider packet-context boundary
   - `c2db9089e40d5eaa6f63cf7e2e2879a3aa62aa6b` — regression coverage
 - This batch does not reopen or redo the already source-verified BSAE, Total Control/USR, ChilliSpot, Cisco/Cisco VPDN, or PortMaster/PortSlave audits.
+
+
+## Source-driven DB/User persistence checkpoint — 2026-10-08
+
+Canonical A1.24 source was consulted directly for this batch (not parity MDs): extracted source evidence covers core/user/user_loader.py, core/user/user_actions.py, core/user/plugins/normal_user.py, the GroupLoader path, and the native PostgreSQL tables/functions. The source confirms that subscriber state is split across users, normal_users, voip_users, user_attrs, caller_id_users, and persistent_lan_users; generic/group attributes are separate attribute stores, and normal-user credential operations use the native normal_users table/function boundary.
+
+ATD change committed in b47719ff2ef4ae7256f6ad4cdc078200e7ef72b4: UserRepository now exposes native A1.24 subscriber components without flattening them into one synthetic table: normal credentials, VoIP credentials, caller IDs, and persistent-LAN records. This is persistence/read-boundary work only; no unverified attribute names or behavioral side effects were invented.
+
+Regression coverage committed in fe3dd1d97d9e8494745e4b24b022f075addbff21: repository tests verify all four native component reads and their PostgreSQL column/table contracts.
+
+CI status for this checkpoint must be checked against the new commit before claiming green. No CI result is claimed here yet.
