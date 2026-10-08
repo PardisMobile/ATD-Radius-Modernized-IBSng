@@ -152,3 +152,28 @@ def test_chillispot_disconnect_builder_preserves_canonical_ipv4_address():
         username="alice",
     )
     assert request.parameters["disconnect_ip"] == "192.0.2.20"
+
+
+def test_provider_operation_request_snapshots_and_freezes_parameters():
+    original = {"port": 7}
+    request = ProviderOperationRequest(
+        provider="portmaster",
+        operation=ExternalOperation.SNMP,
+        action="disconnect",
+        parameters=original,
+    )
+    original["port"] = 99
+    assert request.parameters["port"] == 7
+    with pytest.raises(TypeError):
+        request.parameters["port"] = 8
+
+
+@pytest.mark.parametrize(("provider", "action"), [("", "disconnect"), ("portmaster", "")])
+def test_provider_operation_request_rejects_empty_identity_fields(provider, action):
+    with pytest.raises(ValueError):
+        ProviderOperationRequest(
+            provider=provider,
+            operation=ExternalOperation.SNMP,
+            action=action,
+            parameters={},
+        )
