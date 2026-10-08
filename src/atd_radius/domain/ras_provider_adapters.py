@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from typing import Mapping
 
 from .accounting_lifecycle import SessionAction
-from .ras_provider import provider_accounting_action, provider_ip_assignment_for_attributes, provider_session_id
+from .ras_provider import (\n    provider_accounting_action,\n    provider_ip_assignment_for_attributes,\n    provider_session_id,\n)
 
 
 @dataclass(frozen=True, slots=True)
