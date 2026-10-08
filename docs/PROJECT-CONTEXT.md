@@ -155,3 +155,12 @@ Read this file, ROADMAP.md, ARCHITECTURE.md, docs/DECISIONS.md, docs/phase-0-inv
 7. Complete migration/import, installer, permissions/audit and XML-RPC boundaries only from source-confirmed behavior.
 
 All work above must be driven by repository documents and the A1.24 Source of Truth before implementation.
+
+
+### Batch checkpoint — API mutation contract hardening — 2026-10-08
+- Existing User/Group/RAS CRUD APIs were reviewed before modification; no duplicate CRUD layer was created.
+- Fixed Group attribute mutation so `PATCH /groups/{group_id}/attributes/{attr_name}` consumes the declared body model `GroupAttributePayload` instead of an undeclared query parameter.
+- Fixed RAS port mutation so the persisted port identity comes from the validated `RASPortPayload.port_name` rather than silently ignoring the body identity and using only the URL value.
+- Added `tests/api/test_api_contracts.py` covering both payload contracts.
+- Commits: `f7abef610438b15f7e8a82247777afda77a8c91d`, `3df950962b7f861841f7c1267cb6b6b4dc7e62c8`, `e18d0c2bf43da1111962d28f09ee53f9a0cb4968`.
+- This batch does not change UI, RADIUS protocol semantics, or canonical A1.24 source-derived provider behavior.
