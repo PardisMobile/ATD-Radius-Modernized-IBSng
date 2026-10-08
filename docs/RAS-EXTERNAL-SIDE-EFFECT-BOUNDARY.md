@@ -118,3 +118,8 @@ The RFC 5176 control-request verifier now validates the entire attribute stream 
 ## Strict packet-length checks — 2026-10-09
 
 RADIUS Accounting-Request, Disconnect/CoA request, and Disconnect/CoA response authentication checks now require the datagram length to exactly match the RADIUS Length field. Trailing bytes beyond the declared packet are rejected rather than silently ignored. Regression tests cover validly signed packets with an appended byte, and control-request tests also cover duplicate Message-Authenticator attributes and malformed attributes after Message-Authenticator.
+
+
+## Immutable provider-operation envelopes — 2026-10-09
+
+Provider operation requests now snapshot their parameter mapping and expose it as read-only data. This prevents a caller from changing source-derived port/interface/user values after the request envelope has been constructed but before a transport consumes it. Empty provider/action identifiers are rejected. This is a transport-boundary integrity measure only; it does not supply or infer provider-specific operation parameters.
