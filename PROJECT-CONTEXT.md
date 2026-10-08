@@ -610,3 +610,15 @@ Regression commits: fe3dd1d97d9e8494745e4b24b022f075addbff21 and ee4b9c5147d7f0f
 Source-first note: no new Service/Plan behavior was invented in this batch. The existing RouteBox service catalog is a separate application/product layer and is not being conflated with IBSng A1.24 core Service semantics until the canonical service source is mapped directly.
 
 CI status: must be evaluated on the final checkpoint commit before declaring green.
+
+
+## 2026-10-08 source-parity continuation checkpoint
+
+- Verified the native schema inventory contains no generic “services” or “plans” tables. Therefore the RouteBox service catalog must NOT be treated as IBSng A1.24 Service/Plan parity. No guessed Service/Plan persistence was added.
+- Re-reviewed native subscriber persistence: users, normal_users, voip_users, user_attrs, caller_id_users, persistent_lan_users and group_attrs remain separate native boundaries.
+- Found and corrected a regression in the new user-detail API where the VoIP credential path still exposed the raw password. It now exposes only username + has_password, matching the normal credential contract.
+- Added an explicit VoIP API privacy regression test.
+- Important remaining source-first gate: exact A1.24 UserLoader attribute inheritance/runtime merge must be traced from canonical source before changing NativeAccessContext policy resolution. Existing policy_attributes behavior is therefore retained but not declared newly source-verified in this checkpoint.
+
+Latest implementation checkpoint: d95c2d8eb33d711a5b79c3910dcb2e349fd53a92.
+CI has not yet reported a workflow run for this latest checkpoint; do not mark green until an actual run exists.
