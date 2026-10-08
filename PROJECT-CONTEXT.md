@@ -787,3 +787,31 @@ The earlier OPEN ledger line saying live PostgreSQL transaction rollback proof i
 - No frozen authentication, MultiLogin, attribute, persistence, or generic RAS behavior was modified.
 - PPPD and Persistent LAN concrete adapters remain intentionally open until their exact canonical call paths/side effects are directly traced; no behavior is guessed from provider names or profile metadata.
 - CI status for this checkpoint is not claimed until the push-triggered workflow is independently observed as successful.
+
+
+## Large RAS adapter batch checkpoint — 2026-10-08
+
+### Persistent LAN
+- The source audit records PersistentLanRas as a distinct lifecycle: internal `mac_ip` identity, `persistent_lan=True`, accounting start, IP assignment disabled, and its own online/waiting lifecycle.
+- ATD now exposes the source-traced normalization through `PersistentLanPacketAdapter`.
+- Start maps to `PERSISTENT_LAN_AUTHENTICATE`; Stop maps to `PERSISTENT_LAN_STOP`; Alive is intentionally not guessed for this provider.
+
+### SER
+- The source audit records SER identity as `call_id`, Start on SIP INVITE/call-id creation, Stop on call-id removal, Digest input extraction, and called-number derivation from the SIP URI.
+- ATD now exposes these pure normalization/action facts through `SERPacketAdapter`.
+- No external SIP daemon side effect is implemented by this adapter.
+
+### Asterisk / GnuGk / MVTS / Quintum Tenor
+- Asterisk and GnuGk now have source-derived capability adapters for their RAS attributes `asterisk_multi_login` and `gnugk_multiple_login`; absent/zero means disabled and nonzero enables the provider capability.
+- MVTS exposes its source-defined H323 conference identity.
+- Quintum Tenor exposes its source-defined H323 conference identity, `multi_login=False`, and `single_session_h323=True`.
+- Provider-specific Asterisk Manager, H323, remaining-time and external telephony side effects are intentionally not implemented without a concrete source-traced operation boundary.
+
+### PPPD
+- No direct canonical PPPD call-path evidence is currently present in the durable source findings. The profile says only `unique_id=port`; that is insufficient to safely invent authentication/accounting/kill behavior.
+- PPPD therefore remains open rather than being filled from analogy with PortMaster/PortSlave.
+
+### Safety boundary
+- These adapters are pure normalization/capability boundaries. They do not perform SNMP, RSH, launcher, Asterisk Manager, H323, SIP or other external side effects.
+- Frozen authentication, MultiLogin core semantics, attribute inheritance, persistence contracts, IP-pool runtime state and generic RAS registry behavior were not reopened or modified.
+- CI is not claimed green for this batch; the available workflow lookup does not expose a completed push run.
