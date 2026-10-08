@@ -27,3 +27,38 @@ def test_ser_adapter_preserves_source_traced_sip_identity_and_actions():
     assert SER_ADAPTER.accounting_action("Start") is SessionAction.VOIP_AUTHENTICATE
     assert SER_ADAPTER.accounting_action("Stop") is SessionAction.VOIP_STOP
     assert SER_ADAPTER.accounting_action("Alive") is None
+
+
+def test_external_adapters_preserve_source_traced_strategy_only():
+    from atd_radius.domain.ras_external import ExternalOperation
+    from atd_radius.domain.ras_provider_adapters import (
+        CHILLISPOT_EXTERNAL_ADAPTER,
+        CISCO_EXTERNAL_ADAPTER,
+        CISCO_VPDN_EXTERNAL_ADAPTER,
+        PORTMASTER_EXTERNAL_ADAPTER,
+        PORTSLAVE_EXTERNAL_ADAPTER,
+        TOTAL_CONTROL_EXTERNAL_ADAPTER,
+    )
+
+    assert CHILLISPOT_EXTERNAL_ADAPTER.disconnect_strategy() == "provider-port"
+    assert CHILLISPOT_EXTERNAL_ADAPTER.disconnect_request(
+        {"User-Name": "alice"}
+    ).operation is ExternalOperation.RADIUS_DISCONNECT
+
+    assert CISCO_VPDN_EXTERNAL_ADAPTER.disconnect_strategy() == "rsh-interface"
+    assert CISCO_VPDN_EXTERNAL_ADAPTER.disconnect_request(
+        {"interface": 12}
+    ).operation is ExternalOperation.RSH
+
+    assert PORTMASTER_EXTERNAL_ADAPTER.disconnect_request(
+        {"port": 7}
+    ).operation is ExternalOperation.SNMP
+    assert PORTSLAVE_EXTERNAL_ADAPTER.disconnect_request(
+        {"ras_ip": "203.0.113.10", "port": 7}
+    ).operation is ExternalOperation.LAUNCHER
+    assert TOTAL_CONTROL_EXTERNAL_ADAPTER.disconnect_request(
+        {"interface_index": 42}
+    ).operation is ExternalOperation.SNMP
+
+    assert CISCO_EXTERNAL_ADAPTER.disconnect_strategy() == "snmp-or-rsh"
+    assert CISCO_EXTERNAL_ADAPTER.disconnect_request({"port": 7}) is None
