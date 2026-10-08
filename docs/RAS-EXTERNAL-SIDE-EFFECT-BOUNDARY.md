@@ -101,3 +101,10 @@ retry-after-timeout behavior, and invalid timeout/retry bounds. These tests
 validate the common protocol transport independently of any provider-specific
 operation. No frozen authentication, MultiLogin, accounting, or persistence
 behavior was changed.
+
+
+## IPv4 destination and retry-bound hardening — 2026-10-09
+
+The shared RADIUS control UDP client now validates that its configured destination is a literal IPv4 address before creating a socket, validates the UDP port as a non-boolean integer in range, and rejects non-finite/non-positive timeouts or non-integer retry counts. This matches the implementation's explicit AF_INET transport and prevents hostname resolution from creating a peer-comparison mismatch.
+
+The ChilliSpot disconnect envelope applies the same IPv4-only contract and stores the canonical IPv4 representation. Regression tests cover hostnames, IPv6, malformed IPv4, invalid ports, NaN/infinite/boolean timeouts, and non-integer retry counts. No live network calls are used by these tests.
