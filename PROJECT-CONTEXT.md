@@ -775,3 +775,15 @@ The earlier OPEN ledger line saying live PostgreSQL transaction rollback proof i
 - Implementation: 21c95b0badd5014c1ddbc37ee8814020bcc93e6a.
 - Regression: 4e681ecae529c91ea04b10a40d32b4745dc88c06.
 - CI for this new hardening commit has not been independently confirmed yet.
+
+
+## RAS adapter checkpoint — 2026-10-08
+
+### MikroTik
+- The canonical A1.24 provider audit already contains direct source-derived MikroTik behavior: Internet identity is `port` from NAS-Port; NAS-Port-Type Ethernet/Virtual enables IP assignment while Wireless-802.11 disables it; Internet accounting handles Start, Stop and Alive, with Start/Alive entering the provider's update path and Stop finalizing octets.
+- ATD now exposes these already-traced facts through the side-effect-free `MikroTikPacketAdapter` in `src/atd_radius/domain/ras_provider_adapters.py`.
+- The adapter delegates to the existing source-derived registry functions and performs no SNMP/RSH or other external side effects.
+- Regression tests cover NAS-Port identity, numeric Wireless NAS-Port-Type normalization, and Start/Alive/Stop action mapping.
+- No frozen authentication, MultiLogin, attribute, persistence, or generic RAS behavior was modified.
+- PPPD and Persistent LAN concrete adapters remain intentionally open until their exact canonical call paths/side effects are directly traced; no behavior is guessed from provider names or profile metadata.
+- CI status for this checkpoint is not claimed until the push-triggered workflow is independently observed as successful.
