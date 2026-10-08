@@ -53,3 +53,14 @@ port, and emits the RADIUS-disconnect operation envelope. It does not claim to
 encode or send the RADIUS Disconnect-Request; wire construction and network
 I/O remain open until connected to the existing source-backed RADIUS transport.
 Regression tests cover the exact envelope and invalid inputs.
+
+## Outbound control-request encoding — 2026-10-09
+
+The RADIUS codec now has a separate encode_control_request() path for
+outbound Disconnect-Request and CoA-Request packets. It computes the RFC 5176
+request authenticator independently from the existing response-authenticator
+path and recalculates Message-Authenticator when the attribute is present.
+Regression tests verify the generated request with the existing control-request
+verifier and reject non-control packet codes. This is protocol plumbing only;
+provider-specific network dispatch and exact A1.24 per-provider fields remain
+separate work.
