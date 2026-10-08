@@ -88,3 +88,7 @@
 - [ ] licensing and Free/Pro enforcement
 
 Every phase requires automated tests and documentation updates before it is considered complete.
+
+
+## UI sequencing rule — established project decision
+UI implementation is frozen while core parity work is active. Existing shell/foundation work is retained, but no further UI workflow expansion is to be treated as active roadmap progress. Final UI implementation begins only after Core/RADIUS/RAS/Billing/DB/API/Migration/Deployment are stabilized and the real IBSng A1.24 UI has been fully reviewed and mapped to the finished core.
