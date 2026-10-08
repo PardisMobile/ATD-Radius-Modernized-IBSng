@@ -51,7 +51,7 @@ class ConnectionLogView(BaseModel):
 
 class NativeCredentialView(BaseModel):
     username: str
-    password: str
+    has_password: bool
 
 
 class PersistentLANView(BaseModel):
@@ -139,7 +139,7 @@ def get_user_detail(username: str) -> UserDetailView:
         detail = UserDetailRepository(conn)
         components = UserComponentsView(
             normal=(
-                NativeCredentialView(username=x[0], password=x[1])
+                NativeCredentialView(username=x[0], has_password=bool(x[1]))
                 if (x := repository.normal_credentials(user.id)) is not None
                 else None
             ),
