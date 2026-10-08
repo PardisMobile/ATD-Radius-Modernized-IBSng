@@ -362,3 +362,45 @@ def test_a124_usr_interface_index_vendor_vsa_round_trip():
     assert value[8:] == (37).to_bytes(4, "big")
     decoded = decode(wire)
     assert decoded.attributes["USR-Interface-Index"] == "37"
+
+
+def test_outbound_disconnect_request_authenticator_is_encoded_and_verified():
+    from atd_radius.domain.radius_codec import encode_control_request
+
+    packet = RadiusPacket(
+        RadiusCode.DISCONNECT_REQUEST,
+        37,
+        {"User-Name": "alice"},
+        bytes(16),
+    )
+    wire = encode_control_request(packet, "shared")
+    assert wire[0] == 40
+    assert decode(wire, "shared").attributes["User-Name"] == "alice"
+    assert verify_control_request(wire, "shared")
+    assert not verify_control_request(wire, "wrong")
+
+
+def test_outbound_control_request_message_authenticator_is_recomputed():
+    from atd_radius.domain.radius_codec import encode_control_request
+
+    packet = RadiusPacket(
+        RadiusCode.DISCONNECT_REQUEST,
+        38,
+        {"User-Name": "alice", "Message-Authenticator": "ff" * 16},
+        bytes(16),
+    )
+    wire = encode_control_request(packet, "shared")
+    decoded = decode(wire, "shared")
+    assert decoded.attributes["Message-Authenticator"] != "ff" * 16
+    assert verify_control_request(wire, "shared")
+
+
+def test_outbound_control_encoder_rejects_non_control_packets():
+    from atd_radius.domain.radius_codec import encode_control_request
+
+    packet = RadiusPacket(RadiusCode.ACCESS_REQUEST, 39, {"User-Name": "alice"}, bytes(16))
+    try:
+        encode_control_request(packet, "shared")
+    except RadiusCodecError:
+        return
+    raise AssertionError("non-control request was accepted by control encoder")
