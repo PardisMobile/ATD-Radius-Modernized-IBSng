@@ -8,6 +8,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Mapping
 
+from .accounting_lifecycle import SessionAction
+
 
 @dataclass(frozen=True, slots=True)
 class RASProviderProfile:
@@ -72,6 +74,9 @@ class RASProviderRegistry:
 
     def supports_status(self, ras_type: str | None, status: str) -> bool:
         return provider_supports_status(ras_type, status)
+
+    def accounting_action(self, ras_type: str | None, status: str, service: str = "internet") -> SessionAction | None:
+        return provider_accounting_action(ras_type, status, service)
 
     def disconnect_strategy(self, ras_type: str | None) -> str | None:
         return provider_disconnect_strategy(ras_type)
@@ -160,6 +165,41 @@ def provider_supports_status(ras_type: str | None, status: str) -> bool:
     return profile is not None and status in profile.accounting_statuses
 
 
+def provider_accounting_action(
+    ras_type: str | None,
+    status: str,
+    service: str = "internet",
+) -> SessionAction | None:
+    """Map source-defined provider accounting branches to ATD actions.
+
+    The mapping is deliberately limited to accounting branches already
+    directly traced in A1.24. It has no external side effects and does not
+    attempt to emulate provider SNMP/RSH/telephony integrations.
+    """
+    profile = provider_profile(ras_type)
+    if profile is None or status not in profile.accounting_statuses:
+        return None
+
+    if service == "persistent_lan" or profile.name == "plan":
+        return {
+            "Start": SessionAction.PERSISTENT_LAN_AUTHENTICATE,
+            "Stop": SessionAction.PERSISTENT_LAN_STOP,
+        }.get(status)
+
+    if service != "internet":
+        return None
+
+    # The inspected internet providers use INTERNET_UPDATE for Start/Alive
+    # and INTERNET_STOP for Stop. PortMaster/PortSlave additionally route
+    # their non-Start/non-Stop branch to INTERNET_UPDATE, which is the
+    # source-native Alive behavior represented here.
+    return {
+        "Start": SessionAction.INTERNET_UPDATE,
+        "Alive": SessionAction.INTERNET_UPDATE,
+        "Stop": SessionAction.INTERNET_STOP,
+    }.get(status)
+
+
 _ID_ATTRIBUTES = {
     "port": ("NAS-Port", "NAS-Port-Id"),
     "acct_session_id": ("Acct-Session-Id",),
@@ -180,13 +220,11 @@ def provider_session_id(ras_type: str | None, attributes: Mapping[str, object], 
     if profile is None:
         raw = attributes.get("Acct-Session-Id")
         return str(raw) if raw not in (None, "") else None
-    # Cisco uses a different identity for VoIP than Internet in A1.24.
     if profile.name == "cisco" and service == "voip":
         for name in _ID_ATTRIBUTES["h323_conf_id"]:
             raw = attributes.get(name)
             if raw not in (None, ""):
                 return str(raw)
-    # A1.24 BSAE exception: its provider port is User-Name, not NAS-Port.
     if profile.name == "bsae":
         raw = attributes.get("User-Name")
         if raw not in (None, ""):
