@@ -861,3 +861,12 @@ The earlier OPEN ledger line saying live PostgreSQL transaction rollback proof i
 - Added regression tests that create packets with valid request and Message-Authenticator signatures but deliberately duplicate the authenticator or append an invalid attribute. These test malformed structure specifically, not just a bad signature.
 - No source-frozen authentication, CHAP/MS-CHAPv2, MPPE, MultiLogin, persistence, attribute inheritance, or accounting behavior was changed.
 - Implementation/test commits: `603b905ac03f0c56e6043bf558188422c124bdbe`, `cbf8567980c79780976c0cf9257422c25c4f4c16`. CI for this batch is pending until the newest HEAD's workflows complete.
+
+
+## RADIUS datagram framing hardening — 2026-10-09
+
+- Accounting-Request, Disconnect/CoA request, and Disconnect/CoA response authenticators now reject a datagram when the RADIUS Length field differs from the received byte count. This prevents a valid prefix from being accepted while trailing bytes remain in the UDP datagram.
+- Added tests for valid signed control request/response packets with a trailing byte and extended Accounting-Request length coverage.
+- Corrected the duplicate Message-Authenticator test fixture to use a second structurally valid attribute, ensuring it exercises duplicate-attribute detection rather than accidentally testing malformed trailing bytes.
+- This remains protocol-boundary validation; frozen A1.24 auth/session/accounting semantics and CHAP/MS-CHAPv2/MPPE behavior are unchanged.
+- Implementation/test commits for this continuation: `130e6eb58b6c17aa8ef3ede09e6927e6dc7b3330`, `657228a49a1e41e0910ebb73f586fbd85264fbf3`, `3f4325fade1b10480c6cf92d3843e482c6ed720f`. CI remains pending until newest HEAD workflows finish.
