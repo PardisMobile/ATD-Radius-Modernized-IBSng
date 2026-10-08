@@ -91,3 +91,22 @@ def build_disconnect_request(
         action=action,
         parameters=dict(parameters or {}),
     )
+
+
+def build_provider_disconnect_request(
+    provider: str,
+    strategy: str | None,
+    *,
+    source_parameters: Mapping[str, object],
+) -> ProviderOperationRequest | None:
+    """Build a request from parameters already obtained by a provider adapter.
+
+    Parameter names are intentionally not synthesized here. The caller must
+    supply the exact source-derived values (for example port, RAS IP,
+    interface index, username, or H323 cause) from its provider adapter.
+    """
+    return build_disconnect_request(
+        provider,
+        strategy,
+        parameters=source_parameters,
+    )
