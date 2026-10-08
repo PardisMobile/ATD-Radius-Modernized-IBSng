@@ -683,6 +683,37 @@ def encode_response(response: RadiusPacket, request: RadiusPacket, secret: str) 
     return wire[:4] + response_authenticator + wire[20:]
 
 
+
+def encode_control_request(request: RadiusPacket, secret: str) -> bytes:
+    """Encode an outbound RFC 5176 Disconnect/CoA request authenticator.
+
+    This is separate from encode_response(): control requests use a request
+    authenticator computed with a zeroed authenticator field, not a response
+    authenticator tied to a prior request.
+    """
+    if request.code not in {RadiusCode.DISCONNECT_REQUEST, RadiusCode.COA_REQUEST}:
+        raise RadiusCodecError("control request encoding requires Disconnect-Request or CoA-Request")
+    zero_authenticator = bytes(16)
+    attributes = dict(request.attributes)
+    if "Message-Authenticator" in attributes:
+        attributes["Message-Authenticator"] = "00" * 16
+        unsigned_for_message_auth = RadiusPacket(
+            request.code, request.identifier, attributes, zero_authenticator
+        )
+        wire_for_message_auth = encode(unsigned_for_message_auth, secret)
+        attributes["Message-Authenticator"] = hmac.new(
+            secret.encode("utf-8"), wire_for_message_auth, "md5"
+        ).digest().hex()
+
+    unsigned = RadiusPacket(
+        request.code, request.identifier, attributes, zero_authenticator
+    )
+    wire = encode(unsigned, secret)
+    request_authenticator = md5(
+        wire[:4] + zero_authenticator + wire[20:] + secret.encode("utf-8")
+    ).digest()
+    return wire[:4] + request_authenticator + wire[20:]
+
 def verify_accounting_request(data: bytes, secret: str) -> bool:
     """Verify the RFC 2866 Accounting-Request authenticator."""
     if len(data) < 20:
