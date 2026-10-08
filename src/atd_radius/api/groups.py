@@ -31,6 +31,10 @@ class GroupAttributeView(BaseModel):
     attr_value: str
 
 
+class GroupAttributePayload(BaseModel):
+    attr_value: str
+
+
 class GroupInfoView(GroupView):
     attrs: list[GroupAttributeView]
 
@@ -90,12 +94,12 @@ def update_group(group_id: int, payload: GroupUpdate) -> GroupView:
 
 
 @router.patch("/{group_id}/attributes/{attr_name}", response_model=GroupInfoView)
-def update_group_attribute(group_id: int, attr_name: str, attr_value: str) -> GroupInfoView:
+def update_group_attribute(group_id: int, attr_name: str, payload: GroupAttributePayload) -> GroupInfoView:
     with connection() as conn:
         repository = GroupRepository(conn)
         if repository.get(group_id) is None:
             raise HTTPException(status_code=404, detail="group not found")
-        repository.set_attribute(group_id, attr_name, attr_value)
+        repository.set_attribute(group_id, attr_name, payload.attr_value)
         conn.commit()
         record = repository.get(group_id)
         attrs = repository.attributes(group_id)
