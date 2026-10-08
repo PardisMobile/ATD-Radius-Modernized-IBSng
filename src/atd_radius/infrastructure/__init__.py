@@ -151,6 +151,36 @@ class UserRepository:
     def find_by_username(self, username: str) -> UserRecord | None:
         return self.get_by_username(username)
 
+    def normal_credentials(self, user_id: int) -> tuple[str, str] | None:
+        row = self.conn.execute(
+            "SELECT normal_username, normal_password FROM normal_users WHERE user_id=%s",
+            (user_id,),
+        ).fetchone()
+        return (str(row[0]), str(row[1])) if row else None
+
+    def voip_credentials(self, user_id: int) -> tuple[str, str] | None:
+        row = self.conn.execute(
+            "SELECT voip_username, voip_password FROM voip_users WHERE user_id=%s",
+            (user_id,),
+        ).fetchone()
+        return (str(row[0]), str(row[1])) if row else None
+
+    def caller_ids(self, user_id: int) -> list[str]:
+        rows = self.conn.execute(
+            "SELECT caller_id FROM caller_id_users WHERE user_id=%s ORDER BY caller_id",
+            (user_id,),
+        ).fetchall()
+        return [str(row[0]) for row in rows]
+
+    def persistent_lan(self, user_id: int) -> list[tuple[str, str, int | None]]:
+        rows = self.conn.execute(
+            "SELECT persistent_lan_mac::text, persistent_lan_ip::text, persistent_lan_ras_id "
+            "FROM persistent_lan_users WHERE user_id=%s "
+            "ORDER BY persistent_lan_mac::text, persistent_lan_ip::text",
+            (user_id,),
+        ).fetchall()
+        return [(str(row[0]), str(row[1]), int(row[2]) if row[2] is not None else None) for row in rows]
+
     def set_password(self, user_id: int, password: str) -> None:
         self.conn.execute(
             "UPDATE normal_users SET normal_password=%s WHERE user_id=%s",
