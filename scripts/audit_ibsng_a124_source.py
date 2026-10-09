@@ -34,7 +34,6 @@ TARGET_FILES = {
     "MultiLogin plugin": ("IBSng/core/user/plugins/multilogin.py", r"class MultiLogin|def "),
     "MS-CHAP implementation": ("IBSng/core/lib/mschap/mschap.py", r"def generate_nt_response_mschap|def generate_nt_response_mschap2|def challenge_hash|def generate_authenticator_response|def GenerateAuthenticatorResponse"),
     "MS-CHAP packet integration": ("IBSng/radius_server/pyrad/packet.py", r"def verifyMSChap2|def checkMSChapPassword|def checkMSChap2Password|def generateMSChap2AuthenticatorResponse|def addMSChapMPPEkeys|def addMSChap2MPPEkeys"),
-    "MS-CHAP runtime authentication path": ("IBSng/radius_server/rad_server.py", r"checkMSChap2Password|generateMSChap2AuthenticatorResponse|MS-CHAP2-Response|User-Name"),
     "MS-CHAP user plugin": ("IBSng/core/user/plugins/mschap_end.py", r"generateMSChap2AuthenticatorResponse|checkMSChap2Password|user_obj|username"),
     "MS-CHAP password plugin": ("IBSng/core/user/plugins/password.py", r"^class |^def |checkMSChap2Password|normal_username|username"),
     "MS-CHAP cryptographic utilities": ("IBSng/core/lib/mschap/utils.py", r"^def |^class |ChallengeHash|challenge_hash|NtPasswordHash|nt_password_hash|ChallengeResponse|challenge_response"),
@@ -134,7 +133,7 @@ def main() -> int:
                 print(f"ERROR: expected source file missing: {path}")
                 continue
             context_after = 60 if label in {
-                "MS-CHAP implementation", "MS-CHAP packet integration", "MS-CHAP runtime authentication path", "MS-CHAP user plugin", "MS-CHAP password plugin", "MS-CHAP cryptographic utilities", "MPPE implementation"
+                "MS-CHAP implementation", "MS-CHAP packet integration", "MS-CHAP user plugin", "MS-CHAP password plugin", "MS-CHAP cryptographic utilities", "MPPE implementation"
             } else 18
             print_context(path, member_text(archive, member), re.compile(expr), after=context_after)
 
