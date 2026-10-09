@@ -168,6 +168,16 @@ def _source_ipv4(value: str, name: str = "ras_ip") -> str:
         raise ValueError(f"{name} must be an IPv4 address") from exc
 
 
+def _validate_cisco_snmp_version(version: object) -> str:
+    """Preserve the source-configurable Cisco SNMP v1/v2c setting."""
+    value = str(version).lower()
+    if value in {"1", "v1"}:
+        return "1"
+    if value in {"2", "2c", "v2c"}:
+        return "2c"
+    raise ValueError(f"unsupported Cisco SNMP version: {version}")
+
+
 def _validate_snmp_settings(
     community: str, timeout: float, retries: object
 ) -> tuple[str, float, int]:
@@ -273,12 +283,14 @@ def build_cisco_snmp_port_map_request(
     community: str = "public",
     timeout: float = 10,
     retries: object = 3,
+    version: object = "2c",
 ) -> ProviderOperationRequest:
     """Build Cisco's source-derived IF-MIB ifDescr walk request envelope."""
     target = _source_ipv4(ras_ip)
     community, timeout, retry_count = _validate_snmp_settings(
         community, timeout, retries
     )
+    version_text = _validate_cisco_snmp_version(version)
     return ProviderOperationRequest(
         provider="cisco",
         operation=ExternalOperation.SNMP,
@@ -289,7 +301,7 @@ def build_cisco_snmp_port_map_request(
             "timeout": timeout,
             "retries": retry_count,
             "udp_port": 161,
-            "version": "2c",
+            "version": version_text,
             "walk_oid": ".1.3.6.1.2.1.2.2.1.2",
         },
     )
@@ -302,6 +314,7 @@ def build_cisco_snmp_disconnect_request(
     community: str = "public",
     timeout: float = 10,
     retries: object = 3,
+    version: object = "2c",
 ) -> ProviderOperationRequest:
     """Build Cisco's A1.24 SNMP kill SET using the resolved interface index."""
     target = _source_ipv4(ras_ip)
@@ -309,6 +322,7 @@ def build_cisco_snmp_disconnect_request(
     community, timeout, retry_count = _validate_snmp_settings(
         community, timeout, retries
     )
+    version_text = _validate_cisco_snmp_version(version)
     return ProviderOperationRequest(
         provider="cisco",
         operation=ExternalOperation.SNMP,
@@ -319,7 +333,7 @@ def build_cisco_snmp_disconnect_request(
             "timeout": timeout,
             "retries": retry_count,
             "udp_port": 161,
-            "version": "2c",
+            "version": version_text,
             "set": {
                 "oid": ".1.3.6.1.4.1.9.2.1.76.0",
                 "type": "i",
@@ -370,6 +384,7 @@ def build_cisco_disconnect_request(
     community: str = "public",
     timeout: float = 10,
     retries: object = 3,
+    snmp_version: object = "2c",
 ) -> ProviderOperationRequest | None:
     """Select Cisco's source-configured SNMP/RSH kill branch (SNMP default)."""
     use_snmp = _source_integer(kill_use_snmp, "kill_use_snmp", minimum=0)
@@ -382,6 +397,7 @@ def build_cisco_disconnect_request(
             community=community,
             timeout=timeout,
             retries=retries,
+            version=snmp_version,
         )
     return build_cisco_rsh_disconnect_request(
         ras_ip=ras_ip, port=port, wrapper=wrapper
