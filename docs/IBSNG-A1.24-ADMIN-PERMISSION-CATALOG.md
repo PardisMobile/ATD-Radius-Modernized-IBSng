@@ -30,7 +30,7 @@ Value types:
 | CHANGE NORMAL USER ATTRIBUTES | All/Restricted | CHANGE USER ATTRIBUTES | Not implemented |
 | CHANGE RAS | No value | LIST RAS; GET RAS INFORMATION | Implemented for RAS API |
 | CHANGE USER ATTRIBUTES | All/Restricted | GET USER INFORMATION | Registered; mutation API not implemented |
-| CHANGE USER CREDIT | All/Restricted | GET USER INFORMATION | Not implemented |
+| CHANGE USER CREDIT | All/Restricted | GET USER INFORMATION | Implemented for single-user credit-change API with native deposit checks and logs |
 | CHANGE USERS OWNER | No value | — | Not implemented |
 | CHANGE VOIP TARIFF | No value | CHANGE CHARGE | Not implemented |
 | CHANGE VOIP USER ATTRIBUTES | All/Restricted | CHANGE USER ATTRIBUTES | Not implemented |
@@ -48,7 +48,7 @@ Value types:
 | LIMIT MAIL DOMAIN | Multi-value | CHANGE MAILBOX | Not implemented |
 | LIST IPPOOL | No value | — | Not implemented |
 | LIST RAS | No value | — | Implemented for RAS API |
-| NO DEPOSIT LIMIT | No value | — | Not implemented |
+| NO DEPOSIT LIMIT | No value | — | Implemented for administrator credit-change deposit enforcement |
 | POST MESSAGES | No value | — | Not implemented |
 | SEE ADMIN INFO | No value | — | Not implemented |
 | SEE ADMIN PERMISSIONS | No value | SEE ADMIN INFO | Not implemented |
@@ -72,6 +72,8 @@ Value types:
 - `CHANGE RAS` depends on both LIST RAS and GET RAS INFORMATION.
 - `KILL USER` and `CLEAR USER` depend on SEE ONLINE USERS.
 - `SEE CONNECTION LOGS` and `SEE CREDIT CHANGES` are independent All/Restricted permissions. The user-detail API now enforces each separately instead of treating GET USER INFORMATION as sufficient.
+- `CHANGE USER CREDIT` is independently All/Restricted and depends on `GET USER INFORMATION`. Credit changes must debit/credit the administrator deposit, prevent user credit from going negative, and write native `credit_change`/`credit_change_userid` plus IAS event records. The implemented endpoint performs those writes in one transaction and also appends the ATD operational audit event.
+- `NO DEPOSIT LIMIT` permits the native administrator deposit to go below zero; it does not bypass the user-credit non-negative check.
 
 ## Audit limitations and next steps
 
