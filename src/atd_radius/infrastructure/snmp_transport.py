@@ -1,7 +1,7 @@
-"""Minimal, bounded SNMPv1/v2c SET transport for source-derived RAS requests.
+"""Minimal, bounded SNMPv1/v2c transport for source-derived RAS requests.
 
-Only the operation shape emitted by the A1.24 RAS request builders is accepted.
-This module deliberately does not implement arbitrary SNMP walks or GETs yet.
+Only audited integer SETs and the Cisco IF-MIB ifDescr walk are supported.
+The transport does not invent provider commands or OIDs.
 """
 from __future__ import annotations
 
@@ -175,6 +175,30 @@ def _build_set_message(
     return _tlv(0x30, _ber_integer(version) + _tlv(0x04, community) + pdu)
 
 
+def _build_getnext_message(
+    *, version: int, community: bytes, request_id: int, oid: str
+) -> bytes:
+    varbind = _tlv(0x30, _encode_oid(oid) + _tlv(0x05, b""))
+    varbind_list = _tlv(0x30, varbind)
+    pdu = _tlv(
+        0xA1,
+        _ber_integer(request_id)
+        + _ber_integer(0)
+        + _ber_integer(0)
+        + varbind_list,
+    )
+    return _tlv(0x30, _ber_integer(version) + _tlv(0x04, community) + pdu)
+
+
+def _oid_arcs(oid: str) -> tuple[int, ...]:
+    if not isinstance(oid, str) or not oid:
+        raise ValueError("SNMP OID must be a non-empty string")
+    parts = oid.lstrip(".").split(".")
+    if not parts or any(not part.isdecimal() for part in parts):
+        raise ValueError(f"invalid SNMP OID: {oid}")
+    return tuple(int(part) for part in parts)
+
+
 def _parse_response(data: bytes) -> tuple[int, bytes, SnmpResponse]:
     tag, message, end = _read_tlv(data, 0)
     if tag != 0x30 or end != len(data):
@@ -224,10 +248,10 @@ def _parse_response(data: bytes) -> tuple[int, bytes, SnmpResponse]:
 
 
 class SnmpV1V2cSetTransport:
-    """Execute only the SNMP SET envelope shapes emitted by source-traced builders.
+    """Execute audited SNMP SETs and the Cisco IF-MIB ifDescr walk.
 
-    The transport is intentionally injectable for deterministic tests. It never
-    performs a walk, chooses a provider branch, or invents an OID/value.
+    The transport is injectable for deterministic tests. It never chooses a
+    provider branch or invents an OID/value.
     """
 
     def __init__(self, socket_factory: SocketFactory = socket.socket) -> None:
@@ -309,6 +333,99 @@ class SnmpV1V2cSetTransport:
             sock.close()
         return tuple(responses)
 
+    def walk(self, request: ProviderOperationRequest) -> tuple[SnmpVarBind, ...]:
+        """Walk one source-specified subtree, bounded against malformed agents."""
+        if not isinstance(request, ProviderOperationRequest):
+            raise ValueError("request must be a ProviderOperationRequest")
+        if request.operation is not ExternalOperation.SNMP or request.action != "walk":
+            raise ValueError("SNMP walk requires an SNMP request with action='walk'")
+        params = request.parameters
+        host = str(IPv4Address(str(params.get("ras_ip", ""))))
+        port = params.get("udp_port", 161)
+        community = params.get("community", "public")
+        timeout = params.get("timeout", 10)
+        retries = params.get("retries", 3)
+        version_value = str(params.get("version", "2c")).lower()
+        base_oid = params.get("walk_oid")
+        if not isinstance(base_oid, str):
+            raise ValueError("SNMP walk requires walk_oid")
+        _encode_oid(base_oid)
+        base_arcs = _oid_arcs(base_oid)
+        if isinstance(port, bool) or not isinstance(port, int) or not 1 <= port <= 65535:
+            raise ValueError("SNMP UDP port must be between 1 and 65535")
+        if not isinstance(community, str) or not community:
+            raise ValueError("SNMP community must be non-empty")
+        if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or not math.isfinite(timeout) or timeout <= 0:
+            raise ValueError("SNMP timeout must be finite and positive")
+        if isinstance(retries, bool) or not isinstance(retries, int) or retries < 0 or retries > 10:
+            raise ValueError("SNMP retries must be between 0 and 10")
+        if version_value in {"1", "v1"}:
+            version = 0
+        elif version_value in {"2", "2c", "v2c"}:
+            version = 1
+        else:
+            raise ValueError(f"unsupported SNMP version: {version_value}")
+        max_varbinds = params.get("max_varbinds", 4096)
+        if isinstance(max_varbinds, bool) or not isinstance(max_varbinds, int) or not 1 <= max_varbinds <= 10000:
+            raise ValueError("SNMP walk max_varbinds must be between 1 and 10000")
+
+        community_bytes = community.encode("utf-8")
+        sock = self._socket_factory(socket.AF_INET, socket.SOCK_DGRAM)
+        cursor = base_oid
+        seen: set[str] = set()
+        results: list[SnmpVarBind] = []
+        try:
+            while len(results) < max_varbinds:
+                request_id = secrets.randbelow(0x7FFFFFFE) + 1
+                packet = _build_getnext_message(
+                    version=version,
+                    community=community_bytes,
+                    request_id=request_id,
+                    oid=cursor,
+                )
+                response = self._send_with_retries(
+                    sock,
+                    packet,
+                    (host, port),
+                    version,
+                    community_bytes,
+                    request_id,
+                    cursor,
+                    float(timeout),
+                    retries,
+                    (),
+                    exact_oid=False,
+                    allow_walk_end=True,
+                )
+                if response.error_status == 2:  # SNMPv1 noSuchName at subtree end
+                    break
+                if not response.varbinds:
+                    raise SnmpTransportError("SNMP walk response has no varbinds")
+                varbind = response.varbinds[0]
+                if varbind.asn_type == 0x82:  # SNMPv2c endOfMibView
+                    break
+                returned_arcs = _oid_arcs(varbind.oid)
+                if returned_arcs <= _oid_arcs(cursor):
+                    raise SnmpTransportError("SNMP walk agent did not advance the OID")
+                if returned_arcs[: len(base_arcs)] != base_arcs:
+                    break
+                if varbind.asn_type != 0x04:
+                    raise SnmpTransportError(
+                        f"ifDescr walk returned unexpected ASN type {varbind.asn_type}"
+                    )
+                if varbind.oid in seen:
+                    raise SnmpTransportError("SNMP walk agent repeated an OID")
+                seen.add(varbind.oid)
+                results.append(varbind)
+                cursor = varbind.oid
+            else:
+                raise SnmpTransportError(
+                    f"SNMP walk exceeded max_varbinds={max_varbinds}"
+                )
+        finally:
+            sock.close()
+        return tuple(results)
+
     @staticmethod
     def _send_with_retries(
         sock: socket.socket,
@@ -321,6 +438,9 @@ class SnmpV1V2cSetTransport:
         timeout: float,
         retries: int,
         completed: tuple[SnmpResponse, ...],
+        *,
+        exact_oid: bool = True,
+        allow_walk_end: bool = False,
     ) -> SnmpResponse:
         for attempt in range(retries + 1):
             sock.sendto(packet, endpoint)
@@ -348,13 +468,17 @@ class SnmpV1V2cSetTransport:
                         request_id=request_id,
                         completed_responses=completed,
                     )
-                if len(response.varbinds) != 1 or response.varbinds[0].oid != expected_oid:
+                if len(response.varbinds) != 1 or (
+                    exact_oid and response.varbinds[0].oid != expected_oid
+                ):
                     raise SnmpTransportError(
                         "SNMP response varbind does not match requested OID",
                         request_id=request_id,
                         completed_responses=completed,
                     )
                 if response.error_status != 0:
+                    if allow_walk_end and response.error_status == 2:
+                        return response
                     raise SnmpTransportError(
                         f"SNMP agent returned error status {response.error_status}",
                         request_id=request_id,
@@ -363,6 +487,8 @@ class SnmpV1V2cSetTransport:
                         completed_responses=completed,
                     )
                 if response.varbinds[0].asn_type in {0x80, 0x81, 0x82}:
+                    if allow_walk_end and response.varbinds[0].asn_type == 0x82:
+                        return response
                     raise SnmpTransportError(
                         "SNMP agent returned an exception value",
                         request_id=request_id,
