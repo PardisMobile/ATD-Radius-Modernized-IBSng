@@ -115,11 +115,13 @@ def build_disconnect_request(
     operations = disconnect_operations(strategy)
     if len(operations) != 1:
         return None
+    if parameters is not None and not isinstance(parameters, Mapping):
+        raise ValueError("parameters must be a mapping")
     return ProviderOperationRequest(
         provider=provider,
         operation=operations[0],
         action=action,
-        parameters=dict(parameters or {}),
+        parameters={} if parameters is None else parameters,
     )
 
 
@@ -135,6 +137,8 @@ def build_provider_disconnect_request(
     supply the exact source-derived values (for example port, RAS IP,
     interface index, username, or H323 cause) from its provider adapter.
     """
+    if not isinstance(source_parameters, Mapping):
+        raise ValueError("source_parameters must be a mapping")
     return build_disconnect_request(
         provider,
         strategy,
