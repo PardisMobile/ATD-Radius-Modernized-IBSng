@@ -81,7 +81,7 @@ def test_launcher_transport_turns_timeout_into_explicit_failure(monkeypatch):
 
 
 @pytest.mark.parametrize(
-    "request",
+    "operation_request",
     [
         ProviderOperationRequest("pppd", ExternalOperation.SNMP, "disconnect", {}),
         ProviderOperationRequest("pppd", ExternalOperation.LAUNCHER, "start", {
@@ -102,12 +102,12 @@ def test_launcher_transport_turns_timeout_into_explicit_failure(monkeypatch):
     ],
 )
 def test_launcher_transport_rejects_unsupported_or_unsafe_requests_before_execution(
-    request, monkeypatch
+    operation_request, monkeypatch
 ):
     called = []
     monkeypatch.setattr(subprocess, "run", lambda *args, **kwargs: called.append(args))
     with pytest.raises(ValueError):
-        ConfiguredLauncherTransport().execute(request)
+        ConfiguredLauncherTransport().execute(operation_request)
     assert called == []
 
 
