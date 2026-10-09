@@ -272,3 +272,91 @@ def test_disconnect_builder_preserves_empty_mapping_as_valid_parameters():
     )
     assert request is not None
     assert request.parameters == {}
+
+def test_portmaster_disconnect_request_matches_a124_snmp_set_and_defaults():
+    from atd_radius.domain.ras_external import build_portmaster_disconnect_request
+
+    request = build_portmaster_disconnect_request(ras_ip="192.0.2.10", port="7")
+
+    assert request.provider == "portmaster"
+    assert request.operation is ExternalOperation.SNMP
+    assert request.action == "disconnect"
+    assert request.parameters["ras_ip"] == "192.0.2.10"
+    assert request.parameters["community"] == "public"
+    assert request.parameters["timeout"] == 10.0
+    assert request.parameters["retries"] == 3
+    assert request.parameters["udp_port"] == 161
+    assert request.parameters["version"] == "1"
+    assert dict(request.parameters["set"]) == {
+        "oid": ".1.3.6.1.2.1.2.2.1.7.9",
+        "type": "i",
+        "value": 2,
+    }
+
+
+def test_total_control_disconnect_preserves_a124_down_then_up_sequence():
+    from atd_radius.domain.ras_external import build_total_control_disconnect_request
+
+    request = build_total_control_disconnect_request(
+        ras_ip="192.0.2.11", interface_index="42"
+    )
+
+    assert request.provider == "total_control"
+    assert request.operation is ExternalOperation.SNMP
+    assert request.parameters["community"] == "public"
+    assert request.parameters["timeout"] == 10.0
+    assert request.parameters["retries"] == 3
+    assert request.parameters["udp_port"] == 161
+    assert request.parameters["version"] == 1
+    assert [dict(item) for item in request.parameters["sets"]] == [
+        {"oid": ".1.3.6.1.2.1.2.2.1.7.42", "type": "i", "value": 2},
+        {"oid": ".1.3.6.1.2.1.2.2.1.7.42", "type": "i", "value": 1},
+    ]
+
+
+@pytest.mark.parametrize(
+    ("builder_name", "arguments"),
+    [
+        ("portmaster", {"ras_ip": "not-an-ip", "port": 7}),
+        ("portmaster", {"ras_ip": "192.0.2.10", "port": True}),
+        ("portmaster", {"ras_ip": "192.0.2.10", "port": "-1"}),
+        ("total_control", {"ras_ip": "192.0.2.10", "interface_index": 0}),
+        ("total_control", {"ras_ip": "192.0.2.10", "interface_index": "42.5"}),
+    ],
+)
+def test_source_derived_snmp_disconnect_builders_reject_invalid_identity(
+    builder_name, arguments
+):
+    from atd_radius.domain.ras_external import (
+        build_portmaster_disconnect_request,
+        build_total_control_disconnect_request,
+    )
+
+    builder = {
+        "portmaster": build_portmaster_disconnect_request,
+        "total_control": build_total_control_disconnect_request,
+    }[builder_name]
+    with pytest.raises(ValueError):
+        builder(**arguments)
+
+
+@pytest.mark.parametrize(
+    "settings",
+    [
+        {"community": ""},
+        {"timeout": 0},
+        {"timeout": float("inf")},
+        {"timeout": True},
+        {"retries": 0},
+        {"retries": True},
+        {"retries": "3.5"},
+    ],
+)
+def test_source_derived_snmp_disconnect_builders_validate_settings(settings):
+    from atd_radius.domain.ras_external import build_portmaster_disconnect_request
+
+    with pytest.raises(ValueError):
+        build_portmaster_disconnect_request(
+            ras_ip="192.0.2.10", port=7, **settings
+        )
+
