@@ -65,13 +65,14 @@ def test_session_views_exposes_only_active_runtime_sessions():
     from atd_radius.domain.radius_runtime import SessionKey, SessionRegistry
 
     registry = SessionRegistry()
-    registry.start(SessionKey(7, 3, "active"))
+    registry.start(SessionKey(7, 3, "active"), ras_multi_login_allowed=False)
     registry.start(SessionKey(7, 3, "stopped"))
     registry.stop(SessionKey(7, 3, "stopped"))
 
     views = session_views(registry)(7)
 
     assert tuple(view.unique_id for view in views) == ("active",)
+    assert views[0].ras_multi_login_allowed is False
 
 
 def test_runtime_handler_can_attach_native_accounting_persistence():
