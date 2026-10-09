@@ -102,6 +102,66 @@ def print_context(path: str, source: str, pattern: re.Pattern[str], before: int 
         for i in range(lo, hi):
             print(f"{i + 1}: {lines[i][:300]}")
 
+def print_permission_inventory(archive: tarfile.TarFile, members: list[tarfile.TarInfo]) -> int:
+    """List every A1.24 permission module and its source-declared contract."""
+    permission_members = sorted(
+        (
+            member for member in members
+            if member.name.startswith("IBSng/core/admin/perms/")
+            and member.name.endswith(".py")
+            and Path(member.name).name != "__init__.py"
+        ),
+        key=lambda member: member.name,
+    )
+    print("\\n== Complete A1.24 administrator permission module inventory ==")
+    print(f"permission_module_count={len(permission_members)}")
+    if not permission_members:
+        print("ERROR: no administrator permission modules found in canonical source")
+        return 1
+
+    type_pattern = re.compile(
+        r"\\b(NoValuePermission|AllRestrictedSingleValuePermission|SingleValuePermission|MultiValuePermission)\\b"
+    )
+    registration_pattern = re.compile(r'registerPerm\\("([^"]+)"\\s*,\\s*(\\w+)\\)')
+    class_pattern = re.compile(r"^class\\s+(\\w+)\\s*\\(([^)]*)\\)", re.MULTILINE)
+    dependency_pattern = re.compile(r"addDependency\\(([^)]*)\\)")
+    method_pattern = re.compile(r"^\\s+def\\s+check\\s*\\(", re.MULTILINE)
+
+    for member in permission_members:
+        source = member_text(archive, member)
+        registration = registration_pattern.search(source)
+        class_match = class_pattern.search(source)
+        if registration:
+            permission_name, registered_class = registration.groups()
+        else:
+            permission_name, registered_class = Path(member.name).stem, "UNREGISTERED"
+        bases = class_match.group(2).strip() if class_match else "UNKNOWN"
+        value_types = type_pattern.findall(bases)
+        if "AllRestrictedSingleValuePermission" in value_types:
+            value_kind = "SINGLE(All/Restricted)"
+        elif "MultiValuePermission" in value_types:
+            value_kind = "MULTI(comma-separated)"
+        elif "SingleValuePermission" in value_types:
+            value_kind = "SINGLE"
+        elif "NoValuePermission" in value_types:
+            value_kind = "NO_VALUE"
+        else:
+            value_kind = "UNKNOWN"
+        dependencies = []
+        for raw_args in dependency_pattern.findall(source):
+            dependencies.extend(re.findall(r'["\\']([^"\\']+)["\\']', raw_args))
+        has_custom_check = bool(method_pattern.search(source))
+        print(
+            f"{permission_name} | file={member.name} | class={registered_class} "
+            f"| value={value_kind} | dependencies={','.join(dependencies) or '-'} "
+            f"| custom_check={'yes' if has_custom_check else 'no'}"
+        )
+        if not registration or not class_match or value_kind == "UNKNOWN":
+            print(f"ERROR: incomplete permission declaration in {member.name}")
+            return 1
+    return 0
+
+
 def main() -> int:
     if not ARCHIVE.is_file():
         print(f"ERROR: canonical archive missing: {ARCHIVE}")
@@ -158,6 +218,8 @@ def main() -> int:
 
         print("\n== Direct source excerpts: provider side effects and protocol invariants ==")
         by_name = {m.name: m for m in members}
+        if print_permission_inventory(archive, members):
+            return 1
         for label, (path, expr) in TARGET_FILES.items():
             member = by_name.get(path)
             print(f"\n## {label}")
