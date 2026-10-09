@@ -51,6 +51,8 @@ class ConfiguredLauncherTransport:
             raise ValueError("request must be a ProviderOperationRequest")
         if request.operation is not ExternalOperation.LAUNCHER:
             raise ValueError("launcher transport accepts only LAUNCHER requests")
+        if request.provider not in {"pppd", "portslave"}:
+            raise ValueError("launcher transport supports only audited PPPD/PortSlave providers")
         if request.action != "disconnect":
             raise ValueError("launcher transport requires action='disconnect'")
         params = request.parameters
