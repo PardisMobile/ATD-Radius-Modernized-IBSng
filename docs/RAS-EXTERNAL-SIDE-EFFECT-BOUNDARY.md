@@ -123,3 +123,10 @@ RADIUS Accounting-Request, Disconnect/CoA request, and Disconnect/CoA response a
 ## Immutable provider-operation envelopes — 2026-10-09
 
 Provider operation requests now snapshot their parameter mapping and expose it as read-only data. This prevents a caller from changing source-derived port/interface/user values after the request envelope has been constructed but before a transport consumes it. Empty provider/action identifiers are rejected. This is a transport-boundary integrity measure only; it does not supply or infer provider-specific operation parameters.
+
+
+## Complete control-request attribute validation — 2026-10-09
+
+The RFC 5176 control-request verifier now uses the shared complete attribute-stream parser when checking Message-Authenticator. It no longer stops scanning immediately after finding the first Message-Authenticator, so malformed trailing attributes and duplicate Message-Authenticator attributes are rejected. It also requires the declared RADIUS packet length to match the received datagram exactly.
+
+Regression coverage includes malformed trailing attribute length, duplicate Message-Authenticator, and trailing bytes beyond the declared packet length. These are malformed-packet checks only; no provider command/OID assumptions or frozen authentication/accounting behavior changed.
