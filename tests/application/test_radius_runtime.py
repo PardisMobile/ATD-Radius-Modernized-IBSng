@@ -49,6 +49,7 @@ def test_runtime_handler_applies_accounting_session():
     identities = Mock()
     identities.user_id.return_value = 7
     identities.ras_id.return_value = 3
+    identities.ras.get.return_value = None
 
     handler = RadiusRuntimeHandler(dispatcher, sessions, identities)
     packet = RadiusPacket(RadiusCode.ACCOUNTING_REQUEST, 9, {"Acct-Status-Type": "Start"}, b"0123456789abcdef")
