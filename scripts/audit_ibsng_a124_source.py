@@ -51,6 +51,8 @@ TARGET_FILES = {
     "Kill-user permission definition": ("IBSng/core/admin/perms/KILL_USER.py", r"^class |^    def |dependencies|check"),
     "Change-RAS permission definition": ("IBSng/core/admin/perms/CHANGE_RAS.py", r"^class |^    def |dependencies|check"),
     "Admin web session/auth boundary": ("IBSng/interface/IBSng/inc/admin.php", r"session|admin_id|username|login|password|perm|check"),
+    "Admin web authentication lifecycle": ("IBSng/interface/IBSng/inc/auth.php", r"function __construct|function Auth|function __authenticateUser|function __addToSession|function needAuthType|function __checkPrevAuthType|function sessionIsSet|function getAuth"),
+    "Admin lock enforcement semantics": ("IBSng/core/admin/admin.py", r"def isLocked|def checkPerm|def canDo|def getLocks|def setLocks"),
     "Admin audit and lock mutations": ("IBSng/core/admin/admin_actions.py", r"user_audit_log|admin_locks|createInsertQuery|createUpdateQuery|createDeleteQuery"),
 }
 
