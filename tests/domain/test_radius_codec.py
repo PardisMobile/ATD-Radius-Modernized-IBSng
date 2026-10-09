@@ -660,11 +660,35 @@ def test_uint32_attributes_reject_invalid_values(name, value):
         ("Acct-Status-Type", "Start", 1),
         ("Acct-Status-Type", "Stop", 2),
         ("Acct-Status-Type", "Interim-Update", 3),
+        ("Acct-Status-Type", "Alive", 3),
         ("Acct-Status-Type", "Accounting-On", 7),
         ("Acct-Status-Type", "Accounting-Off", 8),
+        ("Acct-Status-Type", "Tunnel-Start", 9),
+        ("Acct-Status-Type", "Tunnel-Stop", 10),
+        ("Acct-Status-Type", "Tunnel-Reject", 11),
+        ("Acct-Status-Type", "Tunnel-Link-Start", 12),
+        ("Acct-Status-Type", "Tunnel-Link-Stop", 13),
+        ("Acct-Status-Type", "Tunnel-Link-Reject", 14),
         ("Acct-Status-Type", "Failed", 15),
+        ("NAS-Port-Type", "Async", 0),
+        ("NAS-Port-Type", "Sync", 1),
+        ("NAS-Port-Type", "ISDN", 2),
+        ("NAS-Port-Type", "ISDN-V120", 3),
+        ("NAS-Port-Type", "ISDN-V110", 4),
         ("NAS-Port-Type", "Virtual", 5),
+        ("NAS-Port-Type", "PIAFS", 6),
+        ("NAS-Port-Type", "HDLC-Clear-Channel", 7),
+        ("NAS-Port-Type", "X.25", 8),
+        ("NAS-Port-Type", "X.75", 9),
+        ("NAS-Port-Type", "G.3-Fax", 10),
+        ("NAS-Port-Type", "SDSL", 11),
+        ("NAS-Port-Type", "ADSL-CAP", 12),
+        ("NAS-Port-Type", "ADSL-DMT", 13),
+        ("NAS-Port-Type", "IDSL", 14),
         ("NAS-Port-Type", "Ethernet", 15),
+        ("NAS-Port-Type", "xDSL", 16),
+        ("NAS-Port-Type", "Cable", 17),
+        ("NAS-Port-Type", "Wireless-Other", 18),
         ("NAS-Port-Type", "Wireless-802.11", 19),
     ],
 )
@@ -678,7 +702,27 @@ def test_source_dictionary_enum_labels_encode_to_canonical_wire_numbers(name, la
     wire = encode(packet)
     assert wire[20] == {"Acct-Status-Type": 40, "NAS-Port-Type": 61}[name]
     assert wire[22:26] == number.to_bytes(4, "big")
-    assert decode(wire).attributes[name] == label
+    expected_label = "Interim-Update" if name == "Acct-Status-Type" and label == "Alive" else label
+    assert decode(wire).attributes[name] == expected_label
+
+
+@pytest.mark.parametrize(
+    ("name", "label", "number"),
+    [
+        ("Framed-Routing", "None", 0),
+        ("Framed-Routing", "Broadcast", 1),
+        ("Framed-Routing", "Listen", 2),
+        ("Framed-Routing", "Broadcast-Listen", 3),
+        ("Acct-Authentic", "RADIUS", 1),
+        ("Acct-Authentic", "Local", 2),
+    ],
+)
+def test_other_a124_dictionary_enum_labels_encode_as_integers(name, label, number):
+    packet = RadiusPacket(RadiusCode.ACCOUNTING_REQUEST, 45, {name: label}, bytes(16))
+    wire = encode(packet)
+    assert wire[20] == {"Framed-Routing": 10, "Acct-Authentic": 45}[name]
+    assert wire[22:26] == number.to_bytes(4, "big")
+    assert decode(wire).attributes[name] == str(number)
 
 
 def test_unknown_integer_enum_label_is_not_silently_coerced():
