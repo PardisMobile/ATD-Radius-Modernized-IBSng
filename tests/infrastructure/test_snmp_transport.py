@@ -176,3 +176,100 @@ def test_snmp_transport_rejects_unsupported_requests_before_socket_creation(oper
     with pytest.raises(ValueError):
         transport.execute(operation_request)
     assert created == []
+
+
+def _walk_response(packet, oid, value, *, asn_type=0x04, error_status=0):
+    version, community, request_id, _ = _request_fields(packet)
+    varbind = _tlv(0x30, _encode_oid(oid) + _tlv(asn_type, value))
+    varbind_list = _tlv(0x30, varbind)
+    pdu = _tlv(
+        0xA2,
+        _ber_integer(request_id)
+        + _ber_integer(error_status)
+        + _ber_integer(0 if error_status == 0 else 1)
+        + varbind_list,
+    )
+    return _tlv(0x30, _ber_integer(version) + _tlv(0x04, community) + pdu)
+
+
+def test_cisco_ifdescr_walk_stops_at_subtree_boundary_and_returns_descriptions():
+    from atd_radius.domain.ras_external import build_cisco_snmp_port_map_request
+
+    base = ".1.3.6.1.2.1.2.2.1.2"
+    sibling = ".1.3.6.1.2.1.2.2.1.3.1"
+
+    def response_factory(packet, count):
+        if count == 1:
+            return _walk_response(packet, base + ".17", b"Async1/0")
+        if count == 2:
+            return _walk_response(packet, base + ".18", b"Serial0/0")
+        return _walk_response(packet, sibling, b"ethernetCsmacd")
+
+    fake = FakeSocket(response_factory)
+    request = build_cisco_snmp_port_map_request(ras_ip="192.0.2.10")
+    values = SnmpV1V2cSetTransport(lambda *_: fake).walk(request)
+
+    assert [(item.oid, item.value.decode()) for item in values] == [
+        (base + ".17", "Async1/0"),
+        (base + ".18", "Serial0/0"),
+    ]
+    assert len(fake.sent) == 3
+    assert all(_request_fields(packet)[0] == 1 for packet, _ in fake.sent)
+    assert fake.closed
+
+
+def test_snmp_v1_walk_treats_no_such_name_as_normal_end_of_subtree():
+    from atd_radius.domain.ras_external import build_cisco_snmp_port_map_request
+
+    request = build_cisco_snmp_port_map_request(
+        ras_ip="192.0.2.10", version="1"
+    )
+    fake = FakeSocket(
+        lambda packet, count: _walk_response(
+            packet, _request_fields(packet)[3], b"", asn_type=0x05, error_status=2
+        )
+    )
+    values = SnmpV1V2cSetTransport(lambda *_: fake).walk(request)
+    assert values == ()
+    assert len(fake.sent) == 1
+
+
+def test_snmp_v2c_end_of_mib_view_terminates_walk():
+    from atd_radius.domain.ras_external import build_cisco_snmp_port_map_request
+
+    request = build_cisco_snmp_port_map_request(ras_ip="192.0.2.10")
+    fake = FakeSocket(
+        lambda packet, count: _walk_response(
+            packet, _request_fields(packet)[3], b"", asn_type=0x82
+        )
+    )
+    assert SnmpV1V2cSetTransport(lambda *_: fake).walk(request) == ()
+    assert fake.closed
+
+
+def test_snmp_walk_rejects_nonadvancing_oid_and_closes_socket():
+    from atd_radius.domain.ras_external import build_cisco_snmp_port_map_request
+
+    base = ".1.3.6.1.2.1.2.2.1.2"
+    request = build_cisco_snmp_port_map_request(ras_ip="192.0.2.10")
+    fake = FakeSocket(lambda packet, count: _walk_response(packet, base, b"loop"))
+    with pytest.raises(SnmpTransportError, match="did not advance"):
+        SnmpV1V2cSetTransport(lambda *_: fake).walk(request)
+    assert fake.closed
+
+
+def test_snmp_walk_enforces_varbind_limit_and_closes_socket():
+    from atd_radius.domain.ras_external import build_cisco_snmp_port_map_request
+
+    base = ".1.3.6.1.2.1.2.2.1.2"
+    request = build_cisco_snmp_port_map_request(ras_ip="192.0.2.10")
+    request = ProviderOperationRequest(
+        request.provider,
+        request.operation,
+        request.action,
+        {**request.parameters, "max_varbinds": 1},
+    )
+    fake = FakeSocket(lambda packet, count: _walk_response(packet, base + ".17", b"Async1/0"))
+    with pytest.raises(SnmpTransportError, match="max_varbinds=1"):
+        SnmpV1V2cSetTransport(lambda *_: fake).walk(request)
+    assert fake.closed
