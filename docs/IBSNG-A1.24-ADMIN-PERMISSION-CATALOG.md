@@ -17,8 +17,8 @@ Value types:
 | ADD NEW ADMIN | No value | — | Not implemented |
 | ADD NEW GROUP | No value | — | Implemented for group API |
 | ADD NEW USER | No value | — | Implemented for user creation |
-| CHANGE ADMIN DEPOSIT | No value | CHANGE ADMIN INFO | Not implemented |
-| CHANGE ADMIN INFO | No value | SEE ADMIN INFO | Not implemented |
+| CHANGE ADMIN DEPOSIT | No value | CHANGE ADMIN INFO | Implemented for deposit adjustment API; broader admin workflows remain open |
+| CHANGE ADMIN INFO | No value | SEE ADMIN INFO | Registered as a dependency for deposit adjustment only; admin-info mutation API not implemented |
 | CHANGE ADMIN PASSWORD | No value | SEE ADMIN INFO | Not implemented |
 | CHANGE ADMIN PERMISSIONS | No value | SEE ADMIN INFO; SEE ADMIN PERMISSIONS | Not implemented |
 | CHANGE BANDWIDTH MANAGER | No value | CHANGE CHARGE | Not implemented |
@@ -50,7 +50,7 @@ Value types:
 | LIST RAS | No value | — | Implemented for RAS API |
 | NO DEPOSIT LIMIT | No value | — | Implemented for administrator credit-change deposit enforcement |
 | POST MESSAGES | No value | — | Not implemented |
-| SEE ADMIN INFO | No value | — | Not implemented |
+| SEE ADMIN INFO | No value | — | Registered as a dependency for deposit adjustment only; admin list/detail API not implemented |
 | SEE ADMIN PERMISSIONS | No value | SEE ADMIN INFO | Not implemented |
 | SEE BW SNAPSHOTS | All/Restricted | — | Not implemented |
 | SEE CONNECTION LOGS | All/Restricted | — | Implemented for user-detail connection-history field |
@@ -78,3 +78,10 @@ Value types:
 ## Audit limitations and next steps
 
 This inventory does **not** claim that every permission's custom `check()` behavior, all source call sites, page visibility, mutation transactions, or related side effects have been fully reviewed. Continue by tracing each permission from its definition to handlers and data consumers, then implement only the workflows whose source contract and tests are complete. Do not expose online-user clearing/disconnect or other privileged actions based on this inventory alone.
+
+
+## Administrator deposit adjustment — 2026-10-10
+
+Source trace: `IBSng/core/admin/admin_handler.py:68-76` requires `CHANGE ADMIN DEPOSIT`; `core/admin/perms/CHANGE_ADMIN_DEPOSIT.py` depends on `CHANGE ADMIN INFO`, which depends on `SEE ADMIN INFO`. `core/admin/admin_actions.py:161-183` writes `admin_deposit_change`, increments the target admin's deposit by the signed delta, then records IAS event type 2 (`CHANGE_DEPOSIT`) with the actor username and target username. A1.24 does not impose a non-negative target-deposit rule for this operation.
+
+ATD now exposes `POST /api/v1/admins/{username}/deposit` with the native dependency chain, row locking, signed deposit adjustment, native `admin_deposit_change` row, IAS type-2 event and operational audit in one transaction. This does not implement admin listing, details, info/password/lock changes, permission editing, or deletion.

@@ -99,6 +99,23 @@ _RAS_PERMISSIONS = AdminPermissionEvaluator(
     ]
 )
 
+_ADMIN_PERMISSIONS = AdminPermissionEvaluator(
+    [
+        PermissionSpec("GOD", PermissionKind.NO_VALUE),
+        PermissionSpec("SEE ADMIN INFO", PermissionKind.NO_VALUE),
+        PermissionSpec(
+            "CHANGE ADMIN INFO",
+            PermissionKind.NO_VALUE,
+            dependencies=("SEE ADMIN INFO",),
+        ),
+        PermissionSpec(
+            "CHANGE ADMIN DEPOSIT",
+            PermissionKind.NO_VALUE,
+            dependencies=("CHANGE ADMIN INFO",),
+        ),
+    ]
+)
+
 # A1.24 report handlers authorize connection history and credit-change history
 # independently from GET USER INFORMATION, and apply each permission's own
 # All/Restricted owner scope.
@@ -142,6 +159,8 @@ def require_admin_permission(permission_name: str):
             evaluator = _USER_PERMISSIONS
         elif permission_name in {"SEE CONNECTION LOGS", "SEE CREDIT CHANGES"}:
             evaluator = _REPORT_PERMISSIONS
+        elif permission_name in {"SEE ADMIN INFO", "CHANGE ADMIN INFO", "CHANGE ADMIN DEPOSIT"}:
+            evaluator = _ADMIN_PERMISSIONS
         else:
             evaluator = _GROUP_PERMISSIONS
         if not evaluator.can_do(principal.permissions, permission_name):

@@ -47,7 +47,7 @@
 - [ ] EAP state machine and supported methods (optional ATD extension; not an A1.24 parity gate)
 
 ## Phase 3 — Billing
-- [ ] credit ledger (single/bulk credit-change APIs and user-create initial-credit/deposit/native logs implemented; full billing ledger remains open)
+- [ ] credit ledger (single/bulk credit-change APIs, user-create initial credit, and native admin-deposit adjustment implemented; full billing ledger remains open)
 - [x] charge-rule selection and Internet billing primitives
 - [x] VoIP tariff/charge-rule primitives
 - [ ] PostgreSQL billing persistence and A1.24 parity
@@ -60,7 +60,7 @@
 - [x] User detail workspace API
 - [ ] REST API resources
 - [ ] XML-RPC compatibility adapter
-- [ ] API authentication, RBAC and audit
+- [ ] API authentication, RBAC and audit (user/RAS/group slices plus admin-deposit adjustment implemented; full admin RBAC remains open)
 
 ## Phase 5 — UI
 - [x] ATD design-system shell
