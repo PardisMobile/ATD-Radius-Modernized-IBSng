@@ -118,3 +118,21 @@ def test_launcher_transport_rejects_unsupported_or_unsafe_requests_before_execut
 def test_launcher_transport_validates_timeout_configuration(timeout):
     with pytest.raises(ValueError):
         ConfiguredLauncherTransport(timeout_seconds=timeout)
+
+
+def test_launcher_transport_default_timeout_matches_a124_launcher(monkeypatch):
+    request = build_pppd_disconnect_request(
+        command="/configured/addons/pppd/kill",
+        ras_ip="192.0.2.51",
+        port="ppp12",
+    )
+    seen = {}
+
+    def fake_run(argv, **kwargs):
+        seen.update(kwargs)
+        return subprocess.CompletedProcess(argv, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    result = ConfiguredLauncherTransport().execute(request)
+    assert result.succeeded
+    assert seen["timeout"] == 20
