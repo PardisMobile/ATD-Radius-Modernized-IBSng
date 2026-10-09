@@ -16,7 +16,8 @@ from atd_radius.domain.ras import RASRuntimeRegistry
 from atd_radius.domain.ip_pool import IPPoolRuntimeRegistry
 from atd_radius.domain.ip_pool_policy import IPPoolAllocationPolicy
 from atd_radius.domain.radius_runtime import SessionRegistry
-from atd_radius.domain.ras_provider import provider_session_id
+from atd_radius.domain.ras_provider import provider_session_id, provider_service_for_ras
+from atd_radius.domain.user_policies import ras_allows_multi_login
 from atd_radius.infrastructure.accounting_persistence import NativeAccountingPersistence
 from atd_radius.infrastructure.connection_log_repository import ConnectionLogRepository
 from atd_radius.infrastructure.billing_rules import PostgresInternetChargeRuleRepository
@@ -117,6 +118,17 @@ class RadiusRuntimeHandler:
                         session_id = provider_session_id(ras_record.ras_type, event.attributes)
                         if session_id is not None:
                             event = replace(event, session_id=session_id)
+                        service = provider_service_for_ras(ras_record.ras_type)
+                        ras_allowed = ras_allows_multi_login(
+                            ras_record.ras_type, ras_record.all_attributes(), service
+                        )
+                        event = replace(
+                            event,
+                            attributes={
+                                **event.attributes,
+                                "__ras_multi_login_allowed": "1" if ras_allowed else "0",
+                            },
+                        )
                     self.accounting_sessions.apply(event, user_id, ras_id)
                     if self.ip_pool_sessions:
                         if event.status.value == "Start":
@@ -238,10 +250,18 @@ class NativeAccountingIdentityResolver:
 
 
 def session_views(registry) -> callable:
-    """Return native policy views backed by the live runtime session registry."""
+    """Return policy views including each active session's source RAS capability."""
     def provider(user_id: int) -> tuple[ActiveSessionView, ...]:
         return tuple(
-            ActiveSessionView(state.key.unique_id)
+            ActiveSessionView(
+                state.key.unique_id,
+                state.started_at,
+                (
+                    str(state.attributes.get("__ras_multi_login_allowed", "")) in {"0", "false", "False"}
+                    and False
+                ) if "__ras_multi_login_allowed" not in state.attributes else
+                str(state.attributes.get("__ras_multi_login_allowed")) not in {"0", "false", "False"},
+            )
             for state in registry.active_for_user(user_id)
         )
 
