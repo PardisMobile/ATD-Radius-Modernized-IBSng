@@ -1,4 +1,6 @@
-from atd_radius.infrastructure.admin_repository import AdminRepository
+import pytest
+
+from atd_radius.infrastructure.admin_repository import AdminLockedError, AdminRepository
 
 
 class Cursor:
@@ -49,3 +51,17 @@ def test_native_admin_identity_permissions_and_locks_are_loaded_separately():
 def test_missing_admin_is_not_synthesized():
     repo = AdminRepository(FakeConnection([Cursor(row=None)]))
     assert repo.get_by_id(404) is None
+
+
+
+def test_native_lock_rows_block_login_guard():
+    repo = AdminRepository(FakeConnection([Cursor(row=(1,))]))
+    assert repo.is_locked(5)
+    with pytest.raises(AdminLockedError, match="administrator is locked"):
+        repo.require_unlocked(5)
+
+
+def test_admin_without_lock_passes_login_guard():
+    repo = AdminRepository(FakeConnection([Cursor(row=None), Cursor(row=None)]))
+    assert not repo.is_locked(5)
+    repo.require_unlocked(5)
