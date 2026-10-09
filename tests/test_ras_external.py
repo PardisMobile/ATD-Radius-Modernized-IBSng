@@ -177,3 +177,29 @@ def test_provider_operation_request_rejects_empty_identity_fields(provider, acti
             action=action,
             parameters={},
         )
+
+
+def test_provider_operation_request_recursively_freezes_nested_parameters():
+    nested = {"port": 7, "metadata": {"tags": ["edge", "radius"]}}
+    request = ProviderOperationRequest(
+        provider="portmaster",
+        operation=ExternalOperation.SNMP,
+        action="disconnect",
+        parameters=nested,
+    )
+    nested["metadata"]["tags"].append("mutated")
+    nested["metadata"]["port"] = 99
+    assert request.parameters["metadata"]["tags"] == ("edge", "radius")
+    assert "port" not in request.parameters["metadata"]
+    with pytest.raises(TypeError):
+        request.parameters["metadata"]["new"] = "value"
+
+
+@pytest.mark.parametrize("username", [None, 7, "", "   "])
+def test_chillispot_disconnect_builder_rejects_invalid_username_type_or_value(username):
+    with pytest.raises(ValueError, match="username"):
+        build_chillispot_disconnect_request(
+            disconnect_ip="192.0.2.20",
+            disconnect_port=1700,
+            username=username,
+        )
