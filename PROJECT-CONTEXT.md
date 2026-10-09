@@ -1025,3 +1025,10 @@ Main now includes a correction to the core RADIUS dictionary codec:
 - Tests cover wire numbers, four-byte payload lengths, max uint32, round-trip values, enum label encoding and invalid values. The previous codec-only CI run for the numeric type batch passed; the newer enum-label batch is being checked on both supported Python versions.
 
 No PAP/CHAP/MS-CHAPv1/v2, MPPE, MultiLogin, persistence, or accounting state machine semantics were changed in this batch.
+
+
+## Executable SNMP SET transport increment — 2026-10-09
+
+A new infrastructure transport, `src/atd_radius/infrastructure/snmp_transport.py`, now executes the already source-derived integer SET envelopes for Cisco (SNMPv2c), PortMaster (SNMPv1) and Total Control (ordered SNMPv1 down/up). It implements BER encoding/response parsing with the Python standard library; validates target IPv4/UDP port, version, community, request ID, peer, response OID, error status and exception varbinds; uses bounded timeout/retry settings; and reports prior successful SETs when a later operation in a sequence fails. Tests inject a fake socket and cover version/endpoint selection, ordered multi-SET execution, retry, agent error/partial completion, community mismatch, and invalid requests before socket creation.
+
+This is the first real transport implementation, but it is **not yet wired into the RAS runtime** and no live hardware was contacted. It supports SET only: Cisco ifDescr walk/port-map refresh, RSH and launcher execution remain unimplemented. Latest isolated pytest run passed **425 tests, 2 skipped, 2 warnings** on the test checkpoint; full Python 3.11/3.12 CI for the current commit was still running at the time of this note.
