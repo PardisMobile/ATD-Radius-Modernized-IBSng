@@ -20,7 +20,7 @@ jobs:
           archive="Source of Truth/IBSng-A1.24.tar.bz2"
           echo "Archive metadata:"
           sha256sum "$archive"
-          tar -tjf "$archive" | head -n 12
+          tar -tjf "$archive" | sed -n '1,12p'
           mkdir -p /tmp/a124-source
           tar -xjf "$archive" -C /tmp/a124-source
           root="$(find /tmp/a124-source -mindepth 1 -maxdepth 1 -type d | head -n 1)"
