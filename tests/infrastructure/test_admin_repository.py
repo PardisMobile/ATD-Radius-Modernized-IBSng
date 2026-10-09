@@ -27,7 +27,7 @@ class FakeConnection:
 
 def test_native_admin_identity_permissions_and_locks_are_loaded_separately():
     conn = FakeConnection([
-        Cursor(row=(5, "operator", "Operator", None)),
+        Cursor(row=(5, "operator", "Operator", None, "$1$salt$qJH7.N4xYta3aEG/dfqo/0")),
         Cursor(rows=[("KILL USER", "alice"), ("SEE ONLINE USERS", "")]),
         Cursor(rows=[(9, 2, "incident review")]),
     ])
@@ -39,6 +39,7 @@ def test_native_admin_identity_permissions_and_locks_are_loaded_separately():
 
     assert admin.admin_id == 5
     assert admin.username == "operator"
+    assert admin.password_hash == "$1$salt$qJH7.N4xYta3aEG/dfqo/0"
     assert permissions.has_perm("KILL USER")
     assert permissions.values["KILL USER"] == "alice"
     assert locks[0].lock_id == 9
