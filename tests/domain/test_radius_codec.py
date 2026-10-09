@@ -486,7 +486,7 @@ def test_control_request_rejects_malformed_attribute_after_message_authenticator
 def test_control_request_rejects_duplicate_message_authenticators():
     username = bytes((1, 7)) + b"alice"
     first_message_authenticator = bytes((80, 18)) + bytes(16)
-    second_message_authenticator = bytes((80, 18)) + b"\\x11" * 16
+    second_message_authenticator = bytes((80, 18)) + bytes((0x11,)) * 16
     attributes = username + first_message_authenticator + second_message_authenticator
     wire = _signed_control_request_with_raw_attributes(
         attributes, len(username) + 2
