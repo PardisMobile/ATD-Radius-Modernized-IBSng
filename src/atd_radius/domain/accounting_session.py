@@ -28,7 +28,10 @@ class AccountingSessionService:
         if not event.session_id: raise ValueError("Acct-Session-Id is required")
         key=SessionKey(user_id,ras_id,event.session_id); current=self.registry.get(key)
         if event.status is AccountingStatus.START and current is None:
-            state=self.registry.start(key,dict(event.attributes),event.input_octets,event.output_octets,event.observed_at)
+            state=self.registry.start(
+                key, dict(event.attributes), event.input_octets, event.output_octets,
+                event.observed_at, ras_multi_login_allowed=event.ras_multi_login_allowed
+            )
             if self.charge: self.charge.start(state,event.observed_at,ras_id,event.attributes.get("NAS-Port") or event.attributes.get("NAS-Port-Id"))
             log_id=self.persistence.start(event,user_id,ras_id) if self.persistence and "no_connection_log" not in event.attributes else None
             if log_id is not None: state.attributes={**state.attributes,"__connection_log_id":str(log_id)}
