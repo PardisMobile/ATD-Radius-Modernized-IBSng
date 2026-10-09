@@ -130,3 +130,10 @@ Provider operation requests now snapshot their parameter mapping and expose it a
 The RFC 5176 control-request verifier now uses the shared complete attribute-stream parser when checking Message-Authenticator. It no longer stops scanning immediately after finding the first Message-Authenticator, so malformed trailing attributes and duplicate Message-Authenticator attributes are rejected. It also requires the declared RADIUS packet length to match the received datagram exactly.
 
 Regression coverage includes malformed trailing attribute length, duplicate Message-Authenticator, and trailing bytes beyond the declared packet length. These are malformed-packet checks only; no provider command/OID assumptions or frozen authentication/accounting behavior changed.
+
+
+## RFC 5176 packet-length and padding semantics — 2026-10-09
+
+Control-request and control-response verification now follows RFC 5176 section 2.3: the declared packet length must be at least 20, no greater than 4096, and no greater than the received datagram length. Bytes after the declared packet length are padding and are ignored; a datagram shorter than the declared packet is rejected. The earlier strict equality check was corrected because RFC 5176 explicitly permits padding.
+
+Regression tests cover valid trailing padding, truncation, and packets above the 4096-byte maximum for both requests and responses. Reference: https://www.rfc-editor.org/rfc/rfc5176.html
