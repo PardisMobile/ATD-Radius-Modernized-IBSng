@@ -221,3 +221,15 @@ The transport also implements a bounded SNMP GETNEXT walk for the audited Cisco 
 ATD now includes `ConfiguredLauncherTransport` for the two source-audited launcher providers only: `pppd` and `portslave`. It accepts only explicit `LAUNCHER` disconnect envelopes, requires an absolute configured executable path, tokenizes configured command options with `shlex`, appends the source-derived argument sequence without a shell, uses `stdin=DEVNULL`, `close_fds=True`, a bounded timeout, and returns the actual exit status plus truncated output. Timeouts and OS launch failures are explicit errors; a non-zero return code is not reported as success. Other provider families, RSH operations and non-disconnect actions are rejected.
 
 Tests monkeypatch subprocess execution and cover argv order, `shell=False`, timeout, non-zero exit, output truncation and unsafe/unsupported requests. No real launcher or RAS was invoked in CI. The transport is available for explicit integration but is not yet wired into the accounting/disconnect runtime.
+
+## Explicit transport dispatcher — 2026-10-09
+
+Added `src/atd_radius/infrastructure/ras_external_dispatcher.py` as the first shared dispatch boundary for already-built, source-derived requests:
+
+- SNMP `walk` requests go to the bounded GETNEXT text-mapping operation; SNMP `disconnect` requests go to the existing SET transport.
+- PPPD and PortSlave launcher envelopes go only to the existing shell-free, allowlisted launcher transport.
+- ChilliSpot's RADIUS Disconnect request goes to the authenticated control UDP client. The shared secret and identifier are explicit call arguments and are not stored in the immutable operation envelope.
+- RSH, Asterisk Manager, H323, and SIP requests fail closed with `UnsupportedExternalOperation`; the dispatcher never turns their command fields into shell commands.
+
+Regression tests use fake transports and cover dispatch routing, ChilliSpot secret separation, invalid identifiers, and fail-closed RSH behavior. This establishes a reusable execution boundary; it does **not** yet wire the dispatcher to an admin/API endpoint or accounting lifecycle, and no live RAS device is contacted. The next integration step must provide source-derived request parameters from the RAS configuration and session context, then define authorization/audit semantics before exposing disconnect actions to users.
+
