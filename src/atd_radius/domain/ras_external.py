@@ -145,6 +145,125 @@ def build_provider_disconnect_request(
         parameters=source_parameters,
     )
 
+def _source_integer(value: object, name: str, *, minimum: int = 0) -> int:
+    """Parse a numeric source field without accepting bools or lossy coercions."""
+    if isinstance(value, bool):
+        raise ValueError(f"{name} must be an integer")
+    if isinstance(value, int):
+        number = value
+    elif isinstance(value, str) and value.isdecimal():
+        number = int(value)
+    else:
+        raise ValueError(f"{name} must be an integer")
+    if number < minimum:
+        raise ValueError(f"{name} must be at least {minimum}")
+    return number
+
+
+def _source_ipv4(value: str, name: str = "ras_ip") -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"{name} must be an IPv4 address")
+    try:
+        return str(IPv4Address(value))
+    except ValueError as exc:
+        raise ValueError(f"{name} must be an IPv4 address") from exc
+
+
+def _validate_snmp_settings(
+    community: str, timeout: float, retries: object
+) -> tuple[str, float, int]:
+    from math import isfinite
+
+    if not isinstance(community, str) or not community:
+        raise ValueError("SNMP community must be a non-empty string")
+    if (
+        isinstance(timeout, bool)
+        or not isinstance(timeout, (int, float))
+        or not isfinite(timeout)
+        or timeout <= 0
+    ):
+        raise ValueError("SNMP timeout must be finite and positive")
+    retry_count = _source_integer(retries, "SNMP retries", minimum=1)
+    return community, float(timeout), retry_count
+
+
+def build_portmaster_disconnect_request(
+    *,
+    ras_ip: str,
+    port: object,
+    community: str = "public",
+    timeout: float = 10,
+    retries: object = 3,
+) -> ProviderOperationRequest:
+    """Build PortMaster's exact A1.24 SNMP interface-disable operation.
+
+    A1.24 maps the provider NAS-Port to ifIndex int(port) + 2 and writes
+    IF-MIB ifAdminStatus=down (integer 2). Defaults: SNMP v1, UDP/161,
+    community public, timeout 10 and 3 retries.
+    """
+    target = _source_ipv4(ras_ip)
+    port_number = _source_integer(port, "port")
+    community, timeout, retry_count = _validate_snmp_settings(
+        community, timeout, retries
+    )
+    return ProviderOperationRequest(
+        provider="portmaster",
+        operation=ExternalOperation.SNMP,
+        action="disconnect",
+        parameters={
+            "ras_ip": target,
+            "community": community,
+            "timeout": timeout,
+            "retries": retry_count,
+            "udp_port": 161,
+            "version": "1",
+            "set": {
+                "oid": f".1.3.6.1.2.1.2.2.1.7.{port_number + 2}",
+                "type": "i",
+                "value": 2,
+            },
+        },
+    )
+
+
+def build_total_control_disconnect_request(
+    *,
+    ras_ip: str,
+    interface_index: object,
+    community: str = "public",
+    timeout: float = 10,
+    retries: object = 3,
+) -> ProviderOperationRequest:
+    """Build Total Control's source-traced SNMP down/up sequence.
+
+    A1.24 writes IF-MIB ifAdminStatus=down (2), then immediately up (1), at
+    the exact USR-Interface-Index. The ordered sequence is intentional.
+    """
+    target = _source_ipv4(ras_ip)
+    index = _source_integer(interface_index, "interface_index", minimum=1)
+    community, timeout, retry_count = _validate_snmp_settings(
+        community, timeout, retries
+    )
+    oid = f".1.3.6.1.2.1.2.2.1.7.{index}"
+    return ProviderOperationRequest(
+        provider="total_control",
+        operation=ExternalOperation.SNMP,
+        action="disconnect",
+        parameters={
+            "ras_ip": target,
+            "community": community,
+            "timeout": timeout,
+            "retries": retry_count,
+            "udp_port": 161,
+            "version": 1,
+            "sets": (
+                {"oid": oid, "type": "i", "value": 2},
+                {"oid": oid, "type": "i", "value": 1},
+            ),
+        },
+    )
+
+
 def build_chillispot_disconnect_request(
     *,
     disconnect_ip: str,
