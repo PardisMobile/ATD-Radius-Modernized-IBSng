@@ -152,3 +152,12 @@ Outbound Disconnect/CoA encoding now validates the Identifier as a non-boolean i
 ## Operation-envelope schema validation — 2026-10-09
 
 ProviderOperationRequest now validates its runtime boundary as well as its annotations: operation must be an ExternalOperation, and parameters must be a mapping before snapshotting/freezing. This prevents arbitrary operation strings or malformed parameter containers from crossing the external-side-effect boundary. Regression tests cover invalid operation values, invalid parameter container types, and nested mutation isolation. This is envelope validation only; it does not execute provider I/O or infer any A1.24 command/OID/launcher behavior.
+
+
+## External request builder input-boundary batch — 2026-10-09
+
+The generic disconnect builders now reject non-mapping parameter containers before any conversion. This closes a subtle permissiveness gap where false-y malformed values such as an empty list could be silently converted to an empty parameter dictionary, and where iterable key/value pairs could be accepted accidentally. An explicitly empty mapping remains valid. The provider-specific builder validates source_parameters with the same rule.
+
+Regression coverage also enumerates the currently source-traced external disconnect strategies: ChilliSpot RADIUS control, Cisco VPDN RSH, MikroTik RSH, PortMaster SNMP, PortSlave launcher, Total Control SNMP, and Quintum Tenor H323. Cisco's two-path SNMP-or-RSH strategy intentionally remains unresolved rather than selecting a path. Providers without an audited disconnect strategy (Asterisk, BSAE, GnuGk, MVTS, Persistent LAN, PPPD, SER) must not receive a guessed external operation through the generic adapter.
+
+No real provider I/O is performed by these tests. Exact provider commands, OIDs, launcher arguments, and telephony operation sequences remain gated on direct canonical-source evidence.
