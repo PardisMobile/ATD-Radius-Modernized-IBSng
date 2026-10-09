@@ -204,3 +204,23 @@ def test_mikrotik_adapter_builds_source_derived_rsh_request():
     assert request.operation.value == "rsh"
     assert request.parameters["branch"] == "hotspot"
     assert request.parameters["arguments"][0:2] == ("api-user", "secret")
+
+
+def test_cisco_vpdn_adapter_exposes_source_lookup_and_interface_resolution():
+    from atd_radius.domain.ras_provider_adapters import CISCO_VPDN_EXTERNAL_ADAPTER
+
+    lookup = CISCO_VPDN_EXTERNAL_ADAPTER.interface_lookup_request(
+        {
+            "ras_ip": "192.0.2.21",
+            "username": "alice",
+            "wrapper": "/configured/addons/cisco/rsh_wrapper",
+        }
+    )
+    assert lookup.action == "discover_interface"
+    output = "User: alice, line Vi2, connected, remote 198.51.100.7"
+    assert (
+        CISCO_VPDN_EXTERNAL_ADAPTER.resolve_interface(
+            output, username="alice", remote_ip="198.51.100.7"
+        )
+        == "Vi2"
+    )
