@@ -1227,3 +1227,12 @@ The native admin-auth work has now been applied to the first API domains, based 
 - Latest main HEAD is now `710c4e5a36360b871a2668c036fd8a3257026678`, adding owner/group repository regression tests. Its Python and full CI runs are queued; poll exact-head runs before declaring this batch green.
 
 Remaining: wait for current CI; expand user permission coverage for owner transfer, credit changes, attributes and delete only after tracing each exact permission/transaction contract; map complete permission catalog; then implement trusted online-session resolution and audit/authorization before any RAS disconnect endpoint is mounted. Do not infer full A1.24 parity from this first RBAC rollout.
+
+
+### Validation and continuation update — 2026-10-10
+
+- Added regression tests for native user owner/group persistence and owner-scoped list/count queries. The first test run exposed two test-fixture mistakes (one missing fake cursor result and tuple-vs-list expectation); both were corrected in `3caa888`.
+- Python suite passed on code/test checkpoint `3caa888963cc605abcd809c8e2d07182aa23dcd3`: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/37995179082
+- Python suite also passed on current documentation/source-audit checkpoint `b6eb731d8395b937e490aed814f1ba0502419403`: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/37995196153
+- Full CI on exact current HEAD `b6eb731d8395b937e490aed814f1ba0502419403` is still in progress: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/37995195999. Do not mark the latest batch fully green until it completes.
+- Current main now has native admin login/session, RAS and group permission gates/auditing, user list/detail owner scoping, and user creation with authenticated owner plus required accessible group. Full RBAC is not done: credit operations, user attribute updates, user deletion, owner transfer, online sessions/disconnect, full permission catalog and remaining A1.24 parity are still open.
