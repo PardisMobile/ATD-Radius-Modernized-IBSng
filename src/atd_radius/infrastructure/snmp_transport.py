@@ -262,6 +262,8 @@ class SnmpV1V2cSetTransport:
             raise ValueError("request must be a ProviderOperationRequest")
         if request.operation is not ExternalOperation.SNMP:
             raise ValueError("SNMP transport accepts only SNMP requests")
+        if request.action != "disconnect":
+            raise ValueError("SNMP SET execution requires action='disconnect'")
         params = request.parameters
         host = str(IPv4Address(str(params.get("ras_ip", params.get("host", "")))))
         port = params.get("udp_port", 161)
