@@ -659,3 +659,15 @@ def test_cisco_snmp_disconnect_rejects_invalid_source_identity(arguments):
 
     with pytest.raises(ValueError):
         build_cisco_disconnect_request(**arguments)
+
+
+def test_cisco_snmp_port_map_request_uses_source_ifdescr_walk_oid():
+    from atd_radius.domain.ras_external import build_cisco_snmp_port_map_request
+
+    request = build_cisco_snmp_port_map_request(ras_ip="192.0.2.10")
+    assert request.provider == "cisco"
+    assert request.operation is ExternalOperation.SNMP
+    assert request.action == "walk"
+    assert request.parameters["walk_oid"] == ".1.3.6.1.2.1.2.2.1.2"
+    assert request.parameters["version"] == "2c"
+    assert request.parameters["udp_port"] == 161
