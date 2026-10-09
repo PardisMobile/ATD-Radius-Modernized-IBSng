@@ -270,6 +270,34 @@ def resolve_cisco_snmp_port_index(
     return index_by_description.get(port)
 
 
+def build_cisco_snmp_port_map_request(
+    *,
+    ras_ip: str,
+    community: str = "public",
+    timeout: float = 10,
+    retries: object = 3,
+) -> ProviderOperationRequest:
+    """Build Cisco's source-derived IF-MIB ifDescr walk request envelope."""
+    target = _source_ipv4(ras_ip)
+    community, timeout, retry_count = _validate_snmp_settings(
+        community, timeout, retries
+    )
+    return ProviderOperationRequest(
+        provider="cisco",
+        operation=ExternalOperation.SNMP,
+        action="walk",
+        parameters={
+            "ras_ip": target,
+            "community": community,
+            "timeout": timeout,
+            "retries": retry_count,
+            "udp_port": 161,
+            "version": "2c",
+            "walk_oid": ".1.3.6.1.2.1.2.2.1.2",
+        },
+    )
+
+
 def build_cisco_snmp_disconnect_request(
     *,
     ras_ip: str,
