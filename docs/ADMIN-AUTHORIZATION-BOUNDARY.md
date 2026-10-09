@@ -36,3 +36,8 @@ Do not expose RAS disconnect or other privileged endpoints until the application
 ## Administrator lock lifecycle — 2026-10-10
 
 Source paths directly inspected: `IBSng/core/admin/admin_handler.py:104-119`, `core/admin/admin_actions.py:313-349`, and `core/admin/admin_lock.py`. ATD routes are `POST /api/v1/admins/{username}/locks` and `DELETE /api/v1/admins/{username}/locks/{lock_id}`. Both require `CHANGE ADMIN INFO` with the native `SEE ADMIN INFO` dependency. Lock rows retain reason, locker admin ID and the native sequence; unlock is scoped to both target admin ID and lock ID. Multiple lock rows are allowed, and the native login/session boundary denies access while any lock remains. Mutations and operational audit share the transaction. Admin password changes, permission editing, create/delete and volatile activity parity are still open.
+
+
+## Administrator password changes — 2026-10-10
+
+Source paths: `IBSng/core/admin/admin_handler.py:47-52`, `core/admin/perms/CHANGE_ADMIN_PASSWORD.py`, `core/lib/password_lib.py`, and `core/admin/admin_actions.py:54-81`. ATD exposes `PUT /api/v1/admins/{username}/password`. Self-change is allowed without `CHANGE ADMIN PASSWORD`; changing another admin requires that permission and its `SEE ADMIN INFO` dependency. Submitted password is stripped and validated against A1.24's allowed character set; the native `admins.password` field is updated using compatible MD5-crypt. Audit does not include the password/hash and shares the update transaction. This hash format is used solely for native IBSng compatibility.

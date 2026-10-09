@@ -147,3 +147,8 @@ This advances a narrow user-credit API workflow, **not** the complete billing mi
 ## Latest validation checkpoint — 2026-10-10
 
 Latest code/test commit: `fc7fd61c354ec8d91201433348131d996f28a548` (administrator lock/unlock). Main CI run: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38003343081. Python 3.11 and 3.12 passed with **596 passed, 2 warnings** each; the lightweight Python workflow passed with **594 passed, 2 skipped, 2 warnings**. The two skips are the live UDP/PostgreSQL tests in the lightweight workflow only; main CI configures PostgreSQL and executes both.
+
+
+## Latest validation checkpoint — 2026-10-10
+
+Latest code/test commit: `1faae684bef7a342d3a2f56ca53f9ed7b1657bf6` (administrator password change plus lint cleanup). Main CI: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38003678498 — Python 3.11 and 3.12 each passed **607 tests, 2 warnings**, including PostgreSQL-backed integration tests. Lightweight Python workflow: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38003678515 — **605 passed, 2 skipped, 2 warnings**; only the two live UDP/PostgreSQL integration tests are skipped there because no test database URL is configured.
