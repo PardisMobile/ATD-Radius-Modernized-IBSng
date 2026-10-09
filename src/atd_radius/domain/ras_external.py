@@ -51,8 +51,12 @@ class ProviderOperationRequest:
     def __post_init__(self) -> None:
         if not isinstance(self.provider, str) or not self.provider.strip():
             raise ValueError("provider must not be empty")
+        if not isinstance(self.operation, ExternalOperation):
+            raise ValueError("operation must be an ExternalOperation")
         if not isinstance(self.action, str) or not self.action.strip():
             raise ValueError("action must not be empty")
+        if not isinstance(self.parameters, Mapping):
+            raise ValueError("parameters must be a mapping")
         object.__setattr__(self, "parameters", _freeze_parameter(dict(self.parameters)))
 
 
