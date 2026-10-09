@@ -34,9 +34,9 @@ _PROFILES: tuple[RASProviderProfile, ...] = (
     RASProviderProfile("plan", unique_id="mac_ip", ip_assignment=False),
     RASProviderProfile("portmaster", unique_id="port", disconnect_strategy="snmp-port"),
     RASProviderProfile("portslave", unique_id="port", disconnect_strategy="launcher"),
-    RASProviderProfile("pppd", unique_id="port"),
+    RASProviderProfile("pppd", unique_id="port", disconnect_strategy="launcher"),
     RASProviderProfile("ser", unique_id="call_id"),
-    RASProviderProfile("tenor", unique_id="h323_conf_id", internet_multi_login=False, voip_multi_login=False, disconnect_strategy="h323-cause"),
+    RASProviderProfile("tenor", unique_id="h323_conf_id", internet_multi_login=False, voip_multi_login=False),
     RASProviderProfile("total_control", unique_id="interface_index", disconnect_strategy="snmp-interface"),
 )
 
