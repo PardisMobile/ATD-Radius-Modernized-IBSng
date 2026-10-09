@@ -99,9 +99,13 @@ def main() -> int:
         provider_files = [m for m in source_py if "/core/ras/rases/" in "/" + m.name]
         for member in sorted(provider_files, key=lambda m: m.name):
             print(member.name)
-        print("\n== RADIUS parser and launcher source file inventory ==")
+        print("\n== RADIUS parser, launcher and MS-CHAP source file inventory ==")
         for member in sorted(source_py, key=lambda m: m.name):
-            if "/radius_server/" in "/" + member.name or re.search(r"launcher|snmp|rsh", Path(member.name).name, re.I):
+            if (
+                "/radius_server/" in "/" + member.name
+                or "/core/lib/mschap/" in "/" + member.name
+                or re.search(r"launcher|snmp|rsh", Path(member.name).name, re.I)
+            ):
                 print(member.name)
 
         print("\n== Launcher implementation source anchors ==")
