@@ -15,7 +15,7 @@ def test_source_derived_disconnect_strategy_operation_families():
     assert disconnect_operations("rsh-interface") == (ExternalOperation.RSH,)
     assert disconnect_operations("launcher") == (ExternalOperation.LAUNCHER,)
     assert disconnect_operations("provider-port") == (ExternalOperation.RADIUS_DISCONNECT,)
-    assert disconnect_operations("h323-cause") == (ExternalOperation.H323,)
+    assert disconnect_operations("h323-cause") == ()
 
 
 def test_unknown_strategy_does_not_guess_an_operation():
@@ -359,4 +359,46 @@ def test_source_derived_snmp_disconnect_builders_validate_settings(settings):
         build_portmaster_disconnect_request(
             ras_ip="192.0.2.10", port=7, **settings
         )
+
+@pytest.mark.parametrize(
+    ("builder_name", "provider", "command"),
+    [
+        ("portslave", "portslave", "/configured/addons/portslave/kill"),
+        ("pppd", "pppd", "/configured/addons/pppd/kill"),
+    ],
+)
+def test_launcher_disconnect_builders_preserve_a124_command_and_argument_order(
+    builder_name, provider, command
+):
+    from atd_radius.domain.ras_external import (
+        build_portslave_disconnect_request,
+        build_pppd_disconnect_request,
+    )
+
+    builder = {
+        "portslave": build_portslave_disconnect_request,
+        "pppd": build_pppd_disconnect_request,
+    }[builder_name]
+    request = builder(command=command, ras_ip="192.0.2.50", port="ppp7")
+
+    assert request.provider == provider
+    assert request.operation is ExternalOperation.LAUNCHER
+    assert request.action == "disconnect"
+    assert request.parameters["command"] == command
+    assert request.parameters["arguments"] == ("192.0.2.50", "ppp7")
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        {"command": "", "ras_ip": "192.0.2.50", "port": "7"},
+        {"command": "/configured/kill", "ras_ip": "", "port": "7"},
+        {"command": "/configured/kill", "ras_ip": "192.0.2.50", "port": ""},
+    ],
+)
+def test_launcher_disconnect_builders_reject_missing_source_arguments(arguments):
+    from atd_radius.domain.ras_external import build_portslave_disconnect_request
+
+    with pytest.raises(ValueError):
+        build_portslave_disconnect_request(**arguments)
 
