@@ -361,3 +361,33 @@ def test_snmp_set_rejects_success_response_with_wrong_asn_type():
     with pytest.raises(SnmpTransportError, match="unexpected ASN type"):
         SnmpV1V2cSetTransport(lambda *_: fake).execute(request)
     assert fake.closed
+
+
+def test_cisco_snmp_builders_preserve_source_configured_version():
+    from atd_radius.domain.ras_external import (
+        build_cisco_disconnect_request,
+        build_cisco_snmp_port_map_request,
+    )
+
+    walk = build_cisco_snmp_port_map_request(
+        ras_ip="192.0.2.10", version="1"
+    )
+    assert walk.parameters["version"] == "1"
+
+    request = build_cisco_disconnect_request(
+        ras_ip="192.0.2.10",
+        port="Async1/0",
+        port_index=17,
+        snmp_version="1",
+    )
+    assert request is not None
+    assert request.parameters["version"] == "1"
+
+
+def test_cisco_snmp_builder_rejects_unknown_source_version():
+    from atd_radius.domain.ras_external import build_cisco_snmp_port_map_request
+
+    with pytest.raises(ValueError, match="unsupported Cisco SNMP version"):
+        build_cisco_snmp_port_map_request(
+            ras_ip="192.0.2.10", version="3"
+        )
