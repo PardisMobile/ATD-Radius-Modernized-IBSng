@@ -1311,3 +1311,10 @@ Code and test checkpoints:
 
 Credit support remains a scoped workflow, not full billing parity: initial credit/deposit behavior on user creation, admin deposit management, billing ledger, charge/usage integration, expiry/subscription, and report parity are still open.
 
+### Validation refresh after bulk-credit tests — 2026-10-10
+
+- Python suite passed on code/test checkpoint `8ebb384dff11a828f685f2365ead06b7a00a6b35`: **575 passed, 2 skipped, 2 warnings** in 2.11s. Run: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38000100666
+- Full CI passed on the same code/test checkpoint (including lint, Python 3.11/3.12, PHP syntax and integration checks): https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38000100604
+- Code and test coverage at that checkpoint includes single-user and bulk credit APIs, source-derived permissions, native credit/deposit checks, native credit/IAS records, operational audit atomicity and owner-scope denial.
+- Subsequent changes through `0f6279c494521b10ce809ed495143cdf8fb52636` are documentation/checkpoint updates only. Their CI runs were still in progress at the time of this note; no code changed after the green code/test checkpoint.
+
