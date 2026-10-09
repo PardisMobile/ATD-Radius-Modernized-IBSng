@@ -122,9 +122,9 @@ The canonical archive checksum recorded in the handoff was corrected after re-ha
 Cisco's conditional disconnect strategy is now covered at the request-construction level: source-derived IF-MIB description mapping + Cisco SNMP SET (default) and the configured RSH Async/Serial branches. This does not close the RAS parity milestone; mapping refresh/transport execution, live-device validation, and the remaining provider/accounting/dictionary work remain outstanding.
 
 
-## RADIUS codec compatibility increment — 2026-10-09
+## RADIUS codec compatibility increment — 2026-10-09 (source-corrected)
 
-Core dictionary wire types and enum-label encoding were tightened: Framed-IPX-Network now uses uint32 rather than IPv4, missing source dictionary integer types were added, known Acct-Status-Type/NAS-Port-Type labels encode to canonical wire values, and unsigned 32-bit bounds are enforced. Wire-level regression coverage was added. This improves core protocol correctness but does not close the overall dictionary/SIP/USR parity milestone.
+The initial type claim for Framed-IPX-Network was wrong and has been corrected against the actual A1.24 dictionary/parser: Framed-IPX-Network is `ipaddr`; Login-LAT-Port is `integer`. Integer encoding uses the source's unsigned network-order 32-bit format. Enum mappings now include direct-source labels for Framed-Routing, Acct-Authentic, Acct-Status-Type (including the duplicate-value reverse-map behavior), and NAS-Port-Type. Cisco's configurable SNMP version and the source launcher timeout default were also preserved. This batch improves fidelity but does not close the overall dictionary/SIP/USR or RAS parity milestones.
 
 
 ## SNMP transport progress — 2026-10-09
