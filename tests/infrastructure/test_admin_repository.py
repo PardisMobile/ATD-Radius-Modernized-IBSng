@@ -55,7 +55,7 @@ def test_missing_admin_is_not_synthesized():
 
 
 def test_native_lock_rows_block_login_guard():
-    repo = AdminRepository(FakeConnection([Cursor(row=(1,))]))
+    repo = AdminRepository(FakeConnection([Cursor(row=(1,)), Cursor(row=(1,))]))
     assert repo.is_locked(5)
     with pytest.raises(AdminLockedError, match="administrator is locked"):
         repo.require_unlocked(5)
