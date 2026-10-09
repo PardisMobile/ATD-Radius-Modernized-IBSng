@@ -168,6 +168,10 @@ def test_snmp_transport_rejects_wrong_community_and_closes_socket():
             "cisco", ExternalOperation.SNMP, "disconnect",
             {"ras_ip": "192.0.2.1", "set": {"oid": "not-an-oid", "type": "i", "value": 1}},
         ),
+        ProviderOperationRequest(
+            "cisco", ExternalOperation.SNMP, "walk",
+            {"ras_ip": "192.0.2.1", "set": {"oid": "1.3.6.1", "type": "i", "value": 1}},
+        ),
     ],
 )
 def test_snmp_transport_rejects_unsupported_requests_before_socket_creation(operation_request):
