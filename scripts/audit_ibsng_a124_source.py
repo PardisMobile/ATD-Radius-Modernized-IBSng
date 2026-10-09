@@ -416,7 +416,7 @@ def main() -> int:
 
         print("\n== Native admin lock behavior and enforcement references ==")
         lock_patterns = re.compile(
-            r"def\s+isLocked|\.isLocked\(|admin_locks|setLocks|"
+            r"def\s+isLocked|\.isLocked\(|admin_locks|setLocks"
             r"__getAdminLocks|lockAdmin|unlockAdmin|locker_admin_id",
             re.IGNORECASE,
         )
