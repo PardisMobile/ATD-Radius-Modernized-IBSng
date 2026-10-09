@@ -383,9 +383,9 @@ def main() -> int:
 
         print("\n== Administrator web authentication/session bootstrap search ==")
         auth_patterns = re.compile(
-            r"session_start|session_regenerate_id|\\$_SESSION|admin_id|admin_login|"
+            r"session_start|session_regenerate_id|\$_SESSION|admin_id|admin_login|"
             r"login_admin|checkAdmin|isLoggedIn|isAuthenticated|authenticate|"
-            r"password_verify|md5\\(|sha1\\(|admin_locks|isLocked",
+            r"password_verify|md5\(|sha1\(|admin_locks|isLocked",
             re.IGNORECASE,
         )
         auth_candidates = [
@@ -416,7 +416,7 @@ def main() -> int:
 
         print("\n== Native admin lock behavior and enforcement references ==")
         lock_patterns = re.compile(
-            r"def\\s+isLocked|\\.isLocked\\(|admin_locks|setLocks|"
+            r"def\s+isLocked|\.isLocked\(|admin_locks|setLocks|"
             r"__getAdminLocks|lockAdmin|unlockAdmin|locker_admin_id",
             re.IGNORECASE,
         )
