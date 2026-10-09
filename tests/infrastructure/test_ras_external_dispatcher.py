@@ -66,7 +66,7 @@ def test_dispatcher_routes_snmp_walk_to_walk_mapping():
         provider="cisco",
         operation=ExternalOperation.SNMP,
         action="walk",
-        parameters={"ras_ip": "192.0.2.1", "walk_oid": ".1.2.3"},
+        parameters={"ras_ip": "192.0.2.1", "walk_oid": ".1.3.6.1.2.1.2.2.1.2"},
     )
 
     result = dispatcher.execute(request)
@@ -135,3 +135,20 @@ def test_rsh_is_not_accidentally_executed_by_a_subprocess_transport():
 
     with pytest.raises(UnsupportedExternalOperation, match="no executable transport"):
         dispatcher.execute(request)
+
+def test_dispatcher_rejects_non_source_audited_snmp_oids_before_transport():
+    snmp = FakeSnmp()
+    dispatcher = RASExternalOperationDispatcher(
+        snmp=snmp, launcher=FakeLauncher(), chillispot=FakeChilliSpot()
+    )
+    request = ProviderOperationRequest(
+        provider="cisco",
+        operation=ExternalOperation.SNMP,
+        action="disconnect",
+        parameters={"set": {"oid": ".1.3.6.1.4.1.9.9.9.0", "type": "i", "value": 1}},
+    )
+
+    with pytest.raises(UnsupportedExternalOperation, match="not source-audited"):
+        dispatcher.execute(request)
+    assert snmp.executed == []
+
