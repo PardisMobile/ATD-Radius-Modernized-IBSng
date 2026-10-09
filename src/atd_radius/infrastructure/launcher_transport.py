@@ -8,7 +8,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 import shlex
 import subprocess
-from typing import Mapping
 
 from atd_radius.domain.ras_external import ExternalOperation, ProviderOperationRequest
 
