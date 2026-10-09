@@ -138,7 +138,7 @@ A shell-free subprocess transport now handles only audited PPPD and PortSlave la
 
 ## Native user-credit workflow increment — 2026-10-10
 
-A1.24 single-user credit adjustment is now exposed at `POST /api/v1/users/{username}/credit`. The operation enforces `CHANGE USER CREDIT` and `GET USER INFORMATION` All/Restricted owner scope; locks user and administrator deposit rows; prevents negative user credit; applies `NO DEPOSIT LIMIT`; updates `users.credit` and `admins.deposit`; inserts native `credit_change` / `credit_change_userid` and `ias_event` rows; and appends operational audit in the same transaction.
+A1.24 credit adjustment is now exposed at `POST /api/v1/users/{username}/credit` and `POST /api/v1/users/credit/bulk` for bounded multi-user changes. The operation enforces `CHANGE USER CREDIT` and `GET USER INFORMATION` All/Restricted owner scope; locks user and administrator deposit rows; prevents negative user credit; applies `NO DEPOSIT LIMIT`; updates `users.credit` and `admins.deposit`; inserts native `credit_change` / `credit_change_userid` and `ias_event` rows; and appends operational audit in the same transaction.
 
-This advances a narrow user-credit API workflow, **not** the complete billing milestone. Still open: bulk credit changes, add-user initial credit/deposit parity, deposit administration workflows, credit-ledger/business rules, charging/usage integration, expiry/subscription behavior, and full billing/report parity. CI status must be checked on the latest commit before treating the increment as validated.
+This advances a narrow user-credit API workflow, **not** the complete billing milestone. Still open: add-user initial credit/deposit parity, deposit administration workflows, credit-ledger/business rules, charging/usage integration, expiry/subscription behavior, and full billing/report parity. CI status must be checked on the latest commit before treating the increment as validated.
 
