@@ -10,6 +10,8 @@ class UserRecord:
     id: int
     username: str
     locked: bool
+    owner_id: int | None = None
+    group_id: int | None = None
 
 
 class UserRepository:
@@ -22,20 +24,20 @@ class UserRepository:
     def _status_locked(row: tuple) -> bool:
         return bool(row[2])
 
-    def create(self, username: str, status: str = "active") -> UserRecord:
+    def create(self, username: str, status: str = "active", owner_id: int | None = None, group_id: int | None = None) -> UserRecord:
         del status
         user_id = self.conn.execute("SELECT nextval('users_user_id_seq')").fetchone()[0]
         self.conn.execute(
-            "INSERT INTO users (user_id, credit, owner_id, group_id) VALUES (%s, %s, NULL, NULL)",
-            (user_id, 0),
+            "INSERT INTO users (user_id, credit, owner_id, group_id) VALUES (%s, %s, %s, %s)",
+            (user_id, 0, owner_id, group_id),
         )
         self.conn.execute(
             "INSERT INTO normal_users (user_id, normal_username, normal_password) VALUES (%s, %s, %s)",
             (user_id, username, ""),
         )
-        return UserRecord(id=user_id, username=username, locked=False)
+        return UserRecord(id=user_id, username=username, locked=False, owner_id=owner_id, group_id=group_id)
 
-    def list(self, search: str | None = None, status: str | None = None, limit: int = 50, offset: int = 0) -> list[UserRecord]:
+    def list(self, search: str | None = None, status: str | None = None, limit: int = 50, offset: int = 0, owner_id: int | None = None) -> list[UserRecord]:
         conditions: list[str] = []
         params: list[object] = []
         if search:
@@ -43,11 +45,14 @@ class UserRepository:
             params.append(f"%{search.strip()}%")
         if status in {"locked", "active"}:
             conditions.append(("lock_attr.user_id IS NOT NULL") if status == "locked" else ("lock_attr.user_id IS NULL"))
+        if owner_id is not None:
+            conditions.append("u.owner_id = %s")
+            params.append(owner_id)
         where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
         params.extend([limit, offset])
         rows = self.conn.execute(
             f"""
-            SELECT u.user_id, nu.normal_username, (lock_attr.user_id IS NOT NULL)
+            SELECT u.user_id, nu.normal_username, (lock_attr.user_id IS NOT NULL), u.owner_id, u.group_id
             FROM users u
             JOIN normal_users nu ON nu.user_id = u.user_id
             LEFT JOIN user_attrs lock_attr
@@ -58,9 +63,9 @@ class UserRepository:
             """,
             params,
         ).fetchall()
-        return [UserRecord(id=row[0], username=row[1], locked=bool(row[2])) for row in rows]
+        return [UserRecord(id=row[0], username=row[1], locked=bool(row[2]), owner_id=row[3], group_id=row[4]) for row in rows]
 
-    def count(self, search: str | None = None, status: str | None = None) -> int:
+    def count(self, search: str | None = None, status: str | None = None, owner_id: int | None = None) -> int:
         conditions: list[str] = []
         params: list[object] = []
         if search:
@@ -68,6 +73,9 @@ class UserRepository:
             params.append(f"%{search.strip()}%")
         if status in {"locked", "active"}:
             conditions.append(("lock_attr.user_id IS NOT NULL") if status == "locked" else ("lock_attr.user_id IS NULL"))
+        if owner_id is not None:
+            conditions.append("u.owner_id = %s")
+            params.append(owner_id)
         where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
         row = self.conn.execute(
             f"""
@@ -85,7 +93,7 @@ class UserRepository:
     def get_by_username(self, username: str) -> UserRecord | None:
         row = self.conn.execute(
             """
-            SELECT u.user_id, nu.normal_username, (lock_attr.user_id IS NOT NULL)
+            SELECT u.user_id, nu.normal_username, (lock_attr.user_id IS NOT NULL), u.owner_id, u.group_id
             FROM users u
             JOIN normal_users nu ON nu.user_id = u.user_id
             LEFT JOIN user_attrs lock_attr
@@ -96,7 +104,7 @@ class UserRepository:
         ).fetchone()
         if row is None:
             return None
-        return UserRecord(id=row[0], username=row[1], locked=bool(row[2]))
+        return UserRecord(id=row[0], username=row[1], locked=bool(row[2]), owner_id=row[3], group_id=row[4])
 
     def set_status(self, user_id: int, status: str) -> None:
         if status == "locked":
