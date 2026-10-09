@@ -1,3 +1,5 @@
+import pytest
+
 from atd_radius.domain.radius import RadiusCode, RadiusPacket
 from atd_radius.domain.radius_codec import RadiusCodecError, decode, decrypt_user_password, encode, encrypt_user_password, encode_response, verify_control_request, verify_message_authenticator
 
