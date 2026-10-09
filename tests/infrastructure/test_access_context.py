@@ -100,3 +100,38 @@ def test_native_access_context_emits_mschapv2_success():
     )
     attrs = NativeAccessContext(MSCHAPUsers()).enrich(packet)
     assert attrs["__mschapv2_success"] == b"\x01S=407A5589115FD0D6209F510FE9C04566932CDA56"
+
+
+
+def test_mschapv2_uses_canonical_normal_username_for_source_hashes():
+    from atd_radius.domain.radius_auth import _challenge_hash, _nt_response
+
+    class CanonicalMSCHAPUsers(FakeUsers):
+        def __init__(self):
+            self.records = {"alias": (9, "clientPass", False)}
+            self.attrs = {9: []}
+
+        def normal_credentials(self, user_id):
+            assert user_id == 9
+            return ("StoredUser", "clientPass")
+
+    auth_challenge = bytes.fromhex("5B5D7C7D7B3F2F3E3C2C602132262628")
+    peer_challenge = bytes.fromhex("21402324255E262A28295F2B3A337C7E")
+    nt_response = _nt_response(
+        _challenge_hash(peer_challenge, auth_challenge, "StoredUser"),
+        "clientPass",
+    )
+    response = b"\x01\x00" + peer_challenge + b"\x00" * 8 + nt_response
+    packet = RadiusPacket(
+        RadiusCode.ACCESS_REQUEST,
+        5,
+        {
+            "User-Name": "alias",
+            "MS-CHAP-Challenge": auth_challenge,
+            "MS-CHAP2-Response": response,
+        },
+    )
+
+    attrs = NativeAccessContext(CanonicalMSCHAPUsers()).enrich(packet)
+    assert attrs["__password_ok"] == "1"
+    assert attrs["__mschapv2_success"].startswith(b"\x01S=")
