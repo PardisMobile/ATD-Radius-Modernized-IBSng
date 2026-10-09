@@ -1117,3 +1117,12 @@ Canonical A1.24 source excerpts in workflow run https://github.com/PardisMobile/
 
 The transport bypasses the legacy shell-assembled `script_wrapper.py` command while preserving the observed argv contract; wrapper/runtime interoperability still requires deployment and live validation. It is not yet wired to authenticated API/admin/accounting actions. Never expose it without authorization and audit logging. A new Python run initially failed on the MikroTik regex closing-bracket escape; commit `2bcc057e73c571ecdeca570405e67a085f52789a` fixes that and its CI must be checked before calling the RSH batch green. Continue with source-derived runtime integration and accounting/provider parity; do not modify frozen auth/MultiLogin/attribute inheritance/persistence core without direct A1.24 evidence.
 
+## Application disconnect orchestration checkpoint — 2026-10-09
+
+Added `application/ras_disconnect.py` with explicit source-derived orchestration:
+- Cisco configured SNMP branch: ifDescr walk → port/ifIndex resolve → audited SET; missing port prevents SET.
+- Cisco configured RSH branch only when the source flag disables SNMP.
+- Cisco VPDN: RSH caller lookup → source-pattern parse (including optional remote IP disambiguation) → clear interface; failed lookup/no match prevents final command.
+- MikroTik: source-derived hotspot-vs-PPP request dispatch.
+Tests use a fake dispatcher. The service is intentionally not mounted as an endpoint: do not expose it until trusted RAS/session resolution, authorization, and durable audit events are integrated. Python workflow on code commit `37f74ac73cda484d4bf4dfbc253c3328efddfe49` passed; the latest full CI on current main still needs polling after docs/test commits.
+
