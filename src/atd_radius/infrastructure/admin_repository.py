@@ -23,6 +23,10 @@ class NativeAdminLock:
     reason: str | None
 
 
+class AdminLockedError(PermissionError):
+    """Raised when a native IBSng administrator has one or more active locks."""
+
+
 class AdminRepository:
     """Read-only native-schema adapter; deliberately does not authenticate sessions."""
 
@@ -66,6 +70,19 @@ class AdminRepository:
             (admin_id,),
         ).fetchall()
         return AdminPermissionSet({str(name): value for name, value in rows})
+
+    def is_locked(self, admin_id: int) -> bool:
+        """Match A1.24 isLocked: any lock row means the administrator is locked."""
+        row = self.conn.execute(
+            "SELECT 1 FROM admin_locks WHERE admin_id = %s LIMIT 1",
+            (admin_id,),
+        ).fetchone()
+        return row is not None
+
+    def require_unlocked(self, admin_id: int) -> None:
+        """Fail closed for a locked admin; intended for future auth/session integration."""
+        if self.is_locked(admin_id):
+            raise AdminLockedError("administrator is locked")
 
     def locks(self, admin_id: int) -> list[NativeAdminLock]:
         rows = self.conn.execute(
