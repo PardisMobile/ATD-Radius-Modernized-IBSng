@@ -12,6 +12,8 @@ class SessionAdmissionReason(str):
 class ActiveSessionView:
     unique_id:str
     started_at:datetime|None=None
+    # Source MultiLogin remembers the RAS capability for every existing instance.
+    ras_multi_login_allowed:bool|None=None
 
 @dataclass(frozen=True,slots=True)
 class SessionPolicyDecision:
