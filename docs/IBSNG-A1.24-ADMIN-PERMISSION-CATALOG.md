@@ -1,0 +1,78 @@
+# IBSng A1.24 Administrator Permission Inventory
+
+**Authority:** the canonical archive at `Source of Truth/IBSng-A1.24.tar.bz2` (SHA-256 `c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839614bb9349d18a8`).
+
+This is a source-derived structural inventory of all 51 modules under `IBSng/core/admin/perms/`. The source-audit workflow extracts each module's registered permission name, value-type base, declared dependencies and whether it overrides `check()`. Structural inventory is not a substitute for tracing each permission's consumers or claiming complete RBAC parity.
+
+Value types:
+- **No value:** presence-only permission; dependencies are still enforced by source application logic.
+- **All/Restricted:** a single value restricted to exactly `All` or `Restricted`; the target resource owner/context still matters.
+- **Multi-value:** comma-separated text values parsed into a list.
+- **Implemented subset:** permission is currently registered in the ATD API evaluator for the resource/report slice noted below. It does not mean all IBSng workflows using that permission are implemented.
+
+| Native A1.24 permission | Value type | Source-declared dependencies | ATD status |
+|---|---|---|---|
+| ACCESS ALL CHARGES | No value | — | Not implemented |
+| ACCESS ALL GROUPS | No value | — | Implemented for group visibility |
+| ADD NEW ADMIN | No value | — | Not implemented |
+| ADD NEW GROUP | No value | — | Implemented for group API |
+| ADD NEW USER | No value | — | Implemented for user creation |
+| CHANGE ADMIN DEPOSIT | No value | CHANGE ADMIN INFO | Not implemented |
+| CHANGE ADMIN INFO | No value | SEE ADMIN INFO | Not implemented |
+| CHANGE ADMIN PASSWORD | No value | SEE ADMIN INFO | Not implemented |
+| CHANGE ADMIN PERMISSIONS | No value | SEE ADMIN INFO; SEE ADMIN PERMISSIONS | Not implemented |
+| CHANGE BANDWIDTH MANAGER | No value | CHANGE CHARGE | Not implemented |
+| CHANGE CHARGE | No value | ACCESS ALL CHARGES | Not implemented |
+| CHANGE GROUP | All/Restricted | ADD NEW GROUP | Implemented for group API; All also checks group access |
+| CHANGE IBS DEFINITIONS | No value | — | Not implemented |
+| CHANGE IPPOOL | No value | LIST IPPOOL | Not implemented |
+| CHANGE MAILBOX | No value | CHANGE NORMAL USER ATTRIBUTES | Not implemented |
+| CHANGE NORMAL USER ATTRIBUTES | All/Restricted | CHANGE USER ATTRIBUTES | Not implemented |
+| CHANGE RAS | No value | LIST RAS; GET RAS INFORMATION | Implemented for RAS API |
+| CHANGE USER ATTRIBUTES | All/Restricted | GET USER INFORMATION | Registered; mutation API not implemented |
+| CHANGE USER CREDIT | All/Restricted | GET USER INFORMATION | Not implemented |
+| CHANGE USERS OWNER | No value | — | Not implemented |
+| CHANGE VOIP TARIFF | No value | CHANGE CHARGE | Not implemented |
+| CHANGE VOIP USER ATTRIBUTES | All/Restricted | CHANGE USER ATTRIBUTES | Not implemented |
+| CHARGE ACCESS | Multi-value | — | Not implemented |
+| CLEAR USER | All/Restricted | SEE ONLINE USERS | Not implemented |
+| DELETE ADMIN | No value | SEE ADMIN INFO | Not implemented |
+| DELETE REPORTS | No value | — | Not implemented |
+| DELETE USER | All/Restricted | GET USER INFORMATION | Registered; delete API not implemented |
+| GET RAS INFORMATION | No value | LIST RAS | Implemented for RAS API |
+| GET USER INFORMATION | All/Restricted | — | Implemented for user list/detail owner scope |
+| GOD | No value | — | Implemented as source-style bypass within registered evaluators |
+| GROUP ACCESS | Multi-value | — | Implemented for group visibility |
+| KILL USER | All/Restricted | SEE ONLINE USERS | Not implemented; disconnect remains unmounted |
+| LIMIT LOGIN ADDR | Multi-value | — | Implemented in native admin authentication |
+| LIMIT MAIL DOMAIN | Multi-value | CHANGE MAILBOX | Not implemented |
+| LIST IPPOOL | No value | — | Not implemented |
+| LIST RAS | No value | — | Implemented for RAS API |
+| NO DEPOSIT LIMIT | No value | — | Not implemented |
+| POST MESSAGES | No value | — | Not implemented |
+| SEE ADMIN INFO | No value | — | Not implemented |
+| SEE ADMIN PERMISSIONS | No value | SEE ADMIN INFO | Not implemented |
+| SEE BW SNAPSHOTS | All/Restricted | — | Not implemented |
+| SEE CONNECTION LOGS | All/Restricted | — | Implemented for user-detail connection-history field |
+| SEE CREDIT CHANGES | All/Restricted | — | Implemented for user-detail credit-history field |
+| SEE ONLINE SNAPSHOTS | No value | — | Not implemented |
+| SEE ONLINE USERS | All/Restricted | — | Not implemented |
+| SEE REALTIME SNAPSHOTS | No value | — | Not implemented |
+| SEE SAVED USERNAME PASSWORDS | All/Restricted | GET USER INFORMATION | Not implemented |
+| SEE USER AUDIT LOGS | All/Restricted | — | Not implemented |
+| SEE VOIP TARIFF | No value | CHANGE CHARGE | Not implemented |
+| SEE WEB ANALYZER LOGS | All/Restricted | — | Not implemented |
+| VIEW MESSAGES | No value | — | Not implemented |
+
+## Source-sensitive rules already confirmed
+
+- A1.24 `hasPerm(name)` checks presence only; it is not an authorization decision. `checkPerm` evaluates the permission and `canDo` applies the source-defined GOD bypass.
+- `CHANGE GROUP` with `All` requires group access; `Restricted` requires ownership.
+- `GET USER INFORMATION`, `CHANGE USER ATTRIBUTES`, and `DELETE USER` use the All/Restricted owner scope; the latter two depend on GET USER INFORMATION.
+- `CHANGE RAS` depends on both LIST RAS and GET RAS INFORMATION.
+- `KILL USER` and `CLEAR USER` depend on SEE ONLINE USERS.
+- `SEE CONNECTION LOGS` and `SEE CREDIT CHANGES` are independent All/Restricted permissions. The user-detail API now enforces each separately instead of treating GET USER INFORMATION as sufficient.
+
+## Audit limitations and next steps
+
+This inventory does **not** claim that every permission's custom `check()` behavior, all source call sites, page visibility, mutation transactions, or related side effects have been fully reviewed. Continue by tracing each permission from its definition to handlers and data consumers, then implement only the workflows whose source contract and tests are complete. Do not expose online-user clearing/disconnect or other privileged actions based on this inventory alone.
