@@ -1146,3 +1146,11 @@ Latest implementation batch:
 - Validation on code/config commit `f03ba955bc2a59b06b5fd52351d28f4d07240795`: Python workflow passed; full CI passed on Python 3.11 and 3.12.
 
 Important limitation: the shared bearer token is only an initial API safety gate, not administrator identities, role-based permissions, or a durable operational audit trail. Do not mount the RAS disconnect service as an endpoint yet. Before that, continue source-first work on native `admins` / `admin_perms` behavior and durable audit events, then resolve target sessions from trusted server-side state. Keep all previously frozen A1.24 authentication, MultiLogin, inheritance and accounting behavior untouched absent direct contradictory source evidence.
+
+## Continuation checkpoint — 2026-10-09 (native admin permission source review)
+
+- Extended `scripts/audit_ibsng_a124_source.py` to emit direct excerpts for A1.24 administrator permission checks, permission definitions, dependency mutation, admin locks and audit references.
+- Canonical source audit passed on code checkpoint `8532ef9ee8895f647659e9fbf6105c3e01aa66d9`; Python and full CI passed on Python 3.11 and 3.12.
+- Added `docs/A1.24-ADMIN-PERMISSION-AUDIT.md` from those direct excerpts.
+- Source facts: `checkPerm` evaluates the registered permission; `hasPerm` only checks presence; `canDo` has a source-defined GOD bypass. Multi-value permissions are comma-separated. Permission dependencies are checked during add/delete. Admin loading includes both permissions and locks. A1.24 `KILL USER` depends on `SEE ONLINE USERS`; `CHANGE RAS` depends on `LIST RAS` and `GET RAS INFORMATION`.
+- Still open: trace the exact web login/session bootstrap and full online-user disconnect request path; design operational audit storage; implement native administrator identity and permission evaluation before exposing privileged endpoints. Do not treat the shared bearer token as RBAC, and do not mount the RAS disconnect service yet.
