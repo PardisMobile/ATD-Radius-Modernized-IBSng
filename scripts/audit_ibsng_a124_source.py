@@ -332,7 +332,7 @@ def main() -> int:
             if call_count >= 160:
                 break
 
-        print("\\n== Native administrator permission and audit source references ==")
+        print("\n== Native administrator permission and audit source references ==")
         admin_related = [
             member for member in members
             if member.name.endswith((".py", ".sql", ".tpl", ".php", ".xml"))
