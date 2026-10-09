@@ -150,3 +150,45 @@ def test_user_permission_values_enforce_owner_scope_and_dependencies():
     assert can_access_user(god, 999)
     assert can_change_user(god, 999)
     assert can_delete_user(god, 999)
+
+
+def test_connection_logs_and_credit_changes_require_their_own_source_permissions():
+    from atd_radius.api.admin_dependencies import (
+        AdminPrincipal,
+        can_view_connection_logs,
+        can_view_credit_changes,
+    )
+    from atd_radius.domain.admin_permissions import AdminPermissionSet
+
+    no_report_permissions = AdminPrincipal(
+        7, "operator", None, AdminPermissionSet({"GET USER INFORMATION": "All"})
+    )
+    assert not can_view_connection_logs(no_report_permissions, 7)
+    assert not can_view_credit_changes(no_report_permissions, 7)
+
+    restricted_reports = AdminPrincipal(
+        7, "operator", None,
+        AdminPermissionSet({
+            "SEE CONNECTION LOGS": "Restricted",
+            "SEE CREDIT CHANGES": "Restricted",
+        }),
+    )
+    assert can_view_connection_logs(restricted_reports, 7)
+    assert not can_view_connection_logs(restricted_reports, 8)
+    assert can_view_credit_changes(restricted_reports, 7)
+    assert not can_view_credit_changes(restricted_reports, 8)
+
+    all_reports = AdminPrincipal(
+        7, "operator", None,
+        AdminPermissionSet({
+            "SEE CONNECTION LOGS": "All",
+            "SEE CREDIT CHANGES": "All",
+        }),
+    )
+    assert can_view_connection_logs(all_reports, 8)
+    assert can_view_credit_changes(all_reports, 8)
+
+    god = AdminPrincipal(7, "operator", None, AdminPermissionSet({"GOD": ""}))
+    assert can_view_connection_logs(god, 8)
+    assert can_view_credit_changes(god, 8)
+
