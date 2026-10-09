@@ -80,3 +80,12 @@ def test_ras_api_requires_native_admin_session_even_when_perimeter_token_is_opti
     response = request_get("/api/v1/ras")
     assert response.status_code == 401
     assert response.json()["detail"] == "Administrator session required"
+
+
+
+def test_group_api_requires_native_admin_session(monkeypatch):
+    monkeypatch.setattr(settings, "environment", "development")
+    monkeypatch.setattr(settings, "api_bearer_token", "")
+    response = request_get("/api/v1/groups")
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Administrator session required"
