@@ -24,7 +24,7 @@ class Conn:
 
 
 def test_create_persists_authenticated_owner_and_selected_group():
-    conn = Conn([Result((42,)), Result()])
+    conn = Conn([Result((42,)), Result(), Result()])
     record = UserRepository(conn).create("alice", owner_id=7, group_id=9)
     assert record.id == 42
     assert record.owner_id == 7
@@ -45,9 +45,9 @@ def test_user_list_and_count_can_be_scoped_to_native_owner():
     assert records[0].group_id == 9
     assert total == 1
     assert "u.owner_id = %s" in conn.calls[0][0]
-    assert conn.calls[0][1] == (7, 50, 0)
+    assert conn.calls[0][1] == [7, 50, 0]
     assert "u.owner_id = %s" in conn.calls[1][0]
-    assert conn.calls[1][1] == (7,)
+    assert conn.calls[1][1] == [7]
 
 
 def test_user_lookup_returns_owner_and_group_for_authorization():
