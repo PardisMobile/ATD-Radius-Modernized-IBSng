@@ -1180,3 +1180,15 @@ Important limitation: the shared bearer token is only an initial API safety gate
 - Found and fixed a migration-order defect: both `004_defs.sql` and the operational audit migration used prefix `004`. The operational audit migration is now `migrations/005_operational_audit.sql`; the duplicate-numbered file was removed.
 - Updated `docs/OPERATIONAL-AUDIT-CONTRACT.md` and added a regression test ensuring migration prefixes are unique and the audit migration follows native definitions.
 - Python-only CI had passed before this migration-order fix. The latest CI run must be checked again; full CI remains vulnerable to Docker Hub anonymous-pull rate limiting for the PostgreSQL service image.
+
+
+### Latest verified checkpoint — 2026-10-10
+
+- Current `main` HEAD: `16560b7b9043e257547c2d90c2cc0fee1f8fcb4d` (PostgreSQL CI service now uses the public AWS ECR Docker Library mirror to avoid Docker Hub anonymous pull limits).
+- Python workflow: **success** on this exact HEAD: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/37992140923
+- Full CI, including the PostgreSQL-backed job: **success** on this exact HEAD: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/37992140812
+- Migration order is unique and sequential: `001_initial.sql`, `002_functions.sql`, `003_initial_data.sql`, `004_defs.sql`, `005_operational_audit.sql`. A regression test checks duplicate prefixes and that operational audit follows native definitions.
+- The admin permission evaluator and native read-only admin repository are foundation components only. There is still no complete admin login/session bootstrap, source-complete permission registry, enforced admin-lock policy, or privileged HTTP action flow. Do not treat these as completed RBAC.
+- The current source audit identifies `KILL USER` as single-value and dependent on `SEE ONLINE USERS`; `CHANGE RAS` is no-value and depends on `LIST RAS` plus `GET RAS INFORMATION`. These are examples, not a complete permission catalog.
+- Operational audit persistence is ATD-specific and remains separate from native `user_audit_log`. Do not expose RAS disconnect until actor authentication, native permission evaluation, trusted session resolution, and accurate audit/side-effect sequencing are wired and integration-tested.
+- Repository Markdown inventory at this checkpoint: 57 files. This count is a tree inventory, not a claim that every file has received a complete line-by-line human review.
