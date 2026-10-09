@@ -277,3 +277,69 @@ def test_snmp_walk_enforces_varbind_limit_and_closes_socket():
     with pytest.raises(SnmpTransportError, match="max_varbinds=1"):
         SnmpV1V2cSetTransport(lambda *_: fake).walk(request)
     assert fake.closed
+
+
+def _request_set_value(packet):
+    _, message, _ = _read_tlv(packet, 0)
+    offset = 0
+    _, _, offset = _read_tlv(message, offset)
+    _, _, offset = _read_tlv(message, offset)
+    _, pdu, _ = _read_tlv(message, offset)
+    pdu_offset = 0
+    _, _, pdu_offset = _read_tlv(pdu, pdu_offset)
+    _, _, pdu_offset = _read_tlv(pdu, pdu_offset)
+    _, _, pdu_offset = _read_tlv(pdu, pdu_offset)
+    _, varbind_list, _ = _read_tlv(pdu, pdu_offset)
+    _, varbind, _ = _read_tlv(varbind_list, 0)
+    inner = 0
+    _, _, inner = _read_tlv(varbind, inner)
+    tag, value, _ = _read_tlv(varbind, inner)
+    return tag, int.from_bytes(value, "big", signed=True)
+
+
+def test_cisco_snmp_service_runs_ifdescr_walk_then_disconnect_set():
+    from atd_radius.infrastructure.snmp_transport import CiscoSnmpDisconnectService
+
+    base = ".1.3.6.1.2.1.2.2.1.2"
+    sibling = ".1.3.6.1.2.1.2.2.1.3.1"
+    walk_socket = FakeSocket(
+        lambda packet, count: _walk_response(
+            packet,
+            base + ".17" if count == 1 else sibling,
+            b"Async1/0" if count == 1 else b"ethernetCsmacd",
+        )
+    )
+    set_socket = FakeSocket()
+    sockets = iter((walk_socket, set_socket))
+    transport = SnmpV1V2cSetTransport(lambda *_: next(sockets))
+
+    responses = CiscoSnmpDisconnectService(transport).disconnect(
+        ras_ip="192.0.2.10", port="Async1/0"
+    )
+
+    assert len(responses) == 1
+    assert walk_socket.closed and set_socket.closed
+    assert len(walk_socket.sent) == 2
+    assert len(set_socket.sent) == 1
+    assert _request_fields(set_socket.sent[0][0])[3] == ".1.3.6.1.4.1.9.2.1.76.0"
+    assert _request_set_value(set_socket.sent[0][0]) == (0x02, 17)
+
+
+def test_cisco_snmp_service_does_not_set_when_port_is_not_in_ifdescr_map():
+    from atd_radius.infrastructure.snmp_transport import CiscoSnmpDisconnectService
+
+    sibling = ".1.3.6.1.2.1.2.2.1.3.1"
+    walk_socket = FakeSocket(
+        lambda packet, count: _walk_response(packet, sibling, b"ethernetCsmacd")
+    )
+    created = []
+    transport = SnmpV1V2cSetTransport(
+        lambda *_: (created.append(walk_socket) or walk_socket)
+    )
+
+    with pytest.raises(LookupError, match="does not contain port"):
+        CiscoSnmpDisconnectService(transport).disconnect(
+            ras_ip="192.0.2.10", port="Async1/0"
+        )
+    assert len(walk_socket.sent) == 1
+    assert walk_socket.closed
