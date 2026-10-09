@@ -14,6 +14,7 @@ from atd_radius.domain.ras_external import ExternalOperation, ProviderOperationR
 from atd_radius.infrastructure.chillispot_disconnect import ChilliSpotDisconnectClient
 from atd_radius.infrastructure.launcher_transport import ConfiguredLauncherTransport
 from atd_radius.infrastructure.snmp_transport import SnmpV1V2cSetTransport
+from atd_radius.infrastructure.rsh_transport import ConfiguredRSHTransport
 
 
 class _SnmpTransport(Protocol):
@@ -22,6 +23,10 @@ class _SnmpTransport(Protocol):
 
 
 class _LauncherTransport(Protocol):
+    def execute(self, request: ProviderOperationRequest) -> object: ...
+
+
+class _RSHTransport(Protocol):
     def execute(self, request: ProviderOperationRequest) -> object: ...
 
 
@@ -46,6 +51,7 @@ class RASExternalOperationDispatcher:
 
     snmp: _SnmpTransport | None = None
     launcher: _LauncherTransport | None = None
+    rsh: _RSHTransport | None = None
     chillispot: _ChilliSpotClient | None = None
 
     def __post_init__(self) -> None:
@@ -53,6 +59,8 @@ class RASExternalOperationDispatcher:
             self.snmp = SnmpV1V2cSetTransport()
         if self.launcher is None:
             self.launcher = ConfiguredLauncherTransport()
+        if self.rsh is None:
+            self.rsh = ConfiguredRSHTransport()
         if self.chillispot is None:
             self.chillispot = ChilliSpotDisconnectClient()
 
@@ -116,6 +124,11 @@ class RASExternalOperationDispatcher:
                 raise UnsupportedExternalOperation("launcher transport is not configured")
             return self.launcher.execute(request)
 
+        if request.operation is ExternalOperation.RSH:
+            if self.rsh is None:
+                raise UnsupportedExternalOperation("RSH transport is not configured")
+            return self.rsh.execute(request)
+
         if request.operation is ExternalOperation.RADIUS_DISCONNECT:
             if self.chillispot is None:
                 raise UnsupportedExternalOperation("RADIUS control client is not configured")
@@ -143,7 +156,7 @@ class RASExternalOperationDispatcher:
                 secret=radius_secret,
             )
 
-        # In particular, do not execute RSH envelopes as subprocess/shell text.
+        # Never turn unknown operation families into shell/process commands.
         raise UnsupportedExternalOperation(
             f"no executable transport for operation {request.operation.value!r}"
         )
