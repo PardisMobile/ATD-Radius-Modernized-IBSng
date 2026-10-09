@@ -221,6 +221,110 @@ def build_pppd_disconnect_request(
     )
 
 
+def _source_cli_token(value: object, name: str) -> str:
+    """Accept only an unquoted RouterOS/Cisco CLI atom; never interpolate syntax."""
+    import re
+
+    if not isinstance(value, str) or not value or not re.fullmatch(
+        r"[A-Za-z0-9_.:@+-]+", value
+    ):
+        raise ValueError(f"{name} contains unsupported CLI characters")
+    return value
+
+
+def _source_nonempty_text(value: object, name: str) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"{name} must be a non-empty string")
+    return value
+
+
+def build_cisco_vpdn_disconnect_request(
+    *,
+    ras_ip: str,
+    interface: str,
+    wrapper: str,
+    max_concurrent_connections: object = 3,
+) -> ProviderOperationRequest:
+    """Build Cisco VPDN's source-derived RSH call after interface discovery.
+
+    A1.24 first runs 'show caller user <username>' and resolves the matching
+    virtual interface (optionally matching remote IP), then runs
+    'clear interface <interface>'. This builder represents only the final
+    call; caller-side discovery must use the source-derived lookup behavior.
+    """
+    target = _source_ipv4(ras_ip)
+    interface_name = _source_cli_token(interface, "interface")
+    wrapper_path = _source_nonempty_text(wrapper, "wrapper")
+    concurrency = _source_integer(
+        max_concurrent_connections, "max_concurrent_connections", minimum=1
+    )
+    command = f"clear interface {interface_name}"
+    return ProviderOperationRequest(
+        provider="cisco_vpdn",
+        operation=ExternalOperation.RSH,
+        action="disconnect",
+        parameters={
+            "host": target,
+            "wrapper": wrapper_path,
+            "max_concurrent_connections": concurrency,
+            "arguments": (command,),
+            "command": command,
+        },
+    )
+
+
+def build_mikrotik_disconnect_request(
+    *,
+    ras_ip: str,
+    nas_port_type: str,
+    username: str,
+    user_ip: str,
+    ssh_wrapper: str,
+    ssh_username: str,
+    ssh_password: str,
+) -> ProviderOperationRequest:
+    """Build MikroTik's source-derived wrapper call without executing it.
+
+    A1.24 chooses hotspot removal only for NAS-Port-Type 'Wireless-802.11';
+    every other type follows the PPP active-session removal branch. The
+    wrapper receives [host, ssh_username, ssh_password, RouterOS command].
+    Because the source interpolates values into an unquoted RouterOS command,
+    this modern builder rejects values outside a conservative token allowlist
+    instead of attempting to guess RouterOS escaping rules.
+    """
+    target = _source_ipv4(ras_ip)
+    client_ip = _source_ipv4(user_ip, "user_ip")
+    if not isinstance(nas_port_type, str) or not nas_port_type:
+        raise ValueError("nas_port_type must be a non-empty string")
+    user = _source_cli_token(username, "username")
+    wrapper_path = _source_nonempty_text(ssh_wrapper, "ssh_wrapper")
+    login = _source_nonempty_text(ssh_username, "ssh_username")
+    password = _source_nonempty_text(ssh_password, "ssh_password")
+    if nas_port_type == "Wireless-802.11":
+        command = (
+            "/ip hotspot active remove [/ip hotspot active "
+            f"find user={user} address={client_ip}]"
+        )
+    else:
+        command = (
+            "/ppp active remove [/ppp active "
+            f"find name={user} address={client_ip}]"
+        )
+    return ProviderOperationRequest(
+        provider="mikrotik",
+        operation=ExternalOperation.RSH,
+        action="disconnect",
+        parameters={
+            "host": target,
+            "wrapper": wrapper_path,
+            "max_concurrent_connections": 3,
+            "arguments": (login, password, command),
+            "command": command,
+            "branch": "hotspot" if nas_port_type == "Wireless-802.11" else "ppp",
+        },
+    )
+
+
 def build_portmaster_disconnect_request(
     *,
     ras_ip: str,
