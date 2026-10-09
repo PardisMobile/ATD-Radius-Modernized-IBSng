@@ -253,6 +253,8 @@ def resolve_cisco_snmp_port_index(
         suffix = oid[oid.rfind(".") + 1 :]
         if not suffix.isdecimal():
             raise ValueError("interface description OID must end in a numeric ifIndex")
+        if not isinstance(description, str):
+            raise ValueError("interface descriptions must be strings")
         index_by_description[description] = suffix
     return index_by_description.get(port)
 
@@ -327,7 +329,7 @@ def build_cisco_disconnect_request(
     ras_ip: str,
     port: str,
     kill_use_snmp: object = 1,
-    wrapper: str,
+    wrapper: str | None = None,
     port_index: object | None = None,
     community: str = "public",
     timeout: float = 10,
