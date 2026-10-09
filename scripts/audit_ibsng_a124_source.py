@@ -43,6 +43,15 @@ TARGET_FILES = {
     "A1.24 PyRADIUS packet codec": ("IBSng/radius_server/pyrad/packet.py", r"^class |^        def _DecodeValue|^        def _EncodeValue|^        def DecodePacket|^        def EncodePacket"),
     "A1.24 attribute type encoder/decoder": ("IBSng/radius_server/pyrad/tools.py", r"^def EncodeAttr|^def DecodeAttr|integer|ipaddr|struct\.pack|struct\.unpack"),
     "A1.24 bidirectional dictionary semantics": ("IBSng/radius_server/pyrad/bidict.py", r"^class |^    def |^        def "),
+    "Administrator permission checks": ("IBSng/core/admin/admin.py", r"def checkPerm|def hasPerm|def canDo|def isGod|def getPerms|def isLocked"),
+    "Permission value semantics": ("IBSng/core/admin/admin_perm.py", r"^class |^    def |def check|def get"),
+    "Permission loader": ("IBSng/core/admin/perm_loader.py", r"^class |^    def |getPermsOfAdmin|checkPermName"),
+    "Admin loading and locks": ("IBSng/core/admin/admin_loader.py", r"def getAdmin|setPerms|setLocks|__getAdminLocks|admin_locks"),
+    "Permission mutation and dependencies": ("IBSng/core/admin/perm_actions.py", r"def changePermission|def __checkPermDependencies|def __checkDependenciesOfPerm|def __addPermQuery|def __changePermValueQuery|def __deletePermissionQuery"),
+    "Kill-user permission definition": ("IBSng/core/admin/perms/KILL_USER.py", r"^class |^    def |dependencies|check"),
+    "Change-RAS permission definition": ("IBSng/core/admin/perms/CHANGE_RAS.py", r"^class |^    def |dependencies|check"),
+    "Admin web session/auth boundary": ("IBSng/interface/IBSng/inc/admin.php", r"session|admin_id|username|login|password|perm|check"),
+    "Admin audit and lock mutations": ("IBSng/core/admin/admin_actions.py", r"user_audit_log|admin_locks|createInsertQuery|createUpdateQuery|createDeleteQuery"),
 }
 
 DICT_NAMES = re.compile(
@@ -135,6 +144,11 @@ def main() -> int:
                 continue
             context_after = 60 if label in {
                 "MS-CHAP implementation", "MS-CHAP packet integration", "MS-CHAP user plugin", "MS-CHAP password plugin", "MS-CHAP cryptographic utilities", "MPPE implementation"
+            } else 35 if label in {
+                "Administrator permission checks", "Permission value semantics", "Permission loader",
+                "Admin loading and locks", "Permission mutation and dependencies",
+                "Kill-user permission definition", "Change-RAS permission definition",
+                "Admin web session/auth boundary", "Admin audit and lock mutations",
             } else 18
             print_context(path, member_text(archive, member), re.compile(expr), after=context_after)
 
