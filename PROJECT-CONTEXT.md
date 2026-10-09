@@ -1015,16 +1015,17 @@ Direct inspection of the verified canonical archive established the previously u
 - The latest Cisco/PPPD/PortSlave/PortMaster/Total Control/MikroTik/Cisco VPDN request builders are construction-only. Do not represent them as real transport execution or device integration. Full RAS parity remains open.
 
 
-## RADIUS codec wire-type correctness batch — 2026-10-09
+## Source recheck corrections — 2026-10-09
 
-Main now includes a correction to the core RADIUS dictionary codec:
-- `Framed-IPX-Network` is encoded/decoded as uint32, not IPv4; it was erroneously in both type sets and the IPv4 branch took precedence.
-- Added numeric types for `Framed-Routing`, `Acct-Authentic`, `Acct-Link-Count`, both accounting gigaword counters, `ARAP-Zone-Access` and `ARAP-Security`; removed `Login-LAT-Port` from the integer set so it follows its string dictionary type.
-- Added strict uint32 bounds and rejects bool/float values and invalid values via `RadiusCodecError` rather than leaking struct errors or truncating floats.
-- Added encoding of known enum labels for `Acct-Status-Type` and `NAS-Port-Type` into canonical integer wire values; unknown labels remain rejected. The separate SIP codec remains context-isolated.
-- Tests cover wire numbers, four-byte payload lengths, max uint32, round-trip values, enum label encoding and invalid values. The previous codec-only CI run for the numeric type batch passed; the newer enum-label batch is being checked on both supported Python versions.
+The first version of the 2026-10-09 codec note above was wrong on two attribute types. A direct source audit corrected the implementation and supersedes those two claims:
+- Canonical `IBSng/radius_server/dictionary` declares `Framed-IPX-Network` as `ipaddr` (not integer), and `Login-LAT-Port` as `integer` (not string). ATD now follows those source types and has byte-level wire tests for both.
+- Canonical `pyrad/tools.py` encodes integer/date fields with `struct.pack("!I", value)` and `ipaddr` as four address octets. The ATD uint32 bounds are consistent with the actual source implementation, despite the dictionary parser's prose describing integer as signed.
+- Source enum review found duplicate `Acct-Status-Type=3` labels. A1.24's `BiDict.Add` reverse mapping makes the later `Alive` label win on decode; ATD now mirrors that while accepting both `Alive` and `Interim-Update` for encoding. The core `Framed-Routing`, `Acct-Authentic`, `Acct-Status-Type` and all `NAS-Port-Type` value labels are covered by source-derived tests.
+- Cisco's source uses configurable `cisco_snmp_version` (v1/v2c), not an unconditional v2c. The SNMP request builder and lookup→SET service now pass the configured version through. The launcher source default timeout is 20 seconds; the shell-free PPPD/PortSlave transport now matches that default.
 
-No PAP/CHAP/MS-CHAPv1/v2, MPPE, MultiLogin, persistence, or accounting state machine semantics were changed in this batch.
+A reproducible source audit workflow now verifies the checked-in archive SHA-256 and inventories the complete archive, then prints direct excerpts for RAS side effects, the PyRADIUS dictionary/parser/codec, launcher implementation and authentication/MultiLogin anchors. The source archive hash matches the checked-in README. This is a real source-backed correction batch, but **it is not yet a claim that every A1.24 subsystem has been fully audited or that ATD has complete parity**; the module-by-module source comparison remains in progress.
+
+No PAP/CHAP/MS-CHAPv1/v2, MPPE, MultiLogin, persistence, or accounting state machine semantics were changed in this correction batch.
 
 
 ## Executable SNMP SET transport increment — 2026-10-09
