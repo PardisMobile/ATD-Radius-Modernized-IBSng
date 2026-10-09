@@ -1013,3 +1013,15 @@ Direct inspection of the verified canonical archive established the previously u
 - Full GitHub Actions CI: **success** for Python 3.11 and 3.12, including Python compile, Ruff, PHP syntax and tests: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/37936839064
 - The previous temporary canonical-source inspection workflows have been removed from the audit branch after extraction. No audit workflow was added to `main`.
 - The latest Cisco/PPPD/PortSlave/PortMaster/Total Control/MikroTik/Cisco VPDN request builders are construction-only. Do not represent them as real transport execution or device integration. Full RAS parity remains open.
+
+
+## RADIUS codec wire-type correctness batch — 2026-10-09
+
+Main now includes a correction to the core RADIUS dictionary codec:
+- `Framed-IPX-Network` is encoded/decoded as uint32, not IPv4; it was erroneously in both type sets and the IPv4 branch took precedence.
+- Added numeric types for `Framed-Routing`, `Acct-Authentic`, `Acct-Link-Count`, both accounting gigaword counters, `ARAP-Zone-Access` and `ARAP-Security`; removed `Login-LAT-Port` from the integer set so it follows its string dictionary type.
+- Added strict uint32 bounds and rejects bool/float values and invalid values via `RadiusCodecError` rather than leaking struct errors or truncating floats.
+- Added encoding of known enum labels for `Acct-Status-Type` and `NAS-Port-Type` into canonical integer wire values; unknown labels remain rejected. The separate SIP codec remains context-isolated.
+- Tests cover wire numbers, four-byte payload lengths, max uint32, round-trip values, enum label encoding and invalid values. The previous codec-only CI run for the numeric type batch passed; the newer enum-label batch is being checked on both supported Python versions.
+
+No PAP/CHAP/MS-CHAPv1/v2, MPPE, MultiLogin, persistence, or accounting state machine semantics were changed in this batch.
