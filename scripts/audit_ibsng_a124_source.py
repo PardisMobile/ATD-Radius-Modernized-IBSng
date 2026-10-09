@@ -51,6 +51,8 @@ TARGET_FILES = {
     "Kill-user permission definition": ("IBSng/core/admin/perms/KILL_USER.py", r"^class |^    def |dependencies|check"),
     "Change-RAS permission definition": ("IBSng/core/admin/perms/CHANGE_RAS.py", r"^class |^    def |dependencies|check"),
     "Admin web session/auth boundary": ("IBSng/interface/IBSng/inc/admin.php", r"session|admin_id|username|login|password|perm|check"),
+    "Native admin login RPC dispatch": ("IBSng/core/login/login_handler.py", r"def login|checkArgs|checkAuth|ADMIN|NORMAL_USER|ACCESS_DENIED"),
+    "Native legacy password comparison": ("IBSng/core/lib/password_lib.py", r"^class Password|def __eq__|def getMd5Crypt|def isMd5Hash|def __md5Crypt"),
     "Admin web authentication lifecycle": ("IBSng/interface/IBSng/inc/auth.php", r"function __construct|function Auth|function __authenticateUser|function __addToSession|function needAuthType|function __checkPrevAuthType|function sessionIsSet|function getAuth|function getAuthType"),
     "Admin lock and credential enforcement semantics": ("IBSng/core/admin/admin.py", r"def isLocked|def __checkIfLocked|def checkPass|def canLogin|def isAuthorizedFromAddr|def checkAuth|def checkServerAuth|def canDo|def checkPerm|def getLocks|def setLocks"),
     "Admin audit and lock mutations": ("IBSng/core/admin/admin_actions.py", r"user_audit_log|admin_locks|createInsertQuery|createUpdateQuery|createDeleteQuery"),
