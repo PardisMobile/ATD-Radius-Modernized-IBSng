@@ -87,7 +87,6 @@ _DISCONNECT_OPERATIONS = {
     "launcher": (ExternalOperation.LAUNCHER,),
     "snmp-interface": (ExternalOperation.SNMP,),
     "provider-port": (ExternalOperation.RADIUS_DISCONNECT,),
-    "h323-cause": (ExternalOperation.H323,),
 }
 
 
