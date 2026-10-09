@@ -1,10 +1,13 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
+from atd_radius.api.admin_dependencies import AdminPrincipal, can_access_user, can_use_group, require_admin_permission, require_admin_session
 from atd_radius.infrastructure import UserRepository
 from atd_radius.infrastructure.db import connection
+from atd_radius.infrastructure.group import GroupRepository
+from atd_radius.infrastructure.operational_audit import OperationalAuditRepository
 from atd_radius.infrastructure.user_detail import UserDetailRepository
 
 router = APIRouter(prefix="/users", tags=["USER"])
@@ -12,6 +15,7 @@ router = APIRouter(prefix="/users", tags=["USER"])
 
 class UserCreate(BaseModel):
     username: str = Field(min_length=1, max_length=255)
+    group_id: int = Field(gt=0)
     locked: bool = False
 
 
@@ -88,15 +92,38 @@ class UserDetailView(BaseModel):
 
 
 @router.post("", response_model=UserView, status_code=201)
-def create_user(payload: UserCreate) -> UserView:
+def create_user(payload: UserCreate, admin: AdminPrincipal = Depends(require_admin_permission("ADD NEW USER"))) -> UserView:
     try:
         with connection() as conn:
+            group_repo = GroupRepository(conn)
+            group = group_repo.get(payload.group_id)
+            if group is None:
+                raise HTTPException(status_code=404, detail="group not found")
+            if not can_use_group(admin, group.name, group.owner_id):
+                raise HTTPException(status_code=403, detail="Administrator group access denied")
             repository = UserRepository(conn)
-            record = repository.create(payload.username.strip(), "locked" if payload.locked else "active")
+            record = repository.create(
+                payload.username.strip(),
+                "locked" if payload.locked else "active",
+                owner_id=admin.admin_id,
+                group_id=payload.group_id,
+            )
             if payload.locked:
                 repository.set_status(record.id, "locked")
+            OperationalAuditRepository(conn).append(
+                actor_admin_id=admin.admin_id,
+                actor_username=admin.username,
+                action="user.create",
+                outcome="success",
+                target_type="user",
+                target_id=str(record.id),
+                remote_addr=admin.remote_addr,
+                details={"group_id": payload.group_id, "locked": payload.locked},
+            )
             conn.commit()
             return UserView(id=record.id, username=record.username, locked=record.locked)
+    except HTTPException:
+        raise
     except Exception as exc:
         raise HTTPException(status_code=409, detail="USER could not be created") from exc
 
@@ -107,11 +134,15 @@ def list_users(
     status: str | None = Query(default=None, pattern="^(active|locked)$"),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
+    admin: AdminPrincipal = Depends(require_admin_session),
 ) -> UserListView:
+    if not can_access_user(admin, admin.admin_id):
+        raise HTTPException(status_code=403, detail="Administrator permission denied")
+    owner_filter = None if admin.permissions.is_god() or admin.permissions.values.get("GET USER INFORMATION") == "All" else admin.admin_id
     with connection() as conn:
         repository = UserRepository(conn)
-        records = repository.list(search=search, status=status, limit=limit, offset=offset)
-        total = repository.count(search=search, status=status)
+        records = repository.list(search=search, status=status, limit=limit, offset=offset, owner_id=owner_filter)
+        total = repository.count(search=search, status=status, owner_id=owner_filter)
     return UserListView(
         items=[UserView(id=r.id, username=r.username, locked=r.locked) for r in records],
         total=total,
@@ -121,21 +152,25 @@ def list_users(
 
 
 @router.get("/{username}", response_model=UserView)
-def get_user(username: str) -> UserView:
+def get_user(username: str, admin: AdminPrincipal = Depends(require_admin_session)) -> UserView:
     with connection() as conn:
         record = UserRepository(conn).get_by_username(username)
     if record is None:
         raise HTTPException(status_code=404, detail="user not found")
+    if not can_access_user(admin, record.owner_id):
+        raise HTTPException(status_code=403, detail="Administrator permission denied")
     return UserView(id=record.id, username=record.username, locked=record.locked)
 
 
 @router.get("/{username}/detail", response_model=UserDetailView)
-def get_user_detail(username: str) -> UserDetailView:
+def get_user_detail(username: str, admin: AdminPrincipal = Depends(require_admin_session)) -> UserDetailView:
     with connection() as conn:
         repository = UserRepository(conn)
         user = repository.get_by_username(username)
         if user is None:
             raise HTTPException(status_code=404, detail="user not found")
+        if not can_access_user(admin, user.owner_id):
+            raise HTTPException(status_code=403, detail="Administrator permission denied")
         detail = UserDetailRepository(conn)
         components = UserComponentsView(
             normal=(
