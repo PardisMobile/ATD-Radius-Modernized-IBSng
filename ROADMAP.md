@@ -112,3 +112,9 @@ These are scope estimates, not CI metrics or a guarantee of a specific finish da
 
 Some blocks can overlap, so these ranges should not be mechanically summed into a promised date. The estimate excludes delays caused by unavailable production RAS hardware or external deployment credentials.
 
+
+## RAS external-operation progress — 2026-10-09
+
+Source-backed request construction now includes ChilliSpot authenticated RADIUS Disconnect, PortMaster SNMP, Total Control SNMP, PortSlave/PPPD launcher envelopes, and Cisco VPDN/MikroTik RSH request builders. Cisco VPDN also has a source-pattern parser and optional remote-IP interface disambiguation. These increments are **partial adapter coverage**, not full RAS parity: transport execution/orchestration, live-device validation, remaining provider-specific accounting/counter semantics, and source-derived dictionary coverage remain open. Cisco generic SNMP-or-RSH remains unresolved rather than guessing the source branch.
+
+The canonical archive checksum recorded in the handoff was corrected after re-hashing the checked-in archive on a runner. Correct SHA-256: `c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839614bb9349d18a8`. Archive contents were not modified.
