@@ -120,3 +120,8 @@ Source-backed request construction now includes ChilliSpot authenticated RADIUS 
 The canonical archive checksum recorded in the handoff was corrected after re-hashing the checked-in archive on a runner. Correct SHA-256: `c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839614bb9349d18a8`. Archive contents were not modified.
 
 Cisco's conditional disconnect strategy is now covered at the request-construction level: source-derived IF-MIB description mapping + Cisco SNMP SET (default) and the configured RSH Async/Serial branches. This does not close the RAS parity milestone; mapping refresh/transport execution, live-device validation, and the remaining provider/accounting/dictionary work remain outstanding.
+
+
+## RADIUS codec compatibility increment — 2026-10-09
+
+Core dictionary wire types and enum-label encoding were tightened: Framed-IPX-Network now uses uint32 rather than IPv4, missing source dictionary integer types were added, known Acct-Status-Type/NAS-Port-Type labels encode to canonical wire values, and unsigned 32-bit bounds are enforced. Wire-level regression coverage was added. This improves core protocol correctness but does not close the overall dictionary/SIP/USR parity milestone.
