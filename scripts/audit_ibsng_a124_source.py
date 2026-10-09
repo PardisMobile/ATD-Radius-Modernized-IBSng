@@ -113,19 +113,19 @@ def print_permission_inventory(archive: tarfile.TarFile, members: list[tarfile.T
         ),
         key=lambda member: member.name,
     )
-    print("\\n== Complete A1.24 administrator permission module inventory ==")
+    print("\n== Complete A1.24 administrator permission module inventory ==")
     print(f"permission_module_count={len(permission_members)}")
     if not permission_members:
         print("ERROR: no administrator permission modules found in canonical source")
         return 1
 
     type_pattern = re.compile(
-        r"\\b(NoValuePermission|AllRestrictedSingleValuePermission|SingleValuePermission|MultiValuePermission)\\b"
+        r"\b(NoValuePermission|AllRestrictedSingleValuePermission|SingleValuePermission|MultiValuePermission)\b"
     )
-    registration_pattern = re.compile(r'registerPerm\\("([^"]+)"\\s*,\\s*(\\w+)\\)')
-    class_pattern = re.compile(r"^class\\s+(\\w+)\\s*\\(([^)]*)\\)", re.MULTILINE)
-    dependency_pattern = re.compile(r"addDependency\\(([^)]*)\\)")
-    method_pattern = re.compile(r"^\\s+def\\s+check\\s*\\(", re.MULTILINE)
+    registration_pattern = re.compile(r'registerPerm\("([^"]+)"\s*,\s*(\w+)\)')
+    class_pattern = re.compile(r"^class\s+(\w+)\s*\(([^)]*)\)", re.MULTILINE)
+    dependency_pattern = re.compile(r"addDependency\(([^)]*)\)")
+    method_pattern = re.compile(r"^\s+def\s+check\s*\(", re.MULTILINE)
 
     for member in permission_members:
         source = member_text(archive, member)
@@ -149,7 +149,7 @@ def print_permission_inventory(archive: tarfile.TarFile, members: list[tarfile.T
             value_kind = "UNKNOWN"
         dependencies = []
         for raw_args in dependency_pattern.findall(source):
-            dependencies.extend(re.findall(r'["\\']([^"\\']+)["\\']', raw_args))
+            dependencies.extend(re.findall(r"""["']([^"']+)["']""", raw_args))
         has_custom_check = bool(method_pattern.search(source))
         print(
             f"{permission_name} | file={member.name} | class={registered_class} "
