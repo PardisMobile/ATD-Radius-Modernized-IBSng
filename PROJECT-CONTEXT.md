@@ -1126,3 +1126,13 @@ Added `application/ras_disconnect.py` with explicit source-derived orchestration
 - MikroTik: source-derived hotspot-vs-PPP request dispatch.
 Tests use a fake dispatcher. The service is intentionally not mounted as an endpoint: do not expose it until trusted RAS/session resolution, authorization, and durable audit events are integrated. Python workflow on code commit `37f74ac73cda484d4bf4dfbc253c3328efddfe49` passed; the latest full CI on current main still needs polling after docs/test commits.
 
+## Verified continuation checkpoint — 2026-10-09
+
+Latest code/test checkpoint before this context-only commit: `aff249302ede3ac6c605fb36c137bcc426a3065f`.
+- Python suite: **513 passed, 2 skipped, 2 warnings** — https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/37944303604
+- Full CI: Python 3.11 and 3.12 jobs passed — https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/37944303583
+- An earlier CI attempt on `fd38dd25...` failed only because of one unused test import; removed in `aff2493...` and the latest exact runs above passed.
+- RAS external work now has a bounded dispatcher, allowlisted SNMP operations, shell-free RSH wrapper transport with source-derived command validation, and application-level Cisco/Cisco VPDN/MikroTik orchestration. These are unit-tested with fake transports only.
+- Still not complete: dispatcher/application service is not connected to an authenticated admin/API action or accounting kill lifecycle; no live RAS hardware/wrapper tested. API authorization + durable audit events are required before exposing disconnect operations. Full A1.24 module-by-module parity, dictionary/vendor gaps, accounting transitions, billing/persistence, RBAC/XML-RPC, migration and deployment remain open.
+- Continue autonomously in substantial source-backed batches. Before changing any subsystem, inspect canonical A1.24 source excerpts and the latest main state. Preserve the frozen authentication/MS-CHAPv1/v2, MultiLogin, inheritance and persistence/accounting core unless direct source evidence proves a mismatch.
+
