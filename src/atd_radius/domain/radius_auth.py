@@ -164,8 +164,18 @@ def _challenge_hash(peer: bytes, authenticator: bytes, username: str) -> bytes:
     return sha1(peer + authenticator + username.encode()).digest()[:8]
 
 
+def _a124_str2unicode(password: str) -> bytes:
+    """Mirror A1.24's byte-wise str2unicode conversion for UTF-8 DB strings."""
+    source_bytes = password.encode("utf-8")
+    return b"".join(bytes((value, 0)) for value in source_bytes)
+
+
+def _nt_password_hash(password: str) -> bytes:
+    return _md4(_a124_str2unicode(password))
+
+
 def _nt_response(challenge: bytes, password: str) -> bytes:
-    password_hash = _md4(password.encode("utf-16le"))
+    password_hash = _nt_password_hash(password)
     zpwd = password_hash + b"\x00" * 5
     return b"".join(_des_encrypt(challenge, zpwd[i : i + 7]) for i in (0, 7, 14))
 
@@ -188,7 +198,7 @@ def verify_mschapv1(
 
 def _lm_password_hash(password: str) -> bytes:
     """Build the legacy MS-CHAPv1 LM hash used by A1.24 MPPE output."""
-    value = password.upper()[:14].encode()
+    value = password.encode("utf-8").upper()[:14]
     value += b"\x00" * (14 - len(value))
     return _des_encrypt(b"KGS!@#$%", value[:7]) + _des_encrypt(b"KGS!@#$%", value[7:14])
 
@@ -196,7 +206,7 @@ def _lm_password_hash(password: str) -> bytes:
 def derive_mschapv1_mppe_key(password: str) -> bytes:
     """Derive the 32-byte MS-CHAPv1 MPPE key material emitted by A1.24."""
     lm_hash = _lm_password_hash(password)
-    nt_hash = _md4(_md4(password.encode("utf-16le")))
+    nt_hash = _md4(_nt_password_hash(password))
     return lm_hash[:8] + nt_hash + b"\x00" * 8
 
 
@@ -230,7 +240,7 @@ def derive_mschapv2_mppe_keys(password: str, nt_response: object) -> tuple[bytes
     nt = _octets(nt_response)
     if len(nt) != 24:
         raise ValueError("MS-CHAPv2 NT-Response must be 24 bytes")
-    password_hash = _md4(password.encode("utf-16le"))
+    password_hash = _nt_password_hash(password)
     password_hash_hash = _md4(password_hash)
     master_key = sha1(
         password_hash_hash + nt + b"This is the MPPE Master Key"
