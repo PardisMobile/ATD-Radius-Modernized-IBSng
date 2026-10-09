@@ -216,7 +216,7 @@ def main() -> int:
                     vendor_attributes.append(
                         (current_vendor, vendor_ids.get(current_vendor), parts[1], number, parts[-1], line_number)
                     )
-            elif parts[0] == "VALUE" and len(parts) >= 4:
+            elif parts[0] == "VALUE" and current_vendor is None and len(parts) >= 4:
                 try:
                     value_number = int(parts[-1], 0)
                 except ValueError:
