@@ -1236,3 +1236,26 @@ Remaining: wait for current CI; expand user permission coverage for owner transf
 - Python suite also passed on current documentation/source-audit checkpoint `b6eb731d8395b937e490aed814f1ba0502419403`: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/37995196153
 - Full CI on exact current HEAD `b6eb731d8395b937e490aed814f1ba0502419403` is still in progress: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/37995195999. Do not mark the latest batch fully green until it completes.
 - Current main now has native admin login/session, RAS and group permission gates/auditing, user list/detail owner scoping, and user creation with authenticated owner plus required accessible group. Full RBAC is not done: credit operations, user attribute updates, user deletion, owner transfer, online sessions/disconnect, full permission catalog and remaining A1.24 parity are still open.
+
+
+### Source-parity correction — independent report permissions — 2026-10-10
+
+Canonical archive verified in the active workspace: SHA-256 `c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839614bb9349d18a8`; extracted tree contains 2,295 files. This confirms integrity/inventory only, not exhaustive manual review.
+
+Direct source review:
+- `IBSng/core/report/report_handler.py:63-75` gates connection history with `SEE CONNECTION LOGS`.
+- `IBSng/core/report/report_handler.py:151-165` gates credit-change history with `SEE CREDIT CHANGES`.
+- `IBSng/core/report/connection.py:503-509` applies the connection permission's Restricted owner scope.
+- `IBSng/core/report/credit.py:161-169` applies the credit-change permission's Restricted owner scope.
+- `IBSng/core/admin/perms/SEE_CONNECTION_LOGS.py` and `SEE_CREDIT_CHANGES.py` define both as All/Restricted single-value permissions.
+
+Found and fixed a source-parity/security gap: the ATD user-detail endpoint previously returned connection history and credit changes based only on `GET USER INFORMATION`. It now independently enforces both report permissions and their own owner scope; unauthorized report fields are `null` and the corresponding report query is not executed. Added regression tests for missing permission, Restricted owner/non-owner, All and GOD.
+
+Commits in this batch:
+- `c4bc48c1176b19a18c3b46c5795634356b1d34c0` — source-backed report permission helpers.
+- `c72cc28e1c0f96cd504ee981963699b771cfb776` — user detail report gating.
+- `f79b71ba294c06681c2864d2c8146b97aaea0225` — regression tests.
+- `291404132924f2842560bd9d6395907c8d758586`, `728cea94fa88500659dd856b5e139d3052f877b6`, `9e20f0618b01c7271ddc15fc14ebae26577b37ca` — source/auth docs and source-path correction.
+
+Validation at this checkpoint: Python workflow passed for the user-detail implementation commit `c72cc28` (run 37997954026). Python and full CI for the test checkpoint `f79b71b` and latest docs checkpoint are still running; poll them before claiming the batch fully green. This finding is one targeted correction, not complete RBAC or whole-source parity.
+
