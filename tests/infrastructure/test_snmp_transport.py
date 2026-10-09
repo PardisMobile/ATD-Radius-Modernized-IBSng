@@ -42,7 +42,7 @@ def _request_fields(packet):
     )
 
 
-def _response(packet, *, error_status=0, error_index=0, community_override=None):
+def _response(packet, *, error_status=0, error_index=0, community_override=None, asn_type=0x02, raw_value=b"\\x02"):
     version, community, request_id, oid = _request_fields(packet)
     if community_override is not None:
         community = community_override
@@ -347,3 +347,17 @@ def test_cisco_snmp_service_does_not_set_when_port_is_not_in_ifdescr_map():
         )
     assert len(walk_socket.sent) == 1
     assert walk_socket.closed
+
+
+def test_snmp_set_rejects_success_response_with_wrong_asn_type():
+    request = build_cisco_disconnect_request(
+        ras_ip="192.0.2.10", port="Async1/0", port_index=17
+    )
+    fake = FakeSocket(
+        lambda packet, count: _response(
+            packet, asn_type=0x04, raw_value=b"not-an-integer"
+        )
+    )
+    with pytest.raises(SnmpTransportError, match="unexpected ASN type"):
+        SnmpV1V2cSetTransport(lambda *_: fake).execute(request)
+    assert fake.closed
