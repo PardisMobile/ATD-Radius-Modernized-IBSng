@@ -74,6 +74,7 @@ def test_external_adapter_registry_covers_only_source_traced_disconnect_families
         PORTMASTER_EXTERNAL_ADAPTER,
         PORTSLAVE_EXTERNAL_ADAPTER,
         QUINTUM_TENOR_EXTERNAL_ADAPTER,
+        PPPD_EXTERNAL_ADAPTER,
         TOTAL_CONTROL_EXTERNAL_ADAPTER,
     )
 
@@ -84,7 +85,7 @@ def test_external_adapter_registry_covers_only_source_traced_disconnect_families
         (PORTMASTER_EXTERNAL_ADAPTER, "snmp-port", ExternalOperation.SNMP),
         (PORTSLAVE_EXTERNAL_ADAPTER, "launcher", ExternalOperation.LAUNCHER),
         (TOTAL_CONTROL_EXTERNAL_ADAPTER, "snmp-interface", ExternalOperation.SNMP),
-        (QUINTUM_TENOR_EXTERNAL_ADAPTER, "h323-cause", ExternalOperation.H323),
+        (PPPD_EXTERNAL_ADAPTER, "launcher", ExternalOperation.LAUNCHER),
     )
     for adapter, strategy, operation in expected:
         assert adapter.disconnect_strategy() == strategy
@@ -101,7 +102,7 @@ def test_providers_without_audited_disconnect_strategy_do_not_get_guessed_adapte
     from atd_radius.domain.ras_provider import provider_disconnect_strategy
     from atd_radius.domain.ras_provider_adapters import ExternalSideEffectAdapter
 
-    for provider in ("asterisk", "bsae", "gnugk", "mvts", "plan", "pppd", "ser"):
+    for provider in ("asterisk", "bsae", "gnugk", "mvts", "plan", "ser", "tenor"):
         assert provider_disconnect_strategy(provider) is None
         assert ExternalSideEffectAdapter(provider).disconnect_request(
             {"User-Name": "alice"}
@@ -130,4 +131,43 @@ def test_total_control_adapter_preserves_source_derived_snmp_cycle_order():
         item["oid"] == ".1.3.6.1.2.1.2.2.1.7.42"
         for item in request.parameters["sets"]
     )
+
+def test_portslave_adapter_builds_configured_launcher_call():
+    from atd_radius.domain.ras_provider_adapters import PORTSLAVE_EXTERNAL_ADAPTER
+
+    request = PORTSLAVE_EXTERNAL_ADAPTER.source_disconnect_request(
+        {
+            "command": "/configured/addons/portslave/kill",
+            "ras_ip": "192.0.2.50",
+            "port": "7",
+        }
+    )
+    assert request.operation.value == "launcher"
+    assert request.parameters["command"] == "/configured/addons/portslave/kill"
+    assert request.parameters["arguments"] == ("192.0.2.50", "7")
+
+
+def test_pppd_adapter_builds_source_derived_launcher_call():
+    from atd_radius.domain.ras_provider_adapters import PPPD_EXTERNAL_ADAPTER
+
+    request = PPPD_EXTERNAL_ADAPTER.source_disconnect_request(
+        {
+            "command": "/configured/addons/pppd/kill",
+            "ras_ip": "192.0.2.51",
+            "port": "ppp12",
+        }
+    )
+    assert request.provider == "pppd"
+    assert request.operation.value == "launcher"
+    assert request.parameters["arguments"] == ("192.0.2.51", "ppp12")
+
+
+def test_tenor_disconnect_cause_is_accounting_metadata_not_a_kill_operation():
+    from atd_radius.domain.ras_provider import provider_disconnect_strategy
+    from atd_radius.domain.ras_provider_adapters import QUINTUM_TENOR_EXTERNAL_ADAPTER
+
+    assert provider_disconnect_strategy("tenor") is None
+    assert QUINTUM_TENOR_EXTERNAL_ADAPTER.disconnect_request(
+        {"disconnect_cause": "normal"}
+    ) is None
 
