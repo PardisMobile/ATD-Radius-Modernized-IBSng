@@ -84,6 +84,9 @@ def test_launcher_transport_turns_timeout_into_explicit_failure(monkeypatch):
     "operation_request",
     [
         ProviderOperationRequest("pppd", ExternalOperation.SNMP, "disconnect", {}),
+        ProviderOperationRequest("cisco", ExternalOperation.LAUNCHER, "disconnect", {
+            "command": "/configured/kill", "arguments": ()
+        }),
         ProviderOperationRequest("pppd", ExternalOperation.LAUNCHER, "start", {
             "command": "/configured/kill", "arguments": ()
         }),
