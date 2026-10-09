@@ -50,6 +50,8 @@ TARGET_FILES = {
     "Permission mutation and dependencies": ("IBSng/core/admin/perm_actions.py", r"def changePermission|def __checkPermDependencies|def __checkDependenciesOfPerm|def __addPermQuery|def __changePermValueQuery|def __deletePermissionQuery"),
     "Kill-user permission definition": ("IBSng/core/admin/perms/KILL_USER.py", r"^class |^    def |dependencies|check"),
     "Change-RAS permission definition": ("IBSng/core/admin/perms/CHANGE_RAS.py", r"^class |^    def |dependencies|check"),
+    "Login-address restriction permission": ("IBSng/core/admin/perms/LIMIT_LOGIN_ADDR.py", r"^class |^    def |check|ip_addr|netmask"),
+    "Canonical IP range matching": ("IBSng/core/lib/iplib.py", r"^def isIPAddrIn|^def checkIPAddr|^def formatIPAddress|IPy\.IP"),
     "Admin web session/auth boundary": ("IBSng/interface/IBSng/inc/admin.php", r"session|admin_id|username|login|password|perm|check"),
     "Native admin login RPC dispatch": ("IBSng/core/login/login_handler.py", r"def login|checkArgs|checkAuth|ADMIN|NORMAL_USER|ACCESS_DENIED"),
     "Native legacy password comparison": ("IBSng/core/lib/password_lib.py", r"^class Password|def __eq__|def getMd5Crypt|def isMd5Hash|def __md5Crypt"),
