@@ -73,7 +73,7 @@
 - [ ] User Information edit actions and high-frequency IBSng actions
 - [ ] GROUP and IBSng user/group policy workflows
 - [ ] RAS, IPPool, Online Users, Connection Logs, Connection Usages, Charge and REPORT workflows
-- [ ] ADMIN workflows
+- [ ] ADMIN workflows (deposit adjustment and source-scoped persisted info list/detail implemented; remaining admin CRUD and volatile activity parity open)
 - [ ] IBSng user portal workflows
 
 ## Phase 6 — Migration

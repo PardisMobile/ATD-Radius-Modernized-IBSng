@@ -7,6 +7,7 @@ from atd_radius import __version__
 from atd_radius.config import settings
 from atd_radius.api.admin_auth import router as admin_auth_router
 from atd_radius.api.admin_deposits import router as admin_deposits_router
+from atd_radius.api.admins import router as admins_router
 from atd_radius.api.groups import router as groups_router
 from atd_radius.api.ras import router as ras_router
 from atd_radius.api.users import router as users_router
@@ -44,6 +45,7 @@ async def enforce_api_bearer_token(request: Request, call_next):
     return await call_next(request)
 app.include_router(admin_auth_router, prefix=settings.api_prefix)
 app.include_router(admin_deposits_router, prefix=settings.api_prefix)
+app.include_router(admins_router, prefix=settings.api_prefix)
 app.include_router(users_router, prefix=settings.api_prefix)
 app.include_router(groups_router, prefix=settings.api_prefix)
 app.include_router(ras_router, prefix=settings.api_prefix)

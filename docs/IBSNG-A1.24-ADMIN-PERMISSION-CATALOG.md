@@ -50,7 +50,7 @@ Value types:
 | LIST RAS | No value | — | Implemented for RAS API |
 | NO DEPOSIT LIMIT | No value | — | Implemented for administrator credit-change deposit enforcement |
 | POST MESSAGES | No value | — | Not implemented |
-| SEE ADMIN INFO | No value | — | Registered as a dependency for deposit adjustment only; admin list/detail API not implemented |
+| SEE ADMIN INFO | No value | — | Implemented for sorted admin username list and persisted admin detail; volatile activity fields omitted |
 | SEE ADMIN PERMISSIONS | No value | SEE ADMIN INFO | Not implemented |
 | SEE BW SNAPSHOTS | All/Restricted | — | Not implemented |
 | SEE CONNECTION LOGS | All/Restricted | — | Implemented for user-detail connection-history field |
@@ -85,3 +85,8 @@ This inventory does **not** claim that every permission's custom `check()` behav
 Source trace: `IBSng/core/admin/admin_handler.py:68-76` requires `CHANGE ADMIN DEPOSIT`; `core/admin/perms/CHANGE_ADMIN_DEPOSIT.py` depends on `CHANGE ADMIN INFO`, which depends on `SEE ADMIN INFO`. `core/admin/admin_actions.py:161-183` writes `admin_deposit_change`, increments the target admin's deposit by the signed delta, then records IAS event type 2 (`CHANGE_DEPOSIT`) with the actor username and target username. A1.24 does not impose a non-negative target-deposit rule for this operation.
 
 ATD now exposes `POST /api/v1/admins/{username}/deposit` with the native dependency chain, row locking, signed deposit adjustment, native `admin_deposit_change` row, IAS type-2 event and operational audit in one transaction. This does not implement admin listing, details, info/password/lock changes, permission editing, or deletion.
+
+
+### Administrator information read APIs — 2026-10-10
+
+A1.24 `admin_handler.py` permits `getAdminInfo` for the current admin without `SEE ADMIN INFO`, but requires the permission for other admins. `getAllAdminUsernames` returns all sorted usernames when permission is present and only the current username otherwise. ATD now implements those visibility rules and returns the persisted identity, name/comment, deposit, creator and lock details. A1.24's in-memory `last_request_ip`, `last_activity`, and `online_status` fields are not fabricated; they remain unavailable in this persistence-backed API.
