@@ -33,6 +33,7 @@ TARGET_FILES = {
     "RSH wrapper": ("IBSng/core/lib/rsh.py", r"class RSHClient|def "),
     "MultiLogin plugin": ("IBSng/core/user/plugins/multilogin.py", r"class MultiLogin|def "),
     "MS-CHAP implementation": ("IBSng/core/lib/mschap/mschap.py", r"def generate_nt_response_mschap|def generate_nt_response_mschap2|def GenerateAuthenticatorResponse"),
+    "MS-CHAP cryptographic utilities": ("IBSng/core/lib/mschap/utils.py", r"^def challenge_hash|^def nt_password_hash|^def challenge_response|^def des_encrypt|^def generate_authenticator_response"),
     "MPPE implementation": ("IBSng/core/lib/mschap/mppe.py", r"^def |^class "),
     "A1.24 PyRADIUS dictionary parser": ("IBSng/radius_server/pyrad/dictionary.py", r"^class |^    def |ipaddr|integer|VALUE"),
     "A1.24 PyRADIUS packet codec": ("IBSng/radius_server/pyrad/packet.py", r"^class |^        def _DecodeValue|^        def _EncodeValue|^        def DecodePacket|^        def EncodePacket"),
