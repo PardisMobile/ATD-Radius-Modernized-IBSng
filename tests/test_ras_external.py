@@ -238,3 +238,37 @@ def test_provider_operation_request_freezes_nested_mutable_values():
     assert request.parameters["nested"]["items"] == (1, 2)
     with pytest.raises(TypeError):
         request.parameters["nested"]["other"] = "blocked"
+
+
+@pytest.mark.parametrize("parameters", [[], "port=7", 7])
+def test_disconnect_builder_rejects_non_mapping_parameters(parameters):
+    with pytest.raises(ValueError, match="parameters"):
+        build_disconnect_request(
+            "portmaster",
+            "snmp-port",
+            parameters=parameters,
+        )
+
+
+@pytest.mark.parametrize("source_parameters", [None, [], "bad", 3])
+def test_provider_disconnect_builder_rejects_non_mapping_source_parameters(
+    source_parameters,
+):
+    from atd_radius.domain.ras_external import build_provider_disconnect_request
+
+    with pytest.raises(ValueError, match="source_parameters"):
+        build_provider_disconnect_request(
+            "portmaster",
+            "snmp-port",
+            source_parameters=source_parameters,
+        )
+
+
+def test_disconnect_builder_preserves_empty_mapping_as_valid_parameters():
+    request = build_disconnect_request(
+        "portmaster",
+        "snmp-port",
+        parameters={},
+    )
+    assert request is not None
+    assert request.parameters == {}
