@@ -402,3 +402,125 @@ def test_launcher_disconnect_builders_reject_missing_source_arguments(arguments)
     with pytest.raises(ValueError):
         build_portslave_disconnect_request(**arguments)
 
+
+
+def test_cisco_vpdn_disconnect_request_preserves_source_command_and_wrapper_contract():
+    from atd_radius.domain.ras_external import build_cisco_vpdn_disconnect_request
+
+    request = build_cisco_vpdn_disconnect_request(
+        ras_ip="192.0.2.21",
+        interface="Vi2",
+        wrapper="/configured/addons/cisco/rsh_wrapper",
+    )
+    assert request.provider == "cisco_vpdn"
+    assert request.operation is ExternalOperation.RSH
+    assert request.parameters["host"] == "192.0.2.21"
+    assert request.parameters["wrapper"] == "/configured/addons/cisco/rsh_wrapper"
+    assert request.parameters["max_concurrent_connections"] == 3
+    assert request.parameters["command"] == "clear interface Vi2"
+    assert request.parameters["arguments"] == ("clear interface Vi2",)
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        {"ras_ip": "not-an-ip", "interface": "Vi2", "wrapper": "/rsh"},
+        {"ras_ip": "192.0.2.21", "interface": "Vi 2", "wrapper": "/rsh"},
+        {"ras_ip": "192.0.2.21", "interface": "Vi2;reboot", "wrapper": "/rsh"},
+        {"ras_ip": "192.0.2.21", "interface": "Vi2", "wrapper": ""},
+        {
+            "ras_ip": "192.0.2.21",
+            "interface": "Vi2",
+            "wrapper": "/rsh",
+            "max_concurrent_connections": 0,
+        },
+    ],
+)
+def test_cisco_vpdn_builder_rejects_invalid_or_unsafe_source_inputs(arguments):
+    from atd_radius.domain.ras_external import build_cisco_vpdn_disconnect_request
+
+    with pytest.raises(ValueError):
+        build_cisco_vpdn_disconnect_request(**arguments)
+
+
+def test_mikrotik_hotspot_disconnect_matches_a124_command_and_wrapper_arguments():
+    from atd_radius.domain.ras_external import build_mikrotik_disconnect_request
+
+    request = build_mikrotik_disconnect_request(
+        ras_ip="192.0.2.1",
+        nas_port_type="Wireless-802.11",
+        username="alice@example",
+        user_ip="198.51.100.7",
+        ssh_wrapper="/configured/mikrotik/ssh-wrapper",
+        ssh_username="api-user",
+        ssh_password="secret",
+    )
+    assert request.provider == "mikrotik"
+    assert request.operation is ExternalOperation.RSH
+    assert request.parameters["host"] == "192.0.2.1"
+    assert request.parameters["wrapper"] == "/configured/mikrotik/ssh-wrapper"
+    assert request.parameters["max_concurrent_connections"] == 3
+    assert request.parameters["branch"] == "hotspot"
+    assert request.parameters["command"] == (
+        "/ip hotspot active remove [/ip hotspot active "
+        "find user=alice@example address=198.51.100.7]"
+    )
+    assert request.parameters["arguments"] == (
+        "api-user",
+        "secret",
+        request.parameters["command"],
+    )
+
+
+def test_mikrotik_non_wireless_disconnect_uses_source_ppp_command():
+    from atd_radius.domain.ras_external import build_mikrotik_disconnect_request
+
+    request = build_mikrotik_disconnect_request(
+        ras_ip="192.0.2.1",
+        nas_port_type="Ethernet",
+        username="alice",
+        user_ip="198.51.100.7",
+        ssh_wrapper="/configured/mikrotik/ssh-wrapper",
+        ssh_username="api-user",
+        ssh_password="secret",
+    )
+    assert request.parameters["branch"] == "ppp"
+    assert request.parameters["command"] == (
+        "/ppp active remove [/ppp active "
+        "find name=alice address=198.51.100.7]"
+    )
+    assert request.parameters["arguments"] == (
+        "api-user",
+        "secret",
+        request.parameters["command"],
+    )
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"ras_ip": "not-an-ip"},
+        {"user_ip": "not-an-ip"},
+        {"username": "alice; /system reboot"},
+        {"username": 'alice"quoted'},
+        {"nas_port_type": ""},
+        {"ssh_wrapper": ""},
+        {"ssh_username": ""},
+        {"ssh_password": ""},
+    ],
+)
+def test_mikrotik_disconnect_builder_rejects_invalid_or_unsafe_values(overrides):
+    from atd_radius.domain.ras_external import build_mikrotik_disconnect_request
+
+    arguments = {
+        "ras_ip": "192.0.2.1",
+        "nas_port_type": "Ethernet",
+        "username": "alice",
+        "user_ip": "198.51.100.7",
+        "ssh_wrapper": "/configured/mikrotik/ssh-wrapper",
+        "ssh_username": "api-user",
+        "ssh_password": "secret",
+    }
+    arguments.update(overrides)
+    with pytest.raises(ValueError):
+        build_mikrotik_disconnect_request(**arguments)
