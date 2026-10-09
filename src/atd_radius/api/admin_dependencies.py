@@ -92,6 +92,17 @@ _RAS_PERMISSIONS = AdminPermissionEvaluator(
     ]
 )
 
+# A1.24 report handlers authorize connection history and credit-change history
+# independently from GET USER INFORMATION, and apply each permission's own
+# All/Restricted owner scope.
+_REPORT_PERMISSIONS = AdminPermissionEvaluator(
+    [
+        PermissionSpec("GOD", PermissionKind.NO_VALUE),
+        PermissionSpec("SEE CONNECTION LOGS", PermissionKind.CONTEXTUAL, evaluator=_all_or_owner),
+        PermissionSpec("SEE CREDIT CHANGES", PermissionKind.CONTEXTUAL, evaluator=_all_or_owner),
+    ]
+)
+
 
 def require_admin_session(
     request: Request,
@@ -122,6 +133,8 @@ def require_admin_permission(permission_name: str):
             evaluator = _RAS_PERMISSIONS
         elif permission_name in {"ADD NEW USER", "GET USER INFORMATION", "CHANGE USER ATTRIBUTES", "DELETE USER"}:
             evaluator = _USER_PERMISSIONS
+        elif permission_name in {"SEE CONNECTION LOGS", "SEE CREDIT CHANGES"}:
+            evaluator = _REPORT_PERMISSIONS
         else:
             evaluator = _GROUP_PERMISSIONS
         if not evaluator.can_do(principal.permissions, permission_name):
@@ -152,6 +165,22 @@ def can_delete_user(principal: AdminPrincipal, owner_id: int | None) -> bool:
     return _USER_PERMISSIONS.can_do(
         principal.permissions,
         "DELETE USER",
+        context={"admin_id": principal.admin_id, "owner_id": owner_id},
+    )
+
+
+def can_view_connection_logs(principal: AdminPrincipal, owner_id: int | None) -> bool:
+    return _REPORT_PERMISSIONS.can_do(
+        principal.permissions,
+        "SEE CONNECTION LOGS",
+        context={"admin_id": principal.admin_id, "owner_id": owner_id},
+    )
+
+
+def can_view_credit_changes(principal: AdminPrincipal, owner_id: int | None) -> bool:
+    return _REPORT_PERMISSIONS.can_do(
+        principal.permissions,
+        "SEE CREDIT CHANGES",
         context={"admin_id": principal.admin_id, "owner_id": owner_id},
     )
 
@@ -199,6 +228,8 @@ __all__ = [
     "can_access_user",
     "can_change_user",
     "can_delete_user",
+    "can_view_connection_logs",
+    "can_view_credit_changes",
     "require_admin_permission",
     "require_admin_session",
     "require_group_change",
