@@ -22,6 +22,8 @@ from .ras_provider import (
 from .ras_external import (
     ProviderOperationRequest,
     build_provider_disconnect_request,
+    build_portmaster_disconnect_request,
+    build_total_control_disconnect_request,
 )
 
 
@@ -165,12 +167,32 @@ class ExternalSideEffectAdapter:
         )
 
 
+@dataclass(frozen=True, slots=True)
+class PortMasterExternalSideEffectAdapter(ExternalSideEffectAdapter):
+    """PortMaster SNMP disconnect request using its exact A1.24 OID mapping."""
+
+    def source_disconnect_request(
+        self, source_parameters: Mapping[str, object]
+    ) -> ProviderOperationRequest:
+        return build_portmaster_disconnect_request(**source_parameters)
+
+
+@dataclass(frozen=True, slots=True)
+class TotalControlExternalSideEffectAdapter(ExternalSideEffectAdapter):
+    """Total Control SNMP disconnect request using its source-defined down/up sequence."""
+
+    def source_disconnect_request(
+        self, source_parameters: Mapping[str, object]
+    ) -> ProviderOperationRequest:
+        return build_total_control_disconnect_request(**source_parameters)
+
+
 CHILLISPOT_EXTERNAL_ADAPTER = ExternalSideEffectAdapter("chilli_spot")
 CISCO_VPDN_EXTERNAL_ADAPTER = ExternalSideEffectAdapter("cisco_vpdn")
 MIKROTIK_EXTERNAL_ADAPTER = ExternalSideEffectAdapter("mikrotik")
-PORTMASTER_EXTERNAL_ADAPTER = ExternalSideEffectAdapter("portmaster")
+PORTMASTER_EXTERNAL_ADAPTER = PortMasterExternalSideEffectAdapter("portmaster")
 PORTSLAVE_EXTERNAL_ADAPTER = ExternalSideEffectAdapter("portslave")
-TOTAL_CONTROL_EXTERNAL_ADAPTER = ExternalSideEffectAdapter("total_control")
+TOTAL_CONTROL_EXTERNAL_ADAPTER = TotalControlExternalSideEffectAdapter("total_control")
 QUINTUM_TENOR_EXTERNAL_ADAPTER = ExternalSideEffectAdapter("tenor")
 
 
