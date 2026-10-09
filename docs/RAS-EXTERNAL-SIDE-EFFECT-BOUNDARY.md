@@ -22,14 +22,15 @@ The next concrete provider adapters must be built only after exact canonical sou
 
 ## Providers represented by already source-traced strategy metadata
 
-- Cisco: SNMP-or-RSH
-- Cisco VPDN: RSH interface
-- MikroTik: RSH port
+- Cisco: SNMP-or-RSH (intentionally unresolved)
+- Cisco VPDN: RSH interface (source-derived command builder added below)
+- MikroTik: RSH wrapper (source-derived command variants added below)
 - PortMaster: SNMP port
 - PortSlave: launcher
+- PPPD: launcher
 - Total Control: SNMP interface
 - ChilliSpot: RADIUS Disconnect-Request / provider port
-- Quintum Tenor: H323 disconnect-cause path
+- Quintum Tenor: no generic kill operation; disconnect-cause is accounting Stop metadata
 
 This checkpoint does not modify any frozen authentication, MultiLogin, attribute, persistence, accounting core, or provider identity behavior.
 
@@ -183,3 +184,13 @@ A further direct inspection of the verified A1.24 archive corrected the earlier 
 
 The PPPD builder does not execute the configured launcher; live external execution and provider integration tests remain open. The source audit documents the correction and supersedes earlier Tenor/PPPD strategy statements.
 
+
+
+## Cisco VPDN / MikroTik source-derived request builders — 2026-10-09
+
+The canonical archive digest measured from the checked-in bytes is `c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839614bb9349d18a8`; the previously recorded checksum in the handoff was mistyped, not the archive.
+
+- Cisco VPDN request builder now emits the configured wrapper, RAS host, concurrency limit, and exact `clear interface <resolved-interface>` command. The preceding `show caller user <username>` lookup and optional remote-IP match remain a caller-side discovery responsibility.
+- MikroTik request builder now emits the source-derived wrapper argument order and the correct hotspot-vs-PPP command branch. Username input is constrained to a conservative CLI-token allowlist to avoid unsafe unquoted interpolation; RouterOS escaping is not guessed.
+- Tests cover both command variants, exact wrapper argument order, invalid endpoints/interfaces, missing wrapper settings, and unsafe username tokens.
+- Both builders create immutable request envelopes only. They do not execute RSH wrappers or contact live RAS hardware.
