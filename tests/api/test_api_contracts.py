@@ -46,3 +46,26 @@ def test_user_component_contract_covers_voip_without_password():
 def test_ras_list_contract_does_not_expose_radius_secret():
     assert "radius_secret" not in RASListView.model_fields
     assert "radius_secret" in RASInfo.model_fields
+
+def test_user_detail_contract_can_hide_independently_unauthorized_reports():
+    from atd_radius.api.users import UserComponentsView, UserDetailView
+
+    detail = UserDetailView(
+        id=1,
+        username="alice",
+        locked=False,
+        has_password=False,
+        groups=[],
+        attributes=[],
+        components=UserComponentsView(
+            normal=None,
+            voip=None,
+            caller_ids=[],
+            persistent_lan=[],
+        ),
+        connection_logs=None,
+        credit_changes=None,
+    )
+    assert detail.connection_logs is None
+    assert detail.credit_changes is None
+
