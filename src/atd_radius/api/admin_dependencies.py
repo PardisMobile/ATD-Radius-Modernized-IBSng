@@ -117,7 +117,7 @@ def require_group_change():
             "owner_id": group.owner_id,
             "can_use_group": can_use_group(principal, group.name, group.owner_id),
         }
-        if not _GROUP_PERMISSIONS.check_perm(
+        if not _GROUP_PERMISSIONS.can_do(
             principal.permissions, "CHANGE GROUP", context=context
         ):
             raise HTTPException(status_code=403, detail="Administrator permission denied")
