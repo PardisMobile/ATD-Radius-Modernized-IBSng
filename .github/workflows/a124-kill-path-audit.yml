@@ -28,4 +28,10 @@ jobs:
           root=/tmp/a124-source/IBSng/core/ras/rases
           grep -R -n -A24 -B3 'def killUser' "$root" || true
           echo "========== tenor.py full relevant path =========="
+          echo "========== pppd.py source header and kill path =========="
+          sed -n '1,52p' "$root/pppd.py"
+          echo "========== base killUser definitions =========="
+          grep -R -n -A12 -B3 'def killUser' /tmp/a124-source/IBSng/core/ras/ras.py /tmp/a124-source/IBSng/core/ras/voip_ras.py || true
+          echo "========== tenor killUser check =========="
+          grep -n -A8 -B4 'def killUser' "$root/tenor.py" || true
           sed -n '1,190p' "$root/tenor.py"
