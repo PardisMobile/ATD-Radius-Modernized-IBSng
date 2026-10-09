@@ -426,6 +426,21 @@ class SnmpV1V2cSetTransport:
             sock.close()
         return tuple(results)
 
+    def walk_text_mapping(
+        self, request: ProviderOperationRequest
+    ) -> dict[str, str]:
+        """Return an OID-to-text map for an audited OCTET STRING subtree."""
+        values = self.walk(request)
+        mapping: dict[str, str] = {}
+        for item in values:
+            try:
+                mapping[item.oid] = item.value.decode("utf-8")
+            except UnicodeDecodeError as exc:
+                raise SnmpTransportError(
+                    f"SNMP value for {item.oid} is not valid UTF-8"
+                ) from exc
+        return mapping
+
     @staticmethod
     def _send_with_retries(
         sock: socket.socket,
