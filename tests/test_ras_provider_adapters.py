@@ -106,3 +106,28 @@ def test_providers_without_audited_disconnect_strategy_do_not_get_guessed_adapte
         assert ExternalSideEffectAdapter(provider).disconnect_request(
             {"User-Name": "alice"}
         ) is None
+
+def test_portmaster_adapter_builds_source_derived_snmp_disconnect():
+    from atd_radius.domain.ras_provider_adapters import PORTMASTER_EXTERNAL_ADAPTER
+
+    request = PORTMASTER_EXTERNAL_ADAPTER.source_disconnect_request(
+        {"ras_ip": "192.0.2.10", "port": "7"}
+    )
+    assert request.operation.value == "snmp"
+    assert request.parameters["set"]["oid"] == ".1.3.6.1.2.1.2.2.1.7.9"
+    assert request.parameters["set"]["value"] == 2
+
+
+def test_total_control_adapter_preserves_source_derived_snmp_cycle_order():
+    from atd_radius.domain.ras_provider_adapters import TOTAL_CONTROL_EXTERNAL_ADAPTER
+
+    request = TOTAL_CONTROL_EXTERNAL_ADAPTER.source_disconnect_request(
+        {"ras_ip": "192.0.2.11", "interface_index": "42"}
+    )
+    assert request.operation.value == "snmp"
+    assert [item["value"] for item in request.parameters["sets"]] == [2, 1]
+    assert all(
+        item["oid"] == ".1.3.6.1.2.1.2.2.1.7.42"
+        for item in request.parameters["sets"]
+    )
+
