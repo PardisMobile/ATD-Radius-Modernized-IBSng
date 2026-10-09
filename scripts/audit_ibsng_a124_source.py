@@ -23,9 +23,11 @@ TARGET_FILES = {
     "Total Control SNMP kill": ("IBSng/core/ras/rases/total_control.py", r"killUser"),
     "PPPD launcher kill": ("IBSng/core/ras/rases/pppd.py", r"killUser"),
     "PortSlave launcher kill": ("IBSng/core/ras/rases/portslave.py", r"killUser"),
-    "Cisco SNMP/RSH kill": ("IBSng/core/ras/rases/cisco.py", r"killUser"),
-    "Cisco VPDN RSH kill": ("IBSng/core/ras/rases/cisco_vpdn.py", r"killUser"),
-    "MikroTik RSH kill": ("IBSng/core/ras/rases/mikrotik.py", r"killUser"),
+    "Cisco SNMP/RSH kill branches": ("IBSng/core/ras/rases/cisco.py", r"def killUser|def __killUserOnPort|def __killByRSH|def __killBySnmp|def __parseAsyncPort"),
+    "Cisco VPDN interface discovery and RSH": ("IBSng/core/ras/rases/cisco_vpdn.py", r"def killUser|def __killUser|def __killUserOnPort|def __killByRSH|def __findUserInterface|def __getUsernameAndRemoteIPFromUserMsg"),
+    "MikroTik RSH/SSH wrapper kill": ("IBSng/core/ras/rases/mikrotik.py", r"def __init__|def killUser|mikrotik_ssh_wrapper|def __getUserIP|def __getNasPortType"),
+    "PPPD command defaults": ("IBSng/core/ras/rases/pppd.py", r"type_attrs|pppd_kill_port_command|def killUser|def __killUserOnPort"),
+    "PortSlave command defaults": ("IBSng/core/ras/rases/portslave.py", r"type_attrs|portslave_kill_port_command|def killUser"),
     "Quintum Tenor behavior": ("IBSng/core/ras/rases/tenor.py", r"killUser|class\s+"),
     "SNMP transport wrapper": ("IBSng/core/lib/snmp.py", r"class Snmp|def "),
     "RSH wrapper": ("IBSng/core/lib/rsh.py", r"class RSHClient|def "),
@@ -96,6 +98,18 @@ def main() -> int:
         provider_files = [m for m in source_py if "/core/ras/rases/" in "/" + m.name]
         for member in sorted(provider_files, key=lambda m: m.name):
             print(member.name)
+        print("\n== RADIUS parser and launcher source file inventory ==")
+        for member in sorted(source_py, key=lambda m: m.name):
+            if "/radius_server/" in "/" + member.name or re.search(r"launcher|snmp|rsh", Path(member.name).name, re.I):
+                print(member.name)
+
+        print("\n== Launcher implementation source anchors ==")
+        for member in sorted(source_py, key=lambda m: m.name):
+            if not ("/launcher" in member.name.lower() or "launcher" in Path(member.name).name.lower()):
+                continue
+            source = member_text(archive, member)
+            if re.search(r"def\s+(?:system|popen3)|IBS_ADDONS|def\s+getLauncher", source):
+                print_context(member.name, source, re.compile(r"def\s+(?:system|popen3)|IBS_ADDONS|def\s+getLauncher"), before=2, after=10)
 
         print("\n== Direct source excerpts: provider side effects and protocol invariants ==")
         by_name = {m.name: m for m in members}
