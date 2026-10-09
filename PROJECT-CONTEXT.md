@@ -931,3 +931,11 @@ Included in this batch:
 Some intermediate CI runs failed while the tests were being introduced (missing pytest import, then assertion/fixture expectations); these were corrected. The implementation/test HEAD above is green. This context-only commit itself triggers fresh CI and must not be considered green until its own run completes.
 
 No frozen A1.24 authentication, CHAP/MS-CHAPv2, MPPE, MultiLogin, attribute inheritance, persistence, or accounting-core behavior was changed.
+
+
+## Provider operation envelope runtime validation — 2026-10-09
+
+- Hardened ProviderOperationRequest.__post_init__: operation must be an ExternalOperation enum member, and parameters must implement Mapping before the immutable snapshot is built.
+- Added regression tests rejecting arbitrary operation strings and non-mapping parameters, plus nested mutation isolation.
+- Scope is restricted to the external-operation envelope. No frozen authentication, CHAP/MS-CHAPv2, MPPE, MultiLogin, attribute inheritance, persistence, accounting core, or provider-specific side-effect behavior was changed.
+- Current main HEAD before this batch: 520fcb906b984f7a78a2700553711731a4406dc1. CI status for this new batch remains pending until fresh workflow results for the resulting HEAD are observed; the previous green checkpoint is 8799d378dfbbf45ff7616e2e0c3c60cb35369cdc, not this documentation/code update.
