@@ -702,7 +702,7 @@ def test_source_dictionary_enum_labels_encode_to_canonical_wire_numbers(name, la
     wire = encode(packet)
     assert wire[20] == {"Acct-Status-Type": 40, "NAS-Port-Type": 61}[name]
     assert wire[22:26] == number.to_bytes(4, "big")
-    expected_label = "Interim-Update" if name == "Acct-Status-Type" and label == "Alive" else label
+    expected_label = "Alive" if name == "Acct-Status-Type" and label == "Interim-Update" else label
     assert decode(wire).attributes[name] == expected_label
 
 
