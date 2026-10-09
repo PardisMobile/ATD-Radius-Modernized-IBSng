@@ -23,6 +23,7 @@ TARGET_FILES = {
     "Total Control SNMP kill": ("IBSng/core/ras/rases/total_control.py", r"killUser"),
     "PPPD launcher kill": ("IBSng/core/ras/rases/pppd.py", r"killUser"),
     "PortSlave launcher kill": ("IBSng/core/ras/rases/portslave.py", r"killUser"),
+    "Cisco SNMP configuration": ("IBSng/core/ras/rases/cisco.py", r"type_attrs|cisco_snmp_version|cisco_snmp_timeout|cisco_snmp_retries|cisco_kill_use_snmp|snmp_client"),
     "Cisco SNMP/RSH kill branches": ("IBSng/core/ras/rases/cisco.py", r"def killUser|def __killUserOnPort|def __killByRSH|def __killBySnmp|def __parseAsyncPort"),
     "Cisco VPDN interface discovery and RSH": ("IBSng/core/ras/rases/cisco_vpdn.py", r"def killUser|def __killUser|def __killUserOnPort|def __killByRSH|def __findUserInterface|def __getUsernameAndRemoteIPFromUserMsg"),
     "MikroTik RSH/SSH wrapper kill": ("IBSng/core/ras/rases/mikrotik.py", r"def __init__|def killUser|mikrotik_ssh_wrapper|def __getUserIP|def __getNasPortType"),
