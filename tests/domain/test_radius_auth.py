@@ -86,3 +86,19 @@ def test_mschapv2_mppe_server_keys_are_rfc3079_derived():
     send_key, recv_key = derive_mschapv2_mppe_keys("clientPass", nt_response)
     assert send_key.hex() == "8b7cdc149b993a1ba118cb153f56dccb"
     assert recv_key.hex() == "d5f0e9521e3ea9589645e86051c82226"
+
+
+
+def test_a124_str2unicode_interleaves_utf8_source_bytes_not_unicode_codepoints():
+    from atd_radius.domain.radius_auth import _a124_str2unicode
+
+    assert _a124_str2unicode("clientPass") == "clientPass".encode("utf-16le")
+    assert _a124_str2unicode("é") == b"\xc3\x00\xa9\x00"
+
+
+def test_mschapv2_rfc2759_vector_remains_valid_after_source_password_conversion():
+    auth_challenge = bytes.fromhex("5B5D7C7D7B3F2F3E3C2C602132262628")
+    peer_challenge = bytes.fromhex("21402324255E262A28295F2B3A337C7E")
+    nt_response = bytes.fromhex("82309ECD8D708B5EA08FAA3981CD83544233114A3D85D6DF")
+    response = b"\x01\x00" + peer_challenge + b"\x00" * 8 + nt_response
+    assert verify_mschapv2(response, "clientPass", "User", auth_challenge)
