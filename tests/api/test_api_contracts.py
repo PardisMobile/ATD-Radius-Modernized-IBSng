@@ -41,3 +41,10 @@ def test_user_component_contract_covers_voip_without_password():
     assert view.voip.username == "1001"
     assert view.voip.has_password is True
     assert "password" not in view.voip.model_fields
+
+
+def test_ras_list_contract_does_not_expose_radius_secret():
+    from atd_radius.api.ras import RASListView
+
+    assert "radius_secret" not in RASListView.model_fields
+    assert "radius_secret" in __import__("atd_radius.api.ras", fromlist=["RASInfo"]).RASInfo.model_fields
