@@ -120,7 +120,10 @@ def main() -> int:
             if member is None:
                 print(f"ERROR: expected source file missing: {path}")
                 continue
-            print_context(path, member_text(archive, member), re.compile(expr))
+            context_after = 60 if label in {
+                "MS-CHAP implementation", "MS-CHAP cryptographic utilities", "MPPE implementation"
+            } else 18
+            print_context(path, member_text(archive, member), re.compile(expr), after=context_after)
 
         print("\n== Canonical dictionary declarations for changed attribute typing ==")
         dict_files = [m for m in members if m.name in {
