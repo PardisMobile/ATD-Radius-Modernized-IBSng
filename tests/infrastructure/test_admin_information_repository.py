@@ -23,6 +23,10 @@ class Connection:
         self.calls.append((sql, params))
         if "SELECT admin_id FROM admins WHERE username" in sql:
             return Result((8,))
+        if "nextval('admin_locks_lock_id_seq')" in sql:
+            return Result((31,))
+        if "DELETE FROM admin_locks" in sql:
+            return Result((params[1],))
         if sql.startswith("UPDATE admins SET name = %s, comment = %s"):
             return Result(None)
         if "FROM admins a" in sql:
@@ -62,4 +66,27 @@ def test_admin_information_update_locks_target_and_changes_only_name_comment():
     assert (
         "UPDATE admins SET name = %s, comment = %s WHERE admin_id = %s",
         ("Updated", "new comment", 8),
+    ) in conn.calls
+
+
+
+def test_lock_admin_inserts_native_lock_with_source_sequence_and_locker():
+    conn = Connection()
+    record = AdminInformationRepository(conn).lock_admin(
+        "target", reason="security review", locker_admin_id=7
+    )
+    assert record is not None
+    assert (
+        "INSERT INTO admin_locks (lock_id, admin_id, reason, locker_admin_id) VALUES (%s, %s, %s, %s)",
+        (31, 8, "security review", 7),
+    ) in conn.calls
+
+
+def test_unlock_admin_deletes_only_matching_target_lock():
+    conn = Connection()
+    record = AdminInformationRepository(conn).unlock_admin("target", 4)
+    assert record is not None
+    assert (
+        "DELETE FROM admin_locks WHERE admin_id = %s AND lock_id = %s RETURNING lock_id",
+        (8, 4),
     ) in conn.calls

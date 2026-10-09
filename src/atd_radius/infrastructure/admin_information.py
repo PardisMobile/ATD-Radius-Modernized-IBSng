@@ -52,6 +52,35 @@ class AdminInformationRepository:
         )
         return self.get_by_username(username)
 
+    def lock_admin(self, username: str, *, reason: str, locker_admin_id: int) -> AdminInformationRecord | None:
+        row = self.conn.execute(
+            "SELECT admin_id FROM admins WHERE username = %s FOR UPDATE", (username,)
+        ).fetchone()
+        if row is None:
+            return None
+        admin_id = int(row[0])
+        lock_id = int(self.conn.execute("SELECT nextval('admin_locks_lock_id_seq')").fetchone()[0])
+        self.conn.execute(
+            "INSERT INTO admin_locks (lock_id, admin_id, reason, locker_admin_id) VALUES (%s, %s, %s, %s)",
+            (lock_id, admin_id, reason, locker_admin_id),
+        )
+        return self.get_by_username(username)
+
+    def unlock_admin(self, username: str, lock_id: int) -> AdminInformationRecord | None:
+        row = self.conn.execute(
+            "SELECT admin_id FROM admins WHERE username = %s FOR UPDATE", (username,)
+        ).fetchone()
+        if row is None:
+            return None
+        admin_id = int(row[0])
+        deleted = self.conn.execute(
+            "DELETE FROM admin_locks WHERE admin_id = %s AND lock_id = %s RETURNING lock_id",
+            (admin_id, lock_id),
+        ).fetchone()
+        if deleted is None:
+            return None
+        return self.get_by_username(username)
+
     def get_by_username(self, username: str) -> AdminInformationRecord | None:
         row = self.conn.execute(
             """

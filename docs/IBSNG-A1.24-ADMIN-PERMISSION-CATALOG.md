@@ -95,3 +95,8 @@ A1.24 `admin_handler.py` permits `getAdminInfo` for the current admin without `S
 ### Administrator name/comment update — 2026-10-10
 
 Source trace: `core/admin/admin_handler.py:62-66` and `core/admin/admin_actions.py:111-123`. The update requires `CHANGE ADMIN INFO`, which depends on `SEE ADMIN INFO`; source changes only `admins.name` and `admins.comment` and reloads the in-memory admin object. ATD now row-locks the target, updates only those two native fields, and commits operational audit in the same transaction. Password changes, lock/unlock, permission editing, and admin deletion remain separate unimplemented workflows.
+
+
+### Administrator lock lifecycle — 2026-10-10
+
+Source trace: `core/admin/admin_handler.py` `lockAdmin`/`unlockAdmin` and `core/admin/admin_actions.py:313-349`. Both operations require `CHANGE ADMIN INFO` (which depends on `SEE ADMIN INFO`). Lock creates an `admin_locks` row with the native lock sequence, reason and acting administrator ID; unlock deletes only the specified lock row belonging to the target admin. Multiple lock rows are allowed, and A1.24 considers an admin locked while any row remains. ATD now implements both operations with target row locking and same-transaction operational audit.

@@ -79,23 +79,84 @@ def update_admin_information(
                 details={"target_username": updated.username, "name": payload.name, "comment": payload.comment},
             )
             conn.commit()
-            return AdminInformationView(
-                admin_id=updated.admin_id,
-                username=updated.username,
-                name=updated.name,
-                comment=updated.comment,
-                deposit=str(updated.deposit),
-                creator_id=updated.creator_id,
-                creator=updated.creator,
-                locks=[
-                    AdminLockView(lock_id=lock.lock_id, locker_admin=lock.locker_admin, reason=lock.reason)
-                    for lock in updated.locks
-                ],
-            )
+            return _admin_information_view(updated)
     except HTTPException:
         raise
     except Exception as exc:
         raise HTTPException(status_code=409, detail="Administrator information could not be updated") from exc
+
+
+class AdminLockCreate(BaseModel):
+    reason: str
+
+
+def _validated_remote_addr(remote_addr: str | None) -> str | None:
+    if remote_addr is None:
+        return None
+    try:
+        return str(ipaddress.ip_address(remote_addr))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="A valid administrator remote address is required") from exc
+
+
+def _admin_information_view(record) -> AdminInformationView:
+    return _admin_information_view(record)
+
+
+@router.post("/{username}/locks", response_model=AdminInformationView)
+def lock_admin(
+    username: str,
+    payload: AdminLockCreate,
+    admin: AdminPrincipal = Depends(require_admin_permission("CHANGE ADMIN INFO")),
+) -> AdminInformationView:
+    remote_addr = _validated_remote_addr(admin.remote_addr)
+    try:
+        with connection() as conn:
+            repository = AdminInformationRepository(conn)
+            updated = repository.lock_admin(username, reason=payload.reason, locker_admin_id=admin.admin_id)
+            if updated is None:
+                raise HTTPException(status_code=404, detail="administrator not found")
+            OperationalAuditRepository(conn).append(
+                actor_admin_id=admin.admin_id, actor_username=admin.username,
+                action="admin.lock", outcome="success", target_type="admin",
+                target_id=str(updated.admin_id), remote_addr=remote_addr,
+                details={"target_username": updated.username, "reason": payload.reason, "lock_count": len(updated.locks)},
+            )
+            conn.commit()
+            return _admin_information_view(updated)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=409, detail="Administrator could not be locked") from exc
+
+
+@router.delete("/{username}/locks/{lock_id}", response_model=AdminInformationView)
+def unlock_admin(
+    username: str,
+    lock_id: int,
+    admin: AdminPrincipal = Depends(require_admin_permission("CHANGE ADMIN INFO")),
+) -> AdminInformationView:
+    if lock_id <= 0:
+        raise HTTPException(status_code=422, detail="lock_id must be positive")
+    remote_addr = _validated_remote_addr(admin.remote_addr)
+    try:
+        with connection() as conn:
+            repository = AdminInformationRepository(conn)
+            updated = repository.unlock_admin(username, lock_id)
+            if updated is None:
+                raise HTTPException(status_code=404, detail="administrator or lock not found")
+            OperationalAuditRepository(conn).append(
+                actor_admin_id=admin.admin_id, actor_username=admin.username,
+                action="admin.unlock", outcome="success", target_type="admin",
+                target_id=str(updated.admin_id), remote_addr=remote_addr,
+                details={"target_username": updated.username, "lock_id": lock_id},
+            )
+            conn.commit()
+            return _admin_information_view(updated)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=409, detail="Administrator lock could not be removed") from exc
 
 
 @router.get("/{username}", response_model=AdminInformationView)
