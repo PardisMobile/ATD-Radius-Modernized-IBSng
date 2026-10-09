@@ -1337,3 +1337,8 @@ Validation checkpoint after initial-credit work: commit `42dfca83f0712a2955f9c48
 ### Administrator information read APIs — 2026-10-10
 
 Source trace: `IBSng/core/admin/admin_handler.py:30-53` and `core/admin/admin.py:36-52`. ATD now implements `GET /api/v1/admins` and `GET /api/v1/admins/{username}`: administrators with `SEE ADMIN INFO` (or GOD bypass) can list sorted usernames and read other admins; without it, the list contains only the caller and detail is allowed only for self. Detail includes persisted name/comment/deposit/creator/locks. Volatile legacy fields (`last_request_ip`, `last_activity`, `online_status`) are deliberately omitted because A1.24 keeps them in runtime memory and ATD does not yet persist equivalent state.
+
+
+### Administrator name/comment update — 2026-10-10
+
+Direct source trace: `IBSng/core/admin/admin_handler.py:62-66` and `core/admin/admin_actions.py:111-123`. ATD now exposes `PUT /api/v1/admins/{username}`, enforces `CHANGE ADMIN INFO` → `SEE ADMIN INFO`, locks the target row, changes only the native `name` and `comment` columns, and appends operational audit in the same transaction. This does not implement admin password changes, lock/unlock, permission editing, or deletion.

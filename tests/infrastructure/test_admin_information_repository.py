@@ -45,3 +45,17 @@ def test_admin_information_username_list_is_sorted_by_database_contract():
     conn = Connection()
     assert AdminInformationRepository(conn).list_usernames() == ["alpha", "operator", "target"]
     assert "ORDER BY username" in conn.calls[0][0]
+
+
+
+def test_admin_information_update_locks_target_and_changes_only_name_comment():
+    conn = Connection()
+    repo = AdminInformationRepository(conn)
+    record = repo.update_info("target", "Updated", "new comment")
+
+    assert record is not None
+    assert any("FOR UPDATE" in sql for sql, _ in conn.calls)
+    assert (
+        "UPDATE admins SET name = %s, comment = %s WHERE admin_id = %s",
+        ("Updated", "new comment", 8),
+    ) in conn.calls

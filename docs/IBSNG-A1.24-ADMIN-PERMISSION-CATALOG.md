@@ -18,7 +18,7 @@ Value types:
 | ADD NEW GROUP | No value | — | Implemented for group API |
 | ADD NEW USER | No value | — | Implemented for user creation |
 | CHANGE ADMIN DEPOSIT | No value | CHANGE ADMIN INFO | Implemented for deposit adjustment API; broader admin workflows remain open |
-| CHANGE ADMIN INFO | No value | SEE ADMIN INFO | Registered as a dependency for deposit adjustment only; admin-info mutation API not implemented |
+| CHANGE ADMIN INFO | No value | SEE ADMIN INFO | Implemented for native name/comment update and as dependency for deposit adjustment; other admin mutations remain open |
 | CHANGE ADMIN PASSWORD | No value | SEE ADMIN INFO | Not implemented |
 | CHANGE ADMIN PERMISSIONS | No value | SEE ADMIN INFO; SEE ADMIN PERMISSIONS | Not implemented |
 | CHANGE BANDWIDTH MANAGER | No value | CHANGE CHARGE | Not implemented |
@@ -90,3 +90,8 @@ ATD now exposes `POST /api/v1/admins/{username}/deposit` with the native depende
 ### Administrator information read APIs — 2026-10-10
 
 A1.24 `admin_handler.py` permits `getAdminInfo` for the current admin without `SEE ADMIN INFO`, but requires the permission for other admins. `getAllAdminUsernames` returns all sorted usernames when permission is present and only the current username otherwise. ATD now implements those visibility rules and returns the persisted identity, name/comment, deposit, creator and lock details. A1.24's in-memory `last_request_ip`, `last_activity`, and `online_status` fields are not fabricated; they remain unavailable in this persistence-backed API.
+
+
+### Administrator name/comment update — 2026-10-10
+
+Source trace: `core/admin/admin_handler.py:62-66` and `core/admin/admin_actions.py:111-123`. The update requires `CHANGE ADMIN INFO`, which depends on `SEE ADMIN INFO`; source changes only `admins.name` and `admins.comment` and reloads the in-memory admin object. ATD now row-locks the target, updates only those two native fields, and commits operational audit in the same transaction. Password changes, lock/unlock, permission editing, and admin deletion remain separate unimplemented workflows.

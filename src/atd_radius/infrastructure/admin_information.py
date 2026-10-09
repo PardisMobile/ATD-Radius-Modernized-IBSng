@@ -39,6 +39,19 @@ class AdminInformationRepository:
         rows = self.conn.execute("SELECT username FROM admins ORDER BY username").fetchall()
         return [str(row[0]) for row in rows]
 
+    def update_info(self, username: str, name: str, comment: str) -> AdminInformationRecord | None:
+        row = self.conn.execute(
+            "SELECT admin_id FROM admins WHERE username = %s FOR UPDATE",
+            (username,),
+        ).fetchone()
+        if row is None:
+            return None
+        self.conn.execute(
+            "UPDATE admins SET name = %s, comment = %s WHERE admin_id = %s",
+            (name, comment, int(row[0])),
+        )
+        return self.get_by_username(username)
+
     def get_by_username(self, username: str) -> AdminInformationRecord | None:
         row = self.conn.execute(
             """

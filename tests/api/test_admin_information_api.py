@@ -62,3 +62,62 @@ def test_admin_detail_allows_self_but_denies_other_admin_without_permission(monk
     with pytest.raises(HTTPException) as denied:
         admins_api.get_admin_information("another", principal({}))
     assert denied.value.status_code == 403
+
+
+
+def test_admin_info_update_requires_source_permission_chain(monkeypatch):
+    from atd_radius.api.admin_dependencies import require_admin_permission
+
+    dependency = require_admin_permission("CHANGE ADMIN INFO")
+    with pytest.raises(HTTPException) as denied:
+        dependency(principal({"CHANGE ADMIN INFO": ""}))
+    assert denied.value.status_code == 403
+
+    allowed = dependency(principal({"SEE ADMIN INFO": "", "CHANGE ADMIN INFO": ""}))
+    assert allowed.admin_id == 7
+
+
+def test_admin_info_update_commits_native_update_and_operational_audit(monkeypatch):
+    from datetime import datetime, timezone
+
+    class Conn:
+        def __init__(self):
+            self.commits = 0
+            self.calls = []
+
+        def execute(self, sql, params=()):
+            self.calls.append((sql, params))
+            if "INSERT INTO operational_audit_events" in sql:
+                return type("Result", (), {"fetchone": lambda self: (99, datetime(2026, 10, 10, tzinfo=timezone.utc))})()
+            return type("Result", (), {"fetchone": lambda self: (7,)})()
+
+        def commit(self):
+            self.commits += 1
+
+    conn = Conn()
+    updated = SimpleNamespace(
+        admin_id=8, username="target", name="Updated", comment="new comment",
+        deposit=Decimal("10.00"), creator_id=7, creator="operator", locks=(),
+    )
+    class Repo:
+        def __init__(self, _conn):
+            pass
+        def update_info(self, username, name, comment):
+            assert (username, name, comment) == ("target", "Updated", "new comment")
+            return updated
+
+    @contextmanager
+    def fake_connection():
+        yield conn
+
+    monkeypatch.setattr(admins_api, "connection", fake_connection)
+    monkeypatch.setattr(admins_api, "AdminInformationRepository", Repo)
+    monkeypatch.setattr(admins_api, "OperationalAuditRepository", lambda _conn: type("Audit", (), {"append": lambda self, **kwargs: None})())
+
+    result = admins_api.update_admin_information(
+        "target",
+        admins_api.AdminInformationUpdate(name="Updated", comment="new comment"),
+        principal({"SEE ADMIN INFO": "", "CHANGE ADMIN INFO": ""}),
+    )
+    assert result.name == "Updated"
+    assert conn.commits == 1
