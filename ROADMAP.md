@@ -37,13 +37,14 @@
 - [x] Duplicate request identity/replay boundary and expiry primitive
 - [x] Disconnect/CoA runtime boundary and RFC 5176 selectors
 - [x] RFC 5176 Message-Authenticator boundary for current control path
-- [ ] Full CHAP/MS-CHAPv2 parity
+- [x] CHAP/MS-CHAPv1/v2 core field semantics, AuthenticatorResponse and MPPE response path are source-traced and tested
+- [ ] End-to-end Access-Accept/Reject parity across all relevant provider and dictionary contexts
 - [x] Source-compatible RAS runtime registry/loader
 - [ ] Full RAS provider behavior parity (source audit complete; provider adapters/fixtures remain)
 - [x] Native psycopg SQL placeholder contracts for user/group/attribute persistence
 - [x] PostgreSQL connection-log persistence on the live Accounting-Request path
 - [ ] Complete source-derived RADIUS attribute/dictionary coverage
-- [ ] EAP state machine and supported methods
+- [ ] EAP state machine and supported methods (optional ATD extension; not an A1.24 parity gate)
 
 ## Phase 3 — Billing
 - [ ] credit ledger
@@ -92,3 +93,22 @@ Every phase requires automated tests and documentation updates before it is cons
 
 ## UI sequencing rule — established project decision
 UI implementation is frozen while core parity work is active. Existing shell/foundation work is retained, but no further UI workflow expansion is to be treated as active roadmap progress. Final UI implementation begins only after Core/RADIUS/RAS/Billing/DB/API/Migration/Deployment are stabilized and the real IBSng A1.24 UI has been fully reviewed and mapped to the finished core.
+
+## Current delivery estimate — 2026-10-09
+
+These are scope estimates, not CI metrics or a guarantee of a specific finish date.
+
+- **Technical core:** approximately 75–80% complete based on the current project status ledger.
+- **Full modern IBSng replacement:** approximately 55–60% complete; roughly 40–45% of the total product scope remains.
+- **Focused engineering estimate to full planned scope:** about 6–10 working weeks, assuming steady implementation and review. This includes the remaining provider/dictionary work, billing persistence, API/RBAC/XML-RPC, migration/deployment/licensing, deferred full UI workflows and final integration hardening.
+
+### Remaining delivery blocks
+
+1. **RAS and protocol parity — 1–2 weeks:** finish source-derived provider request/adapters, context-aware dictionary gaps and provider-specific integration fixtures. Real SNMP/RSH/launcher interoperability still depends on access to representative devices.
+2. **Billing and persistence — 1–2 weeks:** credit-ledger/business rules, PostgreSQL billing persistence, expiry/subscription state and remaining VoIP tariff behavior.
+3. **API and security — 1–2 weeks:** native-resource CRUD completion, authentication, permissions/RBAC, audit and XML-RPC compatibility.
+4. **Migration and operations — 1–2 weeks:** importer, parity validation, rollback-safe migration, installer/systemd, TLS, backup/upgrade and edition enforcement.
+5. **Final UI and release validation — 1–2 weeks:** begin the remaining IBSng workflows only after core and persistence contracts stabilize, then complete end-to-end release checks.
+
+Some blocks can overlap, so these ranges should not be mechanically summed into a promised date. The estimate excludes delays caused by unavailable production RAS hardware or external deployment credentials.
+
