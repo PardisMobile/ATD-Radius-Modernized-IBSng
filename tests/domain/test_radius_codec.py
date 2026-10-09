@@ -762,3 +762,20 @@ def test_a124_dictionary_login_lat_port_uses_uint32_wire_encoding():
     assert wire[21] == 6
     assert wire[22:26] == (42).to_bytes(4, "big")
     assert decode(wire).attributes["Login-LAT-Port"] == "42"
+
+
+
+def test_mschap2_success_identifier_is_preserved_as_one_raw_octet():
+    success = b"\x80S=" + b"0" * 40
+    packet = RadiusPacket(
+        RadiusCode.ACCESS_ACCEPT,
+        8,
+        {"MS-CHAP2-Success": success},
+        b"A" * 16,
+    )
+    wire = encode(packet, secret="shared-secret")
+    # Outer RADIUS attr: type 26; vendor id 311; vendor sub-attribute type 26.
+    assert wire[20] == 26
+    assert wire[22:26] == (311).to_bytes(4, "big")
+    assert wire[26] == 26
+    assert wire[28:31] == b"\x80S="
