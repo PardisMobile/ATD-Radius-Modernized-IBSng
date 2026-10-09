@@ -56,6 +56,39 @@ class RASExternalOperationDispatcher:
         if self.chillispot is None:
             self.chillispot = ChilliSpotDisconnectClient()
 
+    @staticmethod
+    def _validate_snmp_envelope(request: ProviderOperationRequest) -> None:
+        """Restrict dispatch to the provider/OID combinations audited from A1.24."""
+        params = request.parameters
+        if request.action == "walk":
+            if request.provider != "cisco" or params.get("walk_oid") != ".1.3.6.1.2.1.2.2.1.2":
+                raise UnsupportedExternalOperation("only the audited Cisco ifDescr walk is enabled")
+            return
+        if request.action != "disconnect":
+            raise UnsupportedExternalOperation(f"unsupported SNMP action: {request.action}")
+
+        allowed_cisco_oid = ".1.3.6.1.4.1.9.2.1.76.0"
+        if request.provider == "cisco":
+            set_value = params.get("set")
+            if not isinstance(set_value, dict) and not hasattr(set_value, "get"):
+                raise UnsupportedExternalOperation("Cisco disconnect requires its audited SET envelope")
+            if set_value.get("oid") != allowed_cisco_oid:
+                raise UnsupportedExternalOperation("Cisco disconnect OID is not source-audited")
+            return
+
+        if request.provider not in {"portmaster", "total_control"}:
+            raise UnsupportedExternalOperation(f"SNMP provider is not enabled: {request.provider}")
+        oid_prefix = ".1.3.6.1.2.1.2.2.1.7."
+        sets = params.get("sets") if request.provider == "total_control" else (params.get("set"),)
+        if not isinstance(sets, (tuple, list)) or not sets:
+            raise UnsupportedExternalOperation("SNMP disconnect requires a source-audited SET sequence")
+        for set_value in sets:
+            if not hasattr(set_value, "get"):
+                raise UnsupportedExternalOperation("invalid SNMP SET envelope")
+            oid = set_value.get("oid")
+            if not isinstance(oid, str) or not oid.startswith(oid_prefix) or not oid[len(oid_prefix):].isdecimal():
+                raise UnsupportedExternalOperation("IF-MIB ifAdminStatus OID is not source-audited")
+
     def execute(
         self,
         request: ProviderOperationRequest,
@@ -69,6 +102,7 @@ class RASExternalOperationDispatcher:
         if request.operation is ExternalOperation.SNMP:
             if self.snmp is None:
                 raise UnsupportedExternalOperation("SNMP transport is not configured")
+            self._validate_snmp_envelope(request)
             if request.action == "walk":
                 return self.snmp.walk_text_mapping(request)
             if request.action == "disconnect":
