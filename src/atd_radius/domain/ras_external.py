@@ -24,6 +24,23 @@ class ExternalOperation(str, Enum):
     SIP = "sip"
 
 
+def _freeze_parameter(value: object) -> object:
+    """Recursively freeze common containers crossing the provider boundary."""
+    if isinstance(value, Mapping):
+        return MappingProxyType(
+            {key: _freeze_parameter(item) for key, item in value.items()}
+        )
+    if isinstance(value, list):
+        return tuple(_freeze_parameter(item) for item in value)
+    if isinstance(value, tuple):
+        return tuple(_freeze_parameter(item) for item in value)
+    if isinstance(value, set):
+        return frozenset(_freeze_parameter(item) for item in value)
+    if isinstance(value, frozenset):
+        return frozenset(_freeze_parameter(item) for item in value)
+    return value
+
+
 @dataclass(frozen=True, slots=True)
 class ProviderOperationRequest:
     provider: str
@@ -36,7 +53,7 @@ class ProviderOperationRequest:
             raise ValueError("provider must not be empty")
         if not isinstance(self.action, str) or not self.action.strip():
             raise ValueError("action must not be empty")
-        object.__setattr__(self, "parameters", MappingProxyType(dict(self.parameters)))
+        object.__setattr__(self, "parameters", _freeze_parameter(dict(self.parameters)))
 
 
 class ExternalTransport(Protocol):
@@ -142,8 +159,8 @@ def build_chillispot_disconnect_request(
         raise ValueError("disconnect_port must be an integer")
     if not 1 <= disconnect_port <= 65535:
         raise ValueError("disconnect_port must be between 1 and 65535")
-    if not username.strip():
-        raise ValueError("username must not be empty")
+    if not isinstance(username, str) or not username.strip():
+        raise ValueError("username must be a non-empty string")
     return ProviderOperationRequest(
         provider="chilli_spot",
         operation=ExternalOperation.RADIUS_DISCONNECT,
@@ -163,8 +180,8 @@ def build_chillispot_disconnect_packet(
     """Build the minimal ChilliSpot Disconnect-Request from source-known fields."""
     from .radius import RadiusCode, RadiusPacket
 
-    if not username.strip():
-        raise ValueError("username must not be empty")
+    if not isinstance(username, str) or not username.strip():
+        raise ValueError("username must be a non-empty string")
     return RadiusPacket(
         code=RadiusCode.DISCONNECT_REQUEST,
         identifier=identifier,
