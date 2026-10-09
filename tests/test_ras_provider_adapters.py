@@ -73,7 +73,6 @@ def test_external_adapter_registry_covers_only_source_traced_disconnect_families
         MIKROTIK_EXTERNAL_ADAPTER,
         PORTMASTER_EXTERNAL_ADAPTER,
         PORTSLAVE_EXTERNAL_ADAPTER,
-        QUINTUM_TENOR_EXTERNAL_ADAPTER,
         PPPD_EXTERNAL_ADAPTER,
         TOTAL_CONTROL_EXTERNAL_ADAPTER,
     )
