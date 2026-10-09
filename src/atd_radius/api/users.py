@@ -3,7 +3,15 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
-from atd_radius.api.admin_dependencies import AdminPrincipal, can_access_user, can_use_group, require_admin_permission, require_admin_session
+from atd_radius.api.admin_dependencies import (
+    AdminPrincipal,
+    can_access_user,
+    can_use_group,
+    can_view_connection_logs,
+    can_view_credit_changes,
+    require_admin_permission,
+    require_admin_session,
+)
 from atd_radius.infrastructure import UserRepository
 from atd_radius.infrastructure.db import connection
 from atd_radius.infrastructure.group import GroupRepository
@@ -87,8 +95,8 @@ class UserDetailView(BaseModel):
     groups: list[GroupView]
     attributes: list[AttributeView]
     components: UserComponentsView
-    connection_logs: list[ConnectionLogView]
-    credit_changes: list[CreditChangeView]
+    connection_logs: list[ConnectionLogView] | None
+    credit_changes: list[CreditChangeView] | None
 
 
 @router.post("", response_model=UserView, status_code=201)
@@ -195,8 +203,10 @@ def get_user_detail(username: str, admin: AdminPrincipal = Depends(require_admin
         ).fetchone()
         groups = detail.groups(user.id)
         attributes = detail.attributes(user.id)
-        connection_logs = detail.connection_logs(user.id)
-        credit_changes = detail.credit_changes(user.id)
+        can_see_connections = can_view_connection_logs(admin, user.owner_id)
+        can_see_credit_changes = can_view_credit_changes(admin, user.owner_id)
+        connection_logs = detail.connection_logs(user.id) if can_see_connections else None
+        credit_changes = detail.credit_changes(user.id) if can_see_credit_changes else None
 
     return UserDetailView(
         id=user.id,
@@ -206,26 +216,34 @@ def get_user_detail(username: str, admin: AdminPrincipal = Depends(require_admin
         groups=[GroupView(id=g.id, name=g.name, comment=g.comment) for g in groups],
         attributes=[AttributeView(name=a.name, value=a.value) for a in attributes],
         components=components,
-        connection_logs=[
-            ConnectionLogView(
-                id=x.id,
-                login_time=x.login_time,
-                logout_time=x.logout_time,
-                successful=x.successful,
-                service=x.service,
-                ras_id=x.ras_id,
-                credit_used=str(x.credit_used) if x.credit_used is not None else None,
-            )
-            for x in connection_logs
-        ],
-        credit_changes=[
-            CreditChangeView(
-                id=x.id,
-                action=x.action,
-                per_user_credit=str(x.per_user_credit) if x.per_user_credit is not None else None,
-                change_time=x.change_time,
-                comment=x.comment,
-            )
-            for x in credit_changes
-        ],
+        connection_logs=(
+            [
+                ConnectionLogView(
+                    id=x.id,
+                    login_time=x.login_time,
+                    logout_time=x.logout_time,
+                    successful=x.successful,
+                    service=x.service,
+                    ras_id=x.ras_id,
+                    credit_used=str(x.credit_used) if x.credit_used is not None else None,
+                )
+                for x in connection_logs
+            ]
+            if connection_logs is not None
+            else None
+        ),
+        credit_changes=(
+            [
+                CreditChangeView(
+                    id=x.id,
+                    action=x.action,
+                    per_user_credit=str(x.per_user_credit) if x.per_user_credit is not None else None,
+                    change_time=x.change_time,
+                    comment=x.comment,
+                )
+                for x in credit_changes
+            ]
+            if credit_changes is not None
+            else None
+        ),
     )
