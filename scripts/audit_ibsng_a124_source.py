@@ -99,6 +99,11 @@ def main() -> int:
         provider_files = [m for m in source_py if "/core/ras/rases/" in "/" + m.name]
         for member in sorted(provider_files, key=lambda m: m.name):
             print(member.name)
+        print("\n== All archive members in MS-CHAP package, including bytecode ==")
+        for member in sorted(members, key=lambda m: m.name):
+            if "/core/lib/mschap/" in "/" + member.name:
+                print(f"{member.name} size={member.size}")
+
         print("\n== RADIUS parser, launcher and MS-CHAP source file inventory ==")
         for member in sorted(source_py, key=lambda m: m.name):
             if (
@@ -148,6 +153,25 @@ def main() -> int:
             for number, line in enumerate(source.splitlines(), 1):
                 if KILL_DEF.search(line):
                     print(f"{member.name}:{number}:{line.strip()}")
+        print("\n== MS-CHAPv2 call sites across all archived text sources ==")
+        mschap_calls = re.compile(
+            r"generate_nt_response_mschap2|challenge_hash|MS-CHAP2-Response|AuthenticatorResponse",
+            re.IGNORECASE
+        )
+        call_count = 0
+        for member in members:
+            if member.size > 8_000_000 or not member.name.endswith((".py", ".txt", ".xml", ".sql")):
+                continue
+            source = member_text(archive, member)
+            for number, line in enumerate(source.splitlines(), 1):
+                if mschap_calls.search(line):
+                    print(f"{member.name}:{number}:{line[:260]}")
+                    call_count += 1
+                    if call_count >= 160:
+                        print("... output capped at 160 source references ...")
+                        break
+            if call_count >= 160:
+                break
     return 0
 
 if __name__ == "__main__":
