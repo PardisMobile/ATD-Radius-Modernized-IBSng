@@ -232,6 +232,17 @@ def _source_cli_token(value: object, name: str) -> str:
     return value
 
 
+def _source_cisco_port(value: object) -> str:
+    """Validate Cisco port syntax while allowing source-defined slash forms."""
+    import re
+
+    if not isinstance(value, str) or not value or not re.fullmatch(
+        r"[A-Za-z0-9_.:/+-]+", value
+    ):
+        raise ValueError("port contains unsupported Cisco port characters")
+    return value
+
+
 def _source_nonempty_text(value: object, name: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise ValueError(f"{name} must be a non-empty string")
@@ -298,7 +309,7 @@ def build_cisco_rsh_disconnect_request(
 ) -> ProviderOperationRequest | None:
     """Build Cisco's source-defined RSH kill branch; unsupported ports return None."""
     target = _source_ipv4(ras_ip)
-    port_name = _source_cli_token(port, "port")
+    port_name = _source_cisco_port(port)
     wrapper_path = _source_nonempty_text(wrapper, "wrapper")
     import re
 
