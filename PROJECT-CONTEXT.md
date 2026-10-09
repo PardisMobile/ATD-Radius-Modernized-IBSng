@@ -997,3 +997,11 @@ Direct extraction after digest verification confirmed:
 The temporary source-inspection workflow was used only on `audit/a124-rsh-provider-20261009`; it must not be merged into main and should be removed from that audit branch after the source findings are recorded.
 
 Cisco VPDN lookup/parser follow-up: the source-derived lookup request and pure output parser are now exposed on `CISCO_VPDN_EXTERNAL_ADAPTER`; tests cover first-match behavior, remote-IP disambiguation, no-match and unsafe inputs. This remains request construction and parsing only, not a live RSH client or end-to-end disconnect flow.
+
+## Cisco source-configured disconnect branches — 2026-10-09
+
+Direct inspection of the verified canonical archive established the previously unresolved Cisco branch details:
+- `cisco_kill_use_snmp` defaults to enabled. The SNMP path uses IF-MIB ifDescr walk `.1.3.6.1.2.1.2.2.1.2` to map a port description to the final numeric ifIndex suffix, then SETs Cisco OID `.1.3.6.1.4.1.9.2.1.76.0` as ASN integer with the ifIndex value. Defaults: SNMP v2c, community public, timeout 10, retries 3, UDP/161.
+- When the setting is disabled, source sends `clear line <suffix>` for ports matching `Async[0-9/]+`, and `clear interface <port>` for ports beginning `Serial`. Other ports have no RSH operation in the source branch.
+- ATD now has a pure port-description-to-ifIndex resolver and configured SNMP/RSH request builders with validation and tests. Generic strategy metadata stays `snmp-or-rsh`; the caller must supply the actual source-derived config and SNMP index instead of silently selecting a branch.
+- These are request builders/resolvers only; live SNMP/RSH execution and the five-hour mapping refresh lifecycle remain open. Frozen AAA/authentication/accounting semantics were not changed.
