@@ -24,6 +24,8 @@ class AccountingEvent:
     terminate_cause: str | None = None
     attributes: Mapping[str, str] = field(default_factory=dict)
     observed_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    # Internal source-derived policy context; deliberately not a RADIUS attribute.
+    ras_multi_login_allowed: bool | None = None
 
 @dataclass(slots=True)
 class SessionUsage:
