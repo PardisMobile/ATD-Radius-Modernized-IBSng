@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from .aaa import AAAAction,AAAResult
 from .session_policy import ActiveSessionView,session_policy
-from .ras_provider import normalize_ras_type, provider_multi_login
+from .ras_provider import normalize_ras_type, provider_multi_login, provider_service_for_ras
 
 @dataclass(frozen=True,slots=True)
 class AuthenticationPolicy:
@@ -91,7 +91,13 @@ class MultiLoginPolicy:
             return AAAResult(AAAAction.REJECT,reason="MAX_CONCURRENT")
         ras_multi_login = request.attributes.get("__ras_multi_login_allowed",
             request.attributes.get("ras_multi_login"))
-        if ras_multi_login in (False, "0", "false", "False") and len(sessions) > 0:
+        current_ras_disallows = ras_multi_login in (False, "0", "false", "False")
+        # A1.24 checks False in the per-user list of all instance RAS flags,
+        # not only the flag on the incoming request.
+        existing_ras_disallows = any(
+            session.ras_multi_login_allowed is False for session in sessions
+        )
+        if len(sessions) > 0 and (current_ras_disallows or existing_ras_disallows):
             return AAAResult(AAAAction.REJECT, reason="RAS_DOESNT_ALLOW_MULTILOGIN")
         return None
 
