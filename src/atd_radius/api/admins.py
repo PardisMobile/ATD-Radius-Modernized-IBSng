@@ -100,7 +100,19 @@ def _validated_remote_addr(remote_addr: str | None) -> str | None:
 
 
 def _admin_information_view(record) -> AdminInformationView:
-    return _admin_information_view(record)
+    return AdminInformationView(
+        admin_id=record.admin_id,
+        username=record.username,
+        name=record.name,
+        comment=record.comment,
+        deposit=str(record.deposit),
+        creator_id=record.creator_id,
+        creator=record.creator,
+        locks=[
+            AdminLockView(lock_id=lock.lock_id, locker_admin=lock.locker_admin, reason=lock.reason)
+            for lock in record.locks
+        ],
+    )
 
 
 @router.post("/{username}/locks", response_model=AdminInformationView)

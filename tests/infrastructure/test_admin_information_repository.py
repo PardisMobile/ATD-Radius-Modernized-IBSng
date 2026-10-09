@@ -25,6 +25,8 @@ class Connection:
             return Result((8,))
         if "nextval('admin_locks_lock_id_seq')" in sql:
             return Result((31,))
+        if "INSERT INTO admin_locks" in sql:
+            return Result(None)
         if "DELETE FROM admin_locks" in sql:
             return Result((params[1],))
         if sql.startswith("UPDATE admins SET name = %s, comment = %s"):
