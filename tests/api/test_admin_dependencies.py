@@ -192,3 +192,35 @@ def test_connection_logs_and_credit_changes_require_their_own_source_permissions
     assert can_view_connection_logs(god, 8)
     assert can_view_credit_changes(god, 8)
 
+def test_change_user_credit_requires_get_information_and_owner_scope():
+    from atd_radius.api.admin_dependencies import AdminPrincipal, can_change_user_credit
+    from atd_radius.domain.admin_permissions import AdminPermissionSet
+
+    restricted = AdminPrincipal(
+        7, "operator", None,
+        AdminPermissionSet({
+            "GET USER INFORMATION": "Restricted",
+            "CHANGE USER CREDIT": "Restricted",
+        }),
+    )
+    assert can_change_user_credit(restricted, 7)
+    assert not can_change_user_credit(restricted, 8)
+
+    missing_dependency = AdminPrincipal(
+        7, "operator", None,
+        AdminPermissionSet({"CHANGE USER CREDIT": "All"}),
+    )
+    assert not can_change_user_credit(missing_dependency, 7)
+
+    all_users = AdminPrincipal(
+        7, "operator", None,
+        AdminPermissionSet({
+            "GET USER INFORMATION": "All",
+            "CHANGE USER CREDIT": "All",
+        }),
+    )
+    assert can_change_user_credit(all_users, 8)
+
+    god = AdminPrincipal(7, "operator", None, AdminPermissionSet({"GOD": ""}))
+    assert can_change_user_credit(god, 8)
+
