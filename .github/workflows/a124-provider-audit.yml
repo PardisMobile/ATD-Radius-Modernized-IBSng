@@ -1,0 +1,45 @@
+name: Temporary A1.24 provider source audit
+
+on:
+  push:
+    branches:
+      - audit/a124-provider-side-effects-20261009
+
+permissions:
+  contents: read
+
+jobs:
+  inspect-canonical-source:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify and extract canonical archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive="Source of Truth/IBSng-A1.24.tar.bz2"
+          echo "Archive metadata:"
+          sha256sum "$archive"
+          tar -tjf "$archive" | head -n 12
+          mkdir -p /tmp/a124-source
+          tar -xjf "$archive" -C /tmp/a124-source
+          root="$(find /tmp/a124-source -mindepth 1 -maxdepth 1 -type d | head -n 1)"
+          echo "Extracted root: $root"
+          test -n "$root"
+          test -f "$root/core/ras/rases/cisco_vpdn.py"
+      - name: Print provider side-effect call paths
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="$(find /tmp/a124-source -mindepth 1 -maxdepth 1 -type d | head -n 1)"
+          for file in cisco.py cisco_vpdn.py mikrotik.py portmaster.py portslave.py total_control.py quintum_tenor.py asterisk.py ser.py mvts.py; do
+            path="$root/core/ras/rases/$file"
+            if [ -f "$path" ]; then
+              echo
+              echo "========== $file =========="
+              grep -n -i -E -C 5 'snmp|rsh|launcher|disconnect|kill|command|asterisk|manager|h323|sip|os\.system|popen|execute|interface_index|community|timeout|retry' "$path" || true
+            fi
+          done
+          echo
+          echo "========== RAS addon / helper references =========="
+          grep -R -n -i -E 'snmpwalk|snmpset|rsh|RSH|Asterisk.Manager|disconnect.*cause|launcher' "$root/core/ras" "$root/addons" 2>/dev/null | head -n 500 || true
