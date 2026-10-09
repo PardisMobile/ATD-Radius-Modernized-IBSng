@@ -26,6 +26,8 @@ from .ras_external import (
     build_total_control_disconnect_request,
     build_portslave_disconnect_request,
     build_pppd_disconnect_request,
+    build_cisco_vpdn_disconnect_request,
+    build_mikrotik_disconnect_request,
 )
 
 
@@ -170,6 +172,26 @@ class ExternalSideEffectAdapter:
 
 
 @dataclass(frozen=True, slots=True)
+class CiscoVPDNExternalSideEffectAdapter(ExternalSideEffectAdapter):
+    """Cisco VPDN RSH disconnect after source-defined interface discovery."""
+
+    def source_disconnect_request(
+        self, source_parameters: Mapping[str, object]
+    ) -> ProviderOperationRequest:
+        return build_cisco_vpdn_disconnect_request(**source_parameters)
+
+
+@dataclass(frozen=True, slots=True)
+class MikroTikExternalSideEffectAdapter(ExternalSideEffectAdapter):
+    """MikroTik RSH-wrapper disconnect with source-derived command selection."""
+
+    def source_disconnect_request(
+        self, source_parameters: Mapping[str, object]
+    ) -> ProviderOperationRequest:
+        return build_mikrotik_disconnect_request(**source_parameters)
+
+
+@dataclass(frozen=True, slots=True)
 class PortSlaveExternalSideEffectAdapter(ExternalSideEffectAdapter):
     """PortSlave's source-derived launcher invocation boundary."""
 
@@ -210,8 +232,8 @@ class TotalControlExternalSideEffectAdapter(ExternalSideEffectAdapter):
 
 
 CHILLISPOT_EXTERNAL_ADAPTER = ExternalSideEffectAdapter("chilli_spot")
-CISCO_VPDN_EXTERNAL_ADAPTER = ExternalSideEffectAdapter("cisco_vpdn")
-MIKROTIK_EXTERNAL_ADAPTER = ExternalSideEffectAdapter("mikrotik")
+CISCO_VPDN_EXTERNAL_ADAPTER = CiscoVPDNExternalSideEffectAdapter("cisco_vpdn")
+MIKROTIK_EXTERNAL_ADAPTER = MikroTikExternalSideEffectAdapter("mikrotik")
 PORTMASTER_EXTERNAL_ADAPTER = PortMasterExternalSideEffectAdapter("portmaster")
 PORTSLAVE_EXTERNAL_ADAPTER = PortSlaveExternalSideEffectAdapter("portslave")
 TOTAL_CONTROL_EXTERNAL_ADAPTER = TotalControlExternalSideEffectAdapter("total_control")
