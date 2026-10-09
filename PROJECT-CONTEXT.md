@@ -1154,3 +1154,14 @@ Important limitation: the shared bearer token is only an initial API safety gate
 - Added `docs/A1.24-ADMIN-PERMISSION-AUDIT.md` from those direct excerpts.
 - Source facts: `checkPerm` evaluates the registered permission; `hasPerm` only checks presence; `canDo` has a source-defined GOD bypass. Multi-value permissions are comma-separated. Permission dependencies are checked during add/delete. Admin loading includes both permissions and locks. A1.24 `KILL USER` depends on `SEE ONLINE USERS`; `CHANGE RAS` depends on `LIST RAS` and `GET RAS INFORMATION`.
 - Still open: trace the exact web login/session bootstrap and full online-user disconnect request path; design operational audit storage; implement native administrator identity and permission evaluation before exposing privileged endpoints. Do not treat the shared bearer token as RBAC, and do not mount the RAS disconnect service yet.
+
+
+## Continuation checkpoint — 2026-10-10 (admin authorization foundation)
+
+- Actual main HEAD at start of this continuation was `d5beb4ddb406dc5463b3b5782d3415b1c117e9f9`, newer than the previously mentioned documentation commit. Its CI run completed successfully.
+- Added `src/atd_radius/domain/admin_permissions.py`: explicit permission specs, separate presence vs value evaluation, no-value/single-value/multi-value/contextual types, dependency checks with cycle denial, fail-closed unknown permission names, and the A1.24 GOD bypass only in `can_do`.
+- Added `src/atd_radius/infrastructure/admin_repository.py` to read native `admins`, `admin_perms`, and `admin_locks` separately without inventing a replacement schema or treating the API bearer token as an admin identity.
+- Added focused tests for permission evaluation and native repository mapping, plus `docs/ADMIN-AUTHORIZATION-BOUNDARY.md`.
+- The existing operational audit writer and `migrations/004_operational_audit.sql` remain ATD-specific append-only storage separate from native `user_audit_log`. Its transaction contract requires privileged DB mutations and their audit event to share a caller-owned transaction.
+- These changes are an authorization foundation, not complete RBAC or web-login parity. Permission definitions beyond the directly source-traced examples must be registered only after checking the canonical A1.24 source. Admin password/session bootstrap and the exact semantics of admin locks still need source tracing. No RAS disconnect endpoint has been exposed.
+- CI for the new commits was still running at the time this checkpoint was written; update this status only after the latest main runs complete.
