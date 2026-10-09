@@ -879,3 +879,12 @@ The earlier OPEN ledger line saying live PostgreSQL transaction rollback proof i
 - Added tests for source-parameter snapshot isolation, read-only request parameters, and invalid empty identity fields.
 - No external command/OID/launcher argument was invented, and no frozen A1.24 authentication, CHAP/MS-CHAPv2, MPPE, MultiLogin, persistence, or accounting behavior was changed.
 - Code/test commits: `93bd725705b672392280ef1aecc409523278f60c`, `15cf3c218927a62e3ace70c96b96183b8d02d54f`. The newest HEAD must pass CI before this batch is marked green.
+
+
+## Control-request parser hardening — 2026-10-09
+
+- Updated `verify_control_request()` to scan the complete attribute stream using the shared Message-Authenticator parser. A malformed attribute after Message-Authenticator can no longer escape validation, and duplicate Message-Authenticator attributes are rejected.
+- The verifier rejects datagrams whose actual byte length differs from the declared RADIUS packet length.
+- Added negative regression cases for malformed trailing attributes, duplicate Message-Authenticator attributes, and extra bytes past the declared packet length. Corrected the duplicate-attribute fixture to contain an actual 16-byte attribute value.
+- Existing Python and CI workflows were green on the prior implementation/documentation commits; the corrected test fixture has triggered a fresh CI run and is not yet marked green until that run completes.
+- No frozen PAP/CHAP/MS-CHAPv2, MPPE, MultiLogin, attribute, persistence or accounting behavior was changed.
