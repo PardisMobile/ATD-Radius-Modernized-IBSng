@@ -127,3 +127,18 @@ def test_no_commit_skips_charge_settlement_and_reports_zero_credit():
     charge.settle.assert_not_called()
     persistence.stop.assert_called_once()
     assert persistence.stop.call_args.args[2]==Decimal("0")
+
+
+def test_accounting_start_keeps_ras_policy_context_outside_accounting_attributes():
+    from dataclasses import replace
+
+    service = AccountingSessionService(SessionRegistry())
+    source_event = replace(
+        event(AccountingStatus.START, "ras-policy", attributes={"NAS-Port": "1"}),
+        ras_multi_login_allowed=False,
+    )
+    result = service.apply(source_event, 7, 3)
+
+    assert result.state.ras_multi_login_allowed is False
+    assert "__ras_multi_login_allowed" not in result.state.attributes
+    assert result.state.attributes["NAS-Port"] == "1"
