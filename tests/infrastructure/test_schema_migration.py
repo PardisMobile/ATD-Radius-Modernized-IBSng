@@ -21,3 +21,14 @@ def test_migration_does_not_create_parallel_modern_schema():
         "accounting_events", "audit_log", "ip_pools",
     ):
         assert f"create table {table}" not in SCHEMA.lower()
+
+
+def test_numbered_migrations_have_unique_order_and_audit_runs_after_native_defs():
+    from pathlib import Path
+
+    migrations = sorted(Path("migrations").glob("[0-9][0-9][0-9]_*.sql"))
+    prefixes = [path.name.split("_", 1)[0] for path in migrations]
+    assert len(prefixes) == len(set(prefixes))
+    assert next(i for i, path in enumerate(migrations) if path.name.endswith("_defs.sql")) < next(
+        i for i, path in enumerate(migrations) if path.name.endswith("_operational_audit.sql")
+    )
