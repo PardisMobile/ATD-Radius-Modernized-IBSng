@@ -138,3 +138,44 @@ def test_admin_credit_change_respects_deposit_limit_unless_source_permission_all
         allow_negative_deposit=True,
     ) == Decimal("4.00")
 
+class BulkAdminCreditConn(AdminCreditConn):
+    def __init__(self):
+        super().__init__(user_credit="10.00", deposit="20.00")
+        self.user_rows = [
+            (42, "alice", 7, Decimal("10.00")),
+            (43, "bob", 7, Decimal("5.00")),
+        ]
+
+    def execute(self, sql, params=()):
+        if "FOR UPDATE OF u" in sql:
+            self.calls.append((sql, params))
+            return Result(rows=self.user_rows)
+        return super().execute(sql, params)
+
+
+def test_bulk_admin_credit_change_applies_per_user_delta_and_one_native_log():
+    from atd_radius.infrastructure.credit_repository import UserCreditRepository
+
+    conn = BulkAdminCreditConn()
+    repo = UserCreditRepository(conn)
+    targets = repo.lock_targets(["bob", "alice"])
+    assert [target.user_id for target in targets] == [42, 43]
+
+    credits = repo.apply_admin_change_many(
+        targets,
+        admin_id=7,
+        admin_username="operator",
+        delta=Decimal("2.00"),
+        remote_addr="192.0.2.20",
+        comment="batch top-up",
+        allow_negative_deposit=False,
+    )
+    assert credits == [Decimal("12.00"), Decimal("7.00")]
+    assert ("UPDATE admins SET deposit = %s WHERE admin_id = %s", (Decimal("16.00"), 7)) in conn.calls
+    credit_log = next(call for call in conn.calls if "INSERT INTO credit_change" in call[0])
+    assert credit_log[1] == (101, 7, Decimal("2.00"), Decimal("4.00"), "192.0.2.20", "batch top-up")
+    links = [call for call in conn.calls if call[0].startswith("INSERT INTO credit_change_userid")]
+    assert [call[1] for call in links] == [(101, 42), (101, 43)]
+    ias_log = next(call for call in conn.calls if "INSERT INTO ias_event" in call[0])
+    assert ias_log[1] == (501, "operator", Decimal("2.00"), "42,43", "batch top-up")
+
