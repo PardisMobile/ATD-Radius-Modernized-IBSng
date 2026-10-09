@@ -87,7 +87,8 @@ def test_provider_disconnect_strategies_are_source_derived():
     assert provider_disconnect_strategy("Cisco VPDN") == "rsh-interface"
     assert provider_disconnect_strategy("PortMaster") == "snmp-port"
     assert provider_disconnect_strategy("PortSlave") == "launcher"
-    assert provider_disconnect_strategy("Quintum Tenor") == "h323-cause"
+    assert provider_disconnect_strategy("PPPD") == "launcher"
+    assert provider_disconnect_strategy("Quintum Tenor") is None
 
 
 def test_provider_registry_facade_exposes_only_source_derived_behavior():
