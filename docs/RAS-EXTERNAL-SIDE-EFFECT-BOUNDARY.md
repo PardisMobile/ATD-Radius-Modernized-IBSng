@@ -190,7 +190,15 @@ The PPPD builder does not execute the configured launcher; live external executi
 
 The canonical archive digest measured from the checked-in bytes is `c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839614bb9349d18a8`; the previously recorded checksum in the handoff was mistyped, not the archive.
 
-- Cisco VPDN request builder now emits the configured wrapper, RAS host, concurrency limit, and exact `clear interface <resolved-interface>` command. The preceding `show caller user <username>` lookup and optional remote-IP match remain a caller-side discovery responsibility.
+- Cisco VPDN now has a `show caller user <username>` lookup request builder, a pure parser implementing the source regex and optional username + remote-IP match, and a separate `clear interface <resolved-interface>` request builder. The lookup → parse → disconnect orchestration and live RSH execution remain unimplemented.
 - MikroTik request builder now emits the source-derived wrapper argument order and the correct hotspot-vs-PPP command branch. Username input is constrained to a conservative CLI-token allowlist to avoid unsafe unquoted interpolation; RouterOS escaping is not guessed.
 - Tests cover both command variants, exact wrapper argument order, invalid endpoints/interfaces, missing wrapper settings, and unsafe username tokens.
 - Both builders create immutable request envelopes only. They do not execute RSH wrappers or contact live RAS hardware.
+
+
+## Cisco VPDN discovery/parser increment — 2026-10-09
+
+- The lookup request emits the source-defined `show caller user <username>` command through the configured wrapper and source-default concurrency limit.
+- The parser follows the source regex and selection rule: first interface when no remote IP is supplied; exact username + remote-IP match when it is supplied; no match returns `None` for the caller to handle.
+- Regression tests cover lookup command construction, first-match selection, remote-IP disambiguation, no-match and invalid/unsafe input.
+- No real RSH transport or live-device integration is claimed.
