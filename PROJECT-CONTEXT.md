@@ -905,3 +905,11 @@ The earlier OPEN ledger line saying live PostgreSQL transaction rollback proof i
 - ChilliSpot disconnect builder and packet builder reject non-string, empty and whitespace-only usernames with a clear ValueError instead of raising incidental AttributeError or accepting invalid input.
 - Regression tests cover nested mutation isolation, nested read-only behavior, and invalid username types/values.
 - The RFC 5176 packet-padding/maximum-length work and this envelope hardening are awaiting CI completion on the latest HEAD.
+
+
+## Outbound control encoder bounds — 2026-10-09
+
+- `encode_control_request()` now rejects identifiers that are not integer values in 0..255 (including bool) and encoded packets larger than 4096 bytes.
+- Added regression tests for negative, oversized, boolean, fractional and string identifiers, plus oversized attribute payloads.
+- These checks apply only to outbound Disconnect/CoA control requests; existing authentication and accounting paths were left untouched.
+- Full CI is pending for the latest implementation/test/documentation commits; verify both workflows before calling the current HEAD green.
