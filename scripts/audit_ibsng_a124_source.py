@@ -62,11 +62,19 @@ DICT_NAMES = re.compile(
 )
 KILL_DEF = re.compile(r"^\s*def\s+killUser\s*\(")
 
+_MEMBER_TEXT_CACHE: dict[str, str] = {}
+
+
 def member_text(archive: tarfile.TarFile, member: tarfile.TarInfo) -> str:
+    cached = _MEMBER_TEXT_CACHE.get(member.name)
+    if cached is not None:
+        return cached
     stream = archive.extractfile(member)
     if stream is None:
         return ""
-    return stream.read().decode("utf-8", errors="replace")
+    source = stream.read().decode("utf-8", errors="replace")
+    _MEMBER_TEXT_CACHE[member.name] = source
+    return source
 
 def print_context(path: str, source: str, pattern: re.Pattern[str], before: int = 4, after: int = 18) -> None:
     lines = source.splitlines()
