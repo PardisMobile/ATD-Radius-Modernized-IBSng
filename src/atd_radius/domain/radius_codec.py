@@ -149,13 +149,31 @@ _INTEGER_ATTRS = {
 }
 _IP_ATTRS = {"NAS-IP-Address", "Framed-IP-Address", "Framed-IP-Netmask", "Login-IP-Host", "Framed-IPX-Network"}
 _ENUM_VALUES = {
-    "Acct-Status-Type": {1: "Start", 2: "Stop", 3: "Interim-Update", 7: "Accounting-On", 8: "Accounting-Off", 15: "Failed"},
-    "NAS-Port-Type": {5: "Virtual", 15: "Ethernet", 19: "Wireless-802.11"},
+    # Canonical decode labels. A1.24 also accepts the alias Alive=3 on encode.
+    "Acct-Status-Type": {
+        1: "Start", 2: "Stop", 3: "Interim-Update", 7: "Accounting-On",
+        8: "Accounting-Off", 9: "Tunnel-Start", 10: "Tunnel-Stop",
+        11: "Tunnel-Reject", 12: "Tunnel-Link-Start", 13: "Tunnel-Link-Stop",
+        14: "Tunnel-Link-Reject", 15: "Failed",
+    },
+    "NAS-Port-Type": {
+        0: "Async", 1: "Sync", 2: "ISDN", 3: "ISDN-V120", 4: "ISDN-V110",
+        5: "Virtual", 6: "PIAFS", 7: "HDLC-Clear-Channel", 8: "X.25",
+        9: "X.75", 10: "G.3-Fax", 11: "SDSL", 12: "ADSL-CAP",
+        13: "ADSL-DMT", 14: "IDSL", 15: "Ethernet", 16: "xDSL",
+        17: "Cable", 18: "Wireless-Other", 19: "Wireless-802.11",
+    },
 }
 _ENUM_NUMBERS = {
     name: {label: number for number, label in values.items()}
     for name, values in _ENUM_VALUES.items()
 }
+# Exact active VALUE declarations in the A1.24 core dictionary.
+_ENUM_NUMBERS["Acct-Status-Type"]["Alive"] = 3
+_ENUM_NUMBERS["Framed-Routing"] = {
+    "None": 0, "Broadcast": 1, "Listen": 2, "Broadcast-Listen": 3,
+}
+_ENUM_NUMBERS["Acct-Authentic"] = {"RADIUS": 1, "Local": 2}
 _HEX_ATTRS = {"CHAP-Password", "CHAP-Challenge", "Message-Authenticator", "State", "Class", "Proxy-State", "EAP-Message", "ARAP-Challenge-Response", "Framed-Interface-Id", "Framed-IPv6-Prefix", "Login-IPv6-Host", "Digest-Attributes"}
 
 _MICROSOFT_VENDOR_ID = 311
