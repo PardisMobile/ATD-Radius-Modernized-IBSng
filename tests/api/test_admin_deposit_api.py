@@ -73,17 +73,20 @@ def test_admin_deposit_endpoint_updates_native_balance_logs_and_audit(monkeypatc
     assert any("INSERT INTO operational_audit_events" in sql for sql, _ in conn.calls)
 
 
-def test_admin_deposit_endpoint_requires_native_permission_dependencies(monkeypatch):
-    conn = Connection()
-    install_connection(monkeypatch, conn)
+def test_admin_deposit_permission_requires_source_dependencies():
+    from atd_radius.api.admin_dependencies import require_admin_permission
 
+    dependency = require_admin_permission("CHANGE ADMIN DEPOSIT")
     with pytest.raises(HTTPException) as denied:
-        deposits_api.change_admin_deposit(
-            "target-admin",
-            deposits_api.AdminDepositChange(delta=Decimal("1.00"), comment="funding"),
-            principal({"CHANGE ADMIN DEPOSIT": ""}),
-        )
+        dependency(principal({"CHANGE ADMIN DEPOSIT": ""}))
 
     assert denied.value.status_code == 403
-    assert conn.calls == []
-    assert conn.commits == 0
+
+    allowed = dependency(
+        principal({
+            "SEE ADMIN INFO": "",
+            "CHANGE ADMIN INFO": "",
+            "CHANGE ADMIN DEPOSIT": "",
+        })
+    )
+    assert allowed.admin_id == 7
