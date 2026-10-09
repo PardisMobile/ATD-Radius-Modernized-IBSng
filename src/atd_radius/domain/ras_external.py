@@ -187,6 +187,41 @@ def _validate_snmp_settings(
     return community, float(timeout), retry_count
 
 
+def _build_launcher_disconnect_request(
+    provider: str, *, command: str, ras_ip: str, port: str
+) -> ProviderOperationRequest:
+    if not isinstance(command, str) or not command.strip():
+        raise ValueError("launcher command must be a non-empty string")
+    if not isinstance(ras_ip, str) or not ras_ip.strip():
+        raise ValueError("ras_ip must be a non-empty string")
+    if not isinstance(port, str) or not port.strip():
+        raise ValueError("port must be a non-empty string")
+    return ProviderOperationRequest(
+        provider=provider,
+        operation=ExternalOperation.LAUNCHER,
+        action="disconnect",
+        parameters={"command": command, "arguments": (ras_ip, port)},
+    )
+
+
+def build_portslave_disconnect_request(
+    *, command: str, ras_ip: str, port: str
+) -> ProviderOperationRequest:
+    """Build PortSlave's source-derived launcher call: command(RAS-IP, port)."""
+    return _build_launcher_disconnect_request(
+        "portslave", command=command, ras_ip=ras_ip, port=port
+    )
+
+
+def build_pppd_disconnect_request(
+    *, command: str, ras_ip: str, port: str
+) -> ProviderOperationRequest:
+    """Build PPPD's source-derived launcher call: command(RAS-IP, port)."""
+    return _build_launcher_disconnect_request(
+        "pppd", command=command, ras_ip=ras_ip, port=port
+    )
+
+
 def build_portmaster_disconnect_request(
     *,
     ras_ip: str,
