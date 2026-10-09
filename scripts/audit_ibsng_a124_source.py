@@ -34,6 +34,8 @@ TARGET_FILES = {
     "MultiLogin plugin": ("IBSng/core/user/plugins/multilogin.py", r"class MultiLogin|def "),
     "MS-CHAP implementation": ("IBSng/core/lib/mschap/mschap.py", r"def generate_nt_response_mschap|def generate_nt_response_mschap2|def GenerateAuthenticatorResponse"),
     "MPPE implementation": ("IBSng/core/lib/mschap/mppe.py", r"^def |^class "),
+    "A1.24 PyRADIUS dictionary parser": ("IBSng/radius_server/pyrad/dictionary.py", r"^class |^    def |ipaddr|integer|VALUE"),
+    "A1.24 PyRADIUS packet codec": ("IBSng/radius_server/pyrad/packet.py", r"^class |^    def |_Encode|_Decode|ipaddr|integer"),
 }
 
 DICT_NAMES = re.compile(
@@ -56,15 +58,11 @@ def print_context(path: str, source: str, pattern: re.Pattern[str], before: int 
     if not hits:
         print(f"{path}: no matching source definition")
         return
-    shown: set[int] = set()
     for hit in hits:
         lo, hi = max(0, hit - before), min(len(lines), hit + after + 1)
-        if any(i in shown for i in range(lo, hi)):
-            continue
         print(f"\n### {path}:{hit + 1}")
         for i in range(lo, hi):
             print(f"{i + 1}: {lines[i][:300]}")
-            shown.add(i)
 
 def main() -> int:
     if not ARCHIVE.is_file():
