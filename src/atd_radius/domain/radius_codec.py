@@ -693,6 +693,12 @@ def encode_control_request(request: RadiusPacket, secret: str) -> bytes:
     """
     if request.code not in {RadiusCode.DISCONNECT_REQUEST, RadiusCode.COA_REQUEST}:
         raise RadiusCodecError("control request encoding requires Disconnect-Request or CoA-Request")
+    if (
+        isinstance(request.identifier, bool)
+        or not isinstance(request.identifier, int)
+        or not 0 <= request.identifier <= 255
+    ):
+        raise RadiusCodecError("control request identifier must be an integer from 0 to 255")
     zero_authenticator = bytes(16)
     attributes = dict(request.attributes)
     if "Message-Authenticator" in attributes:
@@ -701,6 +707,8 @@ def encode_control_request(request: RadiusPacket, secret: str) -> bytes:
             request.code, request.identifier, attributes, zero_authenticator
         )
         wire_for_message_auth = encode(unsigned_for_message_auth, secret)
+        if len(wire_for_message_auth) > 4096:
+            raise RadiusCodecError("control request exceeds the 4096-byte RADIUS maximum")
         attributes["Message-Authenticator"] = hmac.new(
             secret.encode("utf-8"), wire_for_message_auth, "md5"
         ).digest().hex()
@@ -709,6 +717,8 @@ def encode_control_request(request: RadiusPacket, secret: str) -> bytes:
         request.code, request.identifier, attributes, zero_authenticator
     )
     wire = encode(unsigned, secret)
+    if len(wire) > 4096:
+        raise RadiusCodecError("control request exceeds the 4096-byte RADIUS maximum")
     request_authenticator = md5(
         wire[:4] + zero_authenticator + wire[20:] + secret.encode("utf-8")
     ).digest()
