@@ -35,7 +35,9 @@ TARGET_FILES = {
     "MS-CHAP implementation": ("IBSng/core/lib/mschap/mschap.py", r"def generate_nt_response_mschap|def generate_nt_response_mschap2|def GenerateAuthenticatorResponse"),
     "MPPE implementation": ("IBSng/core/lib/mschap/mppe.py", r"^def |^class "),
     "A1.24 PyRADIUS dictionary parser": ("IBSng/radius_server/pyrad/dictionary.py", r"^class |^    def |ipaddr|integer|VALUE"),
-    "A1.24 PyRADIUS packet codec": ("IBSng/radius_server/pyrad/packet.py", r"^class |^    def |_Encode|_Decode|ipaddr|integer"),
+    "A1.24 PyRADIUS packet codec": ("IBSng/radius_server/pyrad/packet.py", r"^class |^        def _DecodeValue|^        def _EncodeValue|^        def DecodePacket|^        def EncodePacket"),
+    "A1.24 attribute type encoder/decoder": ("IBSng/radius_server/pyrad/tools.py", r"^def EncodeAttr|^def DecodeAttr|integer|ipaddr|struct\.pack|struct\.unpack"),
+    "A1.24 bidirectional dictionary semantics": ("IBSng/radius_server/pyrad/bidict.py", r"^class |^    def |^        def "),
 }
 
 DICT_NAMES = re.compile(
