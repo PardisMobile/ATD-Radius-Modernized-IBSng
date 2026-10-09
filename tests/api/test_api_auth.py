@@ -89,3 +89,22 @@ def test_group_api_requires_native_admin_session(monkeypatch):
     response = request_get("/api/v1/groups")
     assert response.status_code == 401
     assert response.json()["detail"] == "Administrator session required"
+
+
+
+def test_user_api_requires_native_admin_session(monkeypatch):
+    monkeypatch.setattr(settings, "environment", "development")
+    monkeypatch.setattr(settings, "api_bearer_token", "")
+    response = request_get("/api/v1/users")
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Administrator session required"
+
+
+def test_user_creation_requires_native_admin_session(monkeypatch):
+    monkeypatch.setattr(settings, "environment", "development")
+    monkeypatch.setattr(settings, "api_bearer_token", "")
+    response = request_post(
+        "/api/v1/users",
+        json={"username": "new-user", "group_id": 1},
+    )
+    assert response.status_code == 401
