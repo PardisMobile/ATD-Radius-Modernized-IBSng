@@ -210,46 +210,60 @@ def main() -> int:
                     number = int(parts[2], 0)
                 except ValueError:
                     continue
-                if current_vendor is None:
-                    core_attributes[parts[1]] = (number, parts[-1], line_number)
+                explicit_vendor = (
+                    parts[4] if len(parts) >= 5 and parts[4] in vendor_ids else None
+                )
+                attribute_vendor = explicit_vendor or current_vendor
+                attribute_kind = parts[3] if explicit_vendor or current_vendor else parts[-1]
+                if attribute_vendor is None:
+                    core_attributes[parts[1]] = (number, attribute_kind, line_number)
                 else:
                     vendor_attributes.append(
-                        (current_vendor, vendor_ids.get(current_vendor), parts[1], number, parts[-1], line_number)
+                        (
+                            attribute_vendor, vendor_ids.get(attribute_vendor),
+                            parts[1], number, attribute_kind, line_number,
+                        )
                     )
-            elif parts[0] == "VALUE" and current_vendor is None and len(parts) >= 4:
+            elif parts[0] == "VALUE" and len(parts) >= 4:
                 try:
                     value_number = int(parts[-1], 0)
                 except ValueError:
                     continue
                 core_values.setdefault(parts[1], {})[parts[2]] = value_number
 
-        mapped_names = set(codec._ATTR_NAMES.values())
+        mapped_names = set(codec._ATTR_NAMES.values()) | set(codec._SIP_ATTR_NAMES.values())
+        wire_core_attributes = {
+            name: metadata for name, metadata in core_attributes.items()
+            if 1 <= metadata[0] <= 255
+        }
+        vendor_names = {item[2] for item in vendor_attributes}
         integer_expected = {
-            name for name, (_, kind, _) in core_attributes.items()
+            name for name, (_, kind, _) in wire_core_attributes.items()
             if kind in {"integer", "date"}
         }
         ip_expected = {
-            name for name, (_, kind, _) in core_attributes.items()
+            name for name, (_, kind, _) in wire_core_attributes.items()
             if kind == "ipaddr"
         }
         ipv6_expected = {
-            (name, kind) for name, (_, kind, _) in core_attributes.items()
+            (name, kind) for name, (_, kind, _) in wire_core_attributes.items()
             if kind in {"ipv6addr", "ipv6prefix"}
         }
-        missing_numbers = sorted(set(core_attributes) - mapped_names)
+        missing_numbers = sorted(set(wire_core_attributes) - mapped_names)
         missing_integer = sorted(integer_expected - codec._INTEGER_ATTRS)
         missing_ip = sorted(ip_expected - codec._IP_ATTRS)
         wrong_integer = sorted(
             name for name in codec._INTEGER_ATTRS
-            if name in core_attributes and core_attributes[name][1] not in {"integer", "date"}
+            if name in wire_core_attributes and wire_core_attributes[name][1] not in {"integer", "date"}
         )
         wrong_ip = sorted(
             name for name in codec._IP_ATTRS
-            if name in core_attributes and core_attributes[name][1] != "ipaddr"
+            if name in wire_core_attributes and wire_core_attributes[name][1] != "ipaddr"
         )
         octets_without_explicit_hex = sorted(
             name for name, (_, kind, _) in core_attributes.items()
             if kind == "octets"
+            and name in wire_core_attributes
             and name not in codec._HEX_ATTRS
             and name != "Vendor-Specific"
         )
@@ -264,7 +278,10 @@ def main() -> int:
         }
         enum_numbers["Acct-Authentic"] = {"RADIUS": 1, "Local": 2}
         missing_enum_values = []
+        enum_relevant_names = set(wire_core_attributes) | vendor_names
         for name, values in core_values.items():
+            if name not in enum_relevant_names:
+                continue
             for label, number in values.items():
                 if enum_numbers.get(name, {}).get(label) != number:
                     missing_enum_values.append((name, label, number))
