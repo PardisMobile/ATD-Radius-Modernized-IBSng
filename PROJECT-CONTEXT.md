@@ -1165,3 +1165,11 @@ Important limitation: the shared bearer token is only an initial API safety gate
 - The existing operational audit writer and `migrations/004_operational_audit.sql` remain ATD-specific append-only storage separate from native `user_audit_log`. Its transaction contract requires privileged DB mutations and their audit event to share a caller-owned transaction.
 - These changes are an authorization foundation, not complete RBAC or web-login parity. Permission definitions beyond the directly source-traced examples must be registered only after checking the canonical A1.24 source. Admin password/session bootstrap and the exact semantics of admin locks still need source tracing. No RAS disconnect endpoint has been exposed.
 - CI for the new commits was still running at the time this checkpoint was written; update this status only after the latest main runs complete.
+
+
+### Validation update — 2026-10-10
+
+- Python workflow passed on commit `a6b44f5e34545554b3db580aab08a820b910560e`: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/37992006803
+- Full CI could not initialize its PostgreSQL service because Docker Hub rejected unauthenticated pulls of `postgres:16` with `toomanyrequests`. This is an infrastructure/rate-limit failure before checkout, lint, PHP syntax, or pytest; it is not a code-test failure, but it also means full CI is not verified for this commit.
+- Earlier full-CI attempts on the admin-repository commits failed at the same PostgreSQL image initialization step. Python-only runs passed.
+- Follow-up: remove CI dependence on anonymous Docker Hub pulls using an approved reliable image/auth strategy, or rerun after the upstream rate limit clears. Do not label full CI green until the PostgreSQL-backed job actually executes.
