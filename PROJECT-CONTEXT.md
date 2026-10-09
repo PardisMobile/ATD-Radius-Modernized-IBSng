@@ -1094,3 +1094,17 @@ This source recheck found and corrected source mismatches that prior tests had m
 5. MS-CHAPv1/v2 uses the A1.24 byte-wise password conversion, canonical `normal_username`, and a raw one-byte MS-CHAP2-Success identifier.
 
 **Do not mark the entire A1.24 source audit complete yet.** The audit workflow pins and inventories the full archive and prints the critical source excerpts, but remaining work still includes module-by-module parity review for provider call paths, attribute inheritance/plugin order, source DB charset/collation, accounting transitions, all dictionary/vendor boundaries, billing/persistence, API/RBAC/XML-RPC and deployment.
+
+## RAS dispatcher checkpoint — 2026-10-09
+
+Latest change adds `src/atd_radius/infrastructure/ras_external_dispatcher.py` and `tests/infrastructure/test_ras_external_dispatcher.py`.
+
+- Dispatcher routes SNMP `walk` and `disconnect` envelopes to the existing bounded SNMP transport.
+- Routes source-derived PPPD/PortSlave launcher envelopes to the shell-free launcher transport.
+- Routes only ChilliSpot RADIUS Disconnect envelopes to the authenticated UDP control client, keeping secret and request identifier out of the immutable envelope.
+- RSH, Asterisk Manager, H323 and SIP are fail-closed and explicitly unsupported; do not convert request text to shell commands.
+- New tests use fake transports only; they do not contact hardware.
+- This is a shared execution boundary, **not yet wired to an authenticated admin/API action or accounting lifecycle**. Next work: trace canonical A1.24 kill/disconnect callers and configuration fields, implement a source-backed RSH wrapper transport only after exact launcher invocation semantics are verified, and integrate explicit session/config context with authorization and audit logging. Keep protocol authentication, MultiLogin, inheritance, and persistence/accounting core frozen absent direct source evidence.
+
+Latest verified status before the current dispatcher commits: the main branch CI and Python workflows on `d1971e9f7bfa304d44c439b5dacc323696039c4f` passed for Python suite; a newer batch was already in progress at `83aa6ca2adbdc2bd1e5cf13fc8906e2d36b030e5`. The dispatcher commits above have triggered their own CI; **do not mark them green until those exact latest runs complete**.
+
