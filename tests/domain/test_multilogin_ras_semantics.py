@@ -68,27 +68,3 @@ def test_voip_provider_service_is_selected_from_source_ras_type():
     assert provider_service_for_ras("MikroTik") == "internet"
 
 
-
-def test_existing_disallowed_ras_instance_blocks_second_login_even_if_current_ras_allows():
-    policy = MultiLoginPolicy(
-        active_sessions=(
-            ActiveSessionView("s1", ras_multi_login_allowed=False),
-        )
-    )
-    request = AAARequest("alice", {
-        "multi_login": "2",
-        "__ras_multi_login_allowed": "1",
-    })
-    result = policy.evaluate(request)
-    assert result is not None
-    assert result.action is AAAAction.REJECT
-    assert result.reason == "RAS_DOESNT_ALLOW_MULTILOGIN"
-
-
-def test_voip_provider_service_is_selected_from_source_ras_type():
-    from atd_radius.domain.ras_provider import provider_service_for_ras
-
-    assert provider_service_for_ras("GnuGk") == "voip"
-    assert provider_service_for_ras("Asterisk") == "voip"
-    assert provider_service_for_ras("Quintum Tenor") == "voip"
-    assert provider_service_for_ras("MikroTik") == "internet"
