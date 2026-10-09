@@ -135,3 +135,10 @@ A bounded standard-library SNMPv1/v2c SET transport now executes source-derived 
 ## Launcher transport progress — 2026-10-09
 
 A shell-free subprocess transport now handles only audited PPPD and PortSlave launcher envelopes, with absolute executable path checks, source argument ordering, timeout/error handling and bounded returned output. The test suite uses a mocked subprocess runner. This closes the launcher execution primitive, not its runtime integration; RSH execution, RAS runtime wiring and real-device validation remain open.
+
+## Native user-credit workflow increment — 2026-10-10
+
+A1.24 single-user credit adjustment is now exposed at `POST /api/v1/users/{username}/credit`. The operation enforces `CHANGE USER CREDIT` and `GET USER INFORMATION` All/Restricted owner scope; locks user and administrator deposit rows; prevents negative user credit; applies `NO DEPOSIT LIMIT`; updates `users.credit` and `admins.deposit`; inserts native `credit_change` / `credit_change_userid` and `ias_event` rows; and appends operational audit in the same transaction.
+
+This advances a narrow user-credit API workflow, **not** the complete billing milestone. Still open: bulk credit changes, add-user initial credit/deposit parity, deposit administration workflows, credit-ledger/business rules, charging/usage integration, expiry/subscription behavior, and full billing/report parity. CI status must be checked on the latest commit before treating the increment as validated.
+
