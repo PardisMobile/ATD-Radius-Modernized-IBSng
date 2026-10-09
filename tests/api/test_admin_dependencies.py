@@ -102,3 +102,51 @@ def test_group_visibility_matches_owner_and_explicit_access_rules(monkeypatch):
 
     god = AdminPrincipal(7, "operator", None, AdminPermissionSet({"GOD": ""}))
     assert can_use_group(god, "team-z", 99)
+
+
+
+def test_user_permission_values_enforce_owner_scope_and_dependencies():
+    from atd_radius.api.admin_dependencies import (
+        AdminPrincipal,
+        can_access_user,
+        can_change_user,
+        can_delete_user,
+    )
+    from atd_radius.domain.admin_permissions import AdminPermissionSet
+
+    restricted = AdminPrincipal(
+        7, "operator", None,
+        AdminPermissionSet({
+            "GET USER INFORMATION": "Restricted",
+            "CHANGE USER ATTRIBUTES": "Restricted",
+            "DELETE USER": "Restricted",
+        }),
+    )
+    assert can_access_user(restricted, 7)
+    assert not can_access_user(restricted, 8)
+    assert can_change_user(restricted, 7)
+    assert not can_change_user(restricted, 8)
+    assert can_delete_user(restricted, 7)
+    assert not can_delete_user(restricted, 8)
+
+    without_dependency = AdminPrincipal(
+        7, "operator", None, AdminPermissionSet({"CHANGE USER ATTRIBUTES": "All"})
+    )
+    assert not can_change_user(without_dependency, 7)
+
+    all_users = AdminPrincipal(
+        7, "operator", None,
+        AdminPermissionSet({
+            "GET USER INFORMATION": "All",
+            "CHANGE USER ATTRIBUTES": "All",
+            "DELETE USER": "All",
+        }),
+    )
+    assert can_access_user(all_users, 999)
+    assert can_change_user(all_users, 999)
+    assert can_delete_user(all_users, 999)
+
+    god = AdminPrincipal(7, "operator", None, AdminPermissionSet({"GOD": ""}))
+    assert can_access_user(god, 999)
+    assert can_change_user(god, 999)
+    assert can_delete_user(god, 999)
