@@ -331,7 +331,41 @@ def main() -> int:
                         break
             if call_count >= 160:
                 break
-    return 0
+
+        print("\\n== Native administrator permission and audit source references ==")
+        admin_related = [
+            member for member in members
+            if member.name.endswith((".py", ".sql", ".tpl", ".php", ".xml"))
+            and (
+                "/core/admin/" in "/" + member.name
+                or "admin" in Path(member.name).name.lower()
+                or member.name.endswith(".sql")
+            )
+            and member.size <= 8_000_000
+        ]
+        for member in sorted(admin_related, key=lambda item: item.name):
+            if "/core/admin/" in "/" + member.name or "admin" in Path(member.name).name.lower():
+                print(f"admin source candidate: {member.name}")
+
+        admin_permission_refs = re.compile(
+            r"admin_perms|admin_perm_templates_detail|admin_perm_templates|"
+            r"perm_name|checkPerm|hasPerm|isPermitted|check_permission|"
+            r"checkPermission|admin_locks|user_audit_log|USER_AUDIT_LOG",
+            re.IGNORECASE,
+        )
+        admin_hit_count = 0
+        for member in sorted(admin_related, key=lambda item: item.name):
+            source = member_text(archive, member)
+            for number, line in enumerate(source.splitlines(), 1):
+                if not admin_permission_refs.search(line):
+                    continue
+                print(f"{member.name}:{number}:{line[:260]}")
+                admin_hit_count += 1
+                if admin_hit_count >= 180:
+                    print("... output capped at 180 administrator permission/audit references ...")
+                    break
+            if admin_hit_count >= 180:
+                break
 
 if __name__ == "__main__":
     sys.exit(main())
