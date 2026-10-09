@@ -1110,3 +1110,10 @@ Latest verified status before the current dispatcher commits: the main branch CI
 
 ### Dispatcher safety follow-up — 2026-10-09
 The RAS external dispatcher now rejects SNMP envelopes outside the directly audited provider/action/OID combinations before transport execution: Cisco ifDescr walk + Cisco disconnect OID; PortMaster/Total Control IF-MIB ifAdminStatus SETs. Regression tests verify non-source-audited Cisco OIDs never reach the transport. When continuing, inspect the exact current main code and current CI runs first; do not infer CI status from a previous commit. API authorization/audit integration is still not implemented, and the dispatcher must not be exposed as an unauthenticated endpoint.
+
+## RSH transport continuation checkpoint — 2026-10-09
+
+Canonical A1.24 source excerpts in workflow run https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/37943471608 were inspected for `core/lib/rsh.py`, `core/script_launcher/launcher.py`, Cisco VPDN and MikroTik. Added `src/atd_radius/infrastructure/rsh_transport.py`, bounded shell-free wrapper execution preserving `[host, *args]`, with 20s timeout, concurrency ceiling, capped output and exact allowlisted command grammar. The dispatcher routes RSH to this transport for Cisco/Cisco VPDN/MikroTik; H323/Asterisk/SIP remain fail-closed. Tests mock subprocess and do not contact devices.
+
+The transport bypasses the legacy shell-assembled `script_wrapper.py` command while preserving the observed argv contract; wrapper/runtime interoperability still requires deployment and live validation. It is not yet wired to authenticated API/admin/accounting actions. Never expose it without authorization and audit logging. A new Python run initially failed on the MikroTik regex closing-bracket escape; commit `2bcc057e73c571ecdeca570405e67a085f52789a` fixes that and its CI must be checked before calling the RSH batch green. Continue with source-derived runtime integration and accounting/provider parity; do not modify frozen auth/MultiLogin/attribute inheritance/persistence core without direct A1.24 evidence.
+
