@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-"""Audit the checked-in IBSng A1.24 source archive without modifying it.
+"""Reproducible source-first audit of the canonical IBSng A1.24 archive.
 
-This is an inventory/source-evidence tool, not a claim that ATD has parity.
-It verifies the archive hash declared by Source of Truth/README.md, inventories
-all archived files, and prints direct source excerpts for RAS side effects and
-RADIUS dictionary entries relevant to the modernized implementation.
+This tool inventories the complete archive and emits direct source excerpts
+for high-risk behavior. It does not claim ATD parity merely because source
+files or matching symbol names exist.
 """
 from __future__ import annotations
 
@@ -18,6 +17,52 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 ARCHIVE = ROOT / "Source of Truth" / "IBSng-A1.24.tar.bz2"
 README = ROOT / "Source of Truth" / "README.md"
+
+TARGET_FILES = {
+    "PortMaster SNMP kill": ("IBSng/core/ras/rases/portmaster.py", r"killUser"),
+    "Total Control SNMP kill": ("IBSng/core/ras/rases/total_control.py", r"killUser"),
+    "PPPD launcher kill": ("IBSng/core/ras/rases/pppd.py", r"killUser"),
+    "PortSlave launcher kill": ("IBSng/core/ras/rases/portslave.py", r"killUser"),
+    "Cisco SNMP/RSH kill": ("IBSng/core/ras/rases/cisco.py", r"killUser"),
+    "Cisco VPDN RSH kill": ("IBSng/core/ras/rases/cisco_vpdn.py", r"killUser"),
+    "MikroTik RSH kill": ("IBSng/core/ras/rases/mikrotik.py", r"killUser"),
+    "Quintum Tenor behavior": ("IBSng/core/ras/rases/tenor.py", r"killUser|class\s+"),
+    "SNMP transport wrapper": ("IBSng/core/lib/snmp.py", r"class Snmp|def "),
+    "RSH wrapper": ("IBSng/core/lib/rsh.py", r"class RSHClient|def "),
+    "MultiLogin plugin": ("IBSng/core/user/plugins/multilogin.py", r"class MultiLogin|def "),
+    "MS-CHAP implementation": ("IBSng/core/lib/mschap/mschap.py", r"def generate_nt_response_mschap|def generate_nt_response_mschap2|def GenerateAuthenticatorResponse"),
+    "MPPE implementation": ("IBSng/core/lib/mschap/mppe.py", r"^def |^class "),
+}
+
+DICT_NAMES = re.compile(
+    r"Framed-IPX-Network|Framed-Routing|Acct-Authentic|Acct-Link-Count|"
+    r"Acct-Input-Gigawords|Acct-Output-Gigawords|ARAP-Zone-Access|"
+    r"ARAP-Security|Login-LAT-Port|Acct-Status-Type|NAS-Port-Type",
+    re.IGNORECASE,
+)
+KILL_DEF = re.compile(r"^\s*def\s+killUser\s*\(")
+
+def member_text(archive: tarfile.TarFile, member: tarfile.TarInfo) -> str:
+    stream = archive.extractfile(member)
+    if stream is None:
+        return ""
+    return stream.read().decode("utf-8", errors="replace")
+
+def print_context(path: str, source: str, pattern: re.Pattern[str], before: int = 4, after: int = 18) -> None:
+    lines = source.splitlines()
+    hits = [i for i, line in enumerate(lines) if pattern.search(line)]
+    if not hits:
+        print(f"{path}: no matching source definition")
+        return
+    shown: set[int] = set()
+    for hit in hits:
+        lo, hi = max(0, hit - before), min(len(lines), hit + after + 1)
+        if any(i in shown for i in range(lo, hi)):
+            continue
+        print(f"\n### {path}:{hit + 1}")
+        for i in range(lo, hi):
+            print(f"{i + 1}: {lines[i][:300]}")
+            shown.add(i)
 
 def main() -> int:
     if not ARCHIVE.is_file():
@@ -39,64 +84,48 @@ def main() -> int:
 
     with tarfile.open(ARCHIVE, "r:bz2") as archive:
         members = [m for m in archive.getmembers() if m.isfile()]
-        ext_counts = Counter(Path(m.name).suffix.lower() or "[no extension]" for m in members)
+        source_py = [m for m in members if m.name.endswith(".py")]
+        source_sql = [m for m in members if m.name.endswith(".sql")]
+        templates = [m for m in members if m.name.endswith(".tpl")]
         print("\n== Full archive inventory ==")
-        print(f"file_count={len(members)}")
-        for ext, count in ext_counts.most_common():
+        print(f"all_files={len(members)} python_source={len(source_py)} sql_files={len(source_sql)} smarty_templates={len(templates)}")
+        for ext, count in Counter(Path(m.name).suffix.lower() or "[no extension]" for m in members).most_common():
             print(f"extension {ext}: {count}")
-        ras_members = [m for m in members if "/core/ras/rases/" in "/" + m.name]
-        print("\n== RAS provider source files ==")
-        for member in ras_members:
+
+        print("\n== Concrete RAS providers (source .py only) ==")
+        provider_files = [m for m in source_py if "/core/ras/rases/" in "/" + m.name]
+        for member in sorted(provider_files, key=lambda m: m.name):
             print(member.name)
 
-        targets = {
-            "RAS side-effect definitions": re.compile(
-                r"def\s+(?:killUser|kill_user|disconnectUser|disconnect_user|getOnlineUsers|listUsers)\s*\("
-            ),
-            "SNMP/RSH/launcher source references": re.compile(
-                r"snmp|rsh|portslave_kill_port_command|pppd_kill_port_command|killUser|interface_index|ifAdminStatus",
-                re.IGNORECASE
-            ),
-            "dictionary target attributes": re.compile(
-                r"^\s*(?:23\s+Framed-IPX-Network|51\s+Acct-Link-Count|52\s+Acct-Input-Gigawords|53\s+Acct-Output-Gigawords|63\s+Login-LAT-Port|40\s+Acct-Status-Type|61\s+NAS-Port-Type)\b",
-                re.IGNORECASE
-            ),
-            "RADIUS attribute type handling": re.compile(
-                r"Framed-IPX-Network|Acct-Link-Count|Acct-Input-Gigawords|Acct-Output-Gigawords|Login-LAT-Port|Acct-Status-Type|NAS-Port-Type"
-            ),
-            "authentication protocol source anchors": re.compile(
-                r"MS-CHAP|MSCHAP|CHAP|AuthenticatorResponse|MPPE|Peer-Challenge|NT-Response",
-                re.IGNORECASE
-            ),
-            "multi-login source anchors": re.compile(r"multi_login|MultiLogin|RAS_DOESNT_ALLOW_MULTILOGIN"),
-        }
-        print("\n== Source evidence excerpts (path:line:text) ==")
-        for label, pattern in targets.items():
-            print(f"\n-- {label} --")
-            matches = 0
-            for member in members:
-                if member.size > 8_000_000:
-                    continue
-                if not member.name.endswith((".py", ".sql", ".txt", ".dictionary", ".ser", ".sip", ".usr")):
-                    continue
-                stream = archive.extractfile(member)
-                if stream is None:
-                    continue
-                try:
-                    lines = stream.read().decode("utf-8", errors="replace").splitlines()
-                except OSError:
-                    continue
-                for line_no, line in enumerate(lines, 1):
-                    if pattern.search(line):
-                        print(f"{member.name}:{line_no}:{line[:260]}")
-                        matches += 1
-                        if matches >= 120:
-                            print("... output capped at 120 matches for this category ...")
-                            break
-                if matches >= 120:
-                    break
-            if matches == 0:
-                print("(no direct matches)")
+        print("\n== Direct source excerpts: provider side effects and protocol invariants ==")
+        by_name = {m.name: m for m in members}
+        for label, (path, expr) in TARGET_FILES.items():
+            member = by_name.get(path)
+            print(f"\n## {label}")
+            if member is None:
+                print(f"ERROR: expected source file missing: {path}")
+                continue
+            print_context(path, member_text(archive, member), re.compile(expr))
+
+        print("\n== Canonical dictionary declarations for changed attribute typing ==")
+        dict_files = [m for m in members if m.name in {
+            "IBSng/radius_server/dictionary",
+            "IBSng/radius_server/dictionary.ser",
+            "IBSng/radius_server/dictionary.sip",
+            "IBSng/radius_server/dictionary.usr",
+        }]
+        for member in dict_files:
+            source = member_text(archive, member)
+            for number, line in enumerate(source.splitlines(), 1):
+                if DICT_NAMES.search(line):
+                    print(f"{member.name}:{number}:{line[:300]}")
+
+        print("\n== All source killUser implementations ==")
+        for member in sorted(provider_files, key=lambda m: m.name):
+            source = member_text(archive, member)
+            for number, line in enumerate(source.splitlines(), 1):
+                if KILL_DEF.search(line):
+                    print(f"{member.name}:{number}:{line.strip()}")
     return 0
 
 if __name__ == "__main__":
