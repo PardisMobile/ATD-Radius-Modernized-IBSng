@@ -147,3 +147,8 @@ ProviderOperationRequest now recursively snapshots and freezes common nested con
 ## Outbound control encoder bounds — 2026-10-09
 
 Outbound Disconnect/CoA encoding now validates the Identifier as a non-boolean integer in the one-octet range and rejects encoded control packets larger than the RFC 5176 4096-byte maximum. These checks are scoped to the control-request encoder; generic authentication/accounting encoding paths remain unchanged.
+
+
+## Operation-envelope schema validation — 2026-10-09
+
+ProviderOperationRequest now validates its runtime boundary as well as its annotations: operation must be an ExternalOperation, and parameters must be a mapping before snapshotting/freezing. This prevents arbitrary operation strings or malformed parameter containers from crossing the external-side-effect boundary. Regression tests cover invalid operation values, invalid parameter container types, and nested mutation isolation. This is envelope validation only; it does not execute provider I/O or infer any A1.24 command/OID/launcher behavior.
