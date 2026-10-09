@@ -1005,3 +1005,11 @@ Direct inspection of the verified canonical archive established the previously u
 - When the setting is disabled, source sends `clear line <suffix>` for ports matching `Async[0-9/]+`, and `clear interface <port>` for ports beginning `Serial`. Other ports have no RSH operation in the source branch.
 - ATD now has a pure port-description-to-ifIndex resolver and configured SNMP/RSH request builders with validation and tests. Generic strategy metadata stays `snmp-or-rsh`; the caller must supply the actual source-derived config and SNMP index instead of silently selecting a branch.
 - These are request builders/resolvers only; live SNMP/RSH execution and the five-hour mapping refresh lifecycle remain open. Frozen AAA/authentication/accounting semantics were not changed.
+
+## Latest verified checkpoint — 2026-10-09
+
+- Main HEAD before this handoff update: `5c4286d2b5df2cbf9d9a88b2bd0511815a0afa0a` (Cisco Async/Serial source-syntax validation fix).
+- Python unit suite: **393 passed, 2 skipped, 2 existing deprecation warnings** on that commit.
+- Full GitHub Actions CI: **success** for Python 3.11 and 3.12, including Python compile, Ruff, PHP syntax and tests: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/37936839064
+- The previous temporary canonical-source inspection workflows have been removed from the audit branch after extraction. No audit workflow was added to `main`.
+- The latest Cisco/PPPD/PortSlave/PortMaster/Total Control/MikroTik/Cisco VPDN request builders are construction-only. Do not represent them as real transport execution or device integration. Full RAS parity remains open.
