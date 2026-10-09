@@ -151,7 +151,7 @@ def test_snmp_transport_rejects_wrong_community_and_closes_socket():
         ras_ip="192.0.2.10", port="Async1/0", port_index=17, community="trusted"
     )
     fake = FakeSocket(lambda packet, count: _response(packet, community_override=b"wrong"))
-    with pytest.raises(SnmpTransportError, match="community mismatch"):
+    with pytest.raises(SnmpTransportError, match="version/community mismatch"):
         SnmpV1V2cSetTransport(lambda *_: fake).execute(request)
     assert fake.closed
 
