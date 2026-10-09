@@ -151,7 +151,7 @@ _IP_ATTRS = {"NAS-IP-Address", "Framed-IP-Address", "Framed-IP-Netmask", "Login-
 _ENUM_VALUES = {
     # Canonical decode labels. A1.24 also accepts the alias Alive=3 on encode.
     "Acct-Status-Type": {
-        1: "Start", 2: "Stop", 3: "Interim-Update", 7: "Accounting-On",
+        1: "Start", 2: "Stop", 3: "Alive", 7: "Accounting-On",
         8: "Accounting-Off", 9: "Tunnel-Start", 10: "Tunnel-Stop",
         11: "Tunnel-Reject", 12: "Tunnel-Link-Start", 13: "Tunnel-Link-Stop",
         14: "Tunnel-Link-Reject", 15: "Failed",
@@ -168,8 +168,9 @@ _ENUM_NUMBERS = {
     name: {label: number for number, label in values.items()}
     for name, values in _ENUM_VALUES.items()
 }
-# Exact active VALUE declarations in the A1.24 core dictionary.
-_ENUM_NUMBERS["Acct-Status-Type"]["Alive"] = 3
+# A1.24 declares both labels for wire value 3. BiDict.Add overwrites the
+# reverse map in source order, so decoding value 3 returns the later label Alive.
+_ENUM_NUMBERS["Acct-Status-Type"]["Interim-Update"] = 3
 _ENUM_NUMBERS["Framed-Routing"] = {
     "None": 0, "Broadcast": 1, "Listen": 2, "Broadcast-Listen": 3,
 }
