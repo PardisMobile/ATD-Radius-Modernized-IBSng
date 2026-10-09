@@ -161,3 +161,15 @@ The generic disconnect builders now reject non-mapping parameter containers befo
 Regression coverage also enumerates the currently source-traced external disconnect strategies: ChilliSpot RADIUS control, Cisco VPDN RSH, MikroTik RSH, PortMaster SNMP, PortSlave launcher, Total Control SNMP, and Quintum Tenor H323. Cisco's two-path SNMP-or-RSH strategy intentionally remains unresolved rather than selecting a path. Providers without an audited disconnect strategy (Asterisk, BSAE, GnuGk, MVTS, Persistent LAN, PPPD, SER) must not receive a guessed external operation through the generic adapter.
 
 No real provider I/O is performed by these tests. Exact provider commands, OIDs, launcher arguments, and telephony operation sequences remain gated on direct canonical-source evidence.
+
+## PortMaster / Total Control concrete SNMP request envelopes — 2026-10-09
+
+The canonical A1.24 archive was re-extracted and its recorded SHA-256 verified before tracing the exact killUser() paths.
+
+- PortMaster now builds the source-defined SNMP SET request using ifIndex = int(NAS-Port) + 2, IF-MIB ifAdminStatus OID .1.3.6.1.2.1.2.2.1.7.<ifIndex>, ASN type i, value 2, SNMP v1, UDP/161, and the A1.24 defaults (community public, timeout 10, retries 3).
+- Total Control now builds the exact ordered SET sequence on the source-derived interface_index: value 2 (down), followed by value 1 (up), on the same IF-MIB ifAdminStatus OID. Defaults are community public, timeout 10, retries 3, UDP/161 and SNMP version 1.
+- Provider adapter methods expose these source-derived envelopes. Input identity and endpoint/settings are validated; nested operation parameters are immutable snapshots.
+- These are request-construction boundaries only. They do not execute SNMP or claim live-device interoperability. Exact source evidence and tests are recorded in docs/A1.24-RAS-PROVIDER-AUDIT.md.
+
+No frozen authentication, CHAP/MS-CHAPv2, MPPE, MultiLogin, attribute inheritance, persistence or accounting-core behavior was changed.
+
