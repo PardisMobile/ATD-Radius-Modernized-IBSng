@@ -17,13 +17,13 @@ jobs:
           archive="Source of Truth/IBSng-A1.24.tar.bz2"
           echo "ARCHIVE SHA256:"
           sha256sum "$archive"
-          echo "EXPECTED: c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839bb9349d18a8"
+          echo "EXPECTED: c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839614bb9349d18a8"
           echo "SOURCE FILES:"
           python - <<'PY'
           import hashlib, pathlib, tarfile
           archive = pathlib.Path("Source of Truth/IBSng-A1.24.tar.bz2")
           digest = hashlib.sha256(archive.read_bytes()).hexdigest()
-          expected = "c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839bb9349d18a8"
+          expected = "c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839614bb9349d18a8"
           if digest != expected:
               raise SystemExit(f"SHA-256 mismatch: {digest}")
           needles = ("cisco_vpdn.py", "mikrotik.py", "ras.py", "rsh.py")
