@@ -524,3 +524,54 @@ def test_mikrotik_disconnect_builder_rejects_invalid_or_unsafe_values(overrides)
     arguments.update(overrides)
     with pytest.raises(ValueError):
         build_mikrotik_disconnect_request(**arguments)
+
+
+def test_cisco_vpdn_lookup_request_and_parser_follow_source_flow():
+    from atd_radius.domain.ras_external import (
+        build_cisco_vpdn_interface_lookup_request,
+        resolve_cisco_vpdn_interface,
+    )
+
+    request = build_cisco_vpdn_interface_lookup_request(
+        ras_ip="192.0.2.21",
+        username="alice",
+        wrapper="/configured/addons/cisco/rsh_wrapper",
+    )
+    assert request.action == "discover_interface"
+    assert request.parameters["command"] == "show caller user alice"
+    assert request.parameters["arguments"] == ("show caller user alice",)
+
+    output = (
+        "User: alice, line Vi2, connected, remote 198.51.100.7\n"
+        "User: alice, line Vi3, connected, remote 198.51.100.8\n"
+    )
+    assert resolve_cisco_vpdn_interface(output, username="alice") == "Vi2"
+    assert (
+        resolve_cisco_vpdn_interface(
+            output, username="alice", remote_ip="198.51.100.8"
+        )
+        == "Vi3"
+    )
+    assert (
+        resolve_cisco_vpdn_interface(
+            output, username="alice", remote_ip="198.51.100.99"
+        )
+        is None
+    )
+
+
+@pytest.mark.parametrize(
+    ("output", "username", "remote_ip"),
+    [
+        (None, "alice", None),
+        ("User: alice, line Vi2, connected, remote 198.51.100.7", "alice;reboot", None),
+        ("User: alice, line Vi2, connected, remote 198.51.100.7", "alice", "not-an-ip"),
+    ],
+)
+def test_cisco_vpdn_parser_rejects_invalid_source_values(output, username, remote_ip):
+    from atd_radius.domain.ras_external import resolve_cisco_vpdn_interface
+
+    with pytest.raises(ValueError):
+        resolve_cisco_vpdn_interface(
+            output, username=username, remote_ip=remote_ip
+        )
