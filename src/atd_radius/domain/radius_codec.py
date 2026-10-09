@@ -115,6 +115,7 @@ _INTEGER_ATTRS = {
     "NAS-Port",
     "Service-Type",
     "Framed-Protocol",
+    "Framed-Routing",
     "Framed-MTU",
     "Framed-Compression",
     "Login-Service",
@@ -123,11 +124,11 @@ _INTEGER_ATTRS = {
     "Termination-Action",
     "Framed-AppleTalk-Link",
     "Framed-AppleTalk-Network",
+    "ARAP-Zone-Access",
+    "ARAP-Security",
     "Password-Retry",
     "Prompt",
-    "Acct-Interim-Interval",
     "Port-Limit",
-    "Login-LAT-Port",
     "Session-Timeout",
     "Idle-Timeout",
     "Error-Cause",
@@ -135,14 +136,18 @@ _INTEGER_ATTRS = {
     "Acct-Delay-Time",
     "Acct-Input-Octets",
     "Acct-Output-Octets",
+    "Acct-Authentic",
     "Acct-Session-Time",
     "Acct-Input-Packets",
     "Acct-Output-Packets",
+    "Acct-Link-Count",
+    "Acct-Input-Gigawords",
+    "Acct-Output-Gigawords",
     "Event-Timestamp",
     "Acct-Terminate-Cause",
     "NAS-Port-Type",
 }
-_IP_ATTRS = {"NAS-IP-Address", "Framed-IP-Address", "Framed-IP-Netmask", "Login-IP-Host", "Framed-IPX-Network"}
+_IP_ATTRS = {"NAS-IP-Address", "Framed-IP-Address", "Framed-IP-Netmask", "Login-IP-Host"}
 _ENUM_VALUES = {
     "Acct-Status-Type": {1: "Start", 2: "Stop", 3: "Interim-Update", 7: "Accounting-On", 8: "Accounting-Off", 15: "Failed"},
     "NAS-Port-Type": {5: "Virtual", 15: "Ethernet", 19: "Wireless-802.11"},
@@ -280,6 +285,19 @@ def decrypt_user_password(value: bytes, secret: str, authenticator: bytes) -> st
     return _crypt_password(value, secret.encode("utf-8"), authenticator).rstrip(b"\x00").decode("utf-8")
 
 
+def _pack_uint32(value: object, name: str) -> bytes:
+    """Encode a RADIUS integer as an unsigned 32-bit network-order value."""
+    if isinstance(value, bool) or not isinstance(value, (int, str)):
+        raise RadiusCodecError(f"invalid integer attribute {name}")
+    try:
+        number = int(value)
+    except (TypeError, ValueError) as exc:
+        raise RadiusCodecError(f"invalid integer attribute {name}") from exc
+    if not 0 <= number <= 0xFFFFFFFF:
+        raise RadiusCodecError(f"integer attribute {name} is outside uint32 range")
+    return pack("!I", number)
+
+
 def _encode_value(name: str, value: object, secret: str | None, authenticator: bytes) -> bytes:
     if name in _HEX_ATTRS:
         raw = _octets(value)
@@ -299,10 +317,7 @@ def _encode_value(name: str, value: object, secret: str | None, authenticator: b
         except ValueError as exc:
             raise RadiusCodecError(f"invalid IPv4 attribute {name}") from exc
     if name in _INTEGER_ATTRS:
-        try:
-            return pack("!I", int(value))
-        except ValueError as exc:
-            raise RadiusCodecError(f"invalid integer attribute {name}") from exc
+        return _pack_uint32(value, name)
     return _octets(value)
 
 
@@ -484,7 +499,7 @@ def encode_sip(packet: RadiusPacket) -> bytes:
         if number is None:
             raise RadiusCodecError(f"unsupported SIP/SER attribute: {name}")
         if name in _SIP_INTEGER_ATTRS:
-            raw = pack("!I", int(value))
+            raw = _pack_uint32(value, name)
         elif name in _SIP_IP_ATTRS:
             raw = IPv4Address(str(value)).packed
         else:
