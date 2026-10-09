@@ -130,3 +130,8 @@ Core dictionary wire types and enum-label encoding were tightened: Framed-IPX-Ne
 ## SNMP transport progress — 2026-10-09
 
 A bounded standard-library SNMPv1/v2c SET transport now executes source-derived integer SET envelopes, validates authenticated-by-community response context and request matching, retries within explicit limits, and reports partial completion for ordered SET sequences. Unit tests use fake sockets only. Cisco ifDescr GETNEXT walk and the lookup → ifIndex resolution → Cisco SNMP SET orchestration are now implemented with fake-socket tests. Remaining before production completion: wire this service into the RAS runtime and configured-branch lifecycle, implement RSH/launcher transports, handle source-specific refresh lifecycle where required, and validate against representative devices.
+
+
+## Launcher transport progress — 2026-10-09
+
+A shell-free subprocess transport now handles only audited PPPD and PortSlave launcher envelopes, with absolute executable path checks, source argument ordering, timeout/error handling and bounded returned output. The test suite uses a mocked subprocess runner. This closes the launcher execution primitive, not its runtime integration; RSH execution, RAS runtime wiring and real-device validation remain open.
