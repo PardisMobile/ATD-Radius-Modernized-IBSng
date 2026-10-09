@@ -69,3 +69,14 @@ def test_user_detail_contract_can_hide_independently_unauthorized_reports():
     assert detail.connection_logs is None
     assert detail.credit_changes is None
 
+def test_user_credit_change_contract_uses_two_decimal_precision():
+    from decimal import Decimal
+    import pytest
+    from pydantic import ValidationError
+    from atd_radius.api.users import UserCreditChange
+
+    payload = UserCreditChange(delta=Decimal("12.50"), comment="top-up")
+    assert payload.delta == Decimal("12.50")
+    with pytest.raises(ValidationError):
+        UserCreditChange(delta=Decimal("12.501"), comment="invalid precision")
+
