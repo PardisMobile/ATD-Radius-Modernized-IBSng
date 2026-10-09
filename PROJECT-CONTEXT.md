@@ -939,3 +939,13 @@ No frozen A1.24 authentication, CHAP/MS-CHAPv2, MPPE, MultiLogin, attribute inhe
 - Added regression tests rejecting arbitrary operation strings and non-mapping parameters, plus nested mutation isolation.
 - Scope is restricted to the external-operation envelope. No frozen authentication, CHAP/MS-CHAPv2, MPPE, MultiLogin, attribute inheritance, persistence, accounting core, or provider-specific side-effect behavior was changed.
 - Current main HEAD before this batch: 520fcb906b984f7a78a2700553711731a4406dc1. CI status for this new batch remains pending until fresh workflow results for the resulting HEAD are observed; the previous green checkpoint is 8799d378dfbbf45ff7616e2e0c3c60cb35369cdc, not this documentation/code update.
+
+
+## RAS external operation boundary batch — 2026-10-09
+
+- Generic disconnect request builders now reject non-Mapping parameter containers before conversion; malformed false-y inputs can no longer silently become empty parameter dictionaries. An explicit empty mapping remains valid.
+- Added regression cases for invalid parameter containers in both generic and provider-specific builders.
+- Expanded RAS adapter tests to enumerate every currently source-traced disconnect strategy and assert that providers without audited strategies do not gain guessed operations.
+- The seven single-family strategies covered are ChilliSpot RADIUS Disconnect, Cisco VPDN RSH, MikroTik RSH, PortMaster SNMP, PortSlave launcher, Total Control SNMP and Quintum Tenor H323. Cisco SNMP-or-RSH remains deliberately unresolved at the generic adapter layer.
+- No concrete SNMP OID, RSH command, launcher argument, Asterisk Manager command, H323 sequence or SIP side effect was invented. No frozen PAP/CHAP/MS-CHAPv2, MPPE, MultiLogin, attribute, persistence, or accounting-core behavior was changed.
+- Implementation/test/docs commits for this batch: `694621fb7389781f523dabe8e00c556e3b90edda`, `2177c4a33329f66fd4dae3f4b929a567d620cf39`, `e20b1fe18fcf5518e0e74a432252837e9b841520`. CI is pending for the newest HEAD until its actual runs are observed.
