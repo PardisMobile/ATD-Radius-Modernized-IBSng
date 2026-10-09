@@ -30,6 +30,8 @@ from .ras_external import (
     build_mikrotik_disconnect_request,
     build_cisco_vpdn_interface_lookup_request,
     resolve_cisco_vpdn_interface,
+    build_cisco_disconnect_request,
+    resolve_cisco_snmp_port_index,
 )
 
 
@@ -280,6 +282,16 @@ class CiscoExternalSideEffectAdapter:
             self.disconnect_strategy(),
             source_parameters=source_parameters,
         )
+
+    def resolve_snmp_port_index(
+        self, port: str, interface_descriptions: Mapping[str, object]
+    ) -> str | None:
+        return resolve_cisco_snmp_port_index(port, interface_descriptions)
+
+    def source_disconnect_request(
+        self, source_parameters: Mapping[str, object]
+    ) -> ProviderOperationRequest | None:
+        return build_cisco_disconnect_request(**source_parameters)
 
 
 CISCO_EXTERNAL_ADAPTER = CiscoExternalSideEffectAdapter()
