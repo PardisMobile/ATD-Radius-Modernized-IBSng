@@ -25,6 +25,38 @@ See `docs/SOURCE-AUTHORITY.md` for the durable rule and current source-derived f
 
 Do not replace or reconstruct the canonical archive. Do not use external IBSng mirrors as authoritative.
 
+
+## Mandatory source-review carry-forward — updated 2026-10-09
+
+The user's standing instruction is explicit: every new chat must re-establish the canonical A1.24 source baseline before source-sensitive work, and must not redo or alter source-verified/frozen work without new contradictory source evidence. This section is the handoff contract; read it before touching code.
+
+### What "review the source" means operationally
+- Verify the canonical archive exists and its SHA-256 matches `Source of Truth/README.md`.
+- Read this checkpoint and the relevant source-review ledger first.
+- For any new source-sensitive behavior, inspect the exact A1.24 implementation, its caller/callee path, dictionary/configuration inputs, and consumers from the canonical archive before editing ATD.
+- Use `scripts/audit_ibsng_a124_source.py` and the `IBSng A1.24 Source Audit` workflow as reproducible archive-integrity/inventory/source-excerpt tooling. Its passing status means archive integrity and scripted audit succeeded; it does **not** mean every source line or the whole ATD product has been manually parity-reviewed.
+- Never claim a literal, exhaustive human line-by-line review of all 2,295 archived files unless a file-by-file review ledger actually records that work. Review files in coherent subsystems and persist the exact reviewed paths, findings, tests, and freeze state.
+- If a previously frozen area is found to conflict with direct canonical source evidence, document the exact path/line/behavior and scope the correction narrowly. Do not use a new chat as a reason to reimplement it.
+
+### Source-review ledger — 2026-10-09
+Direct canonical-archive review in this work session:
+- `IBSng/radius_server/dictionary`: directly inspected type/value declarations for the recently changed RADIUS attributes, including `Framed-IPX-Network` (23, `ipaddr`), `Login-LAT-Port` (63, `integer`), integer type declarations, and selected VALUE labels.
+- `IBSng/radius_server/pyrad/tools.py`: inspected `EncodeAddress`, `EncodeInteger`, `DecodeAddress`, `DecodeInteger`, and `EncodeAttr/DecodeAttr` dispatch.
+- `IBSng/radius_server/pyrad/packet.py`: inspected `_DecodeValue`/`_EncodeValue` dictionary-value precedence and packet decode path.
+- `IBSng/radius_server/pyrad/bidict.py`: inspected `BiDict.Add` forward/reverse map overwrite behavior.
+- RAS provider files inspected through source audit: `core/ras/rases/portmaster.py`, `total_control.py`, `pppd.py`, `portslave.py`, `cisco.py`, `cisco_vpdn.py`, `mikrotik.py`, `tenor.py`; launcher/SNMP/RSH source anchors were also inventoried. The RAS side-effect review is not yet a full line-by-line review of every provider and every caller.
+- Canonical archive SHA-256 was checked by the source-audit workflow; the workflow completed successfully on commit `29bb9b8a960240e54cb386d401f3038de6f01b08`.
+
+### Correction made from new direct source evidence
+A prior codec batch incorrectly classified `Framed-IPX-Network` as integer and `Login-LAT-Port` as string. This was corrected to match the A1.24 core dictionary: IPX network uses the 4-octet address encoding; LAT port uses unsigned 32-bit integer encoding. The tests assert actual wire type, length, and payload. The accounting status enum's duplicate value 3 was also corrected to mirror source order and `BiDict.Add`: the later `Alive=3` label is the reverse-map decode result, while both labels can encode to value 3.
+
+Relevant follow-up commits:
+- Codec source-type correction and source enum behavior: inspect current `main` history; do not revert this fix absent contradictory canonical evidence.
+- Source-audit script/workflow added to make archive integrity and direct-source excerpts reproducible.
+
+Latest known main at handoff: `76882156bc3e4e76f5b997170cf696deb2ad04af`.
+CI on that commit: Python test workflow and CI Python 3.11/3.12 both passed. Source-audit workflow passed on the earlier source-audit script checkpoint `29bb9b8a960240e54cb386d401f3038de6f01b08`; rerun after any further audit-script change.
+
 ## Architecture direction
 ATD is a modern AAA/RADIUS/ISP-management platform with IBSng A1.24 behavioral compatibility. Compatibility is not architectural cloning: preserve A1.24 behavior, terminology, schema semantics and workflows where required, but keep the implementation modular and extensible.
 
