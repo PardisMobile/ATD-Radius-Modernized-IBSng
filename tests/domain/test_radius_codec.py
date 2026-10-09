@@ -523,3 +523,52 @@ def test_control_response_ignores_padding_beyond_declared_packet_length():
     wire = encode_response(response, request, "shared")
     assert verify_control_response(wire, request, "shared")
     assert verify_control_response(wire + bytes((0,)), request, "shared")
+
+
+def test_control_request_rejects_packet_shorter_than_declared_length():
+    from atd_radius.domain.radius_codec import encode_control_request, verify_control_request
+
+    request = RadiusPacket(
+        RadiusCode.DISCONNECT_REQUEST, 93, {"User-Name": "alice"}, bytes(16)
+    )
+    wire = encode_control_request(request, "shared")
+    assert not verify_control_request(wire[:-1], "shared")
+
+
+def test_control_request_rejects_packet_over_rfc_maximum_length():
+    from struct import pack
+    from atd_radius.domain.radius_codec import verify_control_request
+
+    wire = pack("!BBH", 40, 94, 4097) + bytes(4093)
+    assert not verify_control_request(wire, "shared")
+
+
+def test_control_response_rejects_packet_shorter_than_declared_length():
+    from atd_radius.domain.radius_codec import (
+        encode_control_request,
+        verify_control_response,
+    )
+
+    request_packet = RadiusPacket(
+        RadiusCode.DISCONNECT_REQUEST, 95, {"User-Name": "alice"}, bytes(16)
+    )
+    request = decode(encode_control_request(request_packet, "shared"), "shared")
+    response = RadiusPacket(
+        RadiusCode.DISCONNECT_ACK, request.identifier, {}, request.authenticator
+    )
+    wire = encode_response(response, request, "shared")
+    assert not verify_control_response(wire[:-1], request, "shared")
+
+
+def test_control_response_rejects_packet_over_rfc_maximum_length():
+    from struct import pack
+    from atd_radius.domain.radius_codec import verify_control_response
+
+    request_packet = RadiusPacket(
+        RadiusCode.DISCONNECT_REQUEST, 96, {"User-Name": "alice"}, bytes(16)
+    )
+    from atd_radius.domain.radius_codec import encode_control_request
+
+    request = decode(encode_control_request(request_packet, "shared"), "shared")
+    wire = pack("!BBH", 41, request.identifier, 4097) + bytes(4093)
+    assert not verify_control_response(wire, request, "shared")
