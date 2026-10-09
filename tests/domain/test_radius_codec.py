@@ -729,7 +729,7 @@ def test_unknown_integer_enum_label_is_not_silently_coerced():
     packet = RadiusPacket(
         RadiusCode.ACCOUNTING_REQUEST,
         42,
-        {"Acct-Status-Type": "Alive"},
+        {"Acct-Status-Type": "Not-A-Source-Enum"},
         bytes(16),
     )
     with pytest.raises(RadiusCodecError):
