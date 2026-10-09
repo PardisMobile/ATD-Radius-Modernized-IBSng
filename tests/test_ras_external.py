@@ -575,3 +575,87 @@ def test_cisco_vpdn_parser_rejects_invalid_source_values(output, username, remot
         resolve_cisco_vpdn_interface(
             output, username=username, remote_ip=remote_ip
         )
+
+
+def test_cisco_snmp_disconnect_uses_source_oid_defaults_and_interface_mapping():
+    from atd_radius.domain.ras_external import (
+        build_cisco_disconnect_request,
+        resolve_cisco_snmp_port_index,
+    )
+
+    mapping = {
+        ".1.3.6.1.2.1.2.2.1.2.17": "Async1/0",
+        ".1.3.6.1.2.1.2.2.1.2.18": "Serial0/0",
+    }
+    assert resolve_cisco_snmp_port_index("Async1/0", mapping) == "17"
+    assert resolve_cisco_snmp_port_index("Missing", mapping) is None
+
+    request = build_cisco_disconnect_request(
+        ras_ip="192.0.2.10",
+        port="Async1/0",
+        port_index="17",
+    )
+    assert request.operation is ExternalOperation.SNMP
+    assert request.parameters["community"] == "public"
+    assert request.parameters["timeout"] == 10.0
+    assert request.parameters["retries"] == 3
+    assert request.parameters["udp_port"] == 161
+    assert request.parameters["version"] == "2c"
+    assert dict(request.parameters["set"]) == {
+        "oid": ".1.3.6.1.4.1.9.2.1.76.0",
+        "type": "i",
+        "value": 17,
+    }
+
+
+@pytest.mark.parametrize(
+    ("port", "expected"),
+    [
+        ("Async1/0", "clear line 1/0"),
+        ("Async12/3/4", "clear line 12/3/4"),
+        ("Serial0/0", "clear interface Serial0/0"),
+    ],
+)
+def test_cisco_rsh_disconnect_matches_source_port_branches(port, expected):
+    from atd_radius.domain.ras_external import build_cisco_disconnect_request
+
+    request = build_cisco_disconnect_request(
+        ras_ip="192.0.2.10",
+        port=port,
+        kill_use_snmp="0",
+        wrapper="/configured/addons/cisco/rsh_wrapper -lroot",
+    )
+    assert request is not None
+    assert request.operation is ExternalOperation.RSH
+    assert request.parameters["command"] == expected
+    assert request.parameters["arguments"] == (expected,)
+
+
+def test_cisco_rsh_unknown_port_returns_no_guessed_operation():
+    from atd_radius.domain.ras_external import build_cisco_disconnect_request
+
+    assert (
+        build_cisco_disconnect_request(
+            ras_ip="192.0.2.10",
+            port="Virtual-Access1",
+            kill_use_snmp=0,
+            wrapper="/configured/addons/cisco/rsh_wrapper",
+        )
+        is None
+    )
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        {"ras_ip": "not-an-ip", "port": "Async1/0", "port_index": 17},
+        {"ras_ip": "192.0.2.10", "port": "Async1/0", "port_index": True},
+        {"ras_ip": "192.0.2.10", "port": "Async1/0", "port_index": None},
+        {"ras_ip": "192.0.2.10", "port": "Async1/0", "kill_use_snmp": "yes"},
+    ],
+)
+def test_cisco_snmp_disconnect_rejects_invalid_source_identity(arguments):
+    from atd_radius.domain.ras_external import build_cisco_disconnect_request
+
+    with pytest.raises(ValueError):
+        build_cisco_disconnect_request(**arguments)
