@@ -101,8 +101,8 @@ class ConfiguredRSHTransport:
             if len(arguments) != 3:
                 raise ValueError("MikroTik RSH expects username, password and command")
             valid = re.fullmatch(
-                r"/ip hotspot active remove \[/ip hotspot active find user=[A-Za-z0-9_.:@+-]+ address=(?:[0-9]{1,3}\.){3}[0-9]{1,3}\\]"
-                r"|/ppp active remove \[/ppp active find name=[A-Za-z0-9_.:@+-]+ address=(?:[0-9]{1,3}\.){3}[0-9]{1,3}\\]",
+                r"/ip hotspot active remove \[/ip hotspot active find user=[A-Za-z0-9_.:@+-]+ address=(?:[0-9]{1,3}\.){3}[0-9]{1,3}\]"
+                r"|/ppp active remove \[/ppp active find name=[A-Za-z0-9_.:@+-]+ address=(?:[0-9]{1,3}\.){3}[0-9]{1,3}\]",
                 command,
             )
         if valid is None:
