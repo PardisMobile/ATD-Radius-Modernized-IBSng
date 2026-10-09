@@ -602,7 +602,6 @@ def test_control_request_encoder_rejects_packet_over_rfc_maximum_length():
     ("name", "value"),
     [
         ("Framed-Routing", "1"),
-        ("Framed-IPX-Network", "4294967295"),
         ("Acct-Authentic", "1"),
         ("Acct-Link-Count", "2"),
         ("Acct-Input-Gigawords", "3"),
@@ -623,7 +622,6 @@ def test_source_dictionary_uint32_attributes_round_trip_as_four_octets(name, val
     wire = encode(packet)
     assert wire[20] == {
         "Framed-Routing": 10,
-        "Framed-IPX-Network": 23,
         "Acct-Authentic": 45,
         "Acct-Link-Count": 51,
         "Acct-Input-Gigawords": 52,
@@ -643,7 +641,6 @@ def test_source_dictionary_uint32_attributes_round_trip_as_four_octets(name, val
         ("Framed-Routing", True),
         ("Framed-Routing", 1.5),
         ("Acct-Input-Gigawords", "not-a-number"),
-        ("Framed-IPX-Network", "192.0.2.1"),
     ],
 )
 def test_uint32_attributes_reject_invalid_values(name, value):
@@ -693,3 +690,31 @@ def test_unknown_integer_enum_label_is_not_silently_coerced():
     )
     with pytest.raises(RadiusCodecError):
         encode(packet)
+
+
+def test_a124_dictionary_framed_ipx_network_uses_ipaddr_wire_encoding():
+    packet = RadiusPacket(
+        RadiusCode.ACCESS_ACCEPT,
+        43,
+        {"Framed-IPX-Network": "192.0.2.1"},
+        bytes(16),
+    )
+    wire = encode(packet)
+    assert wire[20] == 23
+    assert wire[21] == 6
+    assert wire[22:26] == bytes((192, 0, 2, 1))
+    assert decode(wire).attributes["Framed-IPX-Network"] == "192.0.2.1"
+
+
+def test_a124_dictionary_login_lat_port_uses_uint32_wire_encoding():
+    packet = RadiusPacket(
+        RadiusCode.ACCESS_ACCEPT,
+        44,
+        {"Login-LAT-Port": "42"},
+        bytes(16),
+    )
+    wire = encode(packet)
+    assert wire[20] == 63
+    assert wire[21] == 6
+    assert wire[22:26] == (42).to_bytes(4, "big")
+    assert decode(wire).attributes["Login-LAT-Port"] == "42"
