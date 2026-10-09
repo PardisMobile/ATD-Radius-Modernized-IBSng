@@ -252,18 +252,22 @@ class NativeAccountingIdentityResolver:
 def session_views(registry) -> callable:
     """Return policy views including each active session's source RAS capability."""
     def provider(user_id: int) -> tuple[ActiveSessionView, ...]:
-        return tuple(
-            ActiveSessionView(
-                state.key.unique_id,
-                state.started_at,
-                (
-                    str(state.attributes.get("__ras_multi_login_allowed", "")) in {"0", "false", "False"}
-                    and False
-                ) if "__ras_multi_login_allowed" not in state.attributes else
-                str(state.attributes.get("__ras_multi_login_allowed")) not in {"0", "false", "False"},
+        views = []
+        for state in registry.active_for_user(user_id):
+            raw_allowed = state.attributes.get("__ras_multi_login_allowed")
+            ras_allowed = (
+                None
+                if raw_allowed is None
+                else str(raw_allowed) not in {"0", "false", "False"}
             )
-            for state in registry.active_for_user(user_id)
-        )
+            views.append(
+                ActiveSessionView(
+                    state.key.unique_id,
+                    state.started_at,
+                    ras_multi_login_allowed=ras_allowed,
+                )
+            )
+        return tuple(views)
 
     return provider
 
