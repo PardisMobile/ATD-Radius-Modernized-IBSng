@@ -156,6 +156,25 @@ def main() -> int:
             for number, line in enumerate(source.splitlines(), 1):
                 if KILL_DEF.search(line):
                     print(f"{member.name}:{number}:{line.strip()}")
+        print("\n== Complete RADIUS dictionary declarations: ATTRIBUTE / VALUE / VENDOR / INCLUDE ==")
+        dictionary_members = [
+            member for member in members
+            if "/radius_server/" in "/" + member.name
+            and Path(member.name).name.lower().startswith("dictionary")
+        ]
+        declaration = re.compile(r"^\s*(?:ATTRIBUTE|VALUE|VENDOR|BEGIN-VENDOR|END-VENDOR|INCLUDE)\b")
+        for member in sorted(dictionary_members, key=lambda m: m.name):
+            source = member_text(archive, member)
+            counts = Counter(
+                line.strip().split()[0]
+                for line in source.splitlines()
+                if declaration.search(line) and line.strip().split()
+            )
+            print(f"\n### {member.name} declarations={dict(counts)}")
+            for number, line in enumerate(source.splitlines(), 1):
+                if declaration.search(line):
+                    print(f"{member.name}:{number}:{line.strip()[:300]}")
+
         print("\n== MS-CHAPv2 call sites across all archived text sources ==")
         mschap_calls = re.compile(
             r"generate_nt_response_mschap2|challenge_hash|MS-CHAP2-Response|AuthenticatorResponse|checkMSChap2Password|checkMSChapPassword|mppe_chap1_gen_keys|mppe_chap2_gen_keys|addMSChapMPPEkeys|addMSChap2MPPEkeys|MS-CHAP-MPPE-Keys|MS-MPPE-Send-Key|MS-MPPE-Recv-Key",
