@@ -16,9 +16,5 @@ closed with HTTP 503 rather than exposing the API unauthenticated.
 
 ## Scope and limitations
 
-This is a shared-token gate, not full administrator identity, role-based access
-control, or a durable audit trail. Do not treat it as the finished authorization
-system. Before mounting destructive RAS disconnect operations or other privileged
-actions, implement per-user permissions and durable audit records, and resolve the
-target session from trusted server-side state. Do not place the token in source
+This shared-token gate is only the API perimeter; it is not administrator identity. Native admin login is available at `POST /api/v1/admin/login`, and issues a revocable opaque token sent as `X-Admin-Session` to the admin session endpoint. The RAS CRUD routes additionally enforce the source-traced native RAS permissions and audit mutations transactionally. Users/groups CRUD still require only the shared perimeter token and remain pending per-admin authorization. Do not mount destructive RAS disconnect operations until its own permission checks, trusted target-session resolution, and side-effect/audit sequencing are integrated. Do not place the token in source
 control or expose it to browser-side code.
