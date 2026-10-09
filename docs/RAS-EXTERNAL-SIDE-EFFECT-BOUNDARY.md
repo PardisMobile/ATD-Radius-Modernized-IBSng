@@ -142,3 +142,8 @@ Regression tests cover valid trailing padding, truncation, and packets above the
 ## Provider envelope immutability — 2026-10-09
 
 ProviderOperationRequest now recursively snapshots and freezes common nested containers (mappings, lists, tuples and sets), not only the top-level parameter mapping. This prevents a caller from mutating nested provider parameters after the request has crossed the side-effect boundary. ChilliSpot username inputs are explicitly type-checked and rejected unless they are non-empty strings.
+
+
+## Outbound control encoder bounds — 2026-10-09
+
+Outbound Disconnect/CoA encoding now validates the Identifier as a non-boolean integer in the one-octet range and rejects encoded control packets larger than the RFC 5176 4096-byte maximum. These checks are scoped to the control-request encoder; generic authentication/accounting encoding paths remain unchanged.
