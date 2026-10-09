@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 from atd_radius.application.ras_disconnect import RASDisconnectApplicationService
-from atd_radius.domain.ras_external import ExternalOperation, ProviderOperationRequest
+from atd_radius.domain.ras_external import ExternalOperation
 from atd_radius.infrastructure.rsh_transport import RSHResult
 
 
