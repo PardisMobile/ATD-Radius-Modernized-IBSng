@@ -125,3 +125,8 @@ Cisco's conditional disconnect strategy is now covered at the request-constructi
 ## RADIUS codec compatibility increment — 2026-10-09
 
 Core dictionary wire types and enum-label encoding were tightened: Framed-IPX-Network now uses uint32 rather than IPv4, missing source dictionary integer types were added, known Acct-Status-Type/NAS-Port-Type labels encode to canonical wire values, and unsigned 32-bit bounds are enforced. Wire-level regression coverage was added. This improves core protocol correctness but does not close the overall dictionary/SIP/USR parity milestone.
+
+
+## SNMP transport progress — 2026-10-09
+
+A bounded standard-library SNMPv1/v2c SET transport now executes source-derived integer SET envelopes, validates authenticated-by-community response context and request matching, retries within explicit limits, and reports partial completion for ordered SET sequences. Unit tests use fake sockets only. Remaining before this is production-integrated: connect the transport to RAS disconnect orchestration, implement source-derived Cisco ifDescr walk/refresh, implement RSH/launcher transports, and validate against representative devices.
