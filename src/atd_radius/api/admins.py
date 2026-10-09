@@ -3,7 +3,7 @@ from __future__ import annotations
 import ipaddress
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from atd_radius.api.admin_dependencies import AdminPrincipal, require_admin_permission, require_admin_session
 from atd_radius.infrastructure.admin_information import AdminInformationRepository
@@ -44,8 +44,8 @@ def list_admin_usernames(admin: AdminPrincipal = Depends(require_admin_session))
 
 
 class AdminInformationUpdate(BaseModel):
-    name: str = Field(max_length=255)
-    comment: str = Field(max_length=1000)
+    name: str
+    comment: str
 
 
 @router.put("/{username}", response_model=AdminInformationView)

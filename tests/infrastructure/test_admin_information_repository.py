@@ -21,6 +21,8 @@ class Connection:
 
     def execute(self, sql, params=()):
         self.calls.append((sql, params))
+        if "SELECT admin_id FROM admins WHERE username" in sql:
+            return Result((8,))
         if "FROM admins a" in sql:
             return Result((8, "target", "Target Admin", "comment", Decimal("15.50"), 7, "operator"))
         if "FROM admin_locks l" in sql:
