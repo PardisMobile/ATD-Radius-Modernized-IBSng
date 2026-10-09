@@ -913,3 +913,21 @@ The earlier OPEN ledger line saying live PostgreSQL transaction rollback proof i
 - Added regression tests for negative, oversized, boolean, fractional and string identifiers, plus oversized attribute payloads.
 - These checks apply only to outbound Disconnect/CoA control requests; existing authentication and accounting paths were left untouched.
 - Full CI is pending for the latest implementation/test/documentation commits; verify both workflows before calling the current HEAD green.
+
+
+## RADIUS control hardening batch — verified implementation checkpoint — 2026-10-09
+
+The implementation/test HEAD `8799d378dfbbf45ff7616e2e0c3c60cb35369cdc` passed:
+- Python workflow #879 / run `37926033059`: success, 319 passed and 2 skipped.
+- CI workflow #805 / run `37926033053`: success on Python 3.11 and 3.12, including compile, Ruff, PHP syntax and test steps.
+
+Included in this batch:
+- Full control-request attribute validation, rejecting malformed trailing attributes and duplicate Message-Authenticator attributes.
+- RFC 5176 packet length handling: 20..4096-byte declared length, reject truncation, accept/ignore bytes beyond declared length as padding.
+- Outbound control request encoder validates one-octet identifier values and rejects packets exceeding 4096 bytes.
+- Provider operation requests recursively freeze nested mappings/lists/tuples/sets; ChilliSpot username inputs receive explicit type/value validation.
+- Added regression tests for these boundaries.
+
+Some intermediate CI runs failed while the tests were being introduced (missing pytest import, then assertion/fixture expectations); these were corrected. The implementation/test HEAD above is green. This context-only commit itself triggers fresh CI and must not be considered green until its own run completes.
+
+No frozen A1.24 authentication, CHAP/MS-CHAPv2, MPPE, MultiLogin, attribute inheritance, persistence, or accounting-core behavior was changed.
