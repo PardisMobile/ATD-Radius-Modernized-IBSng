@@ -496,7 +496,7 @@ def test_control_request_rejects_duplicate_message_authenticators():
     assert not verify_control_request(wire, "shared")
 
 
-def test_control_request_rejects_bytes_beyond_declared_packet_length():
+def test_control_request_ignores_padding_beyond_declared_packet_length():
     from atd_radius.domain.radius_codec import encode_control_request, verify_control_request
 
     request = RadiusPacket(
@@ -504,10 +504,10 @@ def test_control_request_rejects_bytes_beyond_declared_packet_length():
     )
     wire = encode_control_request(request, "shared")
     assert verify_control_request(wire, "shared")
-    assert not verify_control_request(wire + bytes((0,)), "shared")
+    assert verify_control_request(wire + bytes((0,)), "shared")
 
 
-def test_control_response_rejects_bytes_beyond_declared_packet_length():
+def test_control_response_ignores_padding_beyond_declared_packet_length():
     from atd_radius.domain.radius_codec import (
         encode_control_request,
         verify_control_response,
@@ -522,4 +522,4 @@ def test_control_response_rejects_bytes_beyond_declared_packet_length():
     )
     wire = encode_response(response, request, "shared")
     assert verify_control_response(wire, request, "shared")
-    assert not verify_control_response(wire + bytes((0,)), request, "shared")
+    assert verify_control_response(wire + bytes((0,)), request, "shared")
