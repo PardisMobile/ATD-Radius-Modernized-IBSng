@@ -33,7 +33,7 @@ TARGET_FILES = {
     "RSH wrapper": ("IBSng/core/lib/rsh.py", r"class RSHClient|def "),
     "MultiLogin plugin": ("IBSng/core/user/plugins/multilogin.py", r"class MultiLogin|def "),
     "MS-CHAP implementation": ("IBSng/core/lib/mschap/mschap.py", r"def generate_nt_response_mschap|def generate_nt_response_mschap2|def challenge_hash|def generate_authenticator_response|def GenerateAuthenticatorResponse"),
-    "MS-CHAP packet integration": ("IBSng/radius_server/pyrad/packet.py", r"def verifyMSChap2|def generateMSChap2AuthenticatorResponse"),
+    "MS-CHAP packet integration": ("IBSng/radius_server/pyrad/packet.py", r"def verifyMSChap2|def checkMSChapPassword|def checkMSChap2Password|def generateMSChap2AuthenticatorResponse|def addMSChapMPPEkeys|def addMSChap2MPPEkeys"),
     "MS-CHAP runtime authentication path": ("IBSng/radius_server/rad_server.py", r"checkMSChap2Password|generateMSChap2AuthenticatorResponse|MS-CHAP2-Response|User-Name"),
     "MS-CHAP user plugin": ("IBSng/core/user/plugins/mschap_end.py", r"generateMSChap2AuthenticatorResponse|checkMSChap2Password|user_obj|username"),
     "MS-CHAP password plugin": ("IBSng/core/user/plugins/password.py", r"^class |^def |checkMSChap2Password|normal_username|username"),
@@ -159,7 +159,7 @@ def main() -> int:
                     print(f"{member.name}:{number}:{line.strip()}")
         print("\n== MS-CHAPv2 call sites across all archived text sources ==")
         mschap_calls = re.compile(
-            r"generate_nt_response_mschap2|challenge_hash|MS-CHAP2-Response|AuthenticatorResponse|checkMSChap2Password|checkMSChapPassword",
+            r"generate_nt_response_mschap2|challenge_hash|MS-CHAP2-Response|AuthenticatorResponse|checkMSChap2Password|checkMSChapPassword|mppe_chap1_gen_keys|mppe_chap2_gen_keys|addMSChapMPPEkeys|addMSChap2MPPEkeys|MS-CHAP-MPPE-Keys|MS-MPPE-Send-Key|MS-MPPE-Recv-Key",
             re.IGNORECASE
         )
         call_count = 0
