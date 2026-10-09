@@ -1,7 +1,7 @@
 """Read native IBSng A1.24 administrator records, permissions, and locks."""
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import psycopg
 
@@ -14,6 +14,7 @@ class NativeAdminRecord:
     username: str
     name: str | None
     comment: str | None
+    password_hash: str | None = field(default=None, repr=False)
 
 
 @dataclass(frozen=True)
@@ -36,7 +37,7 @@ class AdminRepository:
     def get_by_username(self, username: str) -> NativeAdminRecord | None:
         row = self.conn.execute(
             """
-            SELECT admin_id, username, name, comment
+            SELECT admin_id, username, name, comment, password
             FROM admins
             WHERE username = %s
             """,
@@ -44,7 +45,7 @@ class AdminRepository:
         ).fetchone()
         if row is None:
             return None
-        return NativeAdminRecord(int(row[0]), str(row[1]), row[2], row[3])
+        return NativeAdminRecord(int(row[0]), str(row[1]), row[2], row[3], row[4])
 
     def get_by_id(self, admin_id: int) -> NativeAdminRecord | None:
         row = self.conn.execute(
