@@ -48,6 +48,13 @@ class NativeAccessContext:
             attrs = {name: value for name, value in self.users.attributes(user_id)}
 
         method = detect_auth_method(packet.attributes)
+        canonical_username = username
+        if method is RadiusAuthMethod.MSCHAPV2:
+            normal_credentials = getattr(self.users, "normal_credentials", None)
+            if callable(normal_credentials):
+                credentials = normal_credentials(user_id)
+                if credentials and credentials[0]:
+                    canonical_username = str(credentials[0])
         password_ok = False
         if not locked:
             if method is RadiusAuthMethod.PAP:
@@ -71,7 +78,7 @@ class NativeAccessContext:
                 password_ok = verify_mschapv2(
                     packet.attributes.get("MS-CHAP2-Response"),
                     stored_password,
-                    username,
+                    canonical_username,
                     packet.attributes.get("MS-CHAP-Challenge"),
                 )
                 valid_shape = validate_mschapv2_response(
@@ -89,7 +96,7 @@ class NativeAccessContext:
                             raw_response[26:50],
                             raw_response[2:18],
                             packet.attributes.get("MS-CHAP-Challenge"),
-                            username,
+                            canonical_username,
                         ).encode("ascii")
                     )
                     send_key, recv_key = derive_mschapv2_mppe_keys(
