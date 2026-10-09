@@ -70,6 +70,44 @@ class ConfiguredRSHTransport:
         self._max_output_chars = max_output_chars
         self._slots = BoundedSemaphore(max_concurrent_connections)
 
+    @staticmethod
+    def _validate_source_command(
+        request: ProviderOperationRequest,
+        params: Mapping[str, object],
+        arguments: list[str],
+    ) -> None:
+        """Reject command strings outside the source-derived provider grammar."""
+        import re
+
+        command = params.get("command")
+        if not isinstance(command, str) or not arguments or arguments[-1] != command:
+            raise ValueError("RSH command must match the final argv argument")
+
+        if request.provider == "cisco":
+            if len(arguments) != 1:
+                raise ValueError("Cisco RSH expects one command argument")
+            valid = re.fullmatch(
+                r"clear line [0-9/]+|clear interface [A-Za-z0-9_.:/+-]+",
+                command,
+            )
+        elif request.provider == "cisco_vpdn":
+            if len(arguments) != 1:
+                raise ValueError("Cisco VPDN RSH expects one command argument")
+            valid = re.fullmatch(
+                r"show caller user [A-Za-z0-9_.:@+-]+|clear interface [A-Za-z0-9_.:@+-]+",
+                command,
+            )
+        else:
+            if len(arguments) != 3:
+                raise ValueError("MikroTik RSH expects username, password and command")
+            valid = re.fullmatch(
+                r"/ip hotspot active remove \\[/ip hotspot active find user=[A-Za-z0-9_.:@+-]+ address=(?:[0-9]{1,3}\\.){3}[0-9]{1,3}\\]"
+                r"|/ppp active remove \\[/ppp active find name=[A-Za-z0-9_.:@+-]+ address=(?:[0-9]{1,3}\\.){3}[0-9]{1,3}\\]",
+                command,
+            )
+        if valid is None:
+            raise ValueError("RSH command is outside the audited provider command grammar")
+
     def execute(self, request: ProviderOperationRequest) -> RSHResult:
         if not isinstance(request, ProviderOperationRequest):
             raise ValueError("request must be a ProviderOperationRequest")
@@ -115,8 +153,10 @@ class ConfiguredRSHTransport:
             or not 1 <= requested_concurrency <= 64
         ):
             raise ValueError("max_concurrent_connections must be an integer in [1, 64]")
-        # The instance semaphore is the operator's hard ceiling. A request may
-        # ask for fewer slots, but cannot expand the configured process limit.
+        self._validate_source_command(request, params, arguments)
+
+        # The instance semaphore is the hard process limit; request metadata
+        # is validated against A1.24's configured concurrency value.
         argv = [*wrapper_argv, host, *arguments]
         with self._slots:
             try:
