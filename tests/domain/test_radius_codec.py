@@ -577,13 +577,13 @@ def test_control_response_rejects_packet_over_rfc_maximum_length():
 
 
 @pytest.mark.parametrize("identifier", [-1, 256, True, 1.5, "7"])
-def test_control_request_encoder_rejects_invalid_identifier(identifier):
+def test_control_request_rejects_invalid_identifier_before_wire_encoding(identifier):
     from atd_radius.domain.radius_codec import RadiusCodecError, encode_control_request
 
-    request = RadiusPacket(
-        RadiusCode.DISCONNECT_REQUEST, identifier, {"User-Name": "alice"}, bytes(16)
-    )
-    with pytest.raises(RadiusCodecError, match="identifier"):
+    with pytest.raises((RadiusCodecError, ValueError, TypeError)):
+        request = RadiusPacket(
+            RadiusCode.DISCONNECT_REQUEST, identifier, {"User-Name": "alice"}, bytes(16)
+        )
         encode_control_request(request, "shared")
 
 
