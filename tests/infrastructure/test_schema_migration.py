@@ -32,3 +32,15 @@ def test_numbered_migrations_have_unique_order_and_audit_runs_after_native_defs(
     assert next(i for i, path in enumerate(migrations) if path.name.endswith("_defs.sql")) < next(
         i for i, path in enumerate(migrations) if path.name.endswith("_operational_audit.sql")
     )
+
+
+
+def test_admin_sessions_are_a_separate_revocable_extension():
+    from pathlib import Path
+
+    migration = Path("migrations/006_admin_sessions.sql").read_text(encoding="utf-8").lower()
+    assert "create table if not exists admin_sessions" in migration
+    assert "references admins(admin_id)" in migration
+    assert "token_hash char(64) not null unique" in migration
+    assert "revoked_at" in migration
+    assert "expires_at > current_timestamp" not in migration  # expiry is enforced on lookup
