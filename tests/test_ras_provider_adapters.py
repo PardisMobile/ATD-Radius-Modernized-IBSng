@@ -170,3 +170,37 @@ def test_tenor_disconnect_cause_is_accounting_metadata_not_a_kill_operation():
         {"disconnect_cause": "normal"}
     ) is None
 
+
+
+def test_cisco_vpdn_adapter_builds_source_derived_rsh_request():
+    from atd_radius.domain.ras_provider_adapters import CISCO_VPDN_EXTERNAL_ADAPTER
+
+    request = CISCO_VPDN_EXTERNAL_ADAPTER.source_disconnect_request(
+        {
+            "ras_ip": "192.0.2.21",
+            "interface": "Vi2",
+            "wrapper": "/configured/addons/cisco/rsh_wrapper",
+        }
+    )
+    assert request.operation.value == "rsh"
+    assert request.parameters["command"] == "clear interface Vi2"
+    assert request.parameters["arguments"] == ("clear interface Vi2",)
+
+
+def test_mikrotik_adapter_builds_source_derived_rsh_request():
+    from atd_radius.domain.ras_provider_adapters import MIKROTIK_EXTERNAL_ADAPTER
+
+    request = MIKROTIK_EXTERNAL_ADAPTER.source_disconnect_request(
+        {
+            "ras_ip": "192.0.2.1",
+            "nas_port_type": "Wireless-802.11",
+            "username": "alice",
+            "user_ip": "198.51.100.7",
+            "ssh_wrapper": "/configured/mikrotik/ssh-wrapper",
+            "ssh_username": "api-user",
+            "ssh_password": "secret",
+        }
+    )
+    assert request.operation.value == "rsh"
+    assert request.parameters["branch"] == "hotspot"
+    assert request.parameters["arguments"][0:2] == ("api-user", "secret")
