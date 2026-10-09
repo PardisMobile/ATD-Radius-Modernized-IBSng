@@ -20,3 +20,14 @@ The current implementation now includes `application/admin_authentication.py`. I
 This is not yet complete A1.24 RBAC parity. Only register permission definitions and value rules after tracing their actual A1.24 source. Unknown permissions fail closed. Authentication, login/session bootstrap, password verification, admin-lock enforcement, and permission loading from PostgreSQL are not implemented by this module. The API shared bearer token must never be treated as an administrator identity.
 
 Do not expose RAS disconnect or other privileged endpoints until the application resolves a trusted native administrator identity, loads permissions and locks from PostgreSQL, resolves the target session from trusted runtime state, enforces the exact permission and dependencies, and records an audit outcome in the correct transaction/side-effect order.
+
+
+## Native admin session transport — 2026-10-10
+
+- `POST /api/v1/admin/login` authenticates a native admin and issues an opaque random session token. The existing shared API Bearer token remains a separate perimeter gate for this route.
+- `migrations/006_admin_sessions.sql` stores only the SHA-256 token digest, expiry, revocation timestamp, admin foreign key, and login address. The raw token is returned only at login.
+- `GET /api/v1/admin/session` accepts `X-Admin-Session`, validates that the session is not revoked/expired, and rechecks the native admin lock. `DELETE /api/v1/admin/session` revokes the session and writes a successful logout audit event.
+- Successful login and logout audit records share the same DB transaction as session creation/revocation. Failed logins are not yet written to the current operational audit schema because it requires a valid non-null admin actor; do not fabricate one for unknown usernames.
+- Session lifetime defaults to eight hours and is configurable with `ATD_ADMIN_SESSION_TTL_SECONDS`.
+
+**Important:** This is a first native identity/session slice, not complete RBAC. The existing users/groups/RAS CRUD routes have not yet been converted to require `X-Admin-Session` and per-admin permission checks. Do not assume that possession of an admin session token authorizes those operations. RAS disconnect remains unmounted until every privileged action has permission enforcement, trusted target-session resolution, and correctly sequenced audit.
