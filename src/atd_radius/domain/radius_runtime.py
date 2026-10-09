@@ -59,11 +59,16 @@ class SessionState:
     charge_rule_input_octets:int=0
     charge_rule_output_octets:int=0
     charge_accrued: Decimal = field(default_factory=lambda: Decimal("0"))
+    ras_multi_login_allowed: bool | None = None
 
 class SessionRegistry:
     def __init__(self): self._sessions:dict[SessionKey,SessionState]={}
-    def start(self,key,attributes=None,input_octets=0,output_octets=0,started_at=None)->SessionState:
-        state=SessionState(key,attributes or {},True,False,input_octets,output_octets,started_at or datetime.now(timezone.utc))
+    def start(self,key,attributes=None,input_octets=0,output_octets=0,started_at=None,ras_multi_login_allowed=None)->SessionState:
+        state=SessionState(
+            key, attributes or {}, True, False, input_octets, output_octets,
+            started_at or datetime.now(timezone.utc),
+            ras_multi_login_allowed=ras_multi_login_allowed,
+        )
         self._sessions[key]=state; return state
     def get(self,key): return self._sessions.get(key)
     def update(self,key,input_octets,output_octets):
