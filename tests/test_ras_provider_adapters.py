@@ -62,3 +62,47 @@ def test_external_adapters_preserve_source_traced_strategy_only():
 
     assert CISCO_EXTERNAL_ADAPTER.disconnect_strategy() == "snmp-or-rsh"
     assert CISCO_EXTERNAL_ADAPTER.disconnect_request({"port": 7}) is None
+
+
+def test_external_adapter_registry_covers_only_source_traced_disconnect_families():
+    from atd_radius.domain.ras_external import ExternalOperation
+    from atd_radius.domain.ras_provider_adapters import (
+        CHILLISPOT_EXTERNAL_ADAPTER,
+        CISCO_EXTERNAL_ADAPTER,
+        CISCO_VPDN_EXTERNAL_ADAPTER,
+        MIKROTIK_EXTERNAL_ADAPTER,
+        PORTMASTER_EXTERNAL_ADAPTER,
+        PORTSLAVE_EXTERNAL_ADAPTER,
+        QUINTUM_TENOR_EXTERNAL_ADAPTER,
+        TOTAL_CONTROL_EXTERNAL_ADAPTER,
+    )
+
+    expected = (
+        (CHILLISPOT_EXTERNAL_ADAPTER, "provider-port", ExternalOperation.RADIUS_DISCONNECT),
+        (CISCO_VPDN_EXTERNAL_ADAPTER, "rsh-interface", ExternalOperation.RSH),
+        (MIKROTIK_EXTERNAL_ADAPTER, "rsh-port", ExternalOperation.RSH),
+        (PORTMASTER_EXTERNAL_ADAPTER, "snmp-port", ExternalOperation.SNMP),
+        (PORTSLAVE_EXTERNAL_ADAPTER, "launcher", ExternalOperation.LAUNCHER),
+        (TOTAL_CONTROL_EXTERNAL_ADAPTER, "snmp-interface", ExternalOperation.SNMP),
+        (QUINTUM_TENOR_EXTERNAL_ADAPTER, "h323-cause", ExternalOperation.H323),
+    )
+    for adapter, strategy, operation in expected:
+        assert adapter.disconnect_strategy() == strategy
+        request = adapter.disconnect_request({"source_key": "source-value"})
+        assert request is not None
+        assert request.operation is operation
+        assert request.parameters["source_key"] == "source-value"
+
+    assert CISCO_EXTERNAL_ADAPTER.disconnect_strategy() == "snmp-or-rsh"
+    assert CISCO_EXTERNAL_ADAPTER.disconnect_request({"source_key": "source-value"}) is None
+
+
+def test_providers_without_audited_disconnect_strategy_do_not_get_guessed_adapters():
+    from atd_radius.domain.ras_provider import provider_disconnect_strategy
+    from atd_radius.domain.ras_provider_adapters import ExternalSideEffectAdapter
+
+    for provider in ("asterisk", "bsae", "gnugk", "mvts", "plan", "pppd", "ser"):
+        assert provider_disconnect_strategy(provider) is None
+        assert ExternalSideEffectAdapter(provider).disconnect_request(
+            {"User-Name": "alice"}
+        ) is None
