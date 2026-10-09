@@ -28,6 +28,8 @@ from .ras_external import (
     build_pppd_disconnect_request,
     build_cisco_vpdn_disconnect_request,
     build_mikrotik_disconnect_request,
+    build_cisco_vpdn_interface_lookup_request,
+    resolve_cisco_vpdn_interface,
 )
 
 
@@ -173,7 +175,23 @@ class ExternalSideEffectAdapter:
 
 @dataclass(frozen=True, slots=True)
 class CiscoVPDNExternalSideEffectAdapter(ExternalSideEffectAdapter):
-    """Cisco VPDN RSH disconnect after source-defined interface discovery."""
+    """Cisco VPDN RSH discovery/disconnect requests from source-traced behavior."""
+
+    def interface_lookup_request(
+        self, source_parameters: Mapping[str, object]
+    ) -> ProviderOperationRequest:
+        return build_cisco_vpdn_interface_lookup_request(**source_parameters)
+
+    def resolve_interface(
+        self,
+        output: str,
+        *,
+        username: str,
+        remote_ip: str | None = None,
+    ) -> str | None:
+        return resolve_cisco_vpdn_interface(
+            output, username=username, remote_ip=remote_ip
+        )
 
     def source_disconnect_request(
         self, source_parameters: Mapping[str, object]
