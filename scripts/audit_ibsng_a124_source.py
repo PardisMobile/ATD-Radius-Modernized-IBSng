@@ -176,6 +176,125 @@ def main() -> int:
                 if declaration.search(line):
                     print(f"{member.name}:{number}:{line.strip()[:300]}")
 
+        print("\n== Automated core dictionary-to-codec parity comparison ==")
+        sys.path.insert(0, str(ROOT / "src"))
+        from atd_radius.domain import radius_codec as codec
+
+        core_member = next(
+            (member for member in dictionary_members if Path(member.name).name == "dictionary"),
+            None,
+        )
+        if core_member is None:
+            raise RuntimeError("canonical core RADIUS dictionary is missing")
+        core_source = member_text(archive, core_member)
+        core_attributes = {}
+        core_values = {}
+        vendor_ids = {}
+        vendor_attributes = []
+        current_vendor = None
+        for line_number, line in enumerate(core_source.splitlines(), 1):
+            parts = line.split()
+            if not parts or parts[0].startswith("#"):
+                continue
+            if parts[0] == "VENDOR" and len(parts) >= 3:
+                try:
+                    vendor_ids[parts[1]] = int(parts[2], 0)
+                except ValueError:
+                    pass
+            elif parts[0] == "BEGIN-VENDOR" and len(parts) >= 2:
+                current_vendor = parts[1]
+            elif parts[0] == "END-VENDOR":
+                current_vendor = None
+            elif parts[0] == "ATTRIBUTE" and len(parts) >= 4:
+                try:
+                    number = int(parts[2], 0)
+                except ValueError:
+                    continue
+                if current_vendor is None:
+                    core_attributes[parts[1]] = (number, parts[-1], line_number)
+                else:
+                    vendor_attributes.append(
+                        (current_vendor, vendor_ids.get(current_vendor), parts[1], number, parts[-1], line_number)
+                    )
+            elif parts[0] == "VALUE" and len(parts) >= 4:
+                try:
+                    value_number = int(parts[-1], 0)
+                except ValueError:
+                    continue
+                core_values.setdefault(parts[1], {})[parts[2]] = value_number
+
+        mapped_names = set(codec._ATTR_NAMES.values())
+        integer_expected = {
+            name for name, (_, kind, _) in core_attributes.items()
+            if kind in {"integer", "date"}
+        }
+        ip_expected = {
+            name for name, (_, kind, _) in core_attributes.items()
+            if kind == "ipaddr"
+        }
+        ipv6_expected = {
+            (name, kind) for name, (_, kind, _) in core_attributes.items()
+            if kind in {"ipv6addr", "ipv6prefix"}
+        }
+        missing_numbers = sorted(set(core_attributes) - mapped_names)
+        missing_integer = sorted(integer_expected - codec._INTEGER_ATTRS)
+        missing_ip = sorted(ip_expected - codec._IP_ATTRS)
+        wrong_integer = sorted(
+            name for name in codec._INTEGER_ATTRS
+            if name in core_attributes and core_attributes[name][1] not in {"integer", "date"}
+        )
+        wrong_ip = sorted(
+            name for name in codec._IP_ATTRS
+            if name in core_attributes and core_attributes[name][1] != "ipaddr"
+        )
+        octets_without_explicit_hex = sorted(
+            name for name, (_, kind, _) in core_attributes.items()
+            if kind == "octets"
+            and name not in codec._HEX_ATTRS
+            and name != "Vendor-Specific"
+        )
+
+        enum_numbers = {
+            name: {label: number for number, label in values.items()}
+            for name, values in codec._ENUM_VALUES.items()
+        }
+        enum_numbers.setdefault("Acct-Status-Type", {})["Interim-Update"] = 3
+        enum_numbers["Framed-Routing"] = {
+            "None": 0, "Broadcast": 1, "Listen": 2, "Broadcast-Listen": 3
+        }
+        enum_numbers["Acct-Authentic"] = {"RADIUS": 1, "Local": 2}
+        missing_enum_values = []
+        for name, values in core_values.items():
+            for label, number in values.items():
+                if enum_numbers.get(name, {}).get(label) != number:
+                    missing_enum_values.append((name, label, number))
+
+        unsupported_vendor_attributes = []
+        for vendor_name, vendor_id, name, number, kind, line_number in vendor_attributes:
+            provider = codec._PROVIDER_VSAS.get(name)
+            microsoft_type = codec._MICROSOFT_VSA_TYPES.get(name)
+            if provider is not None and provider[0] == vendor_id and provider[1] == number:
+                continue
+            if (
+                vendor_id == codec._MICROSOFT_VENDOR_ID
+                and microsoft_type == number
+            ):
+                continue
+            unsupported_vendor_attributes.append(
+                (vendor_name, vendor_id, name, number, kind, line_number)
+            )
+
+        print(f"core attributes declared={len(core_attributes)}; codec names mapped={len(mapped_names)}")
+        print(f"core attributes without numeric codec mapping ({len(missing_numbers)}): {missing_numbers}")
+        print(f"integer/date attributes missing integer wire handling ({len(missing_integer)}): {missing_integer}")
+        print(f"ipaddr attributes missing IPv4 wire handling ({len(missing_ip)}): {missing_ip}")
+        print(f"attributes incorrectly classified as integer ({len(wrong_integer)}): {wrong_integer}")
+        print(f"attributes incorrectly classified as IPv4 ({len(wrong_ip)}): {wrong_ip}")
+        print(f"IPv6 wire types needing dedicated review ({len(ipv6_expected)}): {sorted(ipv6_expected)}")
+        print(f"octets without explicit hex/raw handling marker ({len(octets_without_explicit_hex)}): {octets_without_explicit_hex}")
+        print(f"source enum labels not covered by codec ({len(missing_enum_values)}): {missing_enum_values[:100]}")
+        print(f"source vendor attributes not mapped to a codec family ({len(unsupported_vendor_attributes)}): {unsupported_vendor_attributes[:100]}")
+
         print("\n== MS-CHAPv2 call sites across all archived text sources ==")
         mschap_calls = re.compile(
             r"generate_nt_response_mschap2|challenge_hash|MS-CHAP2-Response|AuthenticatorResponse|checkMSChap2Password|checkMSChapPassword|mppe_chap1_gen_keys|mppe_chap2_gen_keys|addMSChapMPPEkeys|addMSChap2MPPEkeys|MS-CHAP-MPPE-Keys|MS-MPPE-Send-Key|MS-MPPE-Recv-Key",
