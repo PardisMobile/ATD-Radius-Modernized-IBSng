@@ -381,5 +381,61 @@ def main() -> int:
             if admin_hit_count >= 180:
                 break
 
+        print("\n== Administrator web authentication/session bootstrap search ==")
+        auth_patterns = re.compile(
+            r"session_start|session_regenerate_id|\\$_SESSION|admin_id|admin_login|"
+            r"login_admin|checkAdmin|isLoggedIn|isAuthenticated|authenticate|"
+            r"password_verify|md5\\(|sha1\\(|admin_locks|isLocked",
+            re.IGNORECASE,
+        )
+        auth_candidates = [
+            member for member in members
+            if member.name.startswith("IBSng/interface/")
+            and member.name.endswith((".php", ".tpl", ".py", ".xml"))
+            and member.size <= 2_000_000
+        ]
+        auth_hits = 0
+        for member in sorted(auth_candidates, key=lambda item: item.name):
+            source = member_text(archive, member)
+            lines = source.splitlines()
+            matching = [i for i, line in enumerate(lines) if auth_patterns.search(line)]
+            if not matching:
+                continue
+            print(f"\n### AUTH FILE {member.name} hits={len(matching)}")
+            for index in matching[:12]:
+                lo, hi = max(0, index - 2), min(len(lines), index + 4)
+                for line_no in range(lo, hi):
+                    print(f"{line_no + 1}: {lines[line_no][:260]}")
+                print("---")
+                auth_hits += 1
+                if auth_hits >= 100:
+                    print("... authentication/session output capped at 100 hit contexts ...")
+                    break
+            if auth_hits >= 100:
+                break
+
+        print("\n== Native admin lock behavior and enforcement references ==")
+        lock_patterns = re.compile(
+            r"def\\s+isLocked|\\.isLocked\\(|admin_locks|setLocks|"
+            r"__getAdminLocks|lockAdmin|unlockAdmin|locker_admin_id",
+            re.IGNORECASE,
+        )
+        lock_hits = 0
+        for member in sorted(members, key=lambda item: item.name):
+            if not member.name.endswith((".py", ".php", ".sql", ".tpl")) or member.size > 2_000_000:
+                continue
+            source = member_text(archive, member)
+            lines = source.splitlines()
+            for index, line in enumerate(lines):
+                if not lock_patterns.search(line):
+                    continue
+                print(f"{member.name}:{index + 1}:{line[:260]}")
+                lock_hits += 1
+                if lock_hits >= 160:
+                    print("... lock-reference output capped at 160 lines ...")
+                    break
+            if lock_hits >= 160:
+                break
+
 if __name__ == "__main__":
     sys.exit(main())
