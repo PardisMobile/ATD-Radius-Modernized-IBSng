@@ -970,3 +970,13 @@ Direct canonical-source extraction (archive SHA-256 verified) found that the pri
 
 The earlier audit statements that PPPD lacked a kill path and Quintum Tenor had an H323 disconnect operation are superseded by this correction. The PPPD builder constructs an envelope only; it does not execute the launcher. Live external-operation integration remains open.
 
+## Delivery estimate checkpoint — 2026-10-09
+
+The current planning estimate is recorded in ROADMAP.md and is not a CI metric:
+- Technical core: approximately 75–80%.
+- Full modern IBSng replacement: approximately 55–60%, leaving about 40–45% of the planned product scope.
+- Estimated focused engineering effort to full planned scope: roughly 6–10 working weeks, assuming steady implementation and review. This includes provider/dictionary parity, billing persistence, API/RBAC/XML-RPC, migration/deployment/licensing, final UI workflows and integration hardening.
+- Real-device SNMP/RSH/launcher interoperability depends on access to representative RAS hardware and cannot be proven by unit CI alone.
+
+The estimate must be revised as complete milestones land; do not promise a calendar finish date from this range alone. The user's instruction is to continue in cohesive autonomous batches without requiring repeated “continue” prompts.
+
