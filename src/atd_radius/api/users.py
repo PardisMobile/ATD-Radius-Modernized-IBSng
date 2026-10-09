@@ -34,6 +34,8 @@ class UserCreate(BaseModel):
     username: str = Field(min_length=1, max_length=255)
     group_id: int = Field(gt=0)
     locked: bool = False
+    initial_credit: Decimal = Field(default=Decimal("0.00"), ge=0, max_digits=12, decimal_places=2)
+    credit_comment: str = Field(default="", max_length=1000)
 
 
 class UserCreditChange(BaseModel):
@@ -131,6 +133,13 @@ class UserDetailView(BaseModel):
 
 @router.post("", response_model=UserView, status_code=201)
 def create_user(payload: UserCreate, admin: AdminPrincipal = Depends(require_admin_permission("ADD NEW USER"))) -> UserView:
+    if admin.remote_addr is None:
+        raise HTTPException(status_code=400, detail="A valid administrator remote address is required")
+    try:
+        remote_addr = str(ipaddress.ip_address(admin.remote_addr))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="A valid administrator remote address is required") from exc
+
     try:
         with connection() as conn:
             group_repo = GroupRepository(conn)
@@ -145,9 +154,26 @@ def create_user(payload: UserCreate, admin: AdminPrincipal = Depends(require_adm
                 "locked" if payload.locked else "active",
                 owner_id=admin.admin_id,
                 group_id=payload.group_id,
+                initial_credit=payload.initial_credit,
             )
             if payload.locked:
                 repository.set_status(record.id, "locked")
+            try:
+                UserCreditRepository(conn).record_user_creation_credit(
+                    record.id,
+                    admin_id=admin.admin_id,
+                    admin_username=admin.username,
+                    credit=payload.initial_credit,
+                    remote_addr=remote_addr,
+                    comment=payload.credit_comment,
+                    allow_negative_deposit=(
+                        admin.permissions.is_god()
+                        or admin.permissions.has_perm("NO DEPOSIT LIMIT")
+                    ),
+                )
+            except InsufficientAdminDepositError as exc:
+                raise HTTPException(status_code=403, detail="Administrator deposit is insufficient") from exc
+
             OperationalAuditRepository(conn).append(
                 actor_admin_id=admin.admin_id,
                 actor_username=admin.username,
@@ -155,8 +181,13 @@ def create_user(payload: UserCreate, admin: AdminPrincipal = Depends(require_adm
                 outcome="success",
                 target_type="user",
                 target_id=str(record.id),
-                remote_addr=admin.remote_addr,
-                details={"group_id": payload.group_id, "locked": payload.locked},
+                remote_addr=remote_addr,
+                details={
+                    "group_id": payload.group_id,
+                    "locked": payload.locked,
+                    "initial_credit": str(payload.initial_credit),
+                    "credit_comment": payload.credit_comment,
+                },
             )
             conn.commit()
             return UserView(id=record.id, username=record.username, locked=payload.locked)

@@ -1318,3 +1318,10 @@ Credit support remains a scoped workflow, not full billing parity: initial credi
 - Code and test coverage at that checkpoint includes single-user and bulk credit APIs, source-derived permissions, native credit/deposit checks, native credit/IAS records, operational audit atomicity and owner-scope denial.
 - Subsequent changes through `0f6279c494521b10ce809ed495143cdf8fb52636` are documentation/checkpoint updates only. Their CI runs were still in progress at the time of this note; no code changed after the green code/test checkpoint.
 
+
+
+### Initial credit on user creation — 2026-10-10
+
+Direct source trace: `IBSng/core/user/user_actions.py` `addNewUsers` (lines 69–98) consumes the creator's deposit by `credit * count`, creates users with the requested credit, records credit action `ADD_USER` (ID 1), then emits IAS events in order `ADD_USER` (type 3, amount 0) and `CHANGE_CREDIT` (type 1, amount equal to the initial credit). `core/user/credit_change_log.py` maps `ADD_USER` to action 1. `core/ias/ias_actions.py` maps IAS event IDs by list order, so these IDs are source-derived.
+
+ATD now exposes `initial_credit` (default 0) and `credit_comment` on the user-create request. It persists initial credit directly into `users.credit`, applies the creator deposit limit including native `NO DEPOSIT LIMIT`/GOD behavior, writes the native credit link and both IAS events, and appends the operational audit event within the same transaction. Insufficient deposit returns 403 and leaves the transaction uncommitted. This is source-backed initial-credit parity for the existing single-user create API only; batch user creation, initial-credit-from-group-attribute behavior, admin deposit management, and broader billing remain open.

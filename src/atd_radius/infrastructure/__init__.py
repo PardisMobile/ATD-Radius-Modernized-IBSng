@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from decimal import Decimal
 
 import psycopg
 
@@ -24,12 +25,19 @@ class UserRepository:
     def _status_locked(row: tuple) -> bool:
         return bool(row[2])
 
-    def create(self, username: str, status: str = "active", owner_id: int | None = None, group_id: int | None = None) -> UserRecord:
+    def create(
+        self,
+        username: str,
+        status: str = "active",
+        owner_id: int | None = None,
+        group_id: int | None = None,
+        initial_credit: Decimal = Decimal("0.00"),
+    ) -> UserRecord:
         del status
         user_id = self.conn.execute("SELECT nextval('users_user_id_seq')").fetchone()[0]
         self.conn.execute(
             "INSERT INTO users (user_id, credit, owner_id, group_id) VALUES (%s, %s, %s, %s)",
-            (user_id, 0, owner_id, group_id),
+            (user_id, initial_credit, owner_id, group_id),
         )
         self.conn.execute(
             "INSERT INTO normal_users (user_id, normal_username, normal_password) VALUES (%s, %s, %s)",

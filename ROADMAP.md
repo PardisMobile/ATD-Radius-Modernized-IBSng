@@ -47,7 +47,7 @@
 - [ ] EAP state machine and supported methods (optional ATD extension; not an A1.24 parity gate)
 
 ## Phase 3 — Billing
-- [ ] credit ledger
+- [ ] credit ledger (single/bulk credit-change APIs and user-create initial-credit/deposit/native logs implemented; full billing ledger remains open)
 - [x] charge-rule selection and Internet billing primitives
 - [x] VoIP tariff/charge-rule primitives
 - [ ] PostgreSQL billing persistence and A1.24 parity

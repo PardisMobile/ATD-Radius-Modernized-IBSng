@@ -75,6 +75,71 @@ class UserCreditRepository:
         targets = self.lock_targets([username])
         return targets[0] if targets else None
 
+    def record_user_creation_credit(
+        self,
+        user_id: int,
+        *,
+        admin_id: int,
+        admin_username: str,
+        credit: Decimal,
+        remote_addr: str,
+        comment: str,
+        allow_negative_deposit: bool,
+    ) -> None:
+        """Record the A1.24 ADD_USER credit/deposit effects in the caller's transaction.
+
+        The user row must already have been inserted with this initial credit.
+        A1.24 records ADD_USER (credit action 1), then IAS ADD_USER and CHANGE_CREDIT
+        events even when the initial credit is zero.
+        """
+        credit = Decimal(credit)
+        if credit < 0:
+            raise CreditUnderflowError("initial user credit cannot be negative")
+
+        admin_row = self.conn.execute(
+            "SELECT deposit::numeric FROM admins WHERE admin_id = %s FOR UPDATE",
+            (admin_id,),
+        ).fetchone()
+        if admin_row is None:
+            raise LookupError(f"administrator {admin_id} not found")
+        deposit = Decimal(str(admin_row[0] or 0))
+        resulting_deposit = deposit - credit
+        if resulting_deposit < 0 and not allow_negative_deposit:
+            raise InsufficientAdminDepositError("administrator deposit is insufficient")
+
+        self.conn.execute(
+            "UPDATE admins SET deposit = %s WHERE admin_id = %s",
+            (resulting_deposit, admin_id),
+        )
+        credit_change_id = int(
+            self.conn.execute("SELECT nextval('credit_change_id')").fetchone()[0]
+        )
+        self.conn.execute(
+            """
+            INSERT INTO credit_change
+                (credit_change_id, admin_id, action, per_user_credit, admin_credit, remote_addr, comment)
+            VALUES (%s, %s, 1, %s, %s, %s::inet, %s)
+            """,
+            (credit_change_id, admin_id, credit, credit, remote_addr, comment),
+        )
+        self.conn.execute(
+            "INSERT INTO credit_change_userid (credit_change_id, user_id) VALUES (%s, %s)",
+            (credit_change_id, user_id),
+        )
+
+        for event_type, amount in ((3, Decimal("0.00")), (1, credit)):
+            event_id = int(
+                self.conn.execute("SELECT nextval('ias_event_event_id')").fetchone()[0]
+            )
+            self.conn.execute(
+                """
+                INSERT INTO ias_event
+                    (event_id, event_type, actor, amount, destinations, comment)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                """,
+                (event_id, event_type, admin_username, amount, str(user_id), ""),
+            )
+
     def apply_admin_change(
         self,
         target: CreditTarget,
