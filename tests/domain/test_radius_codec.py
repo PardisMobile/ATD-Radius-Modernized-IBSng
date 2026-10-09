@@ -655,3 +655,41 @@ def test_uint32_attributes_reject_invalid_values(name, value):
     )
     with pytest.raises(RadiusCodecError):
         encode(packet)
+
+
+@pytest.mark.parametrize(
+    ("name", "label", "number"),
+    [
+        ("Acct-Status-Type", "Start", 1),
+        ("Acct-Status-Type", "Stop", 2),
+        ("Acct-Status-Type", "Interim-Update", 3),
+        ("Acct-Status-Type", "Accounting-On", 7),
+        ("Acct-Status-Type", "Accounting-Off", 8),
+        ("Acct-Status-Type", "Failed", 15),
+        ("NAS-Port-Type", "Virtual", 5),
+        ("NAS-Port-Type", "Ethernet", 15),
+        ("NAS-Port-Type", "Wireless-802.11", 19),
+    ],
+)
+def test_source_dictionary_enum_labels_encode_to_canonical_wire_numbers(name, label, number):
+    packet = RadiusPacket(
+        RadiusCode.ACCOUNTING_REQUEST,
+        41,
+        {name: label},
+        bytes(16),
+    )
+    wire = encode(packet)
+    assert wire[20] == {"Acct-Status-Type": 40, "NAS-Port-Type": 61}[name]
+    assert wire[22:26] == number.to_bytes(4, "big")
+    assert decode(wire).attributes[name] == label
+
+
+def test_unknown_integer_enum_label_is_not_silently_coerced():
+    packet = RadiusPacket(
+        RadiusCode.ACCOUNTING_REQUEST,
+        42,
+        {"Acct-Status-Type": "Alive"},
+        bytes(16),
+    )
+    with pytest.raises(RadiusCodecError):
+        encode(packet)
