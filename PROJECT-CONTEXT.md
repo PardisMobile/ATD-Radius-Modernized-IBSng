@@ -949,3 +949,15 @@ No frozen A1.24 authentication, CHAP/MS-CHAPv2, MPPE, MultiLogin, attribute inhe
 - The seven single-family strategies covered are ChilliSpot RADIUS Disconnect, Cisco VPDN RSH, MikroTik RSH, PortMaster SNMP, PortSlave launcher, Total Control SNMP and Quintum Tenor H323. Cisco SNMP-or-RSH remains deliberately unresolved at the generic adapter layer.
 - No concrete SNMP OID, RSH command, launcher argument, Asterisk Manager command, H323 sequence or SIP side effect was invented. No frozen PAP/CHAP/MS-CHAPv2, MPPE, MultiLogin, attribute, persistence, or accounting-core behavior was changed.
 - Implementation/test/docs commits for this batch: `694621fb7389781f523dabe8e00c556e3b90edda`, `2177c4a33329f66fd4dae3f4b929a567d620cf39`, `e20b1fe18fcf5518e0e74a432252837e9b841520`. CI is pending for the newest HEAD until its actual runs are observed.
+
+## Concrete RAS SNMP request-construction checkpoint — 2026-10-09
+
+- Re-extracted the canonical Source of Truth archive in an isolated audit branch and verified SHA-256 c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839bb9349d18a8 before inspecting source call paths.
+- PortMaster killUser() is now represented by a concrete transport-neutral SNMP request builder: NAS-Port maps to ifIndex int(port) + 2; IF-MIB ifAdminStatus is set to integer 2; source defaults are SNMP v1, UDP/161, community public, timeout 10, retries 3.
+- Total Control killUser() is now represented by a concrete transport-neutral SNMP request builder: the source-derived interface_index receives two ordered IF-MIB ifAdminStatus SETs, integer 2 then integer 1, using source defaults community public, timeout 10, retries 3, UDP/161, SNMP version 1.
+- The request builders are wired through PortMaster and Total Control provider adapter objects and have tests for exact OIDs, offsets, operation ordering, defaults and invalid inputs.
+- Implementation/test commits: eecc12dbccf38b0e695085364defd65aa1ec45ee, 473699bfcbc8ddcc7f3b57981ae62b8e193dd1b0, 6aa00418fa3fe99c814e8c6a020b076f29d5c62b, 919c0cffd66290e4f14d6d09f1b625e55c9f0d3e.
+- Documentation commits: 665b1484a94e87b17a1977b21455d88c7b2aff30, 1117091a5292f83d210315fed5de901107b2746a.
+- These builders create request envelopes only; no SNMP network I/O or live-device interoperability is claimed. Current main CI must be checked after the final context update before marking this batch green.
+- The temporary source-inspection workflow was kept off main; it must be removed from the audit branch after source review is complete.
+
