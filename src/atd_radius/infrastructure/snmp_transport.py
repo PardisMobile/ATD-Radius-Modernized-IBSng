@@ -549,6 +549,7 @@ class CiscoSnmpDisconnectService:
         community: str = "public",
         timeout: float = 10,
         retries: int = 3,
+        version: str = "2c",
     ) -> tuple[SnmpResponse, ...]:
         from atd_radius.domain.ras_provider_adapters import CISCO_EXTERNAL_ADAPTER
 
@@ -558,6 +559,7 @@ class CiscoSnmpDisconnectService:
                 "community": community,
                 "timeout": timeout,
                 "retries": retries,
+                "version": version,
             }
         )
         descriptions = self._transport.walk_text_mapping(lookup)
@@ -572,6 +574,7 @@ class CiscoSnmpDisconnectService:
                 "community": community,
                 "timeout": timeout,
                 "retries": retries,
+                "snmp_version": version,
             }
         )
         if request is None:
