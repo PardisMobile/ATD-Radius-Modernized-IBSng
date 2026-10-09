@@ -44,8 +44,9 @@ def call_permission(monkeypatch, permissions, required, locked=False):
         yield conn
 
     monkeypatch.setattr(dependencies, "connection", fake_connection)
+    principal = dependencies.require_admin_session(request(), "session-token")
     dependency = dependencies.require_admin_permission(required)
-    return dependency(request(), "session-token")
+    return dependency(principal)
 
 
 def test_source_ras_permission_dependencies_are_enforced(monkeypatch):
@@ -77,3 +78,27 @@ def test_god_bypass_does_not_bypass_native_admin_lock(monkeypatch):
     with pytest.raises(HTTPException) as denied:
         call_permission(monkeypatch, [("GOD", "")], "CHANGE RAS", locked=True)
     assert denied.value.status_code == 403
+
+
+
+def test_group_visibility_matches_owner_and_explicit_access_rules(monkeypatch):
+    from atd_radius.api.admin_dependencies import AdminPrincipal, can_use_group
+    from atd_radius.domain.admin_permissions import AdminPermissionSet
+
+    owned = AdminPrincipal(7, "operator", None, AdminPermissionSet({}))
+    assert can_use_group(owned, "team-a", 7)
+    assert not can_use_group(owned, "team-b", 8)
+
+    group_access = AdminPrincipal(
+        7, "operator", None, AdminPermissionSet({"GROUP ACCESS": "team-b,team-c"})
+    )
+    assert can_use_group(group_access, "team-b", 8)
+    assert not can_use_group(group_access, "team-d", 8)
+
+    all_groups = AdminPrincipal(
+        7, "operator", None, AdminPermissionSet({"ACCESS ALL GROUPS": ""})
+    )
+    assert can_use_group(all_groups, "team-z", 99)
+
+    god = AdminPrincipal(7, "operator", None, AdminPermissionSet({"GOD": ""}))
+    assert can_use_group(god, "team-z", 99)
