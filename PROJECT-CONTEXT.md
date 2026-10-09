@@ -1342,3 +1342,11 @@ Source trace: `IBSng/core/admin/admin_handler.py:30-53` and `core/admin/admin.py
 ### Administrator name/comment update — 2026-10-10
 
 Direct source trace: `IBSng/core/admin/admin_handler.py:62-66` and `core/admin/admin_actions.py:111-123`. ATD now exposes `PUT /api/v1/admins/{username}`, enforces `CHANGE ADMIN INFO` → `SEE ADMIN INFO`, locks the target row, changes only the native `name` and `comment` columns, and appends operational audit in the same transaction. This does not implement admin password changes, lock/unlock, permission editing, or deletion.
+
+
+### Validation refresh after administrator information APIs — 2026-10-10
+
+- Latest implementation checkpoint before this documentation refresh: `de5336de6cae0088b3845d596975fd568d364e8e`.
+- Main CI passed on Python 3.11 and 3.12, including compile, Ruff, PHP syntax and PostgreSQL-backed integration tests: **591 passed, 2 warnings** on each matrix job. Run: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38001488157
+- Lightweight Python workflow passed with **589 passed, 2 skipped, 2 warnings**. The two skips are the live UDP/PostgreSQL integration tests in `tests/integration/test_live_udp_postgres.py`, because this lightweight workflow does not configure `ATD_TEST_DATABASE_URL`; the main CI workflow does configure PostgreSQL and both integration tests ran successfully.
+- Administrator APIs now cover deposit adjustment, source-scoped persisted information list/detail, and name/comment update. Remaining admin workflows include password changes, lock/unlock, permission editing, creation and deletion; volatile legacy activity fields remain unimplemented.
