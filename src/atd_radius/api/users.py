@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+import ipaddress
+from decimal import Decimal
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from atd_radius.api.admin_dependencies import (
     AdminPrincipal,
     can_access_user,
+    can_change_user_credit,
     can_use_group,
     can_view_connection_logs,
     can_view_credit_changes,
@@ -13,6 +17,11 @@ from atd_radius.api.admin_dependencies import (
     require_admin_session,
 )
 from atd_radius.infrastructure import UserRepository
+from atd_radius.infrastructure.credit_repository import (
+    CreditUnderflowError,
+    InsufficientAdminDepositError,
+    UserCreditRepository,
+)
 from atd_radius.infrastructure.db import connection
 from atd_radius.infrastructure.group import GroupRepository
 from atd_radius.infrastructure.operational_audit import OperationalAuditRepository
@@ -25,6 +34,17 @@ class UserCreate(BaseModel):
     username: str = Field(min_length=1, max_length=255)
     group_id: int = Field(gt=0)
     locked: bool = False
+
+
+class UserCreditChange(BaseModel):
+    delta: Decimal = Field(max_digits=12, decimal_places=2)
+    comment: str = Field(max_length=1000)
+
+
+class UserCreditView(BaseModel):
+    user_id: int
+    username: str
+    credit: Decimal
 
 
 class UserView(BaseModel):
@@ -247,3 +267,61 @@ def get_user_detail(username: str, admin: AdminPrincipal = Depends(require_admin
             else None
         ),
     )
+
+@router.post("/{username}/credit", response_model=UserCreditView)
+def change_user_credit(
+    username: str,
+    payload: UserCreditChange,
+    admin: AdminPrincipal = Depends(require_admin_session),
+) -> UserCreditView:
+    """Apply one source-backed A1.24 credit change as a single audited transaction."""
+    if admin.remote_addr is None:
+        raise HTTPException(status_code=400, detail="A valid administrator remote address is required")
+    try:
+        remote_addr = str(ipaddress.ip_address(admin.remote_addr))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="A valid administrator remote address is required") from exc
+
+    try:
+        with connection() as conn:
+            repository = UserCreditRepository(conn)
+            target = repository.lock_target(username)
+            if target is None:
+                raise HTTPException(status_code=404, detail="user not found")
+            if not can_change_user_credit(admin, target.owner_id):
+                raise HTTPException(status_code=403, detail="Administrator permission denied")
+            try:
+                credit = repository.apply_admin_change(
+                    target,
+                    admin_id=admin.admin_id,
+                    admin_username=admin.username,
+                    delta=payload.delta,
+                    remote_addr=remote_addr,
+                    comment=payload.comment,
+                    allow_negative_deposit=(
+                        admin.permissions.is_god()
+                        or admin.permissions.has_perm("NO DEPOSIT LIMIT")
+                    ),
+                )
+            except CreditUnderflowError as exc:
+                raise HTTPException(status_code=409, detail="User credit cannot become negative") from exc
+            except InsufficientAdminDepositError as exc:
+                raise HTTPException(status_code=403, detail="Administrator deposit is insufficient") from exc
+
+            OperationalAuditRepository(conn).append(
+                actor_admin_id=admin.admin_id,
+                actor_username=admin.username,
+                action="user.credit.change",
+                outcome="success",
+                target_type="user",
+                target_id=str(target.user_id),
+                remote_addr=remote_addr,
+                details={"delta": str(payload.delta), "resulting_credit": str(credit)},
+            )
+            conn.commit()
+            return UserCreditView(user_id=target.user_id, username=target.username, credit=credit)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=409, detail="USER credit could not be changed") from exc
+
