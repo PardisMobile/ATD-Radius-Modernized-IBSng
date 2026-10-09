@@ -38,6 +38,15 @@ class FakeLauncher:
         return "launcher-result"
 
 
+class FakeRSH:
+    def __init__(self):
+        self.executed = []
+
+    def execute(self, request):
+        self.executed.append(request)
+        return "rsh-result"
+
+
 class FakeChilliSpot:
     def __init__(self):
         self.calls = []
@@ -122,19 +131,40 @@ def test_chillispot_dispatch_rejects_invalid_radius_identifier(identifier):
         dispatcher.execute(request, radius_identifier=identifier, radius_secret="secret")
 
 
-def test_rsh_is_not_accidentally_executed_by_a_subprocess_transport():
+def test_unimplemented_h323_operation_remains_fail_closed():
     dispatcher = RASExternalOperationDispatcher(
-        snmp=FakeSnmp(), launcher=FakeLauncher(), chillispot=FakeChilliSpot()
+        snmp=FakeSnmp(), launcher=FakeLauncher(), rsh=FakeRSH(), chillispot=FakeChilliSpot()
     )
     request = ProviderOperationRequest(
-        provider="mikrotik",
-        operation=ExternalOperation.RSH,
+        provider="mvts",
+        operation=ExternalOperation.H323,
         action="disconnect",
-        parameters={"host": "192.0.2.4", "command": "do not execute"},
+        parameters={"command": "do not execute"},
     )
 
     with pytest.raises(UnsupportedExternalOperation, match="no executable transport"):
         dispatcher.execute(request)
+
+
+def test_dispatcher_routes_source_derived_rsh_to_rsh_transport():
+    rsh = FakeRSH()
+    dispatcher = RASExternalOperationDispatcher(
+        snmp=FakeSnmp(), launcher=FakeLauncher(), rsh=rsh, chillispot=FakeChilliSpot()
+    )
+    request = ProviderOperationRequest(
+        provider="cisco_vpdn",
+        operation=ExternalOperation.RSH,
+        action="disconnect",
+        parameters={
+            "host": "192.0.2.4",
+            "wrapper": "/opt/ibs-addons/cisco/rsh_wrapper",
+            "arguments": ("clear interface Vi2",),
+            "command": "clear interface Vi2",
+        },
+    )
+
+    assert dispatcher.execute(request) == "rsh-result"
+    assert rsh.executed == [request]
 
 def test_dispatcher_rejects_non_source_audited_snmp_oids_before_transport():
     snmp = FakeSnmp()
