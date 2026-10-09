@@ -46,7 +46,7 @@ class AdminCreditConn:
             return Result((self.deposit,))
         if "nextval('credit_change_id')" in sql:
             return Result((101,))
-        if "nextval('ias_event_id')" in sql:
+        if "nextval('ias_event_event_id')" in sql:
             return Result((501,))
         return Result(None)
 
