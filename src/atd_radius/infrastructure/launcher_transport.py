@@ -34,7 +34,7 @@ class LauncherResult:
 class ConfiguredLauncherTransport:
     """Execute only source-derived launcher request envelopes with bounded time."""
 
-    def __init__(self, *, timeout_seconds: float = 10, max_output_chars: int = 4096) -> None:
+    def __init__(self, *, timeout_seconds: float = 20, max_output_chars: int = 4096) -> None:
         if isinstance(timeout_seconds, bool) or not isinstance(timeout_seconds, (int, float)):
             raise ValueError("launcher timeout must be numeric")
         if not 0 < timeout_seconds <= 300:
