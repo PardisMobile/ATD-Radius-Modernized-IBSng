@@ -396,6 +396,7 @@ class SnmpV1V2cSetTransport:
                     (),
                     exact_oid=False,
                     allow_walk_end=True,
+                    expected_asn_type=None,
                 )
                 if response.error_status == 2:  # SNMPv1 noSuchName at subtree end
                     break
@@ -456,6 +457,7 @@ class SnmpV1V2cSetTransport:
         *,
         exact_oid: bool = True,
         allow_walk_end: bool = False,
+        expected_asn_type: int | None = 0x02,
     ) -> SnmpResponse:
         for attempt in range(retries + 1):
             sock.sendto(packet, endpoint)
@@ -499,6 +501,15 @@ class SnmpV1V2cSetTransport:
                         request_id=request_id,
                         error_status=response.error_status,
                         error_index=response.error_index,
+                        completed_responses=completed,
+                    )
+                if (
+                    expected_asn_type is not None
+                    and response.varbinds[0].asn_type != expected_asn_type
+                ):
+                    raise SnmpTransportError(
+                        "SNMP response varbind has unexpected ASN type",
+                        request_id=request_id,
                         completed_responses=completed,
                     )
                 if response.varbinds[0].asn_type in {0x80, 0x81, 0x82}:
