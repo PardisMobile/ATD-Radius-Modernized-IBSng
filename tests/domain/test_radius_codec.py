@@ -596,3 +596,62 @@ def test_control_request_encoder_rejects_packet_over_rfc_maximum_length():
     )
     with pytest.raises(RadiusCodecError, match="4096"):
         encode_control_request(request, "shared")
+
+
+@pytest.mark.parametrize(
+    ("name", "value"),
+    [
+        ("Framed-Routing", "1"),
+        ("Framed-IPX-Network", "4294967295"),
+        ("Acct-Authentic", "1"),
+        ("Acct-Link-Count", "2"),
+        ("Acct-Input-Gigawords", "3"),
+        ("Acct-Output-Gigawords", "4"),
+        ("ARAP-Zone-Access", "1"),
+        ("ARAP-Security", "2"),
+    ],
+)
+def test_source_dictionary_uint32_attributes_round_trip_as_four_octets(name, value):
+    from atd_radius.domain.radius_codec import decode, encode
+
+    packet = RadiusPacket(
+        RadiusCode.ACCOUNTING_REQUEST,
+        31,
+        {name: value},
+        bytes.fromhex("00112233445566778899aabbccddeeff"),
+    )
+    wire = encode(packet)
+    assert wire[20] == {
+        "Framed-Routing": 10,
+        "Framed-IPX-Network": 23,
+        "Acct-Authentic": 45,
+        "Acct-Link-Count": 51,
+        "Acct-Input-Gigawords": 52,
+        "Acct-Output-Gigawords": 53,
+        "ARAP-Zone-Access": 72,
+        "ARAP-Security": 73,
+    }[name]
+    assert wire[21] == 6
+    assert decode(wire).attributes[name] == value
+
+
+@pytest.mark.parametrize(
+    ("name", "value"),
+    [
+        ("Framed-Routing", -1),
+        ("Framed-Routing", 0x100000000),
+        ("Framed-Routing", True),
+        ("Framed-Routing", 1.5),
+        ("Acct-Input-Gigawords", "not-a-number"),
+        ("Framed-IPX-Network", "192.0.2.1"),
+    ],
+)
+def test_uint32_attributes_reject_invalid_values(name, value):
+    packet = RadiusPacket(
+        RadiusCode.ACCOUNTING_REQUEST,
+        32,
+        {name: value},
+        bytes(16),
+    )
+    with pytest.raises(RadiusCodecError):
+        encode(packet)
