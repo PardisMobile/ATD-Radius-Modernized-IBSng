@@ -515,3 +515,52 @@ class SnmpV1V2cSetTransport:
             request_id=request_id,
             completed_responses=completed,
         )
+
+
+class CiscoSnmpDisconnectService:
+    """Run Cisco's audited ifDescr lookup followed by its SNMP disconnect SET.
+
+    This service implements only the configured SNMP branch. A caller must
+    choose this service only when the source-configured Cisco SNMP flag is on;
+    the alternative RSH branch remains a separate operation.
+    """
+
+    def __init__(self, transport: SnmpV1V2cSetTransport) -> None:
+        self._transport = transport
+
+    def disconnect(
+        self,
+        *,
+        ras_ip: str,
+        port: str,
+        community: str = "public",
+        timeout: float = 10,
+        retries: int = 3,
+    ) -> tuple[SnmpResponse, ...]:
+        from atd_radius.domain.ras_provider_adapters import CISCO_EXTERNAL_ADAPTER
+
+        lookup = CISCO_EXTERNAL_ADAPTER.snmp_port_map_request(
+            {
+                "ras_ip": ras_ip,
+                "community": community,
+                "timeout": timeout,
+                "retries": retries,
+            }
+        )
+        descriptions = self._transport.walk_text_mapping(lookup)
+        index = CISCO_EXTERNAL_ADAPTER.resolve_snmp_port_index(port, descriptions)
+        if index is None:
+            raise LookupError(f"Cisco SNMP ifDescr map does not contain port {port!r}")
+        request = CISCO_EXTERNAL_ADAPTER.source_disconnect_request(
+            {
+                "ras_ip": ras_ip,
+                "port": port,
+                "port_index": index,
+                "community": community,
+                "timeout": timeout,
+                "retries": retries,
+            }
+        )
+        if request is None:
+            raise RuntimeError("Cisco SNMP disconnect request was not constructed")
+        return self._transport.execute(request)
