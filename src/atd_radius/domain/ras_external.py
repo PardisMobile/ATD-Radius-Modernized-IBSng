@@ -238,6 +238,67 @@ def _source_nonempty_text(value: object, name: str) -> str:
     return value
 
 
+def build_cisco_vpdn_interface_lookup_request(
+    *,
+    ras_ip: str,
+    username: str,
+    wrapper: str,
+    max_concurrent_connections: object = 3,
+) -> ProviderOperationRequest:
+    """Build the exact Cisco VPDN RSH caller lookup request from A1.24."""
+    target = _source_ipv4(ras_ip)
+    user = _source_cli_token(username, "username")
+    wrapper_path = _source_nonempty_text(wrapper, "wrapper")
+    concurrency = _source_integer(
+        max_concurrent_connections, "max_concurrent_connections", minimum=1
+    )
+    command = f"show caller user {user}"
+    return ProviderOperationRequest(
+        provider="cisco_vpdn",
+        operation=ExternalOperation.RSH,
+        action="discover_interface",
+        parameters={
+            "host": target,
+            "wrapper": wrapper_path,
+            "max_concurrent_connections": concurrency,
+            "arguments": (command,),
+            "command": command,
+        },
+    )
+
+
+def resolve_cisco_vpdn_interface(
+    output: str, *, username: str, remote_ip: str | None = None
+) -> str | None:
+    """Parse Cisco VPDN caller output using the source-defined matching rules.
+
+    A1.24 uses the pattern User: (.+?), line (.+?), .+? remote (IPv4) with
+    multiline and dot-all matching. If remote_ip is supplied, both username
+    and remote IP must match; otherwise the first parsed interface is chosen.
+    None signals that the caller must handle the source's interface-not-found
+    error path.
+    """
+    import re
+
+    if not isinstance(output, str):
+        raise ValueError("output must be a string")
+    user = _source_cli_token(username, "username")
+    target_ip = None
+    if remote_ip:
+        target_ip = _source_ipv4(remote_ip, "remote_ip")
+    pattern = re.compile(
+        r"User: (.+?), line (.+?), .+? remote (\\d+\\.\\d+\\.\\d+\\.\\d+)",
+        re.M | re.S,
+    )
+    matches = pattern.findall(output)
+    if target_ip is None:
+        return matches[0][1] if matches else None
+    for matched_username, interface, matched_ip in matches:
+        if matched_username == user and matched_ip == target_ip:
+            return interface
+    return None
+
+
 def build_cisco_vpdn_disconnect_request(
     *,
     ras_ip: str,
