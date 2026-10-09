@@ -238,6 +238,118 @@ def _source_nonempty_text(value: object, name: str) -> str:
     return value
 
 
+def resolve_cisco_snmp_port_index(
+    port: str, interface_descriptions: Mapping[str, object]
+) -> str | None:
+    """Resolve Cisco port description to ifIndex from the source SNMP walk."""
+    if not isinstance(port, str) or not port:
+        raise ValueError("port must be a non-empty string")
+    if not isinstance(interface_descriptions, Mapping):
+        raise ValueError("interface_descriptions must be a mapping")
+    index_by_description: dict[object, str] = {}
+    for oid, description in interface_descriptions.items():
+        if not isinstance(oid, str) or not oid:
+            raise ValueError("interface description OIDs must be non-empty strings")
+        suffix = oid[oid.rfind(".") + 1 :]
+        if not suffix.isdecimal():
+            raise ValueError("interface description OID must end in a numeric ifIndex")
+        index_by_description[description] = suffix
+    return index_by_description.get(port)
+
+
+def build_cisco_snmp_disconnect_request(
+    *,
+    ras_ip: str,
+    port_index: object,
+    community: str = "public",
+    timeout: float = 10,
+    retries: object = 3,
+) -> ProviderOperationRequest:
+    """Build Cisco's A1.24 SNMP kill SET using the resolved interface index."""
+    target = _source_ipv4(ras_ip)
+    index = _source_integer(port_index, "port_index", minimum=0)
+    community, timeout, retry_count = _validate_snmp_settings(
+        community, timeout, retries
+    )
+    return ProviderOperationRequest(
+        provider="cisco",
+        operation=ExternalOperation.SNMP,
+        action="disconnect",
+        parameters={
+            "ras_ip": target,
+            "community": community,
+            "timeout": timeout,
+            "retries": retry_count,
+            "udp_port": 161,
+            "version": "2c",
+            "set": {
+                "oid": ".1.3.6.1.4.1.9.2.1.76.0",
+                "type": "i",
+                "value": index,
+            },
+        },
+    )
+
+
+def build_cisco_rsh_disconnect_request(
+    *, ras_ip: str, port: str, wrapper: str
+) -> ProviderOperationRequest | None:
+    """Build Cisco's source-defined RSH kill branch; unsupported ports return None."""
+    target = _source_ipv4(ras_ip)
+    port_name = _source_cli_token(port, "port")
+    wrapper_path = _source_nonempty_text(wrapper, "wrapper")
+    import re
+
+    if port_name.startswith("Async"):
+        match = re.match(r"(Async[0-9/]+)", port_name)
+        if match is None:
+            return None
+        command = f"clear line {match.group(1)[5:]}"
+    elif port_name.startswith("Serial"):
+        command = f"clear interface {port_name}"
+    else:
+        return None
+    return ProviderOperationRequest(
+        provider="cisco",
+        operation=ExternalOperation.RSH,
+        action="disconnect",
+        parameters={
+            "host": target,
+            "wrapper": wrapper_path,
+            "arguments": (command,),
+            "command": command,
+        },
+    )
+
+
+def build_cisco_disconnect_request(
+    *,
+    ras_ip: str,
+    port: str,
+    kill_use_snmp: object = 1,
+    wrapper: str,
+    port_index: object | None = None,
+    community: str = "public",
+    timeout: float = 10,
+    retries: object = 3,
+) -> ProviderOperationRequest | None:
+    """Select Cisco's source-configured SNMP/RSH kill branch (SNMP default)."""
+    use_snmp = _source_integer(kill_use_snmp, "kill_use_snmp", minimum=0)
+    if use_snmp:
+        if port_index is None:
+            raise ValueError("port_index is required when Cisco SNMP kill is enabled")
+        return build_cisco_snmp_disconnect_request(
+            ras_ip=ras_ip,
+            port_index=port_index,
+            community=community,
+            timeout=timeout,
+            retries=retries,
+        )
+    return build_cisco_rsh_disconnect_request(
+        ras_ip=ras_ip, port=port, wrapper=wrapper
+    )
+
+
 def build_cisco_vpdn_interface_lookup_request(
     *,
     ras_ip: str,
