@@ -48,6 +48,33 @@ _GROUP_PERMISSIONS = AdminPermissionEvaluator(
 )
 
 
+def _all_or_owner(value: str | None, context: dict[str, object]) -> bool:
+    return value == "All" or (
+        value == "Restricted" and context.get("owner_id") == context.get("admin_id")
+    )
+
+
+_USER_PERMISSIONS = AdminPermissionEvaluator(
+    [
+        PermissionSpec("GOD", PermissionKind.NO_VALUE),
+        PermissionSpec("ADD NEW USER", PermissionKind.NO_VALUE),
+        PermissionSpec("GET USER INFORMATION", PermissionKind.CONTEXTUAL, evaluator=_all_or_owner),
+        PermissionSpec(
+            "CHANGE USER ATTRIBUTES",
+            PermissionKind.CONTEXTUAL,
+            dependencies=("GET USER INFORMATION",),
+            evaluator=_all_or_owner,
+        ),
+        PermissionSpec(
+            "DELETE USER",
+            PermissionKind.CONTEXTUAL,
+            dependencies=("GET USER INFORMATION",),
+            evaluator=_all_or_owner,
+        ),
+    ]
+)
+
+
 _RAS_PERMISSIONS = AdminPermissionEvaluator(
     [
         PermissionSpec("GOD", PermissionKind.NO_VALUE),
@@ -91,13 +118,42 @@ def require_admin_permission(permission_name: str):
     def dependency(
         principal: AdminPrincipal = Depends(require_admin_session),
     ) -> AdminPrincipal:
-        evaluator = _RAS_PERMISSIONS if permission_name in {"LIST RAS", "GET RAS INFORMATION", "CHANGE RAS"} else _GROUP_PERMISSIONS
+        if permission_name in {"LIST RAS", "GET RAS INFORMATION", "CHANGE RAS"}:
+            evaluator = _RAS_PERMISSIONS
+        elif permission_name in {"ADD NEW USER", "GET USER INFORMATION", "CHANGE USER ATTRIBUTES", "DELETE USER"}:
+            evaluator = _USER_PERMISSIONS
+        else:
+            evaluator = _GROUP_PERMISSIONS
         if not evaluator.can_do(principal.permissions, permission_name):
             raise HTTPException(status_code=403, detail="Administrator permission denied")
         return principal
 
     dependency.__name__ = f"require_admin_{permission_name.lower().replace(' ', '_')}"
     return dependency
+
+
+def can_access_user(principal: AdminPrincipal, owner_id: int | None) -> bool:
+    return _USER_PERMISSIONS.can_do(
+        principal.permissions,
+        "GET USER INFORMATION",
+        context={"admin_id": principal.admin_id, "owner_id": owner_id},
+    )
+
+
+def can_change_user(principal: AdminPrincipal, owner_id: int | None) -> bool:
+    return _USER_PERMISSIONS.can_do(
+        principal.permissions,
+        "CHANGE USER ATTRIBUTES",
+        context={"admin_id": principal.admin_id, "owner_id": owner_id},
+    )
+
+
+def can_delete_user(principal: AdminPrincipal, owner_id: int | None) -> bool:
+    return _USER_PERMISSIONS.can_do(
+        principal.permissions,
+        "DELETE USER",
+        context={"admin_id": principal.admin_id, "owner_id": owner_id},
+    )
 
 
 def require_group_change():
@@ -140,6 +196,9 @@ def can_use_group(principal: AdminPrincipal, group_name: str, owner_id: int | No
 __all__ = [
     "AdminPrincipal",
     "can_use_group",
+    "can_access_user",
+    "can_change_user",
+    "can_delete_user",
     "require_admin_permission",
     "require_admin_session",
     "require_group_change",
