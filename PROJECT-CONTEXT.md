@@ -888,3 +888,12 @@ The earlier OPEN ledger line saying live PostgreSQL transaction rollback proof i
 - Added negative regression cases for malformed trailing attributes, duplicate Message-Authenticator attributes, and extra bytes past the declared packet length. Corrected the duplicate-attribute fixture to contain an actual 16-byte attribute value.
 - Existing Python and CI workflows were green on the prior implementation/documentation commits; the corrected test fixture has triggered a fresh CI run and is not yet marked green until that run completes.
 - No frozen PAP/CHAP/MS-CHAPv2, MPPE, MultiLogin, attribute, persistence or accounting behavior was changed.
+
+
+## RFC 5176 packet-boundary correction — 2026-10-09
+
+- Corrected control request/response verifiers to follow RFC 5176 §2.3: declared packet length must be 20..4096 and must not exceed received datagram length.
+- Bytes beyond the declared packet length are legal padding and ignored; datagrams shorter than declared length are rejected. This replaces an earlier strict-equality check that would have rejected valid padded packets.
+- Added regression tests for padding, truncation and the 4096-byte maximum on both Disconnect/CoA requests and responses.
+- Source: https://www.rfc-editor.org/rfc/rfc5176.html
+- CI is being re-run on the latest test and documentation commits; no green status is claimed until both workflows complete.
