@@ -73,7 +73,7 @@ Value types:
 - `KILL USER` and `CLEAR USER` depend on SEE ONLINE USERS.
 - `SEE CONNECTION LOGS` and `SEE CREDIT CHANGES` are independent All/Restricted permissions. The user-detail API now enforces each separately instead of treating GET USER INFORMATION as sufficient.
 - `CHANGE USER CREDIT` is independently All/Restricted and depends on `GET USER INFORMATION`. Credit changes must debit/credit the administrator deposit, prevent user credit from going negative, and write native `credit_change`/`credit_change_userid` plus IAS event records. The implemented endpoint performs those writes in one transaction and also appends the ATD operational audit event.
-- `NO DEPOSIT LIMIT` permits the native administrator deposit to go below zero; it does not bypass the user-credit non-negative check.
+- `NO DEPOSIT LIMIT` permits the native administrator deposit to go below zero; it does not bypass the user-credit non-negative check. The API supports both single-user and bounded bulk credit changes; bulk operations lock users in stable ID order, check every user's scope/balance before writes, apply delta × count to administrator deposit, link one native credit-change record to every affected user, and write one IAS event. Initial credit parity on add-user, full deposit administration, and broader billing/quota semantics remain open.
 
 ## Audit limitations and next steps
 
