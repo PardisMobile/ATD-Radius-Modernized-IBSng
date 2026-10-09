@@ -83,14 +83,14 @@ class NativeAccessContext:
                     response = packet.attributes.get("MS-CHAP2-Response")
                     raw_response = response if isinstance(response, bytes) else bytes.fromhex(str(response))
                     attrs["__mschapv2_success"] = (
-                        chr(raw_response[0]) +
-                        generate_mschapv2_authenticator_response(
+                        bytes((raw_response[0],))
+                        + generate_mschapv2_authenticator_response(
                             stored_password,
                             raw_response[26:50],
                             raw_response[2:18],
                             packet.attributes.get("MS-CHAP-Challenge"),
                             username,
-                        )
+                        ).encode("ascii")
                     )
                     send_key, recv_key = derive_mschapv2_mppe_keys(
                         stored_password, raw_response[26:50]
