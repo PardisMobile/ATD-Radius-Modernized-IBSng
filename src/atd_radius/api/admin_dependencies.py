@@ -109,6 +109,11 @@ _ADMIN_PERMISSIONS = AdminPermissionEvaluator(
             dependencies=("SEE ADMIN INFO",),
         ),
         PermissionSpec(
+            "CHANGE ADMIN PASSWORD",
+            PermissionKind.NO_VALUE,
+            dependencies=("SEE ADMIN INFO",),
+        ),
+        PermissionSpec(
             "CHANGE ADMIN DEPOSIT",
             PermissionKind.NO_VALUE,
             dependencies=("CHANGE ADMIN INFO",),
@@ -148,6 +153,13 @@ def require_admin_session(
         return AdminPrincipal(session.admin_id, session.username, remote_addr, permissions)
 
 
+def can_change_admin_password(principal: AdminPrincipal, target_username: str) -> bool:
+    """A1.24 permits self password changes without CHANGE ADMIN PASSWORD."""
+    if principal.username == target_username:
+        return True
+    return _ADMIN_PERMISSIONS.can_do(principal.permissions, "CHANGE ADMIN PASSWORD")
+
+
 def require_admin_permission(permission_name: str):
     """Create a dependency enforcing a session and a source-backed permission."""
     def dependency(
@@ -159,7 +171,7 @@ def require_admin_permission(permission_name: str):
             evaluator = _USER_PERMISSIONS
         elif permission_name in {"SEE CONNECTION LOGS", "SEE CREDIT CHANGES"}:
             evaluator = _REPORT_PERMISSIONS
-        elif permission_name in {"SEE ADMIN INFO", "CHANGE ADMIN INFO", "CHANGE ADMIN DEPOSIT"}:
+        elif permission_name in {"SEE ADMIN INFO", "CHANGE ADMIN INFO", "CHANGE ADMIN DEPOSIT", "CHANGE ADMIN PASSWORD"}:
             evaluator = _ADMIN_PERMISSIONS
         else:
             evaluator = _GROUP_PERMISSIONS
@@ -259,6 +271,7 @@ def can_use_group(principal: AdminPrincipal, group_name: str, owner_id: int | No
 __all__ = [
     "AdminPrincipal",
     "can_use_group",
+    "can_change_admin_password",
     "can_access_user",
     "can_change_user",
     "can_delete_user",

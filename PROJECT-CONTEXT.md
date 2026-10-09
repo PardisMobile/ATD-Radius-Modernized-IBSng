@@ -1367,3 +1367,8 @@ Direct source trace: `IBSng/core/admin/admin_handler.py:62-66` and `core/admin/a
 ### Administrator lock/unlock — 2026-10-10
 
 Direct source trace from canonical A1.24: `core/admin/admin_handler.py:104-119`, `core/admin/admin_actions.py:313-349`, and `core/admin/admin_lock.py`. ATD adds `POST /api/v1/admins/{username}/locks` and `DELETE /api/v1/admins/{username}/locks/{lock_id}`. Both enforce `CHANGE ADMIN INFO` → `SEE ADMIN INFO`; lock inserts native `admin_locks` using `admin_locks_lock_id_seq`, records reason and authenticated locker ID; unlock deletes only the requested lock belonging to the selected admin. Each operation row-locks the target and commits operational audit in the same transaction. A1.24 allows multiple locks; the admin remains locked until every lock row is removed. Password changes, permission editing, admin creation/deletion and volatile activity fields remain open.
+
+
+### Administrator password update — 2026-10-10
+
+Direct source trace: `IBSng/core/admin/admin_handler.py:47-52`, `core/admin/perms/CHANGE_ADMIN_PASSWORD.py`, `core/lib/password_lib.py`, and `core/admin/admin_actions.py:54-81`. ATD now exposes `PUT /api/v1/admins/{username}/password`. Self-change is allowed without `CHANGE ADMIN PASSWORD`; changing another admin requires that permission and the `SEE ADMIN INFO` dependency. The input is trimmed and validated using the native A1.24 allowed character set; password persistence uses source-compatible MD5-crypt with a random salt. The password/hash is never included in audit details; successful update and operational audit share a transaction.

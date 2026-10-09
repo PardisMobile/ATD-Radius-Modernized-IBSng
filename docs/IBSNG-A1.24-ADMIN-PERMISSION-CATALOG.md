@@ -19,7 +19,7 @@ Value types:
 | ADD NEW USER | No value | — | Implemented for user creation |
 | CHANGE ADMIN DEPOSIT | No value | CHANGE ADMIN INFO | Implemented for deposit adjustment API; broader admin workflows remain open |
 | CHANGE ADMIN INFO | No value | SEE ADMIN INFO | Implemented for native name/comment update, lock/unlock and as dependency for deposit adjustment; password/permission/create/delete workflows remain open |
-| CHANGE ADMIN PASSWORD | No value | SEE ADMIN INFO | Not implemented |
+| CHANGE ADMIN PASSWORD | No value | SEE ADMIN INFO | Implemented for changing another admin's password; self-change follows source exemption |
 | CHANGE ADMIN PERMISSIONS | No value | SEE ADMIN INFO; SEE ADMIN PERMISSIONS | Not implemented |
 | CHANGE BANDWIDTH MANAGER | No value | CHANGE CHARGE | Not implemented |
 | CHANGE CHARGE | No value | ACCESS ALL CHARGES | Not implemented |
@@ -100,3 +100,8 @@ Source trace: `core/admin/admin_handler.py:62-66` and `core/admin/admin_actions.
 ### Administrator lock lifecycle — 2026-10-10
 
 Source trace: `core/admin/admin_handler.py` `lockAdmin`/`unlockAdmin` and `core/admin/admin_actions.py:313-349`. Both operations require `CHANGE ADMIN INFO` (which depends on `SEE ADMIN INFO`). Lock creates an `admin_locks` row with the native lock sequence, reason and acting administrator ID; unlock deletes only the specified lock row belonging to the target admin. Multiple lock rows are allowed, and A1.24 considers an admin locked while any row remains. ATD now implements both operations with target row locking and same-transaction operational audit.
+
+
+### Administrator password update — 2026-10-10
+
+Source trace: `IBSng/core/admin/admin_handler.py:47-52`, `core/admin/perms/CHANGE_ADMIN_PASSWORD.py`, `core/lib/password_lib.py`, and `core/admin/admin_actions.py:54-81`. A1.24 allows an administrator to change their own password without `CHANGE ADMIN PASSWORD`; changing another administrator requires that permission and its `SEE ADMIN INFO` dependency. The submitted value is stripped and must be non-empty ASCII letters/digits/underscore/hyphen; A1.24 stores MD5-crypt. ATD now preserves those native storage semantics with a random 8-character salt, updates only `admins.password`, and records operational audit without logging the password/hash. This route is for native A1.24 compatibility and does not imply MD5-crypt is recommended for new unrelated applications.

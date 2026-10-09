@@ -5,7 +5,14 @@ import ipaddress
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from atd_radius.api.admin_dependencies import AdminPrincipal, require_admin_permission, require_admin_session
+from atd_radius.api.admin_dependencies import (
+    AdminPrincipal,
+    can_change_admin_password,
+    require_admin_permission,
+    require_admin_session,
+)
+from atd_radius.domain.ibsng_password import hash_ibsng_password
+from atd_radius.infrastructure.admin_credentials import AdminCredentialRepository
 from atd_radius.infrastructure.admin_information import AdminInformationRepository
 from atd_radius.infrastructure.db import connection
 from atd_radius.infrastructure.operational_audit import OperationalAuditRepository
@@ -84,6 +91,50 @@ def update_admin_information(
         raise
     except Exception as exc:
         raise HTTPException(status_code=409, detail="Administrator information could not be updated") from exc
+
+
+class AdminPasswordChange(BaseModel):
+    new_password: str
+
+
+@router.put("/{username}/password", status_code=204)
+def change_admin_password(
+    username: str,
+    payload: AdminPasswordChange,
+    admin: AdminPrincipal = Depends(require_admin_session),
+):
+    # Source: AdminHandler.changePassword; self-change is allowed without the
+    # CHANGE ADMIN PASSWORD permission, but changing another admin is not.
+    if not can_change_admin_password(admin, username):
+        raise HTTPException(status_code=403, detail="Administrator permission denied")
+    normalized_password = payload.new_password.strip()
+    try:
+        password_hash = hash_ibsng_password(normalized_password)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail="Password contains unsupported characters") from exc
+    remote_addr = _validated_remote_addr(admin.remote_addr)
+    try:
+        with connection() as conn:
+            target = AdminCredentialRepository(conn).update_password(username, password_hash)
+            if target is None:
+                raise HTTPException(status_code=404, detail="administrator not found")
+            OperationalAuditRepository(conn).append(
+                actor_admin_id=admin.admin_id,
+                actor_username=admin.username,
+                action="admin.password.change",
+                outcome="success",
+                target_type="admin",
+                target_id=str(target.admin_id),
+                remote_addr=remote_addr,
+                details={"target_username": target.username, "self_change": target.username == admin.username},
+            )
+            conn.commit()
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=409, detail="Administrator password could not be changed") from exc
+    from fastapi import Response
+    return Response(status_code=204)
 
 
 class AdminLockCreate(BaseModel):

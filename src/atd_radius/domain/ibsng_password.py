@@ -1,9 +1,10 @@
 """Compatibility verification for the password semantics in IBSng A1.24.
 
 A1.24's Password class supports plaintext equality and Unix MD5-crypt ($1$)
-hashes. This module reproduces those comparison semantics without relying on
-Python's removed/deprecated crypt module. New passwords should not be stored
-with MD5-crypt; this is only for reading legacy records during migration.
+hashes, and A1.24 admin password updates write MD5-crypt. This module reproduces
+the source format without relying on Python's removed/deprecated crypt module.
+Use hash_ibsng_password only when native IBSng password-format compatibility is
+required; it is not a general-purpose modern password-storage recommendation.
 """
 from __future__ import annotations
 
@@ -87,3 +88,20 @@ def verify_ibsng_password(candidate: str, stored: str) -> bool:
         expected = _md5_crypt(stored, candidate_match.group(1))
         return hmac.compare_digest(expected, candidate)
     return hmac.compare_digest(candidate, stored)
+
+
+
+def hash_ibsng_password(password: str) -> str:
+    """Create a source-compatible A1.24 MD5-crypt password hash with a random salt.
+
+    A1.24's admin password update path trims the submitted value and rejects
+    empty strings or characters outside ASCII letters, digits, underscore and
+    hyphen. The API performs that same trim before calling this function.
+    """
+    import secrets
+
+    if not password or re.search(r"[^A-Za-z0-9_\-]", password):
+        raise ValueError("password contains characters not accepted by IBSng A1.24")
+    salt_alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+    salt = "".join(secrets.choice(salt_alphabet) for _ in range(8))
+    return _md5_crypt(password, salt)
