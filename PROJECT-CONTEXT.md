@@ -1293,3 +1293,21 @@ The latest Python and full CI runs for `c7be3d8a` were still in progress at the 
 
 Use the existing full-product scope definition: behavioral IBSng A1.24 parity with persistence, integration tests and operational delivery, not file/code count. Current honest estimate remains **about 55–60% complete, 40–45% remaining**. The latest report-permission and single-user credit increments close targeted API gaps but do not complete billing, user attribute lifecycle, delete/owner-transfer, online-session/disconnect safety, full RAS/provider/dictionary parity, XML-RPC, migration, installer/deployment/licensing, or the deferred full UI workflows. This estimate is an engineering judgment, not a measured test metric.
 
+### Bulk credit parity increment — 2026-10-10
+
+Extended the credit workflow from single-user to bounded bulk changes:
+- `POST /api/v1/users/credit/bulk` accepts up to 100 unique usernames and a per-user delta.
+- Target rows are locked in stable user-ID order; missing users or any out-of-scope owner reject the whole batch before writes.
+- Each user's resulting credit is validated before mutation; admin deposit delta is `per_user_delta × user_count`.
+- One native `credit_change` row is linked to every affected user; one IAS event records the full user-ID list; one operational audit event is committed with the transaction.
+- Added repository and API regression tests for batch totals, stable ordering, ownership denial, native log linkage and atomic commit behavior.
+- Updated the source permission catalog and roadmap.
+
+Code and test checkpoints:
+- `30e522d1180f17146daf262c468694628691ee97` — bulk repository implementation; initial test run failed because existing fake connection fixtures had no `fetchall()`; test fixtures were then corrected.
+- `73be6966313ca4871529a8299efa990831edd1b1` — bulk API implementation; earlier tests still used the pre-bulk fake connection.
+- `8ebb384dff11a828f685f2365ead06b7a00a6b35` — repository/API fixtures and regression tests updated; Python suite passed: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38000100666
+- Latest docs checkpoint `69fc923a95cb03cef61deea021f037398391189e` has Python and full CI still running at this note's creation. Verify latest HEAD before declaring all checks green.
+
+Credit support remains a scoped workflow, not full billing parity: initial credit/deposit behavior on user creation, admin deposit management, billing ledger, charge/usage integration, expiry/subscription, and report parity are still open.
+
