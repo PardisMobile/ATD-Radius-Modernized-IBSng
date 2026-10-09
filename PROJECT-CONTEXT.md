@@ -10,7 +10,7 @@ Canonical archive:
 `Source of Truth/IBSng-A1.24.tar.bz2`
 
 SHA-256:
-`c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839bb9349d18a8`
+`c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839614bb9349d18a8`
 
 Parity docs, inventories, matrices, notes, tests, and current ATD code are guides/records/validation artifacts only. They must never override or substitute for the actual IBSng source when the source is available. If any parity document conflicts with the source archive, **the source archive wins**.
 
@@ -952,7 +952,7 @@ No frozen A1.24 authentication, CHAP/MS-CHAPv2, MPPE, MultiLogin, attribute inhe
 
 ## Concrete RAS SNMP request-construction checkpoint — 2026-10-09
 
-- Re-extracted the canonical Source of Truth archive in an isolated audit branch and verified SHA-256 c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839bb9349d18a8 before inspecting source call paths.
+- Re-extracted the canonical Source of Truth archive in an isolated audit branch and verified SHA-256 c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839614bb9349d18a8 before inspecting source call paths.
 - PortMaster killUser() is now represented by a concrete transport-neutral SNMP request builder: NAS-Port maps to ifIndex int(port) + 2; IF-MIB ifAdminStatus is set to integer 2; source defaults are SNMP v1, UDP/161, community public, timeout 10, retries 3.
 - Total Control killUser() is now represented by a concrete transport-neutral SNMP request builder: the source-derived interface_index receives two ordered IF-MIB ifAdminStatus SETs, integer 2 then integer 1, using source defaults community public, timeout 10, retries 3, UDP/161, SNMP version 1.
 - The request builders are wired through PortMaster and Total Control provider adapter objects and have tests for exact OIDs, offsets, operation ordering, defaults and invalid inputs.
@@ -980,3 +980,18 @@ The current planning estimate is recorded in ROADMAP.md and is not a CI metric:
 
 The estimate must be revised as complete milestones land; do not promise a calendar finish date from this range alone. The user's instruction is to continue in cohesive autonomous batches without requiring repeated “continue” prompts.
 
+## Canonical archive checksum correction and RSH provider batch — 2026-10-09
+
+A fresh GitHub Actions runner independently calculated the SHA-256 of the checked-in canonical archive at `Source of Truth/IBSng-A1.24.tar.bz2`. The measured digest is:
+
+`c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839614bb9349d18a8`
+
+Earlier copies of this handoff contained a mistyped digest (`...839bb934...`). The checked-in archive was not modified; this corrects the recorded checksum to match the bytes currently in the repository. Future source audits must compare against the corrected digest.
+
+Direct extraction after digest verification confirmed:
+- Cisco VPDN RSH uses configured `cisco_rsh_command`, targets the RAS IP, has a default concurrency limit of 3, resolves the user's virtual interface via `show caller user <username>` (optionally matching remote IP), and disconnects via `clear interface <interface>`.
+- MikroTik's configured `mikrotik_ssh_wrapper` receives the RAS IP plus the argument sequence `[mikrotik_ssh_username, mikrotik_ssh_password, command]`. For exact NAS-Port-Type `Wireless-802.11`, source runs the hotspot active removal command keyed by normalized username and client IP; all other types run the PPP active removal command.
+- ATD now provides immutable, transport-neutral request builders and adapter wiring for those two paths. Cisco VPDN's builder accepts an already-resolved interface; it does not pretend to perform the preceding `show caller user` lookup. MikroTik command interpolation is guarded by a conservative token allowlist because the source uses unquoted interpolation and RouterOS escaping semantics must not be guessed.
+- These are request envelopes, not an execution layer. No RSH wrapper is run and no live router is contacted in unit tests.
+
+The temporary source-inspection workflow was used only on `audit/a124-rsh-provider-20261009`; it must not be merged into main and should be removed from that audit branch after the source findings are recorded.
