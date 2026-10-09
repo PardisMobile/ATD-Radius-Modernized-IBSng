@@ -1212,3 +1212,18 @@ Validation:
 - The latest source-audit script now includes native login dispatch, password semantics, lock/credential checks, `LIMIT LOGIN ADDR`, and IP range matching. Exact current-main CI/source-audit runs must be polled before claiming them green.
 
 Next: poll current runs; test the complete admin login/session and RAS RBAC integration against PostgreSQL; then trace and implement source-backed user/group permission subsets and their audit semantics. Do not expose disconnect until trusted online-session resolution and action-level audit/authorization are complete.
+
+
+## Continuation checkpoint — 2026-10-10 (admin RBAC rollout: RAS, groups, users)
+
+The native admin-auth work has now been applied to the first API domains, based on the canonical A1.24 source:
+
+- Admin login/session: `POST /api/v1/admin/login`, `GET /api/v1/admin/session`, and `DELETE /api/v1/admin/session`; opaque tokens are random, only SHA-256 digests are stored in `admin_sessions`, expiry/revocation are enforced, and successful login/logout audit records share a transaction with session state changes.
+- RAS API: all RAS routes require `X-Admin-Session`; list/detail/mutations use source-traced `LIST RAS`, `GET RAS INFORMATION`, and `CHANGE RAS` dependencies. Mutations audit in the same transaction. The list response omits `radius_secret`; detail requires `GET RAS INFORMATION`.
+- Group API: requires native admin session. List/detail filter through source-equivalent `canUseGroup` (owner, `ACCESS ALL GROUPS`, `GROUP ACCESS`, GOD). Create/delete use `ADD NEW GROUP`; update and attribute changes use `CHANGE GROUP`, its `ADD NEW GROUP` dependency, owner/access checks, and GOD bypass. New group ownership is assigned from the authenticated admin, not caller-supplied identity. Mutations are audited transactionally.
+- User API: list/detail require native admin session and source-backed `GET USER INFORMATION` `All`/ `Restricted` owner checks. Creation requires `ADD NEW USER`, a group the admin can access, assigns the authenticated admin as owner, requires `group_id`, and audits transactionally. Native user records and list/count queries now carry owner/group IDs so the Restricted scope can be enforced.
+- Source audit script now prints direct excerpts for the login RPC/password comparator, admin locks/address restriction, and key user/group permission definitions. Source-audit workflow passed on script checkpoint `bb6da8cc5fe6dce0b2ce3defb1426d3dd92cc0e3`: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/37994729660
+- Python workflow passed on user-authorization code checkpoint `d045ea6c5a7fdba936a6f2698c8ccdeb839c3209`: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/37995098123
+- Latest main HEAD is now `710c4e5a36360b871a2668c036fd8a3257026678`, adding owner/group repository regression tests. Its Python and full CI runs are queued; poll exact-head runs before declaring this batch green.
+
+Remaining: wait for current CI; expand user permission coverage for owner transfer, credit changes, attributes and delete only after tracing each exact permission/transaction contract; map complete permission catalog; then implement trusted online-session resolution and audit/authorization before any RAS disconnect endpoint is mounted. Do not infer full A1.24 parity from this first RBAC rollout.
