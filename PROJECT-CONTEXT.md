@@ -897,3 +897,11 @@ The earlier OPEN ledger line saying live PostgreSQL transaction rollback proof i
 - Added regression tests for padding, truncation and the 4096-byte maximum on both Disconnect/CoA requests and responses.
 - Source: https://www.rfc-editor.org/rfc/rfc5176.html
 - CI is being re-run on the latest test and documentation commits; no green status is claimed until both workflows complete.
+
+
+## Provider envelope deep-freeze hardening — 2026-10-09
+
+- ProviderOperationRequest now recursively snapshots/freezes nested mappings, lists, tuples and sets, closing the mutation gap left by a top-level MappingProxyType alone.
+- ChilliSpot disconnect builder and packet builder reject non-string, empty and whitespace-only usernames with a clear ValueError instead of raising incidental AttributeError or accepting invalid input.
+- Regression tests cover nested mutation isolation, nested read-only behavior, and invalid username types/values.
+- The RFC 5176 packet-padding/maximum-length work and this envelope hardening are awaiting CI completion on the latest HEAD.
