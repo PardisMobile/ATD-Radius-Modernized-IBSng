@@ -157,7 +157,7 @@ def test_snmp_transport_rejects_wrong_community_and_closes_socket():
 
 
 @pytest.mark.parametrize(
-    "request",
+    "operation_request",
     [
         ProviderOperationRequest("cisco", ExternalOperation.RSH, "disconnect", {}),
         ProviderOperationRequest(
@@ -170,9 +170,9 @@ def test_snmp_transport_rejects_wrong_community_and_closes_socket():
         ),
     ],
 )
-def test_snmp_transport_rejects_unsupported_requests_before_socket_creation(request):
+def test_snmp_transport_rejects_unsupported_requests_before_socket_creation(operation_request):
     created = []
     transport = SnmpV1V2cSetTransport(lambda *args: created.append(args))
     with pytest.raises(ValueError):
-        transport.execute(request)
+        transport.execute(operation_request)
     assert created == []
