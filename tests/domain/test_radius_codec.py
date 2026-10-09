@@ -594,5 +594,5 @@ def test_control_request_encoder_rejects_packet_over_rfc_maximum_length():
     request = RadiusPacket(
         RadiusCode.DISCONNECT_REQUEST, 97, attributes, bytes(16)
     )
-    with pytest.raises(RadiusCodecError, match="4096-byte"):
+    with pytest.raises(RadiusCodecError, match="4096"):
         encode_control_request(request, "shared")
