@@ -41,10 +41,20 @@ class UserCreditChange(BaseModel):
     comment: str = Field(max_length=1000)
 
 
+class UserCreditBulkChange(UserCreditChange):
+    usernames: list[str] = Field(min_length=1, max_length=100)
+
+
 class UserCreditView(BaseModel):
     user_id: int
     username: str
     credit: Decimal
+
+
+class UserCreditBulkView(BaseModel):
+    items: list[UserCreditView]
+    delta: Decimal
+    total_admin_credit: Decimal
 
 
 class UserView(BaseModel):
@@ -324,4 +334,78 @@ def change_user_credit(
         raise
     except Exception as exc:
         raise HTTPException(status_code=409, detail="USER credit could not be changed") from exc
+
+@router.post("/credit/bulk", response_model=UserCreditBulkView)
+def change_users_credit_bulk(
+    payload: UserCreditBulkChange,
+    admin: AdminPrincipal = Depends(require_admin_session),
+) -> UserCreditBulkView:
+    """Apply one A1.24-style per-user credit delta to a bounded batch."""
+    usernames = [name.strip() for name in payload.usernames]
+    if any(not name or len(name) > 255 for name in usernames):
+        raise HTTPException(status_code=422, detail="Each username must contain 1 to 255 characters")
+    if len(set(usernames)) != len(usernames):
+        raise HTTPException(status_code=422, detail="Duplicate usernames are not allowed")
+    if admin.remote_addr is None:
+        raise HTTPException(status_code=400, detail="A valid administrator remote address is required")
+    try:
+        remote_addr = str(ipaddress.ip_address(admin.remote_addr))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="A valid administrator remote address is required") from exc
+
+    try:
+        with connection() as conn:
+            repository = UserCreditRepository(conn)
+            targets = repository.lock_targets(usernames)
+            if len(targets) != len(usernames):
+                raise HTTPException(status_code=404, detail="One or more users were not found")
+            if any(not can_change_user_credit(admin, target.owner_id) for target in targets):
+                raise HTTPException(status_code=403, detail="Administrator permission denied")
+            try:
+                credits = repository.apply_admin_change_many(
+                    targets,
+                    admin_id=admin.admin_id,
+                    admin_username=admin.username,
+                    delta=payload.delta,
+                    remote_addr=remote_addr,
+                    comment=payload.comment,
+                    allow_negative_deposit=(
+                        admin.permissions.is_god()
+                        or admin.permissions.has_perm("NO DEPOSIT LIMIT")
+                    ),
+                )
+            except CreditUnderflowError as exc:
+                raise HTTPException(status_code=409, detail="A user credit cannot become negative") from exc
+            except InsufficientAdminDepositError as exc:
+                raise HTTPException(status_code=403, detail="Administrator deposit is insufficient") from exc
+
+            total_admin_credit = payload.delta * len(targets)
+            OperationalAuditRepository(conn).append(
+                actor_admin_id=admin.admin_id,
+                actor_username=admin.username,
+                action="user.credit.change_bulk",
+                outcome="success",
+                target_type="user_batch",
+                target_id=f"{len(targets)} users",
+                remote_addr=remote_addr,
+                details={
+                    "user_ids": [target.user_id for target in targets],
+                    "usernames": [target.username for target in targets],
+                    "delta_per_user": str(payload.delta),
+                    "total_admin_credit": str(total_admin_credit),
+                },
+            )
+            conn.commit()
+            return UserCreditBulkView(
+                items=[
+                    UserCreditView(user_id=target.user_id, username=target.username, credit=credit)
+                    for target, credit in zip(targets, credits, strict=True)
+                ],
+                delta=payload.delta,
+                total_admin_credit=total_admin_credit,
+            )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=409, detail="USER credit batch could not be changed") from exc
 
