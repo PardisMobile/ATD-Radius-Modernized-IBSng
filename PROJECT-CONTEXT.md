@@ -961,3 +961,12 @@ No frozen A1.24 authentication, CHAP/MS-CHAPv2, MPPE, MultiLogin, attribute inhe
 - These builders create request envelopes only; no SNMP network I/O or live-device interoperability is claimed. Current main CI must be checked after the final context update before marking this batch green.
 - The temporary source-inspection workflow was kept off main; it must be removed from the audit branch after source review is complete.
 
+## Source-audit correction — PPPD and Quintum Tenor disconnect strategies — 2026-10-09
+
+Direct canonical-source extraction (archive SHA-256 verified) found that the prior provider strategy inventory contained one omission and one false positive:
+
+- PPPD in core/ras/rases/pppd.py overrides killUser() and calls the configured pppd_kill_port_command via the launcher with arguments [RAS-IP, port]. Its default command is IBS_ADDONS-relative pppd/kill. The provider profile now declares the launcher strategy and a source-derived immutable request builder preserves this argument order.
+- Quintum Tenor in core/ras/rases/tenor.py does not override killUser(); it inherits the base Ras.killUser() no-op. Quintum-h323-disconnect-cause is accounting Stop metadata only, not an H323 kill operation. The incorrect h323-cause disconnect strategy and generic H323 mapping have been removed.
+
+The earlier audit statements that PPPD lacked a kill path and Quintum Tenor had an H323 disconnect operation are superseded by this correction. The PPPD builder constructs an envelope only; it does not execute the launcher. Live external-operation integration remains open.
+
