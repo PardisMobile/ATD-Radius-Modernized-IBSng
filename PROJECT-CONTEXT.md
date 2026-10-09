@@ -1192,3 +1192,23 @@ Important limitation: the shared bearer token is only an initial API safety gate
 - The current source audit identifies `KILL USER` as single-value and dependent on `SEE ONLINE USERS`; `CHANGE RAS` is no-value and depends on `LIST RAS` plus `GET RAS INFORMATION`. These are examples, not a complete permission catalog.
 - Operational audit persistence is ATD-specific and remains separate from native `user_audit_log`. Do not expose RAS disconnect until actor authentication, native permission evaluation, trusted session resolution, and accurate audit/side-effect sequencing are wired and integration-tested.
 - Repository Markdown inventory at this checkpoint: 57 files. This count is a tree inventory, not a claim that every file has received a complete line-by-line human review.
+
+
+## Continuation checkpoint — 2026-10-10 (native admin login/session and RAS RBAC)
+
+Recent commits on `main` added a source-derived native admin authentication slice and started applying it to RAS management:
+
+- Canonical A1.24 source confirmed in `core/login/login_handler.py`, `core/admin/admin.py`, `core/admin/perms/LIMIT_LOGIN_ADDR.py`, and `core/lib/password_lib.py`: admin login checks password first, then source-address restriction, then admin locks. `LIMIT LOGIN ADDR` is a comma-separated multi-value IP/IP-netmask allowlist. Any active row in `admin_locks` blocks login.
+- `domain/ibsng_password.py` implements the legacy `$1$` MD5-crypt comparison plus the source's plaintext compatibility behavior, without depending on Python's removed `crypt` module. Standard MD5-crypt known-vector test passes. UTF-8 parity for non-ASCII legacy passwords still needs source DB/runtime encoding confirmation.
+- `application/admin_authentication.py` reads the native admin row, checks the legacy password, enforces `LIMIT LOGIN ADDR`, and then checks lock state.
+- Added migration `006_admin_sessions.sql`; `AdminSessionRepository` stores only SHA-256 digests of opaque random session tokens and supports expiry/revocation.
+- Added `POST /api/v1/admin/login`, `GET /api/v1/admin/session`, and `DELETE /api/v1/admin/session`. The existing shared API Bearer token remains a separate perimeter gate. Successful login/logout audit events share a transaction with session creation/revocation. Session tokens are sent in `X-Admin-Session`.
+- Added reusable source-backed admin permission dependencies for the verified RAS permission subset. All RAS list/detail/port/attribute/IP-pool routes now require a native admin session and the appropriate `LIST RAS`, `GET RAS INFORMATION`, or `CHANGE RAS` permission. `CHANGE RAS` and `GET RAS INFORMATION` enforce their source dependencies; GOD bypass is only through `can_do`. RAS mutations append operational audit events in the same DB transaction.
+- RAS list output now omits `radius_secret`; the detail endpoint requires `GET RAS INFORMATION`. Users/groups routes have not yet been migrated to native per-admin RBAC. RAS disconnect remains unmounted.
+
+Validation:
+- Python workflow succeeded on code checkpoint `fe79a649087fe3c7d374c8398cd73d56e499fe2d`: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/37994557714
+- Full CI for that checkpoint was still running at time of this note: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/37994557630
+- The latest source-audit script now includes native login dispatch, password semantics, lock/credential checks, `LIMIT LOGIN ADDR`, and IP range matching. Exact current-main CI/source-audit runs must be polled before claiming them green.
+
+Next: poll current runs; test the complete admin login/session and RAS RBAC integration against PostgreSQL; then trace and implement source-backed user/group permission subsets and their audit semantics. Do not expose disconnect until trusted online-session resolution and action-level audit/authorization are complete.
