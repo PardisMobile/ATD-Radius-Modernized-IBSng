@@ -121,7 +121,7 @@ def create_user(payload: UserCreate, admin: AdminPrincipal = Depends(require_adm
                 details={"group_id": payload.group_id, "locked": payload.locked},
             )
             conn.commit()
-            return UserView(id=record.id, username=record.username, locked=record.locked)
+            return UserView(id=record.id, username=record.username, locked=payload.locked)
     except HTTPException:
         raise
     except Exception as exc:
