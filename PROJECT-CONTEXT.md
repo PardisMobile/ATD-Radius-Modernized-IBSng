@@ -1269,3 +1269,27 @@ Validation at this checkpoint: Python workflow passed for the user-detail implem
 - Python tests passed on that script checkpoint: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/37998130362
 - Full CI for the latest code/test checkpoint `8370c0f58cd4144ae11874cb9e9e2d3dc8ea8d8e` passed: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/37998034461. The later inventory-script checkpoint's full CI was still running at this note's creation; verify latest HEAD before claiming all checks green.
 
+### Native user-credit change increment — 2026-10-10
+
+Source reviewed directly in the canonical archive:
+- `core/admin/perms/CHANGE_USER_CREDIT.py`: All/Restricted, depends on GET USER INFORMATION.
+- `core/user/user_actions.py`: credit adjustment debits administrator deposit by the per-user delta; negative user credit is forbidden; writes native credit-change log and IAS event.
+- `core/admin/admin_actions.py`: negative administrator deposit requires NO DEPOSIT LIMIT.
+- Native sequences: `credit_change_id` and `ias_event_event_id`.
+
+Implementation committed on main:
+- `1eaa2dfc046115eef47bc7f0eedff5d874cdd098`: row-locked credit persistence, admin deposit checks, native credit/IAS logs.
+- `c6a07d9a0fbb2bc389a397e3d398898516c54f4d`: CHANGE USER CREDIT/NO DEPOSIT LIMIT permission semantics and owner-scope helper.
+- `da8a890544a0a3362d53ac4803b0f5f746207597`: `POST /api/v1/users/{username}/credit` with operational audit in the same transaction.
+- `bee683b00e64671259fd8e2f172aaeaefea6e520`: initial credit repository tests exposed a fake test connection using the wrong IAS sequence name; corrected in `a0c27e7f39e6d6e4593cf9ddc1581f4f9f6d68b7`, whose Python suite passed.
+- `1548528cbe627ff3dde5b9659600ffdac1e9dd3e`, `6afc20eccd870f81e838ece939b341d35c479dbd`, `c7be3d8a9ecf7e3a706ece54cdfcc66822f5b2a7`: permission, request-contract, and API transaction regression tests.
+- Updated source permission catalog, source audit notes, and roadmap.
+
+The latest Python and full CI runs for `c7be3d8a` were still in progress at the time this checkpoint was written. Do not claim the newest credit API/test batch is green until the runs for latest main finish:
+- Python: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/37999964934
+- Full CI: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/37999964954
+
+### Delivery estimate refresh — 2026-10-10
+
+Use the existing full-product scope definition: behavioral IBSng A1.24 parity with persistence, integration tests and operational delivery, not file/code count. Current honest estimate remains **about 55–60% complete, 40–45% remaining**. The latest report-permission and single-user credit increments close targeted API gaps but do not complete billing, user attribute lifecycle, delete/owner-transfer, online-session/disconnect safety, full RAS/provider/dictionary parity, XML-RPC, migration, installer/deployment/licensing, or the deferred full UI workflows. This estimate is an engineering judgment, not a measured test metric.
+
