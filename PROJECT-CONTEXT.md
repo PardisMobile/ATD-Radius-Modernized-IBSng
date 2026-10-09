@@ -1173,3 +1173,10 @@ Important limitation: the shared bearer token is only an initial API safety gate
 - Full CI could not initialize its PostgreSQL service because Docker Hub rejected unauthenticated pulls of `postgres:16` with `toomanyrequests`. This is an infrastructure/rate-limit failure before checkout, lint, PHP syntax, or pytest; it is not a code-test failure, but it also means full CI is not verified for this commit.
 - Earlier full-CI attempts on the admin-repository commits failed at the same PostgreSQL image initialization step. Python-only runs passed.
 - Follow-up: remove CI dependence on anonymous Docker Hub pulls using an approved reliable image/auth strategy, or rerun after the upstream rate limit clears. Do not label full CI green until the PostgreSQL-backed job actually executes.
+
+
+### Migration ordering correction — 2026-10-10
+
+- Found and fixed a migration-order defect: both `004_defs.sql` and the operational audit migration used prefix `004`. The operational audit migration is now `migrations/005_operational_audit.sql`; the duplicate-numbered file was removed.
+- Updated `docs/OPERATIONAL-AUDIT-CONTRACT.md` and added a regression test ensuring migration prefixes are unique and the audit migration follows native definitions.
+- Python-only CI had passed before this migration-order fix. The latest CI run must be checked again; full CI remains vulnerable to Docker Hub anonymous-pull rate limiting for the PostgreSQL service image.
