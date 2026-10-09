@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from atd_radius.api.groups import GroupAttributePayload
-from atd_radius.api.ras import RASPortPayload
+from atd_radius.api.ras import RASInfo, RASListView, RASPortPayload
 
 
 def test_group_attribute_update_uses_explicit_body_payload():
@@ -44,7 +44,5 @@ def test_user_component_contract_covers_voip_without_password():
 
 
 def test_ras_list_contract_does_not_expose_radius_secret():
-    from atd_radius.api.ras import RASListView
-
     assert "radius_secret" not in RASListView.model_fields
-    assert "radius_secret" in __import__("atd_radius.api.ras", fromlist=["RASInfo"]).RASInfo.model_fields
+    assert "radius_secret" in RASInfo.model_fields
