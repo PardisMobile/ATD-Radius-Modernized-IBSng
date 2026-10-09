@@ -221,8 +221,12 @@ def test_cisco_ifdescr_walk_stops_at_subtree_boundary_and_returns_descriptions()
 def test_snmp_v1_walk_treats_no_such_name_as_normal_end_of_subtree():
     from atd_radius.domain.ras_external import build_cisco_snmp_port_map_request
 
-    request = build_cisco_snmp_port_map_request(
-        ras_ip="192.0.2.10", version="1"
+    base_request = build_cisco_snmp_port_map_request(ras_ip="192.0.2.10")
+    request = ProviderOperationRequest(
+        base_request.provider,
+        base_request.operation,
+        base_request.action,
+        {**base_request.parameters, "version": "1"},
     )
     fake = FakeSocket(
         lambda packet, count: _walk_response(
