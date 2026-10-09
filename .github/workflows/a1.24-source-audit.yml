@@ -1,0 +1,26 @@
+name: IBSng A1.24 Source Audit
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "Source of Truth/**"
+      - "scripts/audit_ibsng_a124_source.py"
+      - ".github/workflows/a1.24-source-audit.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  canonical-source-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify archive and inventory actual A1.24 source
+        run: python scripts/audit_ibsng_a124_source.py
