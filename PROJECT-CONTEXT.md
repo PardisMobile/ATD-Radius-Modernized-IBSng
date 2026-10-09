@@ -1259,3 +1259,13 @@ Commits in this batch:
 
 Validation at this checkpoint: Python workflow passed for the user-detail implementation commit `c72cc28` (run 37997954026). Python and full CI for the test checkpoint `f79b71b` and latest docs checkpoint are still running; poll them before claiming the batch fully green. This finding is one targeted correction, not complete RBAC or whole-source parity.
 
+
+### Administrator permission source inventory — 2026-10-10
+
+- Expanded `scripts/audit_ibsng_a124_source.py` to enumerate every native permission module and extract its registration, source value type, declared dependencies, and custom-check presence.
+- Local validation against the canonical extracted source found **51 permission modules** with no incomplete registrations. This is structural inventory only; it is not proof that all 51 permission behaviors/call sites have been reviewed or implemented.
+- Added `docs/IBSNG-A1.24-ADMIN-PERMISSION-CATALOG.md` as the durable source-derived permission matrix, with an explicit distinction between the currently implemented API subset and outstanding permissions/workflows.
+- The source-audit workflow for corrected inventory script checkpoint `d853fbac9b5ebe6b190187a1073b882d47e21b38` completed its archive verification/inventory step successfully: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/37998130380
+- Python tests passed on that script checkpoint: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/37998130362
+- Full CI for the latest code/test checkpoint `8370c0f58cd4144ae11874cb9e9e2d3dc8ea8d8e` passed: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/37998034461. The later inventory-script checkpoint's full CI was still running at this note's creation; verify latest HEAD before claiming all checks green.
+
