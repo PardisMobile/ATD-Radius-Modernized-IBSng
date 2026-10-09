@@ -42,11 +42,11 @@ def _request_fields(packet):
     )
 
 
-def _response(packet, *, error_status=0, error_index=0, community_override=None, asn_type=0x02, raw_value=b"\\x02"):
+def _response(packet, *, error_status=0, error_index=0, community_override=None, asn_type=0x02, raw_value=b"\x02"):
     version, community, request_id, oid = _request_fields(packet)
     if community_override is not None:
         community = community_override
-    varbind = _tlv(0x30, _encode_oid(oid) + _tlv(0x02, b"\x02"))
+    varbind = _tlv(0x30, _encode_oid(oid) + _tlv(asn_type, raw_value))
     varbind_list = _tlv(0x30, varbind)
     pdu = _tlv(
         0xA2,
