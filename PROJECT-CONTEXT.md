@@ -1108,3 +1108,5 @@ Latest change adds `src/atd_radius/infrastructure/ras_external_dispatcher.py` an
 
 Latest verified status before the current dispatcher commits: the main branch CI and Python workflows on `d1971e9f7bfa304d44c439b5dacc323696039c4f` passed for Python suite; a newer batch was already in progress at `83aa6ca2adbdc2bd1e5cf13fc8906e2d36b030e5`. The dispatcher commits above have triggered their own CI; **do not mark them green until those exact latest runs complete**.
 
+### Dispatcher safety follow-up — 2026-10-09
+The RAS external dispatcher now rejects SNMP envelopes outside the directly audited provider/action/OID combinations before transport execution: Cisco ifDescr walk + Cisco disconnect OID; PortMaster/Total Control IF-MIB ifAdminStatus SETs. Regression tests verify non-source-audited Cisco OIDs never reach the transport. When continuing, inspect the exact current main code and current CI runs first; do not infer CI status from a previous commit. API authorization/audit integration is still not implemented, and the dispatcher must not be exposed as an unauthenticated endpoint.
