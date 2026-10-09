@@ -202,3 +202,8 @@ The canonical archive digest measured from the checked-in bytes is `c7117a6a2fd2
 - The parser follows the source regex and selection rule: first interface when no remote IP is supplied; exact username + remote-IP match when it is supplied; no match returns `None` for the caller to handle.
 - Regression tests cover lookup command construction, first-match selection, remote-IP disambiguation, no-match and invalid/unsafe input.
 - No real RSH transport or live-device integration is claimed.
+
+
+## Cisco configured SNMP/RSH branch — 2026-10-09
+
+Cisco's strategy is now source-resolved at request-construction level: default SNMP branch maps the port description through IF-MIB ifDescr and SETs Cisco OID `.1.3.6.1.4.1.9.2.1.76.0` to the resolved ifIndex (SNMP v2c/public/10s/3 retries/UDP161). When `cisco_kill_use_snmp=0`, Async ports use `clear line <suffix>`, Serial ports use `clear interface <port>`, and unsupported port names yield no request. The five-hour SNMP port-map refresh and real transport execution are not implemented here. The generic strategy remains `snmp-or-rsh` because branch selection depends on the configured source attribute.
