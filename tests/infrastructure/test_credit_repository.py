@@ -4,10 +4,15 @@ from atd_radius.infrastructure.credit_repository import UserCreditRepository
 
 
 class Result:
-    def __init__(self, row):
+    def __init__(self, row=None, rows=None):
         self.row = row
+        self.rows = list(rows) if rows is not None else ([row] if row is not None else [])
+
     def fetchone(self):
         return self.row
+
+    def fetchall(self):
+        return self.rows
 
 
 class Conn:
