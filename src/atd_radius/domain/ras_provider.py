@@ -137,6 +137,17 @@ def normalize_ras_type(ras_type: str | None) -> str:
     key = (ras_type or "").strip().lower()
     return _ALIASES.get(key, key.replace("-", "_").replace(" ", "_"))
 
+def provider_service_for_ras(ras_type: str | None) -> str:
+    """Resolve the source provider's default service family for policy hooks.
+
+    A1.24 Asterisk/GnuGk/MVTS/SER/Quintum Tenor providers are VoIP RAS
+    implementations; other providers default to the Internet policy branch.
+    Cisco's explicit multi-login capability is false for both services.
+    """
+    if normalize_ras_type(ras_type) in {"asterisk", "gnugk", "mvts", "ser", "tenor"}:
+        return "voip"
+    return "internet"
+
 
 def provider_profile(ras_type: str | None) -> RASProviderProfile | None:
     key = normalize_ras_type(ras_type)
