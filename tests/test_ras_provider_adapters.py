@@ -224,3 +224,33 @@ def test_cisco_vpdn_adapter_exposes_source_lookup_and_interface_resolution():
         )
         == "Vi2"
     )
+
+
+def test_cisco_adapter_resolves_snmp_index_and_builds_configured_disconnect():
+    from atd_radius.domain.ras_provider_adapters import CISCO_EXTERNAL_ADAPTER
+
+    index = CISCO_EXTERNAL_ADAPTER.resolve_snmp_port_index(
+        "Async1/0",
+        {".1.3.6.1.2.1.2.2.1.2.17": "Async1/0"},
+    )
+    assert index == "17"
+    request = CISCO_EXTERNAL_ADAPTER.source_disconnect_request(
+        {"ras_ip": "192.0.2.10", "port": "Async1/0", "port_index": index}
+    )
+    assert request.operation.value == "snmp"
+    assert request.parameters["set"]["value"] == 17
+
+
+def test_cisco_adapter_can_select_source_rsh_branch_from_config():
+    from atd_radius.domain.ras_provider_adapters import CISCO_EXTERNAL_ADAPTER
+
+    request = CISCO_EXTERNAL_ADAPTER.source_disconnect_request(
+        {
+            "ras_ip": "192.0.2.10",
+            "port": "Serial0/0",
+            "kill_use_snmp": 0,
+            "wrapper": "/configured/addons/cisco/rsh_wrapper -lroot",
+        }
+    )
+    assert request.operation.value == "rsh"
+    assert request.parameters["command"] == "clear interface Serial0/0"
