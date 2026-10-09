@@ -1025,7 +1025,7 @@ The first version of the 2026-10-09 codec note above was wrong on two attribute 
 
 A reproducible source audit workflow now verifies the checked-in archive SHA-256 and inventories the complete archive, then prints direct excerpts for RAS side effects, the PyRADIUS dictionary/parser/codec, launcher implementation and authentication/MultiLogin anchors. The source archive hash matches the checked-in README. This is a real source-backed correction batch, but **it is not yet a claim that every A1.24 subsystem has been fully audited or that ATD has complete parity**; the module-by-module source comparison remains in progress.
 
-No PAP/CHAP/MS-CHAPv1/v2, MPPE, MultiLogin, persistence, or accounting state machine semantics were changed in this correction batch.
+PAP/CHAP/MS-CHAPv1/v2 and MPPE algorithms, persistence, and the accounting state machine were not changed. A separate source-driven MultiLogin correction now retains each active session's RAS capability and checks it together with the incoming RAS flag, matching A1.24's `False in multilogin_allowed` semantics.
 
 
 ## Executable SNMP SET transport increment — 2026-10-09
