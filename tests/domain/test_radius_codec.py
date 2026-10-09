@@ -572,3 +572,25 @@ def test_control_response_rejects_packet_over_rfc_maximum_length():
     request = decode(encode_control_request(request_packet, "shared"), "shared")
     wire = pack("!BBH", 41, request.identifier, 4097) + bytes(4093)
     assert not verify_control_response(wire, request, "shared")
+
+
+@pytest.mark.parametrize("identifier", [-1, 256, True, 1.5, "7"])
+def test_control_request_encoder_rejects_invalid_identifier(identifier):
+    from atd_radius.domain.radius_codec import RadiusCodecError, encode_control_request
+
+    request = RadiusPacket(
+        RadiusCode.DISCONNECT_REQUEST, identifier, {"User-Name": "alice"}, bytes(16)
+    )
+    with pytest.raises(RadiusCodecError, match="identifier"):
+        encode_control_request(request, "shared")
+
+
+def test_control_request_encoder_rejects_packet_over_rfc_maximum_length():
+    from atd_radius.domain.radius_codec import RadiusCodecError, encode_control_request
+
+    attributes = {f"Attr-{number}": "x" * 253 for number in range(150, 170)}
+    request = RadiusPacket(
+        RadiusCode.DISCONNECT_REQUEST, 97, attributes, bytes(16)
+    )
+    with pytest.raises(RadiusCodecError, match="4096-byte"):
+        encode_control_request(request, "shared")
