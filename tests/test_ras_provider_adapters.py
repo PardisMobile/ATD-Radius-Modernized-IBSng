@@ -254,3 +254,13 @@ def test_cisco_adapter_can_select_source_rsh_branch_from_config():
     )
     assert request.operation.value == "rsh"
     assert request.parameters["command"] == "clear interface Serial0/0"
+
+
+def test_cisco_adapter_builds_source_ifdescr_walk_request():
+    from atd_radius.domain.ras_provider_adapters import CISCO_EXTERNAL_ADAPTER
+
+    request = CISCO_EXTERNAL_ADAPTER.snmp_port_map_request(
+        {"ras_ip": "192.0.2.10"}
+    )
+    assert request.action == "walk"
+    assert request.parameters["walk_oid"] == ".1.3.6.1.2.1.2.2.1.2"
