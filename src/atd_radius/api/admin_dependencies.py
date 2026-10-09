@@ -24,6 +24,30 @@ class AdminPrincipal:
     permissions: AdminPermissionSet
 
 
+def _change_group_allowed(value: str | None, context: dict[str, object]) -> bool:
+    if value == "All":
+        return bool(context.get("can_use_group"))
+    if value == "Restricted":
+        return context.get("owner_id") == context.get("admin_id")
+    return False
+
+
+_GROUP_PERMISSIONS = AdminPermissionEvaluator(
+    [
+        PermissionSpec("GOD", PermissionKind.NO_VALUE),
+        PermissionSpec("ADD NEW GROUP", PermissionKind.NO_VALUE),
+        PermissionSpec("ACCESS ALL GROUPS", PermissionKind.NO_VALUE),
+        PermissionSpec("GROUP ACCESS", PermissionKind.MULTI_VALUE),
+        PermissionSpec(
+            "CHANGE GROUP",
+            PermissionKind.CONTEXTUAL,
+            dependencies=("ADD NEW GROUP",),
+            evaluator=_change_group_allowed,
+        ),
+    ]
+)
+
+
 _RAS_PERMISSIONS = AdminPermissionEvaluator(
     [
         PermissionSpec("GOD", PermissionKind.NO_VALUE),
@@ -67,11 +91,39 @@ def require_admin_permission(permission_name: str):
     def dependency(
         principal: AdminPrincipal = Depends(require_admin_session),
     ) -> AdminPrincipal:
-        if not _RAS_PERMISSIONS.can_do(principal.permissions, permission_name):
+        evaluator = _RAS_PERMISSIONS if permission_name in {"LIST RAS", "GET RAS INFORMATION", "CHANGE RAS"} else _GROUP_PERMISSIONS
+        if not evaluator.can_do(principal.permissions, permission_name):
             raise HTTPException(status_code=403, detail="Administrator permission denied")
         return principal
 
     dependency.__name__ = f"require_admin_{permission_name.lower().replace(' ', '_')}"
+    return dependency
+
+
+def require_group_change():
+    """Create a dependency that checks CHANGE GROUP against the target group's owner/access."""
+    def dependency(
+        group_id: int,
+        principal: AdminPrincipal = Depends(require_admin_session),
+    ) -> AdminPrincipal:
+        from atd_radius.infrastructure.group import GroupRepository
+
+        with connection() as conn:
+            group = GroupRepository(conn).get(group_id)
+        if group is None:
+            raise HTTPException(status_code=404, detail="group not found")
+        context = {
+            "admin_id": principal.admin_id,
+            "owner_id": group.owner_id,
+            "can_use_group": can_use_group(principal, group.name, group.owner_id),
+        }
+        if not _GROUP_PERMISSIONS.check_perm(
+            principal.permissions, "CHANGE GROUP", context=context
+        ):
+            raise HTTPException(status_code=403, detail="Administrator permission denied")
+        return principal
+
+    dependency.__name__ = "require_change_group"
     return dependency
 
 
@@ -90,4 +142,5 @@ __all__ = [
     "can_use_group",
     "require_admin_permission",
     "require_admin_session",
+    "require_group_change",
 ]
