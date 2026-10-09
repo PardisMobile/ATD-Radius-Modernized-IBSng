@@ -243,3 +243,9 @@ ATD now adds `src/atd_radius/infrastructure/rsh_transport.py` and routes RSH req
 
 Tests use a mocked subprocess only. No real RSH/SSH wrapper or RAS device has been contacted. The transport is not yet invoked by an authenticated API/admin action or automatic accounting kill lifecycle. Authorization, audit-event persistence, wrapper deployment/permissions, source-specific operational error mapping and live device interoperability remain release blockers. The earlier statement that RSH had no executable transport is superseded for the three allowlisted providers (Cisco, Cisco VPDN, MikroTik); other RSH providers remain unsupported.
 
+## Application-level RAS disconnect orchestration — 2026-10-09
+
+Added `src/atd_radius/application/ras_disconnect.py` to orchestrate the source-configured Cisco branch, Cisco VPDN lookup→interface parse→disconnect sequence, and MikroTik hotspot/PPP command selection. The Cisco SNMP path performs ifDescr walk first and refuses to send the SET when the requested port cannot be resolved. The Cisco RSH branch is selected only when the source flag disables SNMP. Cisco VPDN refuses to issue `clear interface` when lookup fails or returns unsuccessful output.
+
+The service deliberately is not mounted as an HTTP endpoint: trusted code must resolve the current RAS configuration/session and enforce operator authorization plus durable audit logging before invoking it. Tests use a fake dispatcher; all process/network transport tests are also mocked. This is application orchestration coverage, not live RAS interoperability or full provider/accounting parity.
+
