@@ -1076,3 +1076,21 @@ A new `src/atd_radius/infrastructure/launcher_transport.py` implements explicit,
 Latest verified main checkpoint before this note: `b576ece6547ca9a29bc24602b994c35aecd52329`. Isolated suite: **450 passed, 2 skipped, 2 warnings**. Full CI for Python 3.11 and 3.12 succeeded, including Compile Python, Ruff, PHP syntax and tests: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/37938765909
 
 Current external operation coverage now includes executable SNMP SET/walk transport and shell-free PPPD/PortSlave launcher transport, plus source-derived Cisco SNMP walk-to-disconnect orchestration. Remaining: wire these into the actual RAS/accounting runtime, implement RSH execution safely, complete Cisco configured RSH branch integration, and validate on real RAS devices. Unit tests do not establish live-device compatibility.
+
+
+## Source recheck checkpoint — 2026-10-09 (supersedes older checkpoint above)
+
+Latest main HEAD at this checkpoint: `387d0ccebac0650d115e285bc767f18020c1395a`.
+
+- Canonical source archive SHA-256 and archive-wide inventory/source excerpt audit passed: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/37942988879
+- Full CI passed on Python 3.11 and 3.12, including compile, Ruff, PHP syntax and tests: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/37942988631
+- Latest completed Python suite at the runtime-code checkpoint: **490 passed, 2 skipped, 2 warnings**: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/37942988560
+
+This source recheck found and corrected source mismatches that prior tests had missed:
+1. `Framed-IPX-Network` must be `ipaddr`; `Login-LAT-Port` must be integer.
+2. `Acct-Status-Type=3` decodes as `Alive` under A1.24's reverse-map insertion order.
+3. Cisco SNMP must honor the configured v1/v2c version; PPPD/PortSlave launcher default timeout is 20 seconds.
+4. MultiLogin must consider the RAS capability flags of existing sessions, not only the incoming RAS.
+5. MS-CHAPv1/v2 uses the A1.24 byte-wise password conversion, canonical `normal_username`, and a raw one-byte MS-CHAP2-Success identifier.
+
+**Do not mark the entire A1.24 source audit complete yet.** The audit workflow pins and inventories the full archive and prints the critical source excerpts, but remaining work still includes module-by-module parity review for provider call paths, attribute inheritance/plugin order, source DB charset/collation, accounting transitions, all dictionary/vendor boundaries, billing/persistence, API/RBAC/XML-RPC and deployment.
