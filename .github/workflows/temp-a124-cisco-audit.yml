@@ -1,0 +1,43 @@
+name: Temporary A1.24 Cisco disconnect source audit
+on:
+  push:
+    branches:
+      - audit/a124-rsh-provider-20261009
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify archive and print Cisco disconnect paths
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib, pathlib, tarfile
+          archive = pathlib.Path("Source of Truth/IBSng-A1.24.tar.bz2")
+          digest = hashlib.sha256(archive.read_bytes()).hexdigest()
+          expected = "c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839614bb9349d18a8"
+          print("ARCHIVE SHA256:", digest)
+          if digest != expected:
+              raise SystemExit(f"SHA-256 mismatch: {digest}")
+          targets = ("IBSng/core/ras/rases/cisco.py", "IBSng/core/lib/snmp.py", "IBSng/core/lib/rsh.py")
+          with tarfile.open(archive, "r:bz2") as tf:
+              for target in targets:
+                  members = [m for m in tf.getmembers() if m.isfile() and m.name.endswith(target)]
+                  for member in members:
+                      f = tf.extractfile(member)
+                      if f is None:
+                          continue
+                      lines = f.read().decode("latin-1", "replace").splitlines()
+                      print(f"\n===== {member.name} ({len(lines)} lines) =====")
+                      hits = [i for i,line in enumerate(lines) if any(token in line.lower() for token in ("def killuser", "snmp", "rsh", "disconnect", "cisco_"))]
+                      shown=set()
+                      for i in hits:
+                          for j in range(max(0,i-4),min(len(lines),i+10)):
+                              if j not in shown:
+                                  print(f"{j+1}: {lines[j]}")
+                                  shown.add(j)
+                          print("---")
+          PY
