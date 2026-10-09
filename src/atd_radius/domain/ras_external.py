@@ -287,7 +287,7 @@ def resolve_cisco_vpdn_interface(
     if remote_ip:
         target_ip = _source_ipv4(remote_ip, "remote_ip")
     pattern = re.compile(
-        r"User: (.+?), line (.+?), .+? remote (\\d+\\.\\d+\\.\\d+\\.\\d+)",
+        r"User: (.+?), line (.+?), .+? remote (\d+\.\d+\.\d+\.\d+)",
         re.M | re.S,
     )
     matches = pattern.findall(output)
