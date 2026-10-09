@@ -124,10 +124,7 @@ class RadiusRuntimeHandler:
                         )
                         event = replace(
                             event,
-                            attributes={
-                                **event.attributes,
-                                "__ras_multi_login_allowed": "1" if ras_allowed else "0",
-                            },
+                            ras_multi_login_allowed=ras_allowed,
                         )
                     self.accounting_sessions.apply(event, user_id, ras_id)
                     if self.ip_pool_sessions:
@@ -254,12 +251,7 @@ def session_views(registry) -> callable:
     def provider(user_id: int) -> tuple[ActiveSessionView, ...]:
         views = []
         for state in registry.active_for_user(user_id):
-            raw_allowed = state.attributes.get("__ras_multi_login_allowed")
-            ras_allowed = (
-                None
-                if raw_allowed is None
-                else str(raw_allowed) not in {"0", "false", "False"}
-            )
+            ras_allowed = state.ras_multi_login_allowed
             views.append(
                 ActiveSessionView(
                     state.key.unique_id,
