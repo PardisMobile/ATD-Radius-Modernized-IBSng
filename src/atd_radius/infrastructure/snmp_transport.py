@@ -149,7 +149,7 @@ def _decode_oid(value: bytes) -> str:
         root = (1, first - 40)
     else:
         root = (2, first - 80)
-    return ".".join(str(part) for part in (*root, *arcs))
+    return "." + ".".join(str(part) for part in (*root, *arcs))
 
 
 def _build_set_message(
