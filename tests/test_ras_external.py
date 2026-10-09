@@ -203,3 +203,38 @@ def test_chillispot_disconnect_builder_rejects_invalid_username_type_or_value(us
             disconnect_port=1700,
             username=username,
         )
+
+
+def test_provider_operation_request_rejects_unknown_operation_values():
+    with pytest.raises(ValueError, match="operation"):
+        ProviderOperationRequest(
+            provider="mikrotik",
+            operation="snmp",
+            action="disconnect",
+            parameters={"port": 7},
+        )
+
+
+@pytest.mark.parametrize("parameters", [None, [], "not-a-mapping", 7])
+def test_provider_operation_request_rejects_non_mapping_parameters(parameters):
+    with pytest.raises(ValueError, match="parameters"):
+        ProviderOperationRequest(
+            provider="mikrotik",
+            operation=ExternalOperation.SNMP,
+            action="disconnect",
+            parameters=parameters,
+        )
+
+
+def test_provider_operation_request_freezes_nested_mutable_values():
+    source = {"nested": {"items": [1, 2]}}
+    request = ProviderOperationRequest(
+        provider="mikrotik",
+        operation=ExternalOperation.SNMP,
+        action="disconnect",
+        parameters=source,
+    )
+    source["nested"]["items"].append(3)
+    assert request.parameters["nested"]["items"] == (1, 2)
+    with pytest.raises(TypeError):
+        request.parameters["nested"]["other"] = "blocked"
