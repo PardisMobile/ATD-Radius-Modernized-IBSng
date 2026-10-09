@@ -2,8 +2,8 @@
 
 This is an explicit infrastructure boundary, not an automatic accounting hook:
 callers must first select a source-derived provider branch and build its request.
-RSH remains intentionally unsupported until a safe, source-compatible wrapper
-transport is implemented and tested.
+RSH uses a bounded, shell-free transport restricted to audited wrapper envelopes;
+it fails closed when the configured wrapper or source-derived command is invalid.
 """
 from __future__ import annotations
 
