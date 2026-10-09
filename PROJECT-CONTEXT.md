@@ -1136,3 +1136,13 @@ Latest code/test checkpoint before this context-only commit: `aff249302ede3ac6c6
 - Still not complete: dispatcher/application service is not connected to an authenticated admin/API action or accounting kill lifecycle; no live RAS hardware/wrapper tested. API authorization + durable audit events are required before exposing disconnect operations. Full A1.24 module-by-module parity, dictionary/vendor gaps, accounting transitions, billing/persistence, RBAC/XML-RPC, migration and deployment remain open.
 - Continue autonomously in substantial source-backed batches. Before changing any subsystem, inspect canonical A1.24 source excerpts and the latest main state. Preserve the frozen authentication/MS-CHAPv1/v2, MultiLogin, inheritance and persistence/accounting core unless direct source evidence proves a mismatch.
 
+## Continuation checkpoint — 2026-10-09 (SIP coverage + API safety gate)
+
+Latest implementation batch:
+- Expanded the SIP/SER codec regression coverage for the canonical A1.24 attribute numbers and types, including SIP 101-119, Digest 206/207, and the later SIP fields 208, 210-213, and 225. The core dictionary remains context-separated to preserve the source's number collisions.
+- Added configurable `ATD_API_BEARER_TOKEN` support. When set, all `/api/v1` routes require a matching Bearer token. In non-development/test environments, an unset token fails closed with HTTP 503; `/health` remains public for health checks.
+- Added `docs/API-AUTH-BOUNDARY.md` documenting setup and limits.
+- The full CI workflow now installs the declared `test` extras consistently with the Python workflow. API auth tests use httpx ASGI transport rather than Starlette TestClient, avoiding an undeclared test dependency.
+- Validation on code/config commit `f03ba955bc2a59b06b5fd52351d28f4d07240795`: Python workflow passed; full CI passed on Python 3.11 and 3.12.
+
+Important limitation: the shared bearer token is only an initial API safety gate, not administrator identities, role-based permissions, or a durable operational audit trail. Do not mount the RAS disconnect service as an endpoint yet. Before that, continue source-first work on native `admins` / `admin_perms` behavior and durable audit events, then resolve target sessions from trusted server-side state. Keep all previously frozen A1.24 authentication, MultiLogin, inheritance and accounting behavior untouched absent direct contradictory source evidence.
