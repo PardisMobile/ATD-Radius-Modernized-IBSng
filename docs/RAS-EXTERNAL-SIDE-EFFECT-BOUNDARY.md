@@ -137,3 +137,8 @@ Regression coverage includes malformed trailing attribute length, duplicate Mess
 Control-request and control-response verification now follows RFC 5176 section 2.3: the declared packet length must be at least 20, no greater than 4096, and no greater than the received datagram length. Bytes after the declared packet length are padding and are ignored; a datagram shorter than the declared packet is rejected. The earlier strict equality check was corrected because RFC 5176 explicitly permits padding.
 
 Regression tests cover valid trailing padding, truncation, and packets above the 4096-byte maximum for both requests and responses. Reference: https://www.rfc-editor.org/rfc/rfc5176.html
+
+
+## Provider envelope immutability — 2026-10-09
+
+ProviderOperationRequest now recursively snapshots and freezes common nested containers (mappings, lists, tuples and sets), not only the top-level parameter mapping. This prevents a caller from mutating nested provider parameters after the request has crossed the side-effect boundary. ChilliSpot username inputs are explicitly type-checked and rejected unless they are non-empty strings.
