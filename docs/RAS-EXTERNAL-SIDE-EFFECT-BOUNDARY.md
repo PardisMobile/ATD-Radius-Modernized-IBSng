@@ -173,3 +173,13 @@ The canonical A1.24 archive was re-extracted and its recorded SHA-256 verified b
 
 No frozen authentication, CHAP/MS-CHAPv2, MPPE, MultiLogin, attribute inheritance, persistence or accounting-core behavior was changed.
 
+## Canonical-source correction — PPPD and Quintum Tenor — 2026-10-09
+
+A further direct inspection of the verified A1.24 archive corrected the earlier provider list:
+
+- PPPD overrides killUser() and invokes its configured launcher command with arguments ordered as RAS-IP then port. Its source default is the IBS_ADDONS-relative pppd/kill command. ATD now exposes a launcher request builder for that exact argument contract.
+- Quintum Tenor does not override killUser(); it inherits the base no-op. Quintum-h323-disconnect-cause is accounting Stop metadata, not a kill operation. The earlier h323-cause-to-H323 strategy mapping was incorrect and has been removed.
+- The active single-family disconnect request builders now cover ChilliSpot RADIUS Disconnect, Cisco VPDN RSH (strategy envelope only), MikroTik RSH (strategy envelope only), PortMaster SNMP, PortSlave launcher, Total Control SNMP, and PPPD launcher. Cisco remains intentionally ambiguous at the generic strategy layer. Quintum Tenor remains a VoIP identity/accounting adapter, not a generic kill adapter.
+
+The PPPD builder does not execute the configured launcher; live external execution and provider integration tests remain open. The source audit documents the correction and supersedes earlier Tenor/PPPD strategy statements.
+
