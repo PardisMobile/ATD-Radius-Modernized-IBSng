@@ -152,6 +152,10 @@ _ENUM_VALUES = {
     "Acct-Status-Type": {1: "Start", 2: "Stop", 3: "Interim-Update", 7: "Accounting-On", 8: "Accounting-Off", 15: "Failed"},
     "NAS-Port-Type": {5: "Virtual", 15: "Ethernet", 19: "Wireless-802.11"},
 }
+_ENUM_NUMBERS = {
+    name: {label: number for number, label in values.items()}
+    for name, values in _ENUM_VALUES.items()
+}
 _HEX_ATTRS = {"CHAP-Password", "CHAP-Challenge", "Message-Authenticator", "State", "Class", "Proxy-State", "EAP-Message", "ARAP-Challenge-Response", "Framed-Interface-Id", "Framed-IPv6-Prefix", "Login-IPv6-Host", "Digest-Attributes"}
 
 _MICROSOFT_VENDOR_ID = 311
@@ -298,6 +302,15 @@ def _pack_uint32(value: object, name: str) -> bytes:
     return pack("!I", number)
 
 
+def _pack_integer_attribute(name: str, value: object) -> bytes:
+    """Encode either a numeric value or a source-dictionary enum label."""
+    if isinstance(value, str) and not value.isdecimal():
+        enum_number = _ENUM_NUMBERS.get(name, {}).get(value)
+        if enum_number is not None:
+            value = enum_number
+    return _pack_uint32(value, name)
+
+
 def _encode_value(name: str, value: object, secret: str | None, authenticator: bytes) -> bytes:
     if name in _HEX_ATTRS:
         raw = _octets(value)
@@ -317,7 +330,7 @@ def _encode_value(name: str, value: object, secret: str | None, authenticator: b
         except ValueError as exc:
             raise RadiusCodecError(f"invalid IPv4 attribute {name}") from exc
     if name in _INTEGER_ATTRS:
-        return _pack_uint32(value, name)
+        return _pack_integer_attribute(name, value)
     return _octets(value)
 
 
