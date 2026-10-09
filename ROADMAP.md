@@ -142,3 +142,8 @@ A1.24 credit adjustment is now exposed at `POST /api/v1/users/{username}/credit`
 
 This advances a narrow user-credit API workflow, **not** the complete billing milestone. Still open: add-user initial credit/deposit parity, deposit administration workflows, credit-ledger/business rules, charging/usage integration, expiry/subscription behavior, and full billing/report parity. CI status must be checked on the latest commit before treating the increment as validated.
 
+
+
+## Latest validation checkpoint — 2026-10-10
+
+Latest code/test commit: `fc7fd61c354ec8d91201433348131d996f28a548` (administrator lock/unlock). Main CI run: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38003343081. Python 3.11 and 3.12 passed with **596 passed, 2 warnings** each; the lightweight Python workflow passed with **594 passed, 2 skipped, 2 warnings**. The two skips are the live UDP/PostgreSQL tests in the lightweight workflow only; main CI configures PostgreSQL and executes both.

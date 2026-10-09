@@ -1,5 +1,17 @@
 # PROJECT CONTEXT — ATD Radius / Modernized IBSng
 
+# CURRENT VERIFIED CHECKPOINT — 2026-10-10
+
+**Read this block first in a new chat.** Repository: `PardisMobile/ATD-Radius-Modernized-IBSng`, branch `main`. Canonical behavior source: `Source of Truth/IBSng-A1.24.tar.bz2`, SHA-256 `c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839614bb9349d18a8`.
+
+- Latest code/test commit: `fc7fd61c354ec8d91201433348131d996f28a548` — source-compatible administrator lock/unlock lifecycle. Python workflow passed **594 passed, 2 skipped, 2 warnings**; main CI passed on Python 3.11/3.12 with **596 passed, 2 warnings** on each matrix job. CI run: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38003343081 . (The lightweight workflow omits the two live UDP/PostgreSQL integration tests because it does not configure `ATD_TEST_DATABASE_URL`; main CI configures PostgreSQL and runs them.)
+- Implemented API slices: native admin login/session/logout; source-scoped admin list/detail; name/comment update; signed deposit adjustment; lock/unlock; RAS and group CRUD slices; user list/detail/create; single/bulk user credit changes; independent user connection-history/credit-history permission gates. Admin mutations listed here use same-transaction operational audit where implemented.
+- Latest admin lock/unlock source trace: `IBSng/core/admin/admin_handler.py:104-119`, `core/admin/admin_actions.py:313-349`, `core/admin/admin_lock.py`. `CHANGE ADMIN INFO` depends on `SEE ADMIN INFO`; lock inserts `admin_locks` using `admin_locks_lock_id_seq`, and unlock removes only the specified lock belonging to the target admin. Multiple locks are valid; any remaining row keeps the admin locked. Endpoints: `POST /api/v1/admins/{username}/locks`, `DELETE /api/v1/admins/{username}/locks/{lock_id}`.
+- This is not full IBSng parity. Do not claim the entire source archive has been exhaustively reviewed. Do not expose RAS disconnect. Do not bypass the attribute plugin/consumer path with direct attribute-table writes. UI expansion remains frozen until core, RADIUS/RAS, billing, DB/API, migration and deployment are stabilized.
+- Estimated full replacement remains **55–60% complete** (engineering estimate, not a test metric). Next priorities: admin password/permission/create/delete workflows with source-backed semantics; user attribute lifecycle via A1.24 attribute plugins; online-user/session permission + safe disconnect sequencing; complete billing persistence; RAS provider/dictionary integration; XML-RPC; migration/installer/deployment/licensing.
+
+---
+
 ## Purpose
 This file is the durable handoff for continuing the project across ChatGPT conversations. Read this before making architectural or parity changes.
 
@@ -1329,7 +1341,7 @@ ATD now exposes `initial_credit` (default 0) and `credit_comment` on the user-cr
 
 ### Administrator deposit adjustment — 2026-10-10
 
-Direct source trace from the canonical archive: `core/admin/admin_handler.py:68-76`, `core/admin/perms/CHANGE_ADMIN_DEPOSIT.py`, `CHANGE_ADMIN_INFO.py`, `SEE_ADMIN_INFO.py`, `core/admin/admin_actions.py:161-183`, `core/admin/deposit_change_log.py`, and `core/ias/ias_actions.py`. ATD now supports `POST /api/v1/admins/{username}/deposit`, validates the native permission dependency chain, locks the target admin row, applies the signed delta, writes `admin_deposit_change`, emits IAS event type 2, and writes operational audit in the same transaction. A1.24 permits a negative target deposit for this explicit adjustment operation; the API preserves that behavior. Admin list/detail and the other admin CRUD flows remain unimplemented.
+Direct source trace from the canonical archive: `core/admin/admin_handler.py:68-76`, `core/admin/perms/CHANGE_ADMIN_DEPOSIT.py`, `CHANGE_ADMIN_INFO.py`, `SEE_ADMIN_INFO.py`, `core/admin/admin_actions.py:161-183`, `core/admin/deposit_change_log.py`, and `core/ias/ias_actions.py`. ATD now supports `POST /api/v1/admins/{username}/deposit`, validates the native permission dependency chain, locks the target admin row, applies the signed delta, writes `admin_deposit_change`, emits IAS event type 2, and writes operational audit in the same transaction. A1.24 permits a negative target deposit for this explicit adjustment operation; the API preserves that behavior. Admin list/detail, name/comment update, and lock/unlock are implemented in later checkpoints. Password changes, permission editing, admin creation/deletion, and volatile activity parity remain open.
 
 Validation checkpoint after initial-credit work: commit `42dfca83f0712a2955f9c484107b0474c1a2e48c` passed the main CI matrix on Python 3.11 and 3.12 with **580 passed, 2 warnings** each. The separate lightweight Python workflow reported `578 passed, 2 skipped, 2 warnings`; both skipped tests are the live PostgreSQL/UDP integration tests in `tests/integration/test_live_udp_postgres.py`, skipped because that workflow does not configure `ATD_TEST_DATABASE_URL`. The main CI workflow configures PostgreSQL and ran both tests successfully.
 

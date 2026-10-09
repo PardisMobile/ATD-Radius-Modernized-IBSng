@@ -18,7 +18,7 @@ Value types:
 | ADD NEW GROUP | No value | — | Implemented for group API |
 | ADD NEW USER | No value | — | Implemented for user creation |
 | CHANGE ADMIN DEPOSIT | No value | CHANGE ADMIN INFO | Implemented for deposit adjustment API; broader admin workflows remain open |
-| CHANGE ADMIN INFO | No value | SEE ADMIN INFO | Implemented for native name/comment update and as dependency for deposit adjustment; other admin mutations remain open |
+| CHANGE ADMIN INFO | No value | SEE ADMIN INFO | Implemented for native name/comment update, lock/unlock and as dependency for deposit adjustment; password/permission/create/delete workflows remain open |
 | CHANGE ADMIN PASSWORD | No value | SEE ADMIN INFO | Not implemented |
 | CHANGE ADMIN PERMISSIONS | No value | SEE ADMIN INFO; SEE ADMIN PERMISSIONS | Not implemented |
 | CHANGE BANDWIDTH MANAGER | No value | CHANGE CHARGE | Not implemented |
@@ -84,7 +84,7 @@ This inventory does **not** claim that every permission's custom `check()` behav
 
 Source trace: `IBSng/core/admin/admin_handler.py:68-76` requires `CHANGE ADMIN DEPOSIT`; `core/admin/perms/CHANGE_ADMIN_DEPOSIT.py` depends on `CHANGE ADMIN INFO`, which depends on `SEE ADMIN INFO`. `core/admin/admin_actions.py:161-183` writes `admin_deposit_change`, increments the target admin's deposit by the signed delta, then records IAS event type 2 (`CHANGE_DEPOSIT`) with the actor username and target username. A1.24 does not impose a non-negative target-deposit rule for this operation.
 
-ATD now exposes `POST /api/v1/admins/{username}/deposit` with the native dependency chain, row locking, signed deposit adjustment, native `admin_deposit_change` row, IAS type-2 event and operational audit in one transaction. This does not implement admin listing, details, info/password/lock changes, permission editing, or deletion.
+ATD now exposes `POST /api/v1/admins/{username}/deposit` with the native dependency chain, row locking, signed deposit adjustment, native `admin_deposit_change` row, IAS type-2 event and operational audit in one transaction. This does not implement password changes, permission editing, admin creation/deletion, or volatile activity fields; admin listing/detail, name/comment update and lock/unlock are implemented in later checkpoints.
 
 
 ### Administrator information read APIs — 2026-10-10
