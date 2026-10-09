@@ -120,7 +120,6 @@ _INTEGER_ATTRS = {
     "Framed-Compression",
     "Login-Service",
     "Login-TCP-Port",
-    "Framed-IPX-Network",
     "Termination-Action",
     "Framed-AppleTalk-Link",
     "Framed-AppleTalk-Network",
@@ -146,8 +145,9 @@ _INTEGER_ATTRS = {
     "Event-Timestamp",
     "Acct-Terminate-Cause",
     "NAS-Port-Type",
+    "Login-LAT-Port",
 }
-_IP_ATTRS = {"NAS-IP-Address", "Framed-IP-Address", "Framed-IP-Netmask", "Login-IP-Host"}
+_IP_ATTRS = {"NAS-IP-Address", "Framed-IP-Address", "Framed-IP-Netmask", "Login-IP-Host", "Framed-IPX-Network"}
 _ENUM_VALUES = {
     "Acct-Status-Type": {1: "Start", 2: "Stop", 3: "Interim-Update", 7: "Accounting-On", 8: "Accounting-Off", 15: "Failed"},
     "NAS-Port-Type": {5: "Virtual", 15: "Ethernet", 19: "Wireless-802.11"},
