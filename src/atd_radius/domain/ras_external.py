@@ -189,17 +189,14 @@ def _validate_snmp_settings(
 def _build_launcher_disconnect_request(
     provider: str, *, command: str, ras_ip: str, port: str
 ) -> ProviderOperationRequest:
-    if not isinstance(command, str) or not command.strip():
-        raise ValueError("launcher command must be a non-empty string")
-    if not isinstance(ras_ip, str) or not ras_ip.strip():
-        raise ValueError("ras_ip must be a non-empty string")
-    if not isinstance(port, str) or not port.strip():
-        raise ValueError("port must be a non-empty string")
+    command = _source_nonempty_text(command, "launcher command")
+    target = _source_ipv4(ras_ip)
+    port_name = _source_cli_token(port, "port")
     return ProviderOperationRequest(
         provider=provider,
         operation=ExternalOperation.LAUNCHER,
         action="disconnect",
-        parameters={"command": command, "arguments": (ras_ip, port)},
+        parameters={"command": command, "arguments": (target, port_name)},
     )
 
 
