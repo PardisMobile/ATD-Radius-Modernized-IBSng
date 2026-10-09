@@ -32,6 +32,7 @@ from .ras_external import (
     resolve_cisco_vpdn_interface,
     build_cisco_disconnect_request,
     resolve_cisco_snmp_port_index,
+    build_cisco_snmp_port_map_request,
 )
 
 
@@ -282,6 +283,11 @@ class CiscoExternalSideEffectAdapter:
             self.disconnect_strategy(),
             source_parameters=source_parameters,
         )
+
+    def snmp_port_map_request(
+        self, source_parameters: Mapping[str, object]
+    ) -> ProviderOperationRequest:
+        return build_cisco_snmp_port_map_request(**source_parameters)
 
     def resolve_snmp_port_index(
         self, port: str, interface_descriptions: Mapping[str, object]
