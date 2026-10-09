@@ -43,4 +43,4 @@ def test_admin_sessions_are_a_separate_revocable_extension():
     assert "references admins(admin_id)" in migration
     assert "token_hash char(64) not null unique" in migration
     assert "revoked_at" in migration
-    assert "expires_at > current_timestamp" not in migration  # expiry is enforced on lookup
+    assert "expires_at timestamptz not null" in migration
