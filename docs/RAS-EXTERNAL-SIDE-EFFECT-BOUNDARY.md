@@ -207,3 +207,10 @@ The canonical archive digest measured from the checked-in bytes is `c7117a6a2fd2
 ## Cisco configured SNMP/RSH branch — 2026-10-09
 
 Cisco's strategy is now source-resolved at request-construction level: default SNMP branch maps the port description through IF-MIB ifDescr and SETs Cisco OID `.1.3.6.1.4.1.9.2.1.76.0` to the resolved ifIndex (SNMP v2c/public/10s/3 retries/UDP161). When `cisco_kill_use_snmp=0`, Async ports use `clear line <suffix>`, Serial ports use `clear interface <port>`, and unsupported port names yield no request. The five-hour SNMP port-map refresh and real transport execution are not implemented here. The generic strategy remains `snmp-or-rsh` because branch selection depends on the configured source attribute.
+
+
+## Bounded SNMP SET transport — 2026-10-09
+
+ATD now includes `atd_radius.infrastructure.snmp_transport.SnmpV1V2cSetTransport`, a standard-library UDP transport for the exact integer SET request envelopes emitted by the audited Cisco, PortMaster and Total Control builders. It encodes SNMPv1/v2c BER messages, validates peer endpoint, request ID, version/community, response PDU, requested OID, agent error status and exception values, applies finite per-attempt timeouts and bounded retries, and preserves the ordered Total Control down/up SET sequence. For a failed later SET, `SnmpTransportError.completed_responses` exposes successful earlier steps so partial side effects are not hidden.
+
+Transport tests use an injected fake socket; no live router was contacted. This transport currently supports **SET requests only**: Cisco IF-MIB walk/refresh is not implemented, and the transport does not execute RSH wrappers or launcher commands. The Total Control down/up sequence is inherently two operations and can partially succeed if the second SET fails; callers must handle that explicitly.
