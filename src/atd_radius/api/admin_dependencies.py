@@ -71,6 +71,13 @@ _USER_PERMISSIONS = AdminPermissionEvaluator(
             dependencies=("GET USER INFORMATION",),
             evaluator=_all_or_owner,
         ),
+        PermissionSpec(
+            "CHANGE USER CREDIT",
+            PermissionKind.CONTEXTUAL,
+            dependencies=("GET USER INFORMATION",),
+            evaluator=_all_or_owner,
+        ),
+        PermissionSpec("NO DEPOSIT LIMIT", PermissionKind.NO_VALUE),
     ]
 )
 
@@ -131,7 +138,7 @@ def require_admin_permission(permission_name: str):
     ) -> AdminPrincipal:
         if permission_name in {"LIST RAS", "GET RAS INFORMATION", "CHANGE RAS"}:
             evaluator = _RAS_PERMISSIONS
-        elif permission_name in {"ADD NEW USER", "GET USER INFORMATION", "CHANGE USER ATTRIBUTES", "DELETE USER"}:
+        elif permission_name in {"ADD NEW USER", "GET USER INFORMATION", "CHANGE USER ATTRIBUTES", "DELETE USER", "CHANGE USER CREDIT", "NO DEPOSIT LIMIT"}:
             evaluator = _USER_PERMISSIONS
         elif permission_name in {"SEE CONNECTION LOGS", "SEE CREDIT CHANGES"}:
             evaluator = _REPORT_PERMISSIONS
@@ -165,6 +172,14 @@ def can_delete_user(principal: AdminPrincipal, owner_id: int | None) -> bool:
     return _USER_PERMISSIONS.can_do(
         principal.permissions,
         "DELETE USER",
+        context={"admin_id": principal.admin_id, "owner_id": owner_id},
+    )
+
+
+def can_change_user_credit(principal: AdminPrincipal, owner_id: int | None) -> bool:
+    return _USER_PERMISSIONS.can_do(
+        principal.permissions,
+        "CHANGE USER CREDIT",
         context={"admin_id": principal.admin_id, "owner_id": owner_id},
     )
 
@@ -228,6 +243,7 @@ __all__ = [
     "can_access_user",
     "can_change_user",
     "can_delete_user",
+    "can_change_user_credit",
     "can_view_connection_logs",
     "can_view_credit_changes",
     "require_admin_permission",
