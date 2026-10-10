@@ -20,6 +20,7 @@ USER_ATTRIBUTE_UPDATER_HANDLERS = {
     "session_timeout": "session_timeout.SessionTimeoutAttrUpdater",
     "idle_timeout": "idle_timeout.IdleTimeoutAttrUpdater",
     "voip_preferred_language": "voip_preferred_language.VoIPPreferredLanguageAttrUpdater",
+    "save_bw_usage": "save_bw_usage.SaveBWUsageAttrUpdater",
 }
 AUDIT_LOG_NOVALUE = "_NOVALUE_"
 _INTEGER_FLAG = re.compile(r"I([01])\s*\.")
@@ -110,6 +111,8 @@ class UserAttributeMutationRepository:
             )
 
         normalized = dict(attrs)
+        if "save_bw_usage" in normalized and normalized["save_bw_usage"] != "":
+            raise UserAttributeMutationError("save_bw_usage is a marker attribute and must have an empty value")
         for name in ("multi_login", "session_timeout", "idle_timeout"):
             if name not in normalized:
                 continue
