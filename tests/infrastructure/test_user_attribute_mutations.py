@@ -29,6 +29,10 @@ class FakeConnection:
             return Result((42, "alice", 7, "operator"))
         if "SELECT attr_name, attr_value" in sql and "ANY(%s)" in sql:
             return Result(rows=[(name, value) for name, value in self.current.items() if name in params[1]])
+        if "SELECT g.group_name" in sql and "FROM users u" in sql:
+            return Result(("oldgroup",))
+        if "UPDATE users SET group_id" in sql:
+            return Result()
         if "SELECT admin_id, username FROM admins" in sql:
             return Result((9, "newowner"))
         if "SELECT value FROM defs" in sql:
@@ -172,3 +176,35 @@ def test_owner_transfer_uses_users_owner_id_and_native_owner_audit():
     )
     audit_calls = [params for sql, params in conn.calls if "SELECT insert_user_audit_log" in sql]
     assert [row[2:] for row in audit_calls] == [("owner", "operator", "newowner")]
+
+
+
+def test_group_name_uses_native_users_group_id_and_group_audit():
+    conn = FakeConnection()
+    repo = UserAttributeMutationRepository(conn)
+    target = repo.lock_target("alice")
+    assert target is not None
+
+    previous = repo.change_group(
+        target,
+        admin_id=7,
+        group_id=22,
+        group_name="newgroup",
+    )
+
+    assert previous == "oldgroup"
+    assert any(
+        "UPDATE users SET group_id" in sql and params == (22, 42)
+        for sql, params in conn.calls
+    )
+    audit_calls = [
+        params for sql, params in conn.calls
+        if "SELECT insert_user_audit_log" in sql
+    ]
+    assert [row[2:] for row in audit_calls] == [
+        ("group", "oldgroup", "newgroup")
+    ]
+    assert not any(
+        "INSERT INTO user_attrs" in sql and "group_name" in params
+        for sql, params in conn.calls
+    )
