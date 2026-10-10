@@ -25,6 +25,12 @@ class AccountingSessionService:
         self.registry=registry; self.persistence=persistence; self.charge=charge
 
     def apply(self,event,user_id,ras_id)->AccountingSessionResult:
+        # Keep registry decisions and their persistence side effects ordered as one
+        # in-process operation. Registry methods use an RLock, so nested calls are safe.
+        with self.registry.synchronized():
+            return self._apply_locked(event,user_id,ras_id)
+
+    def _apply_locked(self,event,user_id,ras_id)->AccountingSessionResult:
         if not event.session_id: raise ValueError("Acct-Session-Id is required")
         key=SessionKey(user_id,ras_id,event.session_id); current=self.registry.get(key)
         if event.status is AccountingStatus.START and current is None:
