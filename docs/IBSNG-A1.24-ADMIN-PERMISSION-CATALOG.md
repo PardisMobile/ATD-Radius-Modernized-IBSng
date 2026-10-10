@@ -51,7 +51,7 @@ Value types:
 | NO DEPOSIT LIMIT | No value | — | Implemented for administrator credit-change deposit enforcement |
 | POST MESSAGES | No value | — | Not implemented |
 | SEE ADMIN INFO | No value | — | Implemented for sorted admin username list and persisted admin detail; volatile activity fields omitted |
-| SEE ADMIN PERMISSIONS | No value | SEE ADMIN INFO | Not implemented |
+| SEE ADMIN PERMISSIONS | No value | SEE ADMIN INFO | Implemented for viewing native admin permission rows via API |
 | SEE BW SNAPSHOTS | All/Restricted | — | Not implemented |
 | SEE CONNECTION LOGS | All/Restricted | — | Implemented for user-detail connection-history field |
 | SEE CREDIT CHANGES | All/Restricted | — | Implemented for user-detail credit-history field |
