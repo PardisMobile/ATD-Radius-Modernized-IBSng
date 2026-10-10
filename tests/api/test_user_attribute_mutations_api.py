@@ -371,3 +371,44 @@ def test_caller_id_change_denies_admin_without_voip_permission(monkeypatch):
         )
     assert error.value.status_code == 403
     assert conn.commits == 0
+
+
+
+def test_caller_id_delete_uses_voip_permission_and_audits_removed_values(monkeypatch):
+    conn = SimpleNamespace(commits=0)
+    conn.commit = lambda: setattr(conn, "commits", conn.commits + 1)
+    captured = {}
+
+    class Repository:
+        def __init__(self, _conn):
+            pass
+        def lock_target(self, _username):
+            return SimpleNamespace(user_id=42, username="alice", owner_id=7)
+        def delete(self, target, **kwargs):
+            captured["delete"] = kwargs
+            return ["1001", "1002"]
+
+    class Audit:
+        def __init__(self, _conn):
+            pass
+        def append(self, **kwargs):
+            captured["audit"] = kwargs
+
+    install_connection(monkeypatch, conn)
+    monkeypatch.setattr(users_api, "CallerIDMutationRepository", Repository)
+    monkeypatch.setattr(users_api, "OperationalAuditRepository", Audit)
+
+    result = users_api.delete_user_caller_ids(
+        "alice",
+        principal({
+            "GET USER INFORMATION": "All",
+            "CHANGE USER ATTRIBUTES": "All",
+            "CHANGE VOIP USER ATTRIBUTES": "All",
+        }),
+    )
+
+    assert result.caller_ids == []
+    assert captured["delete"]["admin_id"] == 7
+    assert captured["audit"]["action"] == "user.caller_ids.delete"
+    assert captured["audit"]["details"]["deleted_caller_ids"] == ["1001", "1002"]
+    assert conn.commits == 1
