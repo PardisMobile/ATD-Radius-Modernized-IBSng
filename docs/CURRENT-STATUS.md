@@ -3,7 +3,7 @@
 Updated: 2026-10-10  
 Repository: `PardisMobile/ATD-Radius-Modernized-IBSng`  
 Branch: `main`  
-Latest code/test commit: `af61bb95280b3a96ca12dbdb958c56dce2ee3031`
+Latest code/test commit: `3b6196b9a38e983e2bce335df2d12e15c4dee08f`
 
 ## Authority and validation
 
@@ -32,7 +32,7 @@ Latest code/test commit: `af61bb95280b3a96ca12dbdb958c56dce2ee3031`
 
 ## Still open — do not mark complete
 
-1. Admin permission editing, admin deletion, and volatile activity fields. Admin creation writes native IAS `ADD_ADMIN` event type 5 only when `IAS_ENABLED` is on (native default is off). The other credit/deposit IAS write paths still need the same enable/disable parity audit. Permission editing remains blocked until full source permission value validation/dependency behavior is registered.
+1. Admin permission editing, admin deletion, and volatile activity fields. Admin creation writes native IAS `ADD_ADMIN` event type 5 only when `IAS_ENABLED` is on (native default is off). Admin creation, admin-deposit adjustments, user initial credit, and single/bulk user-credit events now all honor the flag; IAS enable/disable parity validated on code/test commit `3b6196b9a38e983e2bce335df2d12e15c4dee08f`: full CI passed on Python 3.11 and 3.12 with **616 passed, 2 warnings** per matrix job; Python-only workflow passed **614 passed, 2 skipped, 2 warnings**. The two skips are live UDP/PostgreSQL integration tests not configured in the lightweight workflow. Full CI: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38060443028 ; Python workflow: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38060443040. Permission editing remains blocked until full source permission value validation/dependency behavior is registered.
 2. User attribute mutation/deletion/owner transfer through source-equivalent A1.24 action/plugin paths.
 3. Online-user listing/permissions and safe disconnect/CoA session resolution, permission, side-effect and audit sequencing. **RAS disconnect remains unmounted.**
 4. Full billing persistence, charging/usage integration, expiry/subscription and report parity.
