@@ -21,6 +21,8 @@ def _run_radius_server(server: RadiusUDPServer) -> None:
 
 def _start_radius_servers() -> list[RadiusUDPServer]:
     state = NativeRadiusRuntimeState()
+    # API and UDP packet handlers must share this exact in-process session owner.
+    app.state.radius_runtime_state = state
     handler = NativeRadiusPacketHandler(state, connection)
     secrets = PostgresRadiusSecretResolver(connection)
     servers = [

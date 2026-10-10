@@ -107,32 +107,33 @@ class RadiusRuntimeHandler:
                 self.ip_pool_sessions.release_states(matches)
             return response
         if packet.code is RadiusCode.ACCOUNTING_REQUEST:
-            result: DispatchResult = self.dispatcher.accounting(packet)
-            event = result.accounting
-            if event is not None:
-                user_id = self.identities.user_id(event.username)
-                ras_id = self.identities.ras_id(peer[0])
-                if user_id is not None and ras_id is not None:
-                    ras_record = self.identities.ras.get(ras_id)
-                    if ras_record is not None:
-                        session_id = provider_session_id(ras_record.ras_type, event.attributes)
-                        if session_id is not None:
-                            event = replace(event, session_id=session_id)
-                        service = provider_service_for_ras(ras_record.ras_type)
-                        ras_allowed = ras_allows_multi_login(
-                            ras_record.ras_type, ras_record.all_attributes(), service
-                        )
-                        event = replace(
-                            event,
-                            ras_multi_login_allowed=ras_allowed,
-                        )
-                    self.accounting_sessions.apply(event, user_id, ras_id)
-                    if self.ip_pool_sessions:
-                        if event.status.value == "Start":
-                            self.ip_pool_sessions.accounting_start(event, ras_id)
-                        elif event.status.value == "Stop":
-                            self.ip_pool_sessions.accounting_stop(event, ras_id)
-            return result.response
+            with self.accounting_sessions.registry.synchronized():
+                result: DispatchResult = self.dispatcher.accounting(packet)
+                event = result.accounting
+                if event is not None:
+                    user_id = self.identities.user_id(event.username)
+                    ras_id = self.identities.ras_id(peer[0])
+                    if user_id is not None and ras_id is not None:
+                        ras_record = self.identities.ras.get(ras_id)
+                        if ras_record is not None:
+                            session_id = provider_session_id(ras_record.ras_type, event.attributes)
+                            if session_id is not None:
+                                event = replace(event, session_id=session_id)
+                            service = provider_service_for_ras(ras_record.ras_type)
+                            ras_allowed = ras_allows_multi_login(
+                                ras_record.ras_type, ras_record.all_attributes(), service
+                            )
+                            event = replace(
+                                event,
+                                ras_multi_login_allowed=ras_allowed,
+                            )
+                        self.accounting_sessions.apply(event, user_id, ras_id)
+                        if self.ip_pool_sessions:
+                            if event.status.value == "Start":
+                                self.ip_pool_sessions.accounting_start(event, ras_id)
+                            elif event.status.value == "Stop":
+                                self.ip_pool_sessions.accounting_stop(event, ras_id)
+                return result.response
         return self.dispatcher.access(packet, source_ip=peer[0])
 
 

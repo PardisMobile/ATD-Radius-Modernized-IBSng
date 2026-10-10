@@ -218,3 +218,58 @@ def test_native_radius_packet_handler_reuses_runtime_state_across_transactions()
     # Construction should be deferred to the packet and state must remain reusable.
     assert state.sessions.active_for_user(7) == ()
     assert connections == []
+
+
+def test_accounting_identity_resolution_and_apply_share_registry_lock():
+    from contextlib import contextmanager
+    from atd_radius.application.radius_runtime import RadiusRuntimeHandler
+    from atd_radius.domain.accounting_lifecycle import AccountingEvent, AccountingStatus
+    from atd_radius.domain.radius_dispatch import DispatchResult
+
+    guard = {"entered": False}
+
+    @contextmanager
+    def synchronized():
+        assert not guard["entered"]
+        guard["entered"] = True
+        try:
+            yield
+        finally:
+            guard["entered"] = False
+
+    class Registry:
+        synchronized = staticmethod(synchronized)
+
+    class Sessions:
+        registry = Registry()
+        def apply(self, event, user_id, ras_id):
+            assert guard["entered"]
+            self.applied = (event, user_id, ras_id)
+
+    dispatcher = Mock()
+    event = AccountingEvent(AccountingStatus.START, "alice", "sid")
+    dispatcher.accounting.side_effect = lambda packet: (
+        (_ for _ in ()).throw(AssertionError("accounting dispatch outside lock"))
+        if not guard["entered"] else DispatchResult(
+            RadiusPacket(RadiusCode.ACCOUNTING_RESPONSE, 9, {}, b"0123456789abcdef"), event
+        )
+    )
+    identities = Mock()
+    identities.user_id.side_effect = lambda username: (
+        7 if guard["entered"] else (_ for _ in ()).throw(AssertionError("user lookup outside lock"))
+    )
+    identities.ras_id.side_effect = lambda source_ip: (
+        3 if guard["entered"] else (_ for _ in ()).throw(AssertionError("RAS lookup outside lock"))
+    )
+    identities.ras.get.return_value = None
+    sessions = Sessions()
+    handler = RadiusRuntimeHandler(dispatcher, sessions, identities)
+
+    response = handler(
+        RadiusPacket(RadiusCode.ACCOUNTING_REQUEST, 9, {"Acct-Status-Type": "Start"}, b"0123456789abcdef"),
+        ("192.0.2.1", 1812),
+    )
+
+    assert response.code is RadiusCode.ACCOUNTING_RESPONSE
+    assert sessions.applied == (event, 7, 3)
+    assert guard["entered"] is False
