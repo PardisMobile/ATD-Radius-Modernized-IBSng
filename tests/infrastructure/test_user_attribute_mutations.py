@@ -26,9 +26,11 @@ class FakeConnection:
     def execute(self, sql, params=()):
         self.calls.append((sql, params))
         if "FROM users u" in sql and "FOR UPDATE OF u" in sql:
-            return Result((42, "alice", 7))
+            return Result((42, "alice", 7, "operator"))
         if "SELECT attr_name, attr_value" in sql and "ANY(%s)" in sql:
             return Result(rows=[(name, value) for name, value in self.current.items() if name in params[1]])
+        if "SELECT admin_id, username FROM admins" in sql:
+            return Result((9, "newowner"))
         if "SELECT value FROM defs" in sql:
             return Result((self.audit_flag,) if self.audit_flag is not None else None)
         if "UPDATE user_attrs SET" in sql:
@@ -153,3 +155,20 @@ def test_user_audit_log_flag_off_disables_native_attribute_audit():
     repo.apply(target, admin_id=9, attrs={"comment": "private note"}, to_delete=[])
 
     assert not any("SELECT insert_user_audit_log" in sql for sql, _ in conn.calls)
+
+
+def test_owner_transfer_uses_users_owner_id_and_native_owner_audit():
+    conn = FakeConnection()
+    repo = UserAttributeMutationRepository(conn)
+    target = repo.lock_target("alice")
+    assert target is not None
+
+    owner = repo.change_owner(target, admin_id=7, owner_username="newowner")
+
+    assert owner == "newowner"
+    assert any(
+        "UPDATE users SET owner_id" in sql and params == (9, 42)
+        for sql, params in conn.calls
+    )
+    audit_calls = [params for sql, params in conn.calls if "SELECT insert_user_audit_log" in sql]
+    assert [row[2:] for row in audit_calls] == [("owner", "operator", "newowner")]
