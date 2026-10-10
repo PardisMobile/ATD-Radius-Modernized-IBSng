@@ -3,7 +3,7 @@
 Updated: 2026-10-10  
 Repository: `PardisMobile/ATD-Radius-Modernized-IBSng`  
 Branch: `main`  
-Latest code/test commit: `aefba4b1079b7ddb7940461e59e572bebd21b834`
+Latest code/test commit: `af61bb95280b3a96ca12dbdb958c56dce2ee3031`
 
 ## Authority and validation
 
@@ -32,7 +32,7 @@ Latest code/test commit: `aefba4b1079b7ddb7940461e59e572bebd21b834`
 
 ## Still open — do not mark complete
 
-1. Admin permission editing, admin deletion, and volatile activity fields. Admin creation now writes native IAS `ADD_ADMIN` event type 5; CI verification for this increment is pending. Permission editing remains blocked until full source permission value validation/dependency behavior is registered.
+1. Admin permission editing, admin deletion, and volatile activity fields. Admin creation writes native IAS `ADD_ADMIN` event type 5 only when `IAS_ENABLED` is on (native default is off). The other credit/deposit IAS write paths still need the same enable/disable parity audit. Permission editing remains blocked until full source permission value validation/dependency behavior is registered.
 2. User attribute mutation/deletion/owner transfer through source-equivalent A1.24 action/plugin paths.
 3. Online-user listing/permissions and safe disconnect/CoA session resolution, permission, side-effect and audit sequencing. **RAS disconnect remains unmounted.**
 4. Full billing persistence, charging/usage integration, expiry/subscription and report parity.

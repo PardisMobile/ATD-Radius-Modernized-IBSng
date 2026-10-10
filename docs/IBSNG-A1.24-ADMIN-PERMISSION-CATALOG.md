@@ -14,7 +14,7 @@ Value types:
 |---|---|---|---|
 | ACCESS ALL CHARGES | No value | — | Not implemented |
 | ACCESS ALL GROUPS | No value | — | Implemented for group visibility |
-| ADD NEW ADMIN | No value | — | Implemented for native administrator creation API with source-compatible IAS `ADD_ADMIN` type-5 event when `IAS_ENABLED` is on (default off); CI for the flag correction is pending |
+| ADD NEW ADMIN | No value | — | Implemented for native administrator creation API with source-compatible IAS `ADD_ADMIN` type-5 event when `IAS_ENABLED` is on (default off); validated by passing CI `af61bb95280b3a96ca12dbdb958c56dce2ee3031` |
 | ADD NEW GROUP | No value | — | Implemented for group API |
 | ADD NEW USER | No value | — | Implemented for user creation |
 | CHANGE ADMIN DEPOSIT | No value | CHANGE ADMIN INFO | Implemented for deposit adjustment API; broader admin workflows remain open |
