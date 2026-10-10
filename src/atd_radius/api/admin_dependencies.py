@@ -129,6 +129,11 @@ _ADMIN_PERMISSIONS = AdminPermissionEvaluator(
             PermissionKind.NO_VALUE,
             dependencies=("CHANGE ADMIN INFO",),
         ),
+        PermissionSpec(
+            "DELETE ADMIN",
+            PermissionKind.NO_VALUE,
+            dependencies=("SEE ADMIN INFO",),
+        ),
     ]
 )
 
@@ -184,7 +189,7 @@ def require_admin_permission(permission_name: str):
             evaluator = _REPORT_PERMISSIONS
         elif permission_name in {
             "ADD NEW ADMIN", "SEE ADMIN INFO", "SEE ADMIN PERMISSIONS", "CHANGE ADMIN PERMISSIONS",
-            "CHANGE ADMIN INFO", "CHANGE ADMIN DEPOSIT", "CHANGE ADMIN PASSWORD"
+            "CHANGE ADMIN INFO", "CHANGE ADMIN DEPOSIT", "CHANGE ADMIN PASSWORD", "DELETE ADMIN"
         }:
             evaluator = _ADMIN_PERMISSIONS
         else:

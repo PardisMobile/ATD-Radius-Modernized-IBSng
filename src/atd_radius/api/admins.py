@@ -3,7 +3,7 @@ from __future__ import annotations
 import ipaddress
 import re
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel, Field
 
 from atd_radius.api.admin_dependencies import (
@@ -15,6 +15,7 @@ from atd_radius.api.admin_dependencies import (
 from atd_radius.domain.ibsng_password import hash_ibsng_password
 from atd_radius.infrastructure.admin_credentials import AdminCredentialRepository
 from atd_radius.infrastructure.admin_creation import AdminCreationRepository
+from atd_radius.infrastructure.admin_deletion import AdminDeletionError, AdminDeletionRepository
 from atd_radius.infrastructure.admin_information import AdminInformationRepository
 from atd_radius.infrastructure.admin_permission_mutations import (
     AdminPermissionMutationError,
@@ -391,6 +392,44 @@ def unlock_admin(
         raise
     except Exception as exc:
         raise HTTPException(status_code=409, detail="Administrator lock could not be removed") from exc
+
+
+
+@router.delete("/{username}", status_code=204)
+def delete_admin(
+    username: str,
+    admin: AdminPrincipal = Depends(require_admin_permission("DELETE ADMIN")),
+) -> Response:
+    """Delete a native administrator and all source-defined dependent references."""
+    remote_addr = _validated_remote_addr(admin.remote_addr)
+    try:
+        with connection() as conn:
+            deleted = AdminDeletionRepository(conn).delete(
+                username,
+                deleter_username=admin.username,
+            )
+            OperationalAuditRepository(conn).append(
+                actor_admin_id=admin.admin_id,
+                actor_username=admin.username,
+                action="admin.delete",
+                outcome="success",
+                target_type="admin",
+                target_id=str(deleted.admin_id),
+                remote_addr=remote_addr,
+                details={"target_username": deleted.username},
+            )
+            conn.commit()
+    except AdminDeletionError as exc:
+        if exc.code == "admin_not_found":
+            raise HTTPException(status_code=404, detail="administrator not found") from exc
+        if exc.code == "system_admin_protected":
+            raise HTTPException(status_code=409, detail="system administrator cannot be deleted") from exc
+        raise HTTPException(status_code=409, detail="administrator could not be deleted") from exc
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=409, detail="administrator could not be deleted") from exc
+    return Response(status_code=204)
 
 
 @router.get("/{username}", response_model=AdminInformationView)
