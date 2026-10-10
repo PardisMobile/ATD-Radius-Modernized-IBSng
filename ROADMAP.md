@@ -184,8 +184,8 @@ Source audit against the checksum-verified A1.24 archive confirms `IBSng/core/ad
 ## Generic user attribute mutation — 2026-10-10
 
 - [x] Trace A1.24 `user_handler.updateUserAttrs` → `user_actions.updateUserAttrsQuery` → `AttributeManager.getAttrUpdaters` → generic `AttrUpdater` and `comment.py`.
-- [x] Add a restricted mutation endpoint for `name`, `comment`, and `phone` only.
+- [x] Add a restricted mutation endpoint for `name`, `comment`, `phone`, `lock`, `multi_login`, `session_timeout`, and `idle_timeout` with source-derived validation.
 - [x] Preserve `CHANGE USER ATTRIBUTES` dependency/owner scope, user-row locking, native `USER_AUDIT_LOG` flag, `_NOVALUE_` audit sentinel and native `insert_user_audit_log` function.
 - [x] Reject specialized/unknown attributes rather than bypassing their plugins.
 - [x] Verify code/test checkpoint `a5a96c692168e30191a4642b797dc3ae34a3ded1` through full CI: 643 passed on Python 3.11 and 3.12 (2 warnings each); Python-only 641 passed, 2 skipped (live DB/UDP integration unavailable in that workflow).
-- [ ] Implement specialized attribute families with their own validators, storage, broadcast and post-update semantics.
+- [ ] Implement remaining specialized attribute families with their own validators, storage, broadcast and post-update semantics.
