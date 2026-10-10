@@ -80,8 +80,6 @@ def test_change_admin_password_rejects_source_invalid_characters_before_db(monke
 
 
 def test_admin_permission_view_returns_native_permission_values(monkeypatch):
-    from atd_radius.domain.admin_permissions import AdminPermissionSet
-
     captured = {}
 
     class Repo:
