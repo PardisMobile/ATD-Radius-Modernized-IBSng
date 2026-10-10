@@ -66,4 +66,4 @@ Enabled A1.24 `voip_preferred_language` in the generic user attribute API after 
 
 ## Source-backed attribute increment — save_bw_usage
 
-`save_bw_usage` marker mutation matches A1.24's empty-string persistence and generic delete path. Regression coverage is included. Full CI passed on Python 3.11 and 3.12: 663 passed, 2 warnings per matrix job. Bandwidth accounting consumer integration remains pending.
+`save_bw_usage` marker mutation matches A1.24's empty-string persistence and generic delete path. Regression coverage is included. Full CI passed on the tested feature commit on Python 3.11 and 3.12: 664 passed, 2 warnings per matrix job (https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38082764002). Bandwidth accounting consumer integration remains pending.
