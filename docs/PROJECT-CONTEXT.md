@@ -193,3 +193,8 @@ Compatibility note: these are single-user endpoints only; do not claim parity fo
 ## Additional attribute plugin checkpoint — 2026-10-10
 
 `voip_preferred_language` is now enabled in the source-traced generic attribute mutation slice. A1.24 stores it in `user_attrs` through `VoIPPreferredLanguageAttrUpdater`; the updater has no custom permission check or validation override. ATD preserves generic owner-scoped `CHANGE USER ATTRIBUTES` behavior and native user audit. Its source comment says two-letter language codes but does not enforce them, so ATD does not introduce stricter validation. Regression test added. Full CI passed on Python 3.11 and 3.12: 663 passed, 2 warnings per matrix job; see run https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38082360746 and `docs/A1.24-ATTRIBUTE-BEHAVIOR-AUDIT.md`. Commit: `581fd60d87f2e15f6f4dd81cf50e0cbbb3772ed6`.
+
+
+## Handoff — save_bw_usage marker
+
+The generic user-attribute mutation API now includes A1.24 `save_bw_usage` based on `IBSng/core/user/plugins/save_bw_usage.py`. It is a presence marker persisted in `user_attrs` with an empty string, not a boolean string or numeric value. The current mutation endpoint accepts only `""`; deletion follows generic delete semantics. Generic owner-scoped authorization and native user audit are retained. A focused regression test was added. CI is running; verify it before calling this increment complete. Bandwidth usage accounting still needs consumer integration and parity tests.
