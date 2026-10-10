@@ -168,7 +168,7 @@ Source audit against the checksum-verified A1.24 archive confirms `IBSng/core/ad
 - [x] Delete one MultiValue item and scope persistence updates to the target admin. This intentionally avoids a source query defect in A1.24 that omits `admin_id` from its UPDATE predicate.
 - [x] Same-transaction operational audit and regression tests for mutation paths.
 - [x] CI verified on code/test commit `e16d155e6ff7805f3825248b84cd922157c3e780`: 630 passed on each Python 3.11/3.12 matrix job, 2 warnings; Python-only run 628 passed, 2 skipped, 2 warnings.
-- [ ] Native admin deletion, including all source side effects and post-delete cache/reference handling.
+- [x] Native admin deletion, including source side effects, reference reassignment, session revocation and transactional audit (CI verified on `3177193269ce94b36ae29e336b0f790820d6af17`).
 
 
 ## Native administrator deletion — 2026-10-10
@@ -179,3 +179,13 @@ Source audit against the checksum-verified A1.24 archive confirms `IBSng/core/ad
 - [x] Delete admin sessions through the ATD FK cascade; write ATD operational audit in the same transaction.
 - [x] Regression tests for full side-effect sequence, IAS enabled/disabled, missing target and protected system account.
 - [x] CI verified on code/test commit `3177193269ce94b36ae29e336b0f790820d6af17`: 636 passed on each Python 3.11/3.12 matrix job, 2 warnings; Python-only run 634 passed, 2 skipped, 2 warnings.
+
+
+## Generic user attribute mutation — 2026-10-10
+
+- [x] Trace A1.24 \`user_handler.updateUserAttrs\` → \`user_actions.updateUserAttrsQuery\` → \`AttributeManager.getAttrUpdaters\` → generic \`AttrUpdater\` and \`comment.py\`.
+- [x] Add a restricted mutation endpoint for \`name\`, \`comment\`, and \`phone\` only.
+- [x] Preserve \`CHANGE USER ATTRIBUTES\` dependency/owner scope, user-row locking, native \`USER_AUDIT_LOG\` flag, \`_NOVALUE_\` audit sentinel and native \`insert_user_audit_log\` function.
+- [x] Reject specialized/unknown attributes rather than bypassing their plugins.
+- [ ] Verify the current code/test checkpoint through full CI before marking this increment complete.
+- [ ] Implement specialized attribute families with their own validators, storage, broadcast and post-update semantics.
