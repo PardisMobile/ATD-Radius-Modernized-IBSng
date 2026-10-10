@@ -64,6 +64,17 @@ class UserOwnerView(BaseModel):
     owner_username: str
 
 
+class UserGroupChange(BaseModel):
+    group_name: str = Field(min_length=1, max_length=255)
+
+
+class UserGroupView(BaseModel):
+    id: int
+    username: str
+    group_name: str
+    previous_group_name: str
+
+
 class UserCreditChange(BaseModel):
     delta: Decimal = Field(max_digits=12, decimal_places=2)
     comment: str = Field(max_length=1000)
@@ -394,6 +405,73 @@ def mutate_user_attributes(
         raise
     except Exception as exc:
         raise HTTPException(status_code=409, detail="USER attributes could not be changed") from exc
+
+
+@router.put("/{username}/group", response_model=UserGroupView)
+def change_user_group(
+    username: str,
+    payload: UserGroupChange,
+    admin: AdminPrincipal = Depends(require_admin_session),
+) -> UserGroupView:
+    """Implement A1.24's special group_name updater on users.group_id."""
+    if admin.remote_addr is None:
+        raise HTTPException(status_code=400, detail="A valid administrator remote address is required")
+    try:
+        remote_addr = str(ipaddress.ip_address(admin.remote_addr))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="A valid administrator remote address is required") from exc
+
+    group_name = payload.group_name.strip()
+    if not group_name:
+        raise HTTPException(status_code=422, detail="group_name must not be empty")
+
+    try:
+        with connection() as conn:
+            repository = UserAttributeMutationRepository(conn)
+            target = repository.lock_target(username)
+            if target is None:
+                raise HTTPException(status_code=404, detail="user not found")
+            if not can_change_user(admin, target.owner_id):
+                raise HTTPException(status_code=403, detail="Administrator permission denied")
+
+            group = GroupRepository(conn).get_by_name_for_share(group_name)
+            if group is None:
+                raise HTTPException(status_code=404, detail="group not found")
+            if not can_use_group(admin, group.name, group.owner_id):
+                raise HTTPException(status_code=403, detail="Administrator group access denied")
+
+            previous_group_name = repository.change_group(
+                target,
+                admin_id=admin.admin_id,
+                group_id=group.id,
+                group_name=group.name,
+            )
+            OperationalAuditRepository(conn).append(
+                actor_admin_id=admin.admin_id,
+                actor_username=admin.username,
+                action="user.group.change",
+                outcome="success",
+                target_type="user",
+                target_id=str(target.user_id),
+                remote_addr=remote_addr,
+                details={
+                    "previous_group": previous_group_name,
+                    "new_group": group.name,
+                },
+            )
+            conn.commit()
+            return UserGroupView(
+                id=target.user_id,
+                username=target.username,
+                group_name=group.name,
+                previous_group_name=previous_group_name,
+            )
+    except HTTPException:
+        raise
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail="group not found") from exc
+    except Exception as exc:
+        raise HTTPException(status_code=409, detail="USER group could not be changed") from exc
 
 
 @router.put("/{username}/owner", response_model=UserOwnerView)
