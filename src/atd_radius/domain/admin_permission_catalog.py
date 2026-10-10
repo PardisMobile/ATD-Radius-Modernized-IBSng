@@ -54,7 +54,7 @@ SEE ONLINE SNAPSHOTS
 SEE REALTIME SNAPSHOTS
 SEE VOIP TARIFF
 VIEW MESSAGES
-""".split()
+""".splitlines()
 
 _SINGLE_VALUE = """
 CHANGE GROUP
@@ -73,14 +73,14 @@ SEE ONLINE USERS
 SEE SAVED USERNAME PASSWORDS
 SEE USER AUDIT LOGS
 SEE WEB ANALYZER LOGS
-""".split()
+""".splitlines()
 
 _MULTI_VALUE = """
 CHARGE ACCESS
 GROUP ACCESS
 LIMIT LOGIN ADDR
 LIMIT MAIL DOMAIN
-""".split()
+""".splitlines()
 
 _DEPENDENCIES = {
     "CHANGE ADMIN DEPOSIT": ("CHANGE ADMIN INFO",),
@@ -116,7 +116,7 @@ _DEFINITIONS = {
         (_SINGLE_VALUE, PermissionKind.SINGLE_VALUE),
         (_MULTI_VALUE, PermissionKind.MULTI_VALUE),
     )
-    for name in names
+    for name in names if name
 }
 
 
