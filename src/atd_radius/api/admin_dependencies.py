@@ -102,6 +102,7 @@ _RAS_PERMISSIONS = AdminPermissionEvaluator(
 _ADMIN_PERMISSIONS = AdminPermissionEvaluator(
     [
         PermissionSpec("GOD", PermissionKind.NO_VALUE),
+        PermissionSpec("ADD NEW ADMIN", PermissionKind.NO_VALUE),
         PermissionSpec("SEE ADMIN INFO", PermissionKind.NO_VALUE),
         PermissionSpec(
             "SEE ADMIN PERMISSIONS",
@@ -182,7 +183,7 @@ def require_admin_permission(permission_name: str):
         elif permission_name in {"SEE CONNECTION LOGS", "SEE CREDIT CHANGES"}:
             evaluator = _REPORT_PERMISSIONS
         elif permission_name in {
-            "SEE ADMIN INFO", "SEE ADMIN PERMISSIONS", "CHANGE ADMIN PERMISSIONS",
+            "ADD NEW ADMIN", "SEE ADMIN INFO", "SEE ADMIN PERMISSIONS", "CHANGE ADMIN PERMISSIONS",
             "CHANGE ADMIN INFO", "CHANGE ADMIN DEPOSIT", "CHANGE ADMIN PASSWORD"
         }:
             evaluator = _ADMIN_PERMISSIONS
