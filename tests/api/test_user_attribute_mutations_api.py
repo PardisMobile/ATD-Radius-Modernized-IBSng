@@ -307,3 +307,67 @@ def test_group_change_rejects_group_outside_admin_access(monkeypatch):
 
     assert error.value.status_code == 403
     assert conn.commits == 0
+
+
+
+def test_caller_id_change_uses_voip_permission_and_specialized_repository(monkeypatch):
+    conn = SimpleNamespace(commits=0)
+    conn.commit = lambda: setattr(conn, "commits", conn.commits + 1)
+    captured = {}
+
+    class Repository:
+        def __init__(self, _conn):
+            pass
+        def lock_target(self, _username):
+            return SimpleNamespace(user_id=42, username="alice", owner_id=7)
+        def change(self, target, **kwargs):
+            captured["change"] = kwargs
+            return ["1001", "1002"]
+
+    class Audit:
+        def __init__(self, _conn):
+            pass
+        def append(self, **kwargs):
+            captured["audit"] = kwargs
+
+    install_connection(monkeypatch, conn)
+    monkeypatch.setattr(users_api, "CallerIDMutationRepository", Repository)
+    monkeypatch.setattr(users_api, "OperationalAuditRepository", Audit)
+
+    result = users_api.change_user_caller_ids(
+        "alice",
+        users_api.UserCallerIDsChange(caller_ids="100{1-2}"),
+        principal({
+            "GET USER INFORMATION": "All",
+            "CHANGE USER ATTRIBUTES": "All",
+            "CHANGE VOIP USER ATTRIBUTES": "All",
+        }),
+    )
+
+    assert result.caller_ids == ["1001", "1002"]
+    assert captured["change"]["admin_id"] == 7
+    assert captured["audit"]["action"] == "user.caller_ids.change"
+    assert conn.commits == 1
+
+
+def test_caller_id_change_denies_admin_without_voip_permission(monkeypatch):
+    conn = SimpleNamespace(commits=0)
+    conn.commit = lambda: setattr(conn, "commits", conn.commits + 1)
+
+    class Repository:
+        def __init__(self, _conn):
+            pass
+        def lock_target(self, _username):
+            return SimpleNamespace(user_id=42, username="alice", owner_id=7)
+
+    install_connection(monkeypatch, conn)
+    monkeypatch.setattr(users_api, "CallerIDMutationRepository", Repository)
+
+    with pytest.raises(HTTPException) as error:
+        users_api.change_user_caller_ids(
+            "alice",
+            users_api.UserCallerIDsChange(caller_ids="1001"),
+            principal({"GET USER INFORMATION": "All", "CHANGE USER ATTRIBUTES": "All"}),
+        )
+    assert error.value.status_code == 403
+    assert conn.commits == 0

@@ -11,6 +11,7 @@ from atd_radius.api.admin_dependencies import (
     can_access_user,
     can_change_user,
     can_change_user_credit,
+    can_change_voip_user_attributes,
     can_use_group,
     can_view_connection_logs,
     can_view_credit_changes,
@@ -31,6 +32,7 @@ from atd_radius.infrastructure.user_attribute_mutations import (
     UserAttributeMutationError,
     UserAttributeMutationRepository,
 )
+from atd_radius.infrastructure.caller_id_mutations import CallerIDMutationRepository
 
 router = APIRouter(prefix="/users", tags=["USER"])
 
@@ -73,6 +75,16 @@ class UserGroupView(BaseModel):
     username: str
     group_name: str
     previous_group_name: str
+
+
+class UserCallerIDsChange(BaseModel):
+    caller_ids: str = Field(min_length=1, max_length=100000)
+
+
+class UserCallerIDsView(BaseModel):
+    id: int
+    username: str
+    caller_ids: list[str]
 
 
 class UserCreditChange(BaseModel):
@@ -538,6 +550,94 @@ def change_user_owner(
         raise
     except Exception as exc:
         raise HTTPException(status_code=409, detail="USER owner could not be changed") from exc
+
+
+@router.put("/{username}/caller-ids", response_model=UserCallerIDsView)
+def change_user_caller_ids(
+    username: str,
+    payload: UserCallerIDsChange,
+    admin: AdminPrincipal = Depends(require_admin_session),
+) -> UserCallerIDsView:
+    """Apply A1.24 caller_id plugin semantics to caller_id_users, never user_attrs."""
+    if admin.remote_addr is None:
+        raise HTTPException(status_code=400, detail="A valid administrator remote address is required")
+    try:
+        remote_addr = str(ipaddress.ip_address(admin.remote_addr))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="A valid administrator remote address is required") from exc
+
+    try:
+        with connection() as conn:
+            repository = UserAttributeMutationRepository(conn)
+            target = repository.lock_target(username)
+            if target is None:
+                raise HTTPException(status_code=404, detail="user not found")
+            if not can_change_voip_user_attributes(admin, target.owner_id):
+                raise HTTPException(status_code=403, detail="Administrator permission denied")
+            try:
+                caller_ids = CallerIDMutationRepository(conn).change(
+                    target, admin_id=admin.admin_id, expression=payload.caller_ids
+                )
+            except UserAttributeMutationError as exc:
+                raise HTTPException(status_code=422, detail=str(exc)) from exc
+            OperationalAuditRepository(conn).append(
+                actor_admin_id=admin.admin_id,
+                actor_username=admin.username,
+                action="user.caller_ids.change",
+                outcome="success",
+                target_type="user",
+                target_id=str(target.user_id),
+                remote_addr=remote_addr,
+                details={"caller_ids": caller_ids},
+            )
+            conn.commit()
+            return UserCallerIDsView(id=target.user_id, username=target.username, caller_ids=caller_ids)
+    except HTTPException:
+        raise
+    except UserAttributeMutationError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=409, detail="USER caller IDs could not be changed") from exc
+
+
+@router.delete("/{username}/caller-ids", response_model=UserCallerIDsView)
+def delete_user_caller_ids(
+    username: str,
+    admin: AdminPrincipal = Depends(require_admin_session),
+) -> UserCallerIDsView:
+    """Apply the A1.24 caller_id updater's delete path and native audit semantics."""
+    if admin.remote_addr is None:
+        raise HTTPException(status_code=400, detail="A valid administrator remote address is required")
+    try:
+        remote_addr = str(ipaddress.ip_address(admin.remote_addr))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="A valid administrator remote address is required") from exc
+    try:
+        with connection() as conn:
+            repository = UserAttributeMutationRepository(conn)
+            target = repository.lock_target(username)
+            if target is None:
+                raise HTTPException(status_code=404, detail="user not found")
+            if not can_change_voip_user_attributes(admin, target.owner_id):
+                raise HTTPException(status_code=403, detail="Administrator permission denied")
+            old_ids = CallerIDMutationRepository(conn).delete(target, admin_id=admin.admin_id)
+            OperationalAuditRepository(conn).append(
+                actor_admin_id=admin.admin_id,
+                actor_username=admin.username,
+                action="user.caller_ids.delete",
+                outcome="success",
+                target_type="user",
+                target_id=str(target.user_id),
+                remote_addr=remote_addr,
+                details={"deleted_caller_ids": old_ids},
+            )
+            conn.commit()
+            return UserCallerIDsView(id=target.user_id, username=target.username, caller_ids=[])
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=409, detail="USER caller IDs could not be deleted") from exc
+
 
 @router.post("/{username}/credit", response_model=UserCreditView)
 def change_user_credit(
