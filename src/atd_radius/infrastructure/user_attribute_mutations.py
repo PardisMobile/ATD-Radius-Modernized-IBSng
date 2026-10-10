@@ -1,8 +1,8 @@
 """Source-derived mutation slice for generic IBSng A1.24 user attributes.
 
-Only the simple comment plugin family is enabled here. Specialized attributes
-must be implemented through their own handler contract, never written through
-this generic persistence path.
+Only source-traced handlers with generic persistence are enabled. Values with
+source-side validation are normalized by their corresponding handler contract;
+other specialized attributes remain blocked.
 """
 from __future__ import annotations
 
@@ -11,10 +11,14 @@ from dataclasses import dataclass
 from typing import Protocol
 
 
-GENERIC_USER_ATTRIBUTE_HANDLERS = {
+USER_ATTRIBUTE_UPDATER_HANDLERS = {
     "name": "comment.NameAttrUpdater",
     "comment": "comment.CommentAttrUpdater",
     "phone": "comment.PhoneAttrUpdater",
+    "lock": "lock.LockAttrUpdater",
+    "multi_login": "multilogin.MultiLoginAttrUpdater",
+    "session_timeout": "session_timeout.SessionTimeoutAttrUpdater",
+    "idle_timeout": "idle_timeout.IdleTimeoutAttrUpdater",
 }
 AUDIT_LOG_NOVALUE = "_NOVALUE_"
 _INTEGER_FLAG = re.compile(r"I([01])\s*\.")
@@ -81,8 +85,8 @@ class UserAttributeMutationRepository:
         return UserAttributeTarget(int(row[0]), str(row[1]), row[2])
 
     @staticmethod
-    def validate(attrs: dict[str, str], to_delete: list[str]) -> None:
-        unknown = (set(attrs) | set(to_delete)) - set(GENERIC_USER_ATTRIBUTE_HANDLERS)
+    def normalize(attrs: dict[str, str], to_delete: list[str]) -> dict[str, str]:
+        unknown = (set(attrs) | set(to_delete)) - set(USER_ATTRIBUTE_UPDATER_HANDLERS)
         if unknown:
             names = ", ".join(sorted(unknown))
             raise UserAttributeMutationError(
@@ -100,6 +104,23 @@ class UserAttributeMutationRepository:
                 "an attribute cannot be changed and deleted in the same request"
             )
 
+        normalized = dict(attrs)
+        for name in ("multi_login", "session_timeout", "idle_timeout"):
+            if name not in normalized:
+                continue
+            try:
+                value = int(normalized[name])
+            except ValueError as exc:
+                raise UserAttributeMutationError(
+                    f"{name}: expected an integer"
+                ) from exc
+            if name == "multi_login" and not 0 <= value <= 255:
+                raise UserAttributeMutationError(
+                    "multi_login: expected an integer from 0 to 255"
+                )
+            normalized[name] = str(value)
+        return normalized
+
     def apply(
         self,
         target: UserAttributeTarget,
@@ -108,7 +129,7 @@ class UserAttributeMutationRepository:
         attrs: dict[str, str],
         to_delete: list[str],
     ) -> MutatedUserAttributes:
-        self.validate(attrs, to_delete)
+        attrs = self.normalize(attrs, to_delete)
         names = sorted(set(attrs) | set(to_delete))
         current: dict[str, str] = {}
         if names:
