@@ -76,3 +76,56 @@ def test_change_admin_password_rejects_source_invalid_characters_before_db(monke
             principal("operator", {}),
         )
     assert denied.value.status_code == 422
+
+
+
+def test_admin_permission_view_returns_native_permission_values(monkeypatch):
+    from atd_radius.domain.admin_permissions import AdminPermissionSet
+
+    captured = {}
+
+    class Repo:
+        def __init__(self, _conn):
+            pass
+
+        def get_permissions(self, username):
+            captured["username"] = username
+            return (("GOD", None), ("GROUP ACCESS", "Office,VPN"))
+
+    @contextmanager
+    def fake_connection():
+        yield object()
+
+    monkeypatch.setattr(admins_api, "connection", fake_connection)
+    monkeypatch.setattr(admins_api, "AdminInformationRepository", Repo)
+    response = admins_api.get_admin_permissions(
+        "target",
+        principal("operator", {"SEE ADMIN INFO": "", "SEE ADMIN PERMISSIONS": ""}),
+    )
+    assert captured["username"] == "target"
+    assert [item.model_dump() for item in response] == [
+        {"name": "GOD", "value": None},
+        {"name": "GROUP ACCESS", "value": "Office,VPN"},
+    ]
+
+
+def test_admin_permission_view_returns_not_found_for_unknown_admin(monkeypatch):
+    @contextmanager
+    def fake_connection():
+        yield object()
+
+    class Repo:
+        def __init__(self, _conn):
+            pass
+
+        def get_permissions(self, _username):
+            return None
+
+    monkeypatch.setattr(admins_api, "connection", fake_connection)
+    monkeypatch.setattr(admins_api, "AdminInformationRepository", Repo)
+    with pytest.raises(HTTPException) as missing:
+        admins_api.get_admin_permissions(
+            "missing",
+            principal("operator", {"SEE ADMIN INFO": "", "SEE ADMIN PERMISSIONS": ""}),
+        )
+    assert missing.value.status_code == 404
