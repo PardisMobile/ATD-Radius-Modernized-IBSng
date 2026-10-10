@@ -7,7 +7,7 @@ Latest code/test commit: `15a4bd24f16449f77c1ae4236d00dddc0e89d4be`
 
 ## Authority and validation
 
-- Administrator permission viewing and native admin creation are committed through `15a4bd24f16449f77c1ae4236d00dddc0e89d4be`. Lightweight Python CI passed: **611 passed, 2 skipped, 2 warnings**. Full Python 3.11/3.12 CI for this commit is still running. Previous green baseline was 610 passed per Python matrix job on the permission-viewing batch.
+- Administrator permission viewing and native admin creation are committed through `15a4bd24f16449f77c1ae4236d00dddc0e89d4be`. Full CI passed on Python 3.11 and 3.12: **613 passed, 2 warnings** per matrix job, including compile, Ruff, PHP syntax and PostgreSQL-backed integration tests. Lightweight Python CI passed: **611 passed, 2 skipped, 2 warnings**; the two skips are live UDP/PostgreSQL integration tests not configured in that workflow.
 
 - Canonical behavior source: `Source of Truth/IBSng-A1.24.tar.bz2`
 - SHA-256: `c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839614bb9349d18a8`
