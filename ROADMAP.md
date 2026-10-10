@@ -187,5 +187,5 @@ Source audit against the checksum-verified A1.24 archive confirms `IBSng/core/ad
 - [x] Add a restricted mutation endpoint for `name`, `comment`, `phone`, `lock`, `multi_login`, `session_timeout`, and `idle_timeout` with source-derived validation.
 - [x] Preserve `CHANGE USER ATTRIBUTES` dependency/owner scope, user-row locking, native `USER_AUDIT_LOG` flag, `_NOVALUE_` audit sentinel and native `insert_user_audit_log` function.
 - [x] Reject specialized/unknown attributes rather than bypassing their plugins.
-- [x] Verify code/test checkpoint `a5a96c692168e30191a4642b797dc3ae34a3ded1` through full CI: 643 passed on Python 3.11 and 3.12 (2 warnings each); Python-only 641 passed, 2 skipped (live DB/UDP integration unavailable in that workflow).
+- [x] Verify code/test checkpoint `64dd63a8a33f9c4cda04c9c31369de5c09e602bb` through full CI: 645 passed on Python 3.11 and 3.12 (2 warnings each); Python-only 643 passed, 2 skipped (live DB/UDP integration unavailable in that workflow).
 - [ ] Implement remaining specialized attribute families with their own validators, storage, broadcast and post-update semantics.
