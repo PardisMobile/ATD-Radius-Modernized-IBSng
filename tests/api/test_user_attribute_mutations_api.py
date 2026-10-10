@@ -212,3 +212,98 @@ def test_owner_transfer_maps_missing_owner_to_not_found(monkeypatch):
 
     assert error.value.status_code == 404
     assert conn.commits == 0
+
+
+
+def test_group_change_checks_group_access_and_commits_both_audits(monkeypatch):
+    conn = SimpleNamespace(commits=0)
+    conn.commit = lambda: setattr(conn, "commits", conn.commits + 1)
+    captured = {}
+
+    class UserRepository:
+        def __init__(self, _conn):
+            pass
+        def lock_target(self, _username):
+            return SimpleNamespace(
+                user_id=42, username="alice", owner_id=7, owner_username="operator"
+            )
+        def change_group(self, target, **kwargs):
+            captured["change"] = kwargs
+            return "oldgroup"
+
+    class Groups:
+        def __init__(self, _conn):
+            pass
+        def get_by_name_for_share(self, name):
+            assert name == "newgroup"
+            return SimpleNamespace(id=22, name="newgroup", owner_id=7)
+
+    class Audit:
+        def __init__(self, _conn):
+            pass
+        def append(self, **kwargs):
+            captured["audit"] = kwargs
+
+    install_connection(monkeypatch, conn)
+    monkeypatch.setattr(users_api, "UserAttributeMutationRepository", UserRepository)
+    monkeypatch.setattr(users_api, "GroupRepository", Groups)
+    monkeypatch.setattr(users_api, "OperationalAuditRepository", Audit)
+
+    result = users_api.change_user_group(
+        "alice",
+        users_api.UserGroupChange(group_name="newgroup"),
+        principal({
+            "GET USER INFORMATION": "All",
+            "CHANGE USER ATTRIBUTES": "All",
+        }),
+    )
+
+    assert result.group_name == "newgroup"
+    assert result.previous_group_name == "oldgroup"
+    assert captured["change"] == {
+        "admin_id": 7,
+        "group_id": 22,
+        "group_name": "newgroup",
+    }
+    assert captured["audit"]["action"] == "user.group.change"
+    assert captured["audit"]["details"] == {
+        "previous_group": "oldgroup",
+        "new_group": "newgroup",
+    }
+    assert conn.commits == 1
+
+
+def test_group_change_rejects_group_outside_admin_access(monkeypatch):
+    conn = SimpleNamespace(commits=0)
+    conn.commit = lambda: setattr(conn, "commits", conn.commits + 1)
+
+    class UserRepository:
+        def __init__(self, _conn):
+            pass
+        def lock_target(self, _username):
+            return SimpleNamespace(
+                user_id=42, username="alice", owner_id=7, owner_username="operator"
+            )
+
+    class Groups:
+        def __init__(self, _conn):
+            pass
+        def get_by_name_for_share(self, _name):
+            return SimpleNamespace(id=22, name="private", owner_id=8)
+
+    install_connection(monkeypatch, conn)
+    monkeypatch.setattr(users_api, "UserAttributeMutationRepository", UserRepository)
+    monkeypatch.setattr(users_api, "GroupRepository", Groups)
+
+    with pytest.raises(HTTPException) as error:
+        users_api.change_user_group(
+            "alice",
+            users_api.UserGroupChange(group_name="private"),
+            principal({
+                "GET USER INFORMATION": "All",
+                "CHANGE USER ATTRIBUTES": "All",
+            }),
+        )
+
+    assert error.value.status_code == 403
+    assert conn.commits == 0
