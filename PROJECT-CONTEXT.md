@@ -1375,3 +1375,22 @@ Direct source trace: `IBSng/core/admin/admin_handler.py:47-52`, `core/admin/perm
 ## Administrator creation IAS parity — 2026-10-10
 
 Source audit against the checksum-verified A1.24 archive confirms `IBSng/core/admin/admin_actions.py` composes the native admin insert and `ias_main.getActionsManager().logEvent("ADD_ADMIN", creator_username, 0, username)` in one database transaction. `IBSng/core/ias/ias_actions.py` maps `ADD_ADMIN` to IAS event type **5**. `IASActions.logEvent` writes no event when `defs.IAS_ENABLED` is false; A1.24's default is `0` in `core/defs_lib/defs_defaults.py`. ATD now checks the native serialized integer flag and, only when enabled, writes the corresponding `ias_event` row (actor = creator username, amount = 0, destination = created username, empty comment) in the same caller-owned transaction as the `admins` insert and operational audit. Missing flag means disabled; malformed serialized values fail closed. ATD's native admin creation repository now writes the corresponding `ias_event` row (actor = creator username, amount = 0, destination = created username, empty comment) in the same caller-owned transaction as the `admins` insert and operational audit. Focused repository/API tests assert the event fields and creator identity. CI verification for code/test commit `aefba4b1079b7ddb7940461e59e572bebd21b834` passed: full CI on Python 3.11 and 3.12, **613 passed, 2 warnings** per matrix job, including compile, Ruff, PHP syntax and PostgreSQL integration; Python-only workflow passed **611 passed, 2 skipped, 2 warnings** (the two live UDP/PostgreSQL tests are skipped in that workflow). Full CI: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38059979595 ; Python workflow: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38059979654.
+
+
+### Continuation checkpoint — generic user attribute mutation — 2026-10-10
+
+Repository: \`PardisMobile/atd-radius-modernized-ibsng\`, branch \`main\`.
+
+Source trace performed against the checksum-verified \`IBSng-A1.24.tar.bz2\`:
+- \`core/user/user_handler.py::updateUserAttrs\` authenticates admin requests, loads users, and invokes \`admin_obj.canChangeUser\`.
+- \`core/user/user_actions.py::updateUserAttrsQuery\` resolves change/delete operations through the Attribute Manager, executes the query, broadcasts changed user IDs, then invokes updater \`postUpdate\`.
+- \`core/user/attribute_manager.py::getAttrUpdaters\` only instantiates registered plugin handlers.
+- \`core/user/attr_updater.py\` generic updater preserves upsert/delete and optional native \`user_audit_log\` behavior using \`_NOVALUE_\`.
+- \`core/user/plugins/comment.py\` registers \`name\`, \`comment\`, and \`phone\` on the generic updater without extra validation or \`postUpdate\`.
+
+Implemented:
+- \`src/atd_radius/infrastructure/user_attribute_mutations.py\`: explicit handler allowlist for those three simple attributes; user row lock; source-compatible upsert/delete; strict serialized \`USER_AUDIT_LOG\` parsing (default enabled if missing); native \`insert_user_audit_log\`; specialized attributes fail closed.
+- \`src/atd_radius/api/users.py\`: \`PUT /api/v1/users/{username}/attributes\`, checks \`CHANGE USER ATTRIBUTES\` plus \`GET USER INFORMATION\` owner scope and commits operational audit with the mutation.
+- Added \`tests/infrastructure/test_user_attribute_mutations.py\` and \`tests/api/test_user_attribute_mutations_api.py\`.
+
+Latest code/test commit: \`a5a96c692168e30191a4642b797dc3ae34a3ded1\`. CI is pending; do not mark this increment verified until current main's full CI completes. Documentation was reconciled in the following commits. This slice does **not** claim full attribute parity: \`multi_login\`, \`lock\`, credentials, caller IDs, IP allocation, charges, expiration, RADIUS attributes, and other specialized handlers remain blocked until their source validation and post-update contracts are implemented. User deletion/owner transfer and safe online-session handling remain open. Native administrator deletion and permission editing are already implemented; do not redo them.
