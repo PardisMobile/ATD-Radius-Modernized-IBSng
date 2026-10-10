@@ -3,7 +3,7 @@
 Updated: 2026-10-10  
 Repository: `PardisMobile/ATD-Radius-Modernized-IBSng`  
 Branch: `main`  
-Latest code/test commit: `64dd63a8a33f9c4cda04c9c31369de5c09e602bb` (expanded user attribute handlers; CI verified)
+Latest code/test commit: `60237946c885c8f541480f9b2428f253950f7772` (user owner transfer; CI verified)
 
 ## Authority and validation
 
@@ -28,6 +28,7 @@ Latest code/test commit: `64dd63a8a33f9c4cda04c9c31369de5c09e602bb` (expanded us
 - RAS CRUD slice with native session and `LIST RAS` / `GET RAS INFORMATION` / `CHANGE RAS` checks; secret omitted from list response.
 - Group CRUD slice with source-derived visibility and permission checks.
 - User list/detail/create; native initial credit on creation; single/bulk user-credit changes with deposit rules, native ledger/IAS records and operational audit.
+- User attribute mutation for `name`, `comment`, `phone`, `lock`, `multi_login`, `session_timeout`, and `idle_timeout`, with source-specific validation, native user audit and operational audit. `PUT /api/v1/users/{username}/owner` implements A1.24 `owner_name` semantics and requires `CHANGE USERS OWNER` when assigning a user to someone other than the acting admin.
 - User detail connection history and credit history are independently gated by `SEE CONNECTION LOGS` and `SEE CREDIT CHANGES`, including their own owner scope.
 - Admin/user/group/RAS mutations covered here write operational audit in the same DB transaction where documented.
 - Source-audit tooling catalogs 51 A1.24 admin permission modules. This is a structural inventory, not complete RBAC parity.
@@ -58,9 +59,9 @@ Latest code/test commit: `64dd63a8a33f9c4cda04c9c31369de5c09e602bb` (expanded us
 
 Direct source trace: `core/user/user_handler.py::updateUserAttrs`, `core/user/user_actions.py::updateUserAttrsQuery`, `core/user/attribute_manager.py::getAttrUpdaters`, `core/user/attr_updater.py` generic query/audit behavior, and `core/user/plugins/comment.py`.
 
-Added `PUT /api/v1/users/{username}/attributes` for `name`, `comment`, `phone`, `lock`, `multi_login`, `session_timeout`, and `idle_timeout` only. It requires `CHANGE USER ATTRIBUTES` with the native `GET USER INFORMATION` dependency and owner scope; locks the user row; upserts/deletes native `user_attrs`; preserves `USER_AUDIT_LOG`, `_NOVALUE_`, and `insert_user_audit_log` behavior; and writes operational audit in the same transaction. Unknown attributes and specialized handlers not yet implemented are rejected. The source-traced `lock` updater preserves lock-by-presence semantics; `multi_login` is validated to 0–255; session/idle timeouts are normalized to integer strings. Added repository and API regression tests. Code/test checkpoint `64dd63a8a33f9c4cda04c9c31369de5c09e602bb` passed full CI on Python 3.11 and 3.12: **645 passed, 2 warnings** per matrix job, including compile, Ruff, PHP syntax and PostgreSQL integration. Python-only workflow passed **643 passed, 2 skipped, 2 warnings**; its two skips are the live UDP/PostgreSQL integration tests not configured in that workflow. Full CI: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38063359038 ; Python-only: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38063359047.
+Added `PUT /api/v1/users/{username}/attributes` for `name`, `comment`, `phone`, `lock`, `multi_login`, `session_timeout`, and `idle_timeout`, plus `PUT /api/v1/users/{username}/owner` for source-backed owner transfer. It requires `CHANGE USER ATTRIBUTES` with the native `GET USER INFORMATION` dependency and owner scope; locks the user row; upserts/deletes native `user_attrs`; preserves `USER_AUDIT_LOG`, `_NOVALUE_`, and `insert_user_audit_log` behavior; and writes operational audit in the same transaction. Unknown attributes and specialized handlers not yet implemented are rejected. The source-traced `lock` updater preserves lock-by-presence semantics; `multi_login` is validated to 0–255; session/idle timeouts are normalized to integer strings. Added repository and API regression tests. Code/test checkpoint `60237946c885c8f541480f9b2428f253950f7772` passed full CI on Python 3.11 and 3.12: **649 passed, 2 warnings** per matrix job, including compile, Ruff, PHP syntax and PostgreSQL integration. Python-only workflow passed **647 passed, 2 skipped, 2 warnings**; its two skips are the live UDP/PostgreSQL integration tests not configured in that workflow. Full CI: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38063523662 ; Python-only: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38063523665.
 
-Next: extend only to specialized attribute families after their source validators, query builders, broadcast and `postUpdate` effects are implemented. User deletion/owner transfer and online-session safety remain open. Native admin deletion is complete; do not redo that slice without contradictory source evidence.
+Next: extend only to specialized attribute families after their source validators, query builders, broadcast and `postUpdate` effects are implemented. User deletion, group reassignment, and online-session safety remain open. Native admin deletion is complete; do not redo that slice without contradictory source evidence.
 
 
 ## Administrator creation IAS parity — 2026-10-10
