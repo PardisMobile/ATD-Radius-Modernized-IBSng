@@ -1379,18 +1379,18 @@ Source audit against the checksum-verified A1.24 archive confirms `IBSng/core/ad
 
 ### Continuation checkpoint — generic user attribute mutation — 2026-10-10
 
-Repository: \`PardisMobile/atd-radius-modernized-ibsng\`, branch \`main\`.
+Repository: `PardisMobile/atd-radius-modernized-ibsng`, branch `main`.
 
-Source trace performed against the checksum-verified \`IBSng-A1.24.tar.bz2\`:
-- \`core/user/user_handler.py::updateUserAttrs\` authenticates admin requests, loads users, and invokes \`admin_obj.canChangeUser\`.
-- \`core/user/user_actions.py::updateUserAttrsQuery\` resolves change/delete operations through the Attribute Manager, executes the query, broadcasts changed user IDs, then invokes updater \`postUpdate\`.
-- \`core/user/attribute_manager.py::getAttrUpdaters\` only instantiates registered plugin handlers.
-- \`core/user/attr_updater.py\` generic updater preserves upsert/delete and optional native \`user_audit_log\` behavior using \`_NOVALUE_\`.
-- \`core/user/plugins/comment.py\` registers \`name\`, \`comment\`, and \`phone\` on the generic updater without extra validation or \`postUpdate\`.
+Source trace performed against the checksum-verified `IBSng-A1.24.tar.bz2`:
+- `core/user/user_handler.py::updateUserAttrs` authenticates admin requests, loads users, and invokes `admin_obj.canChangeUser`.
+- `core/user/user_actions.py::updateUserAttrsQuery` resolves change/delete operations through the Attribute Manager, executes the query, broadcasts changed user IDs, then invokes updater `postUpdate`.
+- `core/user/attribute_manager.py::getAttrUpdaters` only instantiates registered plugin handlers.
+- `core/user/attr_updater.py` generic updater preserves upsert/delete and optional native `user_audit_log` behavior using `_NOVALUE_`.
+- `core/user/plugins/comment.py` registers `name`, `comment`, and `phone` on the generic updater without extra validation or `postUpdate`.
 
 Implemented:
-- \`src/atd_radius/infrastructure/user_attribute_mutations.py\`: explicit handler allowlist for those three simple attributes; user row lock; source-compatible upsert/delete; strict serialized \`USER_AUDIT_LOG\` parsing (default enabled if missing); native \`insert_user_audit_log\`; specialized attributes fail closed.
-- \`src/atd_radius/api/users.py\`: \`PUT /api/v1/users/{username}/attributes\`, checks \`CHANGE USER ATTRIBUTES\` plus \`GET USER INFORMATION\` owner scope and commits operational audit with the mutation.
-- Added \`tests/infrastructure/test_user_attribute_mutations.py\` and \`tests/api/test_user_attribute_mutations_api.py\`.
+- `src/atd_radius/infrastructure/user_attribute_mutations.py`: explicit handler allowlist for those three simple attributes; user row lock; source-compatible upsert/delete; strict serialized `USER_AUDIT_LOG` parsing (default enabled if missing); native `insert_user_audit_log`; specialized attributes fail closed.
+- `src/atd_radius/api/users.py`: `PUT /api/v1/users/{username}/attributes`, checks `CHANGE USER ATTRIBUTES` plus `GET USER INFORMATION` owner scope and commits operational audit with the mutation.
+- Added `tests/infrastructure/test_user_attribute_mutations.py` and `tests/api/test_user_attribute_mutations_api.py`.
 
-Latest code/test commit: \`a5a96c692168e30191a4642b797dc3ae34a3ded1\`. CI is pending; do not mark this increment verified until current main's full CI completes. Documentation was reconciled in the following commits. This slice does **not** claim full attribute parity: \`multi_login\`, \`lock\`, credentials, caller IDs, IP allocation, charges, expiration, RADIUS attributes, and other specialized handlers remain blocked until their source validation and post-update contracts are implemented. User deletion/owner transfer and safe online-session handling remain open. Native administrator deletion and permission editing are already implemented; do not redo them.
+Latest code/test commit: `a5a96c692168e30191a4642b797dc3ae34a3ded1`. CI is pending; do not mark this increment verified until current main's full CI completes. Documentation was reconciled in the following commits. This slice does **not** claim full attribute parity: `multi_login`, `lock`, credentials, caller IDs, IP allocation, charges, expiration, RADIUS attributes, and other specialized handlers remain blocked until their source validation and post-update contracts are implemented. User deletion/owner transfer and safe online-session handling remain open. Native administrator deletion and permission editing are already implemented; do not redo them.
