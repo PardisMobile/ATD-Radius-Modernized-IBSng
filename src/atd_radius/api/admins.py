@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ipaddress
+import re
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -13,6 +14,7 @@ from atd_radius.api.admin_dependencies import (
 )
 from atd_radius.domain.ibsng_password import hash_ibsng_password
 from atd_radius.infrastructure.admin_credentials import AdminCredentialRepository
+from atd_radius.infrastructure.admin_creation import AdminCreationRepository
 from atd_radius.infrastructure.admin_information import AdminInformationRepository
 from atd_radius.infrastructure.db import connection
 from atd_radius.infrastructure.operational_audit import OperationalAuditRepository
@@ -48,6 +50,57 @@ def list_admin_usernames(admin: AdminPrincipal = Depends(require_admin_session))
         return [admin.username]
     with connection() as conn:
         return AdminInformationRepository(conn).list_usernames()
+
+
+class AdminCreate(BaseModel):
+    username: str
+    password: str
+    name: str
+    comment: str
+
+
+@router.post("", response_model=AdminInformationView, status_code=201)
+def create_admin(
+    payload: AdminCreate,
+    admin: AdminPrincipal = Depends(require_admin_permission("ADD NEW ADMIN")),
+) -> AdminInformationView:
+    # A1.24 accepts ASCII letters/digits/underscore, with a letter first.
+    if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_]*", payload.username):
+        raise HTTPException(status_code=422, detail="Invalid administrator username")
+    try:
+        password_hash = hash_ibsng_password(payload.password)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail="Password contains unsupported characters") from exc
+    remote_addr = _validated_remote_addr(admin.remote_addr)
+    try:
+        with connection() as conn:
+            created = AdminCreationRepository(conn).create(
+                username=payload.username,
+                password_hash=password_hash,
+                name=payload.name,
+                comment=payload.comment,
+                creator_id=admin.admin_id,
+            )
+            record = AdminInformationRepository(conn).get_by_username(created.username)
+            if record is None:
+                raise RuntimeError("created administrator could not be reloaded")
+            OperationalAuditRepository(conn).append(
+                actor_admin_id=admin.admin_id,
+                actor_username=admin.username,
+                action="admin.create",
+                outcome="success",
+                target_type="admin",
+                target_id=str(created.admin_id),
+                remote_addr=remote_addr,
+                details={"target_username": created.username},
+            )
+            conn.commit()
+            return _admin_information_view(record)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        # Includes duplicate usernames; do not expose database diagnostics.
+        raise HTTPException(status_code=409, detail="Administrator could not be created") from exc
 
 
 class AdminInformationUpdate(BaseModel):
