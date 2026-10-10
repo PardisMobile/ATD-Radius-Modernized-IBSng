@@ -568,14 +568,14 @@ def change_user_caller_ids(
 
     try:
         with connection() as conn:
-            repository = UserAttributeMutationRepository(conn)
+            repository = CallerIDMutationRepository(conn)
             target = repository.lock_target(username)
             if target is None:
                 raise HTTPException(status_code=404, detail="user not found")
             if not can_change_voip_user_attributes(admin, target.owner_id):
                 raise HTTPException(status_code=403, detail="Administrator permission denied")
             try:
-                caller_ids = CallerIDMutationRepository(conn).change(
+                caller_ids = repository.change(
                     target, admin_id=admin.admin_id, expression=payload.caller_ids
                 )
             except UserAttributeMutationError as exc:
@@ -620,7 +620,7 @@ def delete_user_caller_ids(
                 raise HTTPException(status_code=404, detail="user not found")
             if not can_change_voip_user_attributes(admin, target.owner_id):
                 raise HTTPException(status_code=403, detail="Administrator permission denied")
-            old_ids = CallerIDMutationRepository(conn).delete(target, admin_id=admin.admin_id)
+            old_ids = repository.delete(target, admin_id=admin.admin_id)
             OperationalAuditRepository(conn).append(
                 actor_admin_id=admin.admin_id,
                 actor_username=admin.username,

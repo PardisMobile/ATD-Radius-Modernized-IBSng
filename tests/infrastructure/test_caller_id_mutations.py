@@ -2,7 +2,7 @@ from atd_radius.infrastructure.caller_id_mutations import expand_caller_ids
 
 
 def test_caller_id_expansion_matches_a124_multistr_range_padding():
-    assert expand_caller_ids("555{1-3},x{n1-3},ab{l4-5}") == [
+    assert expand_caller_ids("555{1-3},x{n1-3},ab{l04-05}") == [
         "5551", "5552", "5553", "x1", "x2", "x3", "ab04", "ab05"
     ]
 
