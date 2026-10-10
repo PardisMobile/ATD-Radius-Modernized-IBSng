@@ -142,3 +142,29 @@ def test_accounting_start_keeps_ras_policy_context_outside_accounting_attributes
     assert result.state.ras_multi_login_allowed is False
     assert "__ras_multi_login_allowed" not in result.state.attributes
     assert result.state.attributes["NAS-Port"] == "1"
+
+def test_concurrent_duplicate_accounting_starts_create_one_session_and_log():
+    from concurrent.futures import ThreadPoolExecutor
+    from unittest.mock import Mock
+
+    persistence = Mock()
+    persistence.start.return_value = 901
+    registry = SessionRegistry()
+    service = AccountingSessionService(registry, persistence)
+
+    with ThreadPoolExecutor(max_workers=12) as pool:
+        results = list(pool.map(
+            lambda n: service.apply(
+                event(AccountingStatus.START, "parallel-dup", inp=n, out=n * 2),
+                7,
+                3,
+            ),
+            range(24),
+        ))
+
+    assert all(result.state is results[0].state for result in results)
+    assert results[0].state.started and not results[0].state.stopped
+    assert results[0].connection_log_id == 901
+    persistence.start.assert_called_once()
+    assert len(registry.active_for_user(7)) == 1
+
