@@ -90,13 +90,58 @@ def test_unknown_specialized_attribute_is_rejected_before_attribute_writes():
     assert target is not None
 
     try:
-        repo.apply(target, admin_id=9, attrs={"multi_login": "2"}, to_delete=[])
+        repo.apply(target, admin_id=9, attrs={"radius_attrs": "Session-Timeout=\"2\""}, to_delete=[])
     except UserAttributeMutationError as exc:
         assert "specialized A1.24 handler" in str(exc)
     else:
         raise AssertionError("specialized attribute must not use generic persistence")
 
     assert not any("INSERT INTO user_attrs" in sql or "UPDATE user_attrs" in sql for sql, _ in conn.calls)
+
+
+def test_multi_login_and_timeout_handlers_apply_source_validation_and_normalization():
+    conn = FakeConnection()
+    repo = UserAttributeMutationRepository(conn)
+    target = repo.lock_target("alice")
+    assert target is not None
+
+    result = repo.apply(
+        target,
+        admin_id=9,
+        attrs={"multi_login": "025", "session_timeout": " 60 ", "idle_timeout": "+15", "lock": "abuse"},
+        to_delete=[],
+    )
+
+    assert result.attributes == [
+        ("idle_timeout", "15"),
+        ("lock", "abuse"),
+        ("multi_login", "25"),
+        ("session_timeout", "60"),
+    ]
+    audit_calls = [params for sql, params in conn.calls if "SELECT insert_user_audit_log" in sql]
+    assert [row[2:] for row in audit_calls] == [
+        ("multi_login", AUDIT_LOG_NOVALUE, "25"),
+        ("session_timeout", AUDIT_LOG_NOVALUE, "60"),
+        ("idle_timeout", AUDIT_LOG_NOVALUE, "15"),
+        ("lock", AUDIT_LOG_NOVALUE, "abuse"),
+    ]
+
+
+def test_multi_login_rejects_non_integer_and_out_of_range_values_before_writes():
+    for invalid in ("not-a-number", "-1", "256"):
+        conn = FakeConnection()
+        repo = UserAttributeMutationRepository(conn)
+        target = repo.lock_target("alice")
+        assert target is not None
+
+        try:
+            repo.apply(target, admin_id=9, attrs={"multi_login": invalid}, to_delete=[])
+        except UserAttributeMutationError:
+            pass
+        else:
+            raise AssertionError(f"multi_login value {invalid!r} should be rejected")
+
+        assert not any("INSERT INTO user_attrs" in sql or "UPDATE user_attrs" in sql for sql, _ in conn.calls)
 
 
 def test_user_audit_log_flag_off_disables_native_attribute_audit():
