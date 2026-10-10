@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 from atd_radius.api.admin_dependencies import (
     AdminPrincipal,
     can_access_user,
+    can_change_user,
     can_change_user_credit,
     can_use_group,
     can_view_connection_logs,
@@ -26,6 +27,10 @@ from atd_radius.infrastructure.db import connection
 from atd_radius.infrastructure.group import GroupRepository
 from atd_radius.infrastructure.operational_audit import OperationalAuditRepository
 from atd_radius.infrastructure.user_detail import UserDetailRepository
+from atd_radius.infrastructure.user_attribute_mutations import (
+    UserAttributeMutationError,
+    UserAttributeMutationRepository,
+)
 
 router = APIRouter(prefix="/users", tags=["USER"])
 
@@ -36,6 +41,17 @@ class UserCreate(BaseModel):
     locked: bool = False
     initial_credit: Decimal = Field(default=Decimal("0.00"), ge=0, max_digits=12, decimal_places=2)
     credit_comment: str = Field(default="", max_length=1000)
+
+
+class UserAttributeMutation(BaseModel):
+    attrs: dict[str, str] = Field(default_factory=dict)
+    to_delete: list[str] = Field(default_factory=list)
+
+
+class UserAttributeMutationView(BaseModel):
+    id: int
+    username: str
+    attributes: list[AttributeView]
 
 
 class UserCreditChange(BaseModel):
@@ -308,6 +324,66 @@ def get_user_detail(username: str, admin: AdminPrincipal = Depends(require_admin
             else None
         ),
     )
+
+
+@router.put("/{username}/attributes", response_model=UserAttributeMutationView)
+def mutate_user_attributes(
+    username: str,
+    payload: UserAttributeMutation,
+    admin: AdminPrincipal = Depends(require_admin_session),
+) -> UserAttributeMutationView:
+    """Mutate only attributes handled by A1.24's generic comment plugin."""
+    if admin.remote_addr is None:
+        raise HTTPException(status_code=400, detail="A valid administrator remote address is required")
+    try:
+        remote_addr = str(ipaddress.ip_address(admin.remote_addr))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="A valid administrator remote address is required") from exc
+
+    try:
+        with connection() as conn:
+            repository = UserAttributeMutationRepository(conn)
+            target = repository.lock_target(username)
+            if target is None:
+                raise HTTPException(status_code=404, detail="user not found")
+            if not can_change_user(admin, target.owner_id):
+                raise HTTPException(status_code=403, detail="Administrator permission denied")
+            try:
+                result = repository.apply(
+                    target,
+                    admin_id=admin.admin_id,
+                    attrs=payload.attrs,
+                    to_delete=payload.to_delete,
+                )
+            except UserAttributeMutationError as exc:
+                raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+            OperationalAuditRepository(conn).append(
+                actor_admin_id=admin.admin_id,
+                actor_username=admin.username,
+                action="user.attributes.mutate",
+                outcome="success",
+                target_type="user",
+                target_id=str(target.user_id),
+                remote_addr=remote_addr,
+                details={
+                    "changed_attributes": sorted(payload.attrs),
+                    "deleted_attributes": sorted(payload.to_delete),
+                },
+            )
+            conn.commit()
+            return UserAttributeMutationView(
+                id=result.user_id,
+                username=result.username,
+                attributes=[
+                    AttributeView(name=name, value=value)
+                    for name, value in result.attributes
+                ],
+            )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=409, detail="USER attributes could not be changed") from exc
 
 @router.post("/{username}/credit", response_model=UserCreditView)
 def change_user_credit(
