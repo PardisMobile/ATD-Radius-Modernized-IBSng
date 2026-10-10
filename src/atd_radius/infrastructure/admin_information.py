@@ -81,6 +81,28 @@ class AdminInformationRepository:
             return None
         return self.get_by_username(username)
 
+    def get_permissions(self, username: str) -> tuple[tuple[str, str | None], ...] | None:
+        """Return native permission rows for an existing administrator, in stable order."""
+        row = self.conn.execute(
+            "SELECT admin_id FROM admins WHERE username = %s",
+            (username,),
+        ).fetchone()
+        if row is None:
+            return None
+        rows = self.conn.execute(
+            """
+            SELECT perm_name, perm_value
+            FROM admin_perms
+            WHERE admin_id = %s
+            ORDER BY perm_name
+            """,
+            (int(row[0]),),
+        ).fetchall()
+        return tuple(
+            (str(name), str(value) if value is not None else None)
+            for name, value in rows
+        )
+
     def get_by_username(self, username: str) -> AdminInformationRecord | None:
         row = self.conn.execute(
             """
