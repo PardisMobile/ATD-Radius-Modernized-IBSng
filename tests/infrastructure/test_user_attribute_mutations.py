@@ -233,3 +233,13 @@ def test_voip_preferred_language_uses_native_generic_user_attrs_and_audit():
     assert [row[2:] for row in audit_calls] == [
         ("voip_preferred_language", AUDIT_LOG_NOVALUE, "fa")
     ]
+
+
+def test_save_bw_usage_empty_marker():
+    conn = FakeConnection()
+    repo = UserAttributeMutationRepository(conn)
+    target = repo.lock_target("alice")
+    assert target is not None
+    result = repo.apply(target, admin_id=9, attrs={"save_bw_usage": ""}, to_delete=[])
+    assert ("save_bw_usage", "") in result.attributes
+    assert conn.current["save_bw_usage"] == ""
