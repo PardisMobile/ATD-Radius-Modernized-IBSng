@@ -129,3 +129,17 @@ def test_admin_permission_view_returns_not_found_for_unknown_admin(monkeypatch):
             principal("operator", {"SEE ADMIN INFO": "", "SEE ADMIN PERMISSIONS": ""}),
         )
     assert missing.value.status_code == 404
+
+
+
+def test_admin_permission_view_requires_see_admin_info_dependency():
+    from atd_radius.api.admin_dependencies import require_admin_permission
+
+    guard = require_admin_permission("SEE ADMIN PERMISSIONS")
+    with pytest.raises(HTTPException) as denied:
+        guard(principal=principal("operator", {"SEE ADMIN PERMISSIONS": ""}))
+    assert denied.value.status_code == 403
+    allowed = guard(
+        principal=principal("operator", {"SEE ADMIN INFO": "", "SEE ADMIN PERMISSIONS": ""})
+    )
+    assert allowed.username == "operator"
