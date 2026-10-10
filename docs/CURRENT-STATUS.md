@@ -3,7 +3,7 @@
 Updated: 2026-10-10  
 Repository: `PardisMobile/ATD-Radius-Modernized-IBSng`  
 Branch: `main`  
-Latest code/test commit: `25b7b9b0f96bf81c68708990bab5f68e13ddbbda` (session concurrency locking; CI verified)
+Latest code/test commit: `72896b1fffde57656bea37631f1ab6f8a5f5f3ff` (user group reassignment; CI verified)
 
 ## Authority and validation
 
@@ -28,7 +28,7 @@ Latest code/test commit: `25b7b9b0f96bf81c68708990bab5f68e13ddbbda` (session con
 - RAS CRUD slice with native session and `LIST RAS` / `GET RAS INFORMATION` / `CHANGE RAS` checks; secret omitted from list response.
 - Group CRUD slice with source-derived visibility and permission checks.
 - User list/detail/create; native initial credit on creation; single/bulk user-credit changes with deposit rules, native ledger/IAS records and operational audit.
-- User attribute mutation for `name`, `comment`, `phone`, `lock`, `multi_login`, `session_timeout`, and `idle_timeout`, with source-specific validation, native user audit and operational audit. `PUT /api/v1/users/{username}/owner` implements A1.24 `owner_name` semantics and requires `CHANGE USERS OWNER` when assigning a user to someone other than the acting admin.
+- User attribute mutation for `name`, `comment`, `phone`, `lock`, `multi_login`, `session_timeout`, and `idle_timeout`, with source-specific validation, native user audit and operational audit. `PUT /api/v1/users/{username}/owner` implements A1.24 `owner_name` semantics and requires `CHANGE USERS OWNER` when assigning a user to someone other than the acting admin. `PUT /api/v1/users/{username}/group` implements A1.24's specialized `group_name` updater by changing `users.group_id` (not `user_attrs`), checks target group access, and writes native user audit plus operational audit transactionally.
 - User detail connection history and credit history are independently gated by `SEE CONNECTION LOGS` and `SEE CREDIT CHANGES`, including their own owner scope.
 - Admin/user/group/RAS mutations covered here write operational audit in the same DB transaction where documented.
 - Source-audit tooling catalogs 51 A1.24 admin permission modules. This is a structural inventory, not complete RBAC parity.
@@ -36,7 +36,7 @@ Latest code/test commit: `25b7b9b0f96bf81c68708990bab5f68e13ddbbda` (session con
 ## Still open — do not mark complete
 
 1. Administrator volatile activity fields (`last_request_ip`, `last_activity`, `online_status`) remain open; administrator permission editing and deletion are implemented and tested.
-2. Extend the user-attribute mutation slice to remaining specialized plugin families; user deletion remains open (source audit recorded in `docs/A1.24-USER-DELETION-AUDIT.md`). Owner transfer has a separate implemented route.
+2. Extend the user-attribute mutation slice to remaining specialized plugin families; user deletion remains open (source audit recorded in `docs/A1.24-USER-DELETION-AUDIT.md`). Owner transfer and group reassignment have separate implemented routes.
 3. Online-user listing/permissions and safe disconnect/CoA session resolution, permission, side-effect and audit sequencing. **RAS disconnect remains unmounted.**
 4. Full billing persistence, charging/usage integration, expiry/subscription and report parity.
 5. Complete RAS provider runtime/transport interoperability and RADIUS dictionary coverage.
@@ -78,3 +78,8 @@ Source audit against the checksum-verified A1.24 archive confirms `IBSng/core/ad
 Added a re-entrant synchronization boundary for the in-process duplicate-request cache and live session registry. `AccountingSessionService.apply` now holds the registry lock across its compound Start/Interim/Stop decisions and related persistence/charging side effects. Added a parallel duplicate-Start regression test (24 concurrent calls, one session and one connection-log insert). Code/test commit: `25b7b9b0f96bf81c68708990bab5f68e13ddbbda`. Full CI passed on Python 3.11 and 3.12: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38070540152 ; Python-only: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38070540153.
 
 Important limitation: this only serializes operations within one process. The API and UDP runtime still do not share an authoritative runtime owner, and multi-process active-session truth/restart recovery remain unresolved. Therefore RAS Disconnect and user deletion are still intentionally not exposed. See `docs/A1.24-SESSION-CONCURRENCY-AUDIT.md`.
+
+
+## User group reassignment increment — 2026-10-10
+
+Source-traced `IBSng/core/user/plugins/group.py::GroupNameAttrUpdater`: group assignment is a special updater that writes `users.group_id`, not a `user_attrs` row, and records user audit attribute `group`. Added `PUT /api/v1/users/{username}/group` with user-owner permission checks, target-group access checks and a `FOR SHARE` lock on the target group. Native user audit and ATD operational audit are written in the same transaction. Repository/API tests cover persistence and denied target-group access. Code/test commit `72896b1fffde57656bea37631f1ab6f8a5f5f3ff`; full CI passed Python 3.11 and 3.12: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38070959390 ; Python-only workflow passed: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38070959368. Detailed audit: `docs/A1.24-USER-GROUP-REASSIGNMENT-AUDIT.md`.
