@@ -93,6 +93,24 @@ def update_admin_information(
         raise HTTPException(status_code=409, detail="Administrator information could not be updated") from exc
 
 
+class AdminPermissionView(BaseModel):
+    name: str
+    value: str | None
+
+
+@router.get("/{username}/permissions", response_model=list[AdminPermissionView])
+def get_admin_permissions(
+    username: str,
+    admin: AdminPrincipal = Depends(require_admin_permission("SEE ADMIN PERMISSIONS")),
+) -> list[AdminPermissionView]:
+    """Expose native admin permission rows only to authorized administrators."""
+    with connection() as conn:
+        permissions = AdminInformationRepository(conn).get_permissions(username)
+    if permissions is None:
+        raise HTTPException(status_code=404, detail="administrator not found")
+    return [AdminPermissionView(name=name, value=value) for name, value in permissions]
+
+
 class AdminPasswordChange(BaseModel):
     new_password: str
 
