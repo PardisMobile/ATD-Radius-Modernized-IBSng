@@ -3,11 +3,11 @@
 Updated: 2026-10-10  
 Repository: `PardisMobile/ATD-Radius-Modernized-IBSng`  
 Branch: `main`  
-Latest code/test commit before IAS parity increment: `c8a79050c3da83c2025abaf81b641a01d20fd485`
+Latest code/test commit: `aefba4b1079b7ddb7940461e59e572bebd21b834`
 
 ## Authority and validation
 
-- Administrator permission viewing and native admin creation are committed through `15a4bd24f16449f77c1ae4236d00dddc0e89d4be`. Full CI passed on Python 3.11 and 3.12: **613 passed, 2 warnings** per matrix job, including compile, Ruff, PHP syntax and PostgreSQL-backed integration tests. Lightweight Python CI passed: **611 passed, 2 skipped, 2 warnings**; the two skips are live UDP/PostgreSQL integration tests not configured in that workflow.
+- Administrator permission viewing, native admin creation, and IAS `ADD_ADMIN` parity are committed through `aefba4b1079b7ddb7940461e59e572bebd21b834`. CI verification for code/test commit `aefba4b1079b7ddb7940461e59e572bebd21b834` passed: full CI on Python 3.11 and 3.12, **613 passed, 2 warnings** per matrix job, including compile, Ruff, PHP syntax and PostgreSQL integration; Python-only workflow passed **611 passed, 2 skipped, 2 warnings** (the two live UDP/PostgreSQL tests are skipped in that workflow). Full CI: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38059979595 ; Python workflow: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38059979654.
 
 - Canonical behavior source: `Source of Truth/IBSng-A1.24.tar.bz2`
 - SHA-256: `c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839614bb9349d18a8`
@@ -59,4 +59,4 @@ Continue with **admin permission editing and deletion**, after tracing A1.24 per
 
 ## Administrator creation IAS parity — 2026-10-10
 
-Source audit against the checksum-verified A1.24 archive confirms `IBSng/core/admin/admin_actions.py` composes the native admin insert and `ias_main.getActionsManager().logEvent("ADD_ADMIN", creator_username, 0, username)` in one database transaction. `IBSng/core/ias/ias_actions.py` maps `ADD_ADMIN` to IAS event type **5**. ATD's native admin creation repository now writes the corresponding `ias_event` row (actor = creator username, amount = 0, destination = created username, empty comment) in the same caller-owned transaction as the `admins` insert and operational audit. Focused repository/API tests assert the event fields and creator identity. CI validation for this change is pending; do not treat it as verified until GitHub Actions completes.
+Source audit against the checksum-verified A1.24 archive confirms `IBSng/core/admin/admin_actions.py` composes the native admin insert and `ias_main.getActionsManager().logEvent("ADD_ADMIN", creator_username, 0, username)` in one database transaction. `IBSng/core/ias/ias_actions.py` maps `ADD_ADMIN` to IAS event type **5**. ATD's native admin creation repository now writes the corresponding `ias_event` row (actor = creator username, amount = 0, destination = created username, empty comment) in the same caller-owned transaction as the `admins` insert and operational audit. Focused repository/API tests assert the event fields and creator identity. CI verification for code/test commit `aefba4b1079b7ddb7940461e59e572bebd21b834` passed: full CI on Python 3.11 and 3.12, **613 passed, 2 warnings** per matrix job, including compile, Ruff, PHP syntax and PostgreSQL integration; Python-only workflow passed **611 passed, 2 skipped, 2 warnings** (the two live UDP/PostgreSQL tests are skipped in that workflow). Full CI: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38059979595 ; Python workflow: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38059979654.
