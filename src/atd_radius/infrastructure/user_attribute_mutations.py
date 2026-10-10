@@ -37,6 +37,7 @@ class UserAttributeTarget:
     user_id: int
     username: str
     owner_id: int | None
+    owner_username: str | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -72,9 +73,10 @@ class UserAttributeMutationRepository:
     def lock_target(self, username: str) -> UserAttributeTarget | None:
         row = self.conn.execute(
             """
-            SELECT u.user_id, nu.normal_username, u.owner_id
+            SELECT u.user_id, nu.normal_username, u.owner_id, owner.username
             FROM users u
             JOIN normal_users nu ON nu.user_id = u.user_id
+            LEFT JOIN admins owner ON owner.admin_id = u.owner_id
             WHERE nu.normal_username = %s
             FOR UPDATE OF u
             """,
@@ -82,7 +84,9 @@ class UserAttributeMutationRepository:
         ).fetchone()
         if row is None:
             return None
-        return UserAttributeTarget(int(row[0]), str(row[1]), row[2])
+        return UserAttributeTarget(
+            int(row[0]), str(row[1]), row[2], str(row[3]) if row[3] is not None else None
+        )
 
     @staticmethod
     def normalize(attrs: dict[str, str], to_delete: list[str]) -> dict[str, str]:
@@ -186,6 +190,36 @@ class UserAttributeMutationRepository:
             target.username,
             [(str(name), str(value)) for name, value in rows],
         )
+
+
+    def change_owner(
+        self,
+        target: UserAttributeTarget,
+        *,
+        admin_id: int,
+        owner_username: str,
+    ) -> str:
+        """Implement A1.24 owner_name's special updater, not user_attrs storage."""
+        owner_row = self.conn.execute(
+            "SELECT admin_id, username FROM admins WHERE username = %s FOR SHARE",
+            (owner_username,),
+        ).fetchone()
+        if owner_row is None:
+            raise LookupError("owner administrator not found")
+        if target.owner_username is None:
+            raise RuntimeError("current user owner does not resolve to an administrator")
+
+        new_owner_id = int(owner_row[0])
+        new_owner_name = str(owner_row[1])
+        self.conn.execute(
+            "UPDATE users SET owner_id = %s WHERE user_id = %s",
+            (new_owner_id, target.user_id),
+        )
+        if target.owner_username != new_owner_name and is_user_audit_log_enabled(self.conn):
+            self._audit(
+                admin_id, target.user_id, "owner", target.owner_username, new_owner_name
+            )
+        return new_owner_name
 
     def _audit(
         self, admin_id: int, user_id: int, name: str, old_value: str, new_value: str
