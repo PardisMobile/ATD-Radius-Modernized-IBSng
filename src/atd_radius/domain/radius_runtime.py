@@ -32,20 +32,27 @@ class CachedRequest(Generic[T]):
     created_at:float=field(default_factory=monotonic)
 
 class DuplicateRequestCache(Generic[T]):
-    def __init__(self): self._items:dict[RequestKey,CachedRequest[T]]={}
+    def __init__(self):
+        self._items:dict[RequestKey,CachedRequest[T]]={}
+        self._lock = RLock()
     @_registry_locked
     def get(self,key:RequestKey)->CachedRequest[T]|None: return self._items.get(key)
+    @_registry_locked
     def add(self,key:RequestKey)->CachedRequest[T]:
         item=CachedRequest(key); self._items[key]=item; return item
+    @_registry_locked
     def finish(self,key:RequestKey,response:T)->None:
         item=self._items[key]; item.response=response; item.finished=True
+    @_registry_locked
     def remove(self,key:RequestKey)->None: self._items.pop(key,None)
+    @_registry_locked
     def purge_expired(self,max_age_seconds:float,now:float|None=None)->int:
         if max_age_seconds<0: raise ValueError("max_age_seconds must be non-negative")
         current=monotonic() if now is None else now
         expired=[key for key,item in self._items.items() if current-item.created_at>=max_age_seconds]
         for key in expired: del self._items[key]
         return len(expired)
+    @_registry_locked
     def __len__(self): return len(self._items)
 
 @dataclass(frozen=True,slots=True)
@@ -87,6 +94,7 @@ class SessionRegistry:
             ras_multi_login_allowed=ras_multi_login_allowed,
         )
         self._sessions[key]=state; return state
+    @_registry_locked
     def get(self,key): return self._sessions.get(key)
     @_registry_locked
     def update(self,key,input_octets,output_octets):
