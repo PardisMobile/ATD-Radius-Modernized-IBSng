@@ -3,8 +3,8 @@ from __future__ import annotations
 import ipaddress
 import re
 
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, Field
 
 from atd_radius.api.admin_dependencies import (
     AdminPrincipal,
@@ -16,6 +16,10 @@ from atd_radius.domain.ibsng_password import hash_ibsng_password
 from atd_radius.infrastructure.admin_credentials import AdminCredentialRepository
 from atd_radius.infrastructure.admin_creation import AdminCreationRepository
 from atd_radius.infrastructure.admin_information import AdminInformationRepository
+from atd_radius.infrastructure.admin_permission_mutations import (
+    AdminPermissionMutationError,
+    AdminPermissionMutationRepository,
+)
 from atd_radius.infrastructure.db import connection
 from atd_radius.infrastructure.operational_audit import OperationalAuditRepository
 
@@ -163,6 +167,101 @@ def get_admin_permissions(
     if permissions is None:
         raise HTTPException(status_code=404, detail="administrator not found")
     return [AdminPermissionView(name=name, value=value) for name, value in permissions]
+
+
+
+class AdminPermissionMutation(BaseModel):
+    value: str = Field(max_length=4096)
+
+
+def _permission_mutation_error(exc: AdminPermissionMutationError) -> HTTPException:
+    statuses = {
+        "admin_not_found": (404, "administrator not found"),
+        "unknown_permission": (422, "unknown administrator permission"),
+        "invalid_value": (422, "invalid permission value"),
+        "dependency_not_satisfied": (409, "permission dependencies are not satisfied"),
+        "already_has_permission": (409, "administrator already has this permission"),
+        "duplicate_value": (409, "permission already contains this value"),
+        "permission_not_assigned": (404, "permission is not assigned to this administrator"),
+        "dependent_permission": (409, "another assigned permission depends on this permission"),
+        "not_multi_value": (422, "permission does not accept multiple values"),
+        "value_not_assigned": (404, "permission does not contain this value"),
+    }
+    status, detail = statuses.get(exc.code, (409, "administrator permission could not be changed"))
+    return HTTPException(status_code=status, detail=detail)
+
+
+def _mutate_admin_permissions(
+    username: str,
+    admin: AdminPrincipal,
+    operation: str,
+    permission_name: str,
+    value: str | None = None,
+) -> list[AdminPermissionView]:
+    remote_addr = _validated_remote_addr(admin.remote_addr)
+    try:
+        with connection() as conn:
+            repository = AdminPermissionMutationRepository(conn)
+            if operation == "change":
+                result = repository.add_or_change(username, permission_name, value or "")
+            elif operation == "delete":
+                result = repository.delete_permission(username, permission_name)
+            else:
+                result = repository.delete_multi_value(username, permission_name, value or "")
+            OperationalAuditRepository(conn).append(
+                actor_admin_id=admin.admin_id,
+                actor_username=admin.username,
+                action=f"admin.permission.{operation}",
+                outcome="success",
+                target_type="admin",
+                target_id=str(result.admin_id),
+                remote_addr=remote_addr,
+                details={
+                    "target_username": result.username,
+                    "permission_name": permission_name,
+                    **({"value": value} if value is not None else {}),
+                },
+            )
+            conn.commit()
+            return [AdminPermissionView(name=name, value=perm_value) for name, perm_value in result.permissions]
+    except AdminPermissionMutationError as exc:
+        raise _permission_mutation_error(exc) from exc
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=409, detail="Administrator permission could not be changed") from exc
+
+
+@router.put("/{username}/permissions/{permission_name}", response_model=list[AdminPermissionView])
+def add_or_change_admin_permission(
+    username: str,
+    permission_name: str,
+    payload: AdminPermissionMutation,
+    admin: AdminPrincipal = Depends(require_admin_permission("CHANGE ADMIN PERMISSIONS")),
+) -> list[AdminPermissionView]:
+    """Add a native permission or update its source-defined value."""
+    return _mutate_admin_permissions(username, admin, "change", permission_name, payload.value)
+
+
+@router.delete("/{username}/permissions/{permission_name}", response_model=list[AdminPermissionView])
+def delete_admin_permission(
+    username: str,
+    permission_name: str,
+    admin: AdminPrincipal = Depends(require_admin_permission("CHANGE ADMIN PERMISSIONS")),
+) -> list[AdminPermissionView]:
+    """Remove a native permission only when no assigned permission depends on it."""
+    return _mutate_admin_permissions(username, admin, "delete", permission_name)
+
+
+@router.delete("/{username}/permissions/{permission_name}/values", response_model=list[AdminPermissionView])
+def delete_admin_permission_value(
+    username: str,
+    permission_name: str,
+    value: str = Query(min_length=1, max_length=4096),
+    admin: AdminPrincipal = Depends(require_admin_permission("CHANGE ADMIN PERMISSIONS")),
+) -> list[AdminPermissionView]:
+    """Remove one value from a native multi-value permission."""
+    return _mutate_admin_permissions(username, admin, "delete_value", permission_name, value)
 
 
 class AdminPasswordChange(BaseModel):
