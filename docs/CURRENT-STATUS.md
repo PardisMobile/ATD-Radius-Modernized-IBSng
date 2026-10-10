@@ -36,7 +36,7 @@ Latest code/test commit: `60237946c885c8f541480f9b2428f253950f7772` (user owner 
 ## Still open — do not mark complete
 
 1. Administrator volatile activity fields (`last_request_ip`, `last_activity`, `online_status`) remain open; administrator permission editing and deletion are implemented and tested.
-2. Extend the user-attribute mutation slice to remaining specialized plugin families; user deletion and owner transfer remain open.
+2. Extend the user-attribute mutation slice to remaining specialized plugin families; user deletion remains open (source audit recorded in `docs/A1.24-USER-DELETION-AUDIT.md`). Owner transfer has a separate implemented route.
 3. Online-user listing/permissions and safe disconnect/CoA session resolution, permission, side-effect and audit sequencing. **RAS disconnect remains unmounted.**
 4. Full billing persistence, charging/usage integration, expiry/subscription and report parity.
 5. Complete RAS provider runtime/transport interoperability and RADIUS dictionary coverage.
@@ -44,6 +44,10 @@ Latest code/test commit: `60237946c885c8f541480f9b2428f253950f7772` (user owner 
 7. Database importer, parity validation and rollback.
 8. Installer, systemd, TLS, backup/upgrade, supported OS and licensing/edition enforcement.
 9. Full UI workflows — UI expansion remains frozen until core, RADIUS/RAS, billing, DB/API, migration and deployment stabilize.
+
+## User deletion source audit — 2026-10-10
+
+The canonical A1.24 paths `core/user/user_handler.py::delUser` and `core/user/user_actions.py::delUser/__delUserQuery/__postDelUser` were traced and recorded in `docs/A1.24-USER-DELETION-AUDIT.md`. Native deletion requires an offline-user guard, blacklist coordination, refund of non-negative user credit to admin deposit, DEL_USER credit history, optional connection/audit-log deletion, IAS DELETE_USER, cleanup of subtype/messages/web-analyzer/bandwidth tables, user-pool change broadcasts, and post-commit mailbox deletion. ATD user deletion remains intentionally unimplemented until authoritative online-session resolution, table/FK parity, transactional refund/IAS/audit behavior, and post-commit side-effect handling are in place. A bare SQL delete is not acceptable.
 
 ## Non-negotiable implementation rules
 
