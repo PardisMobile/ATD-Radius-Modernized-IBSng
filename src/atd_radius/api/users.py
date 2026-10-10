@@ -54,6 +54,16 @@ class UserAttributeMutationView(BaseModel):
     attributes: list[AttributeView]
 
 
+class UserOwnerChange(BaseModel):
+    owner_username: str = Field(min_length=1, max_length=255)
+
+
+class UserOwnerView(BaseModel):
+    id: int
+    username: str
+    owner_username: str
+
+
 class UserCreditChange(BaseModel):
     delta: Decimal = Field(max_digits=12, decimal_places=2)
     comment: str = Field(max_length=1000)
@@ -384,6 +394,72 @@ def mutate_user_attributes(
         raise
     except Exception as exc:
         raise HTTPException(status_code=409, detail="USER attributes could not be changed") from exc
+
+
+@router.put("/{username}/owner", response_model=UserOwnerView)
+def change_user_owner(
+    username: str,
+    payload: UserOwnerChange,
+    admin: AdminPrincipal = Depends(require_admin_session),
+) -> UserOwnerView:
+    """Implement A1.24's owner_name updater with its separate permission check."""
+    if admin.remote_addr is None:
+        raise HTTPException(status_code=400, detail="A valid administrator remote address is required")
+    try:
+        remote_addr = str(ipaddress.ip_address(admin.remote_addr))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="A valid administrator remote address is required") from exc
+
+    owner_username = payload.owner_username.strip()
+    if not owner_username:
+        raise HTTPException(status_code=422, detail="owner_username must not be empty")
+
+    try:
+        with connection() as conn:
+            repository = UserAttributeMutationRepository(conn)
+            target = repository.lock_target(username)
+            if target is None:
+                raise HTTPException(status_code=404, detail="user not found")
+            if not can_change_user(admin, target.owner_id):
+                raise HTTPException(status_code=403, detail="Administrator permission denied")
+            if (
+                owner_username != admin.username
+                and not admin.permissions.is_god()
+                and not admin.permissions.has_perm("CHANGE USERS OWNER")
+            ):
+                raise HTTPException(status_code=403, detail="Administrator owner-transfer permission denied")
+            try:
+                new_owner = repository.change_owner(
+                    target,
+                    admin_id=admin.admin_id,
+                    owner_username=owner_username,
+                )
+            except LookupError as exc:
+                raise HTTPException(status_code=404, detail="owner administrator not found") from exc
+
+            OperationalAuditRepository(conn).append(
+                actor_admin_id=admin.admin_id,
+                actor_username=admin.username,
+                action="user.owner.change",
+                outcome="success",
+                target_type="user",
+                target_id=str(target.user_id),
+                remote_addr=remote_addr,
+                details={
+                    "previous_owner": target.owner_username,
+                    "new_owner": new_owner,
+                },
+            )
+            conn.commit()
+            return UserOwnerView(
+                id=target.user_id,
+                username=target.username,
+                owner_username=new_owner,
+            )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=409, detail="USER owner could not be changed") from exc
 
 @router.post("/{username}/credit", response_model=UserCreditView)
 def change_user_credit(
