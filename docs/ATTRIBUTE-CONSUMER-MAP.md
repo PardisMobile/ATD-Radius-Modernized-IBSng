@@ -13,7 +13,7 @@ An attribute is **not migrated** merely because its name exists in the catalog. 
 | `multi_login` | Policy | Session admission / concurrency guard | implemented; source-semantic acceptance tests added |
 | `session_timeout` | RADIUS policy | `Session-Timeout` + session enforcement | catalogued; mapping pending |
 | `idle_timeout` | RADIUS policy | `Idle-Timeout` + session enforcement | catalogued; mapping pending |
-| `save_bw_usage` | Accounting policy | usage recorder | catalogued; implementation pending |
+| `save_bw_usage` | Accounting policy | usage recorder | attribute mutation implemented; usage recorder integration pending |
 | `normal_charge` | Billing policy | charge resolver | catalogued; implementation pending |
 | `voip_charge` | Billing policy | charge resolver | catalogued; implementation pending |
 | `radius_attrs` | Protocol policy | RADIUS attribute mapper | catalogued; implementation pending |
