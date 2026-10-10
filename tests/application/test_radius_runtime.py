@@ -45,7 +45,10 @@ def test_runtime_handler_applies_accounting_session():
     dispatcher.accounting.return_value = DispatchResult(
         RadiusPacket(RadiusCode.ACCOUNTING_RESPONSE, 9, {}, b"0123456789abcdef"), event
     )
+    from atd_radius.domain.radius_runtime import SessionRegistry
+
     sessions = Mock()
+    sessions.registry = SessionRegistry()
     identities = Mock()
     identities.user_id.return_value = 7
     identities.ras_id.return_value = 3
@@ -238,7 +241,9 @@ def test_accounting_identity_resolution_and_apply_share_registry_lock():
             guard["entered"] = False
 
     class Registry:
-        synchronized = staticmethod(synchronized)
+        pass
+
+    Registry.synchronized = staticmethod(synchronized)
 
     class Sessions:
         registry = Registry()
