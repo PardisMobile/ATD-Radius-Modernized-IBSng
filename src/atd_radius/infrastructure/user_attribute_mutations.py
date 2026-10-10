@@ -221,6 +221,41 @@ class UserAttributeMutationRepository:
             )
         return new_owner_name
 
+    def change_group(
+        self,
+        target: UserAttributeTarget,
+        *,
+        admin_id: int,
+        group_id: int,
+        group_name: str,
+    ) -> str:
+        """Apply A1.24 group_name updater semantics without storing it in user_attrs."""
+        row = self.conn.execute(
+            """
+            SELECT g.group_name
+            FROM users u
+            JOIN groups g ON g.group_id = u.group_id
+            WHERE u.user_id = %s
+            """,
+            (target.user_id,),
+        ).fetchone()
+        if row is None:
+            raise RuntimeError("current user group does not resolve to a group")
+        previous_group_name = str(row[0])
+        self.conn.execute(
+            "UPDATE users SET group_id = %s WHERE user_id = %s",
+            (group_id, target.user_id),
+        )
+        if is_user_audit_log_enabled(self.conn):
+            self._audit(
+                admin_id,
+                target.user_id,
+                "group",
+                previous_group_name,
+                group_name,
+            )
+        return previous_group_name
+
     def _audit(
         self, admin_id: int, user_id: int, name: str, old_value: str, new_value: str
     ) -> None:
