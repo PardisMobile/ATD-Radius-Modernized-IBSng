@@ -3,6 +3,9 @@
 ## Verified checkpoint — 2026-10-10
 The native Accounting-Request path now serializes identity resolution through persistence/session side effects, and the normal `atd_radius.main` launcher shares one in-process runtime owner between UDP and the API app. Full CI passed on Python 3.11/3.12 (654 passed each). This is not complete A1.24 session parity: cross-process/restart session truth, safe Disconnect, user deletion and remaining accounting/billing behavior are still open. See `docs/A1.24-SESSION-CONCURRENCY-AUDIT.md` and `docs/CURRENT-STATUS.md`.
 
+## Verified feature increment — 2026-10-10
+A1.24's special VoIP caller_id updater is now implemented for one user at a time, with native caller_id_users persistence, CHANGE VOIP USER ATTRIBUTES owner-scoped permission, MultiStr range expansion, serialized global uniqueness check and native/operational audit. Full CI: 662 passed on Python 3.11 and 3.12. See docs/A1.24-CALLER-ID-AUDIT.md. Bulk caller-ID assignment and the other incomplete A1.24 subsystems remain open.
+
 ## Phase 1 — Behavioral foundation
 - [x] Typed attribute engine
 - [x] Attribute precedence and provenance

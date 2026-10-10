@@ -3,7 +3,7 @@
 Updated: 2026-10-10  
 Repository: `PardisMobile/ATD-Radius-Modernized-IBSng`  
 Branch: `main`  
-Latest code/test commit: `28d0989c6f43c3fcc8be18b54e5f2caa40dc68f7` (accounting lifecycle lock + shared in-process runtime owner; CI verified)
+Latest code/test commit: `ff29222f03cfacbe9dc7c8ecf143e81f327c7121` (source-backed VoIP caller-ID mutation; CI verified)
 
 ## Authority and validation
 
@@ -97,3 +97,11 @@ This is a runtime-safety foundation, not full session parity. The runtime owner 
 ## Deletion safety source recheck — 2026-10-10
 
 A further exact trace of A1.24 `core/user/user_pool.py`, `core/user/loaded_user.py` and `core/user/online.py` found a key blocker beyond Accounting-Request synchronization: A1.24 sets `LoadedUser.online_flag` during login preparation and checks a deletion blacklist while holding its user-pool loading lock. It registers a user and individual RAS instances only after native login succeeds; the online flag is cleared only after the final instance logs out. ATD's RADIUS Accounting-Start registry does not represent this login-in-progress state, and Access-Accept may occur before Accounting-Start. Therefore it must not yet be treated as an A1.24-equivalent deletion guard. User deletion and online-user listing remain open until this lifecycle boundary is implemented and tested. See `docs/A1.24-USER-DELETION-AUDIT.md` and `docs/A1.24-SESSION-CONCURRENCY-AUDIT.md`.
+
+## A1.24 VoIP caller-ID updater — verified 2026-10-10
+
+Added dedicated PUT /api/v1/users/{username}/caller-ids and DELETE /api/v1/users/{username}/caller-ids. This follows IBSng/core/user/plugins/caller_id.py: persistence uses native caller_id_users, never user_attrs; authorization uses CHANGE VOIP USER ATTRIBUTES with the source dependency on CHANGE USER ATTRIBUTES and the user's owner scope; caller ID lists support A1.24 MultiStr comma-separated expressions and numeric ranges; existing global caller-ID assignments are rejected; native USER_AUDIT_LOG and ATD operational audit are written transactionally. To address the source's explicit “not thread safe” uniqueness warning, writes serialize with a PostgreSQL SHARE ROW EXCLUSIVE table lock.
+
+Code/test commits: 947ab88df0503ce09ab344f5f4c772420c262672, 52c49e780f4938ba321cf49e49ddaf0e76a5cad7, add93ecfc8766114579489589b6130d52ea6ac2e, 6d21ed779acba45e773f6a2888efcb6263764cf1, ff29222f03cfacbe9dc7c8ecf143e81f327c7121. Full CI passed on Python 3.11 and 3.12: **662 passed, 2 warnings** per matrix job, including compile, Ruff, PHP syntax and PostgreSQL integration: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38081828572. Python-only workflow: **660 passed, 2 skipped, 2 warnings**; the two skipped tests need live UDP/PostgreSQL configuration: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38081828570.
+
+Detailed source audit: docs/A1.24-CALLER-ID-AUDIT.md. The implemented endpoints operate on one named user at a time; A1.24's multi-user caller-ID updater allocation semantics are not exposed as a bulk API. Range expansion is capped at one million expanded values as a resource-safety guard.
