@@ -104,6 +104,16 @@ _ADMIN_PERMISSIONS = AdminPermissionEvaluator(
         PermissionSpec("GOD", PermissionKind.NO_VALUE),
         PermissionSpec("SEE ADMIN INFO", PermissionKind.NO_VALUE),
         PermissionSpec(
+            "SEE ADMIN PERMISSIONS",
+            PermissionKind.NO_VALUE,
+            dependencies=("SEE ADMIN INFO",),
+        ),
+        PermissionSpec(
+            "CHANGE ADMIN PERMISSIONS",
+            PermissionKind.NO_VALUE,
+            dependencies=("SEE ADMIN INFO", "SEE ADMIN PERMISSIONS"),
+        ),
+        PermissionSpec(
             "CHANGE ADMIN INFO",
             PermissionKind.NO_VALUE,
             dependencies=("SEE ADMIN INFO",),
@@ -171,7 +181,10 @@ def require_admin_permission(permission_name: str):
             evaluator = _USER_PERMISSIONS
         elif permission_name in {"SEE CONNECTION LOGS", "SEE CREDIT CHANGES"}:
             evaluator = _REPORT_PERMISSIONS
-        elif permission_name in {"SEE ADMIN INFO", "CHANGE ADMIN INFO", "CHANGE ADMIN DEPOSIT", "CHANGE ADMIN PASSWORD"}:
+        elif permission_name in {
+            "SEE ADMIN INFO", "SEE ADMIN PERMISSIONS", "CHANGE ADMIN PERMISSIONS",
+            "CHANGE ADMIN INFO", "CHANGE ADMIN DEPOSIT", "CHANGE ADMIN PASSWORD"
+        }:
             evaluator = _ADMIN_PERMISSIONS
         else:
             evaluator = _GROUP_PERMISSIONS
