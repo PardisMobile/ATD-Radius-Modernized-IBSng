@@ -10,7 +10,7 @@ class Result:
 
 
 class Connection:
-    def __init__(self, ias_enabled="I1\\n."):
+    def __init__(self, ias_enabled="I1\n."):
         self.calls = []
         self.ias_enabled = ias_enabled
 
@@ -54,7 +54,7 @@ def test_admin_creation_uses_native_sequence_fields_and_creator():
 
 
 def test_admin_creation_does_not_emit_ias_event_when_native_flag_is_disabled():
-    conn = Connection(ias_enabled="I0\\n.")
+    conn = Connection(ias_enabled="I0\n.")
     created = AdminCreationRepository(conn).create(
         username="new_admin",
         password_hash="$1$12345678$hash",
