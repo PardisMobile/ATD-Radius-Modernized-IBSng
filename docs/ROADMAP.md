@@ -57,3 +57,8 @@ A1.24's special VoIP caller_id updater is now implemented for one user at a time
 - [ ] Production deployment documentation
 
 **Definition of done:** ATD is not considered an IBSng modernization until the compatibility matrix and lossless database migration path demonstrate that required A1.24 behavior and data are preserved.
+
+
+## Verified attribute increment — 2026-10-10
+
+Enabled A1.24 `voip_preferred_language` in the generic user attribute API after source tracing its updater. It persists in `user_attrs` and uses the generic attribute authorization/audit path. Regression test added. This does not imply parity for VoIP credentials, tariffs, preferred-language consumers or other VoIP plugins.

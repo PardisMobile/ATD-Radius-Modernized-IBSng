@@ -19,6 +19,7 @@ USER_ATTRIBUTE_UPDATER_HANDLERS = {
     "multi_login": "multilogin.MultiLoginAttrUpdater",
     "session_timeout": "session_timeout.SessionTimeoutAttrUpdater",
     "idle_timeout": "idle_timeout.IdleTimeoutAttrUpdater",
+    "voip_preferred_language": "voip_preferred_language.VoIPPreferredLanguageAttrUpdater",
 }
 AUDIT_LOG_NOVALUE = "_NOVALUE_"
 _INTEGER_FLAG = re.compile(r"I([01])\s*\.")

@@ -208,3 +208,28 @@ def test_group_name_uses_native_users_group_id_and_group_audit():
         "INSERT INTO user_attrs" in sql and "group_name" in params
         for sql, params in conn.calls
     )
+
+
+
+def test_voip_preferred_language_uses_native_generic_user_attrs_and_audit():
+    conn = FakeConnection()
+    repo = UserAttributeMutationRepository(conn)
+    target = repo.lock_target("alice")
+    assert target is not None
+
+    result = repo.apply(
+        target,
+        admin_id=9,
+        attrs={"voip_preferred_language": "fa"},
+        to_delete=[],
+    )
+
+    assert ("voip_preferred_language", "fa") in result.attributes
+    assert conn.current["voip_preferred_language"] == "fa"
+    audit_calls = [
+        params for sql, params in conn.calls
+        if "SELECT insert_user_audit_log" in sql
+    ]
+    assert [row[2:] for row in audit_calls] == [
+        ("voip_preferred_language", AUDIT_LOG_NOVALUE, "fa")
+    ]

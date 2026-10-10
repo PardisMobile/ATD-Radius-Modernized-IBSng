@@ -105,3 +105,8 @@ Added dedicated PUT /api/v1/users/{username}/caller-ids and DELETE /api/v1/users
 Code/test commits: 947ab88df0503ce09ab344f5f4c772420c262672, 52c49e780f4938ba321cf49e49ddaf0e76a5cad7, add93ecfc8766114579489589b6130d52ea6ac2e, 6d21ed779acba45e773f6a2888efcb6263764cf1, ff29222f03cfacbe9dc7c8ecf143e81f327c7121. Full CI passed on Python 3.11 and 3.12: **662 passed, 2 warnings** per matrix job, including compile, Ruff, PHP syntax and PostgreSQL integration: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38081828572. Python-only workflow: **660 passed, 2 skipped, 2 warnings**; the two skipped tests need live UDP/PostgreSQL configuration: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38081828570.
 
 Detailed source audit: docs/A1.24-CALLER-ID-AUDIT.md. The implemented endpoints operate on one named user at a time; A1.24's multi-user caller-ID updater allocation semantics are not exposed as a bulk API. Range expansion is capped at one million expanded values as a resource-safety guard.
+
+
+## Latest user-attribute increment — 2026-10-10
+
+Enabled `voip_preferred_language` through the existing generic user-attribute mutation endpoint after tracing `IBSng/core/user/plugins/voip_preferred_language.py`. It uses native `user_attrs` storage, generic user-attribute permission/owner scope, and native user audit; no dedicated VoIP table or endpoint is required. Added regression coverage. This is one additional source-backed plugin, not complete VoIP attribute parity. See `docs/A1.24-ATTRIBUTE-BEHAVIOR-AUDIT.md`.

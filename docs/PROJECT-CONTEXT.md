@@ -188,3 +188,8 @@ The canonical source IBSng/core/user/plugins/caller_id.py defines CallerIDUserAt
 Latest feature code/test commit: ff29222f03cfacbe9dc7c8ecf143e81f327c7121. Full CI passed Python 3.11/3.12: 662 passed each, 2 warnings (https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38081828572). Python-only: 660 passed, 2 skipped, 2 warnings (https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38081828570). See docs/A1.24-CALLER-ID-AUDIT.md.
 
 Compatibility note: these are single-user endpoints only; do not claim parity for A1.24's multi-user caller-ID allocation behavior. Numeric range expansion is capped at 1,000,000 generated values as a resource guard. Existing major blockers remain: source-equivalent login-in-progress/session reservation, durable cross-process active session truth, user deletion/mailbox cleanup, RAS Disconnect ordering, and broader A1.24 behavior/migration coverage.
+
+
+## Additional attribute plugin checkpoint — 2026-10-10
+
+`voip_preferred_language` is now enabled in the source-traced generic attribute mutation slice. A1.24 stores it in `user_attrs` through `VoIPPreferredLanguageAttrUpdater`; the updater has no custom permission check or validation override. ATD preserves generic owner-scoped `CHANGE USER ATTRIBUTES` behavior and native user audit. Its source comment says two-letter language codes but does not enforce them, so ATD does not introduce stricter validation. Regression test added; see `docs/A1.24-ATTRIBUTE-BEHAVIOR-AUDIT.md`.
