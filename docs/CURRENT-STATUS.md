@@ -3,7 +3,7 @@
 Updated: 2026-10-10  
 Repository: `PardisMobile/ATD-Radius-Modernized-IBSng`  
 Branch: `main`  
-Latest code/test commit: `72896b1fffde57656bea37631f1ab6f8a5f5f3ff` (user group reassignment; CI verified)
+Latest code/test commit: `28d0989c6f43c3fcc8be18b54e5f2caa40dc68f7` (accounting lifecycle lock + shared in-process runtime owner; CI verified)
 
 ## Authority and validation
 
@@ -77,9 +77,18 @@ Source audit against the checksum-verified A1.24 archive confirms `IBSng/core/ad
 
 Added a re-entrant synchronization boundary for the in-process duplicate-request cache and live session registry. `AccountingSessionService.apply` now holds the registry lock across its compound Start/Interim/Stop decisions and related persistence/charging side effects. Added a parallel duplicate-Start regression test (24 concurrent calls, one session and one connection-log insert). Code/test commit: `25b7b9b0f96bf81c68708990bab5f68e13ddbbda`. Full CI passed on Python 3.11 and 3.12: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38070540152 ; Python-only: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38070540153.
 
-Important limitation: this only serializes operations within one process. The API and UDP runtime still do not share an authoritative runtime owner, and multi-process active-session truth/restart recovery remain unresolved. Therefore RAS Disconnect and user deletion are still intentionally not exposed. See `docs/A1.24-SESSION-CONCURRENCY-AUDIT.md`.
+Important limitation: this serializes the Accounting-Request resolution→apply path and publishes the same runtime state to API app.state when started through `atd_radius.main`. It is still process-local: external ASGI startup, multi-worker/multi-process active-session truth, restart recovery, and durable authoritative session state remain unresolved. RAS Disconnect and user deletion are still intentionally not exposed. See `docs/A1.24-SESSION-CONCURRENCY-AUDIT.md`.
 
 
 ## User group reassignment increment — 2026-10-10
 
 Source-traced `IBSng/core/user/plugins/group.py::GroupNameAttrUpdater`: group assignment is a special updater that writes `users.group_id`, not a `user_attrs` row, and records user audit attribute `group`. Added `PUT /api/v1/users/{username}/group` with user-owner permission checks, target-group access checks and a `FOR SHARE` lock on the target group. Native user audit and ATD operational audit are written in the same transaction. Repository/API tests cover persistence and denied target-group access. Code/test commit `72896b1fffde57656bea37631f1ab6f8a5f5f3ff`; full CI passed Python 3.11 and 3.12: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38070959390 ; Python-only workflow passed: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38070959368. Detailed audit: `docs/A1.24-USER-GROUP-REASSIGNMENT-AUDIT.md`.
+
+
+## Accounting request synchronization and runtime ownership — 2026-10-10
+
+The native Accounting-Request path now holds `SessionRegistry.synchronized()` from accounting dispatch through username→user ID and peer IP→RAS ID resolution, session/provider resolution, `AccountingSessionService.apply`, and IP-pool session side effects. This closes the previously identified gap where accounting could resolve a user before a future admin operation acquired the registry lock but apply the session after that operation. `main._start_radius_servers` publishes that same `NativeRadiusRuntimeState` on `app.state.radius_runtime_state` before starting UDP servers, allowing same-process API code to use the exact registry rather than constructing a separate one.
+
+Regression test asserts dispatch, identity lookups and apply all run inside the same registry lock. Code/test commits: `4cc070f0b8960a0ab8e43df2e1adc69c0c53ae5c`, `28d0989c6f43c3fcc8be18b54e5f2caa40dc68f7`. Full CI passed on Python 3.11 and 3.12: **654 passed, 2 warnings** per matrix job (compile, Ruff, PHP syntax and PostgreSQL integration included): https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38074052515. Python-only workflow: **652 passed, 2 skipped, 2 warnings**; skips are the live UDP/PostgreSQL integration tests not configured in that workflow: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38074052624.
+
+This is a runtime-safety foundation, not full session parity. The runtime owner is shared only when the app is launched through `atd_radius.main` with RADIUS enabled; external ASGI launchers/multiple workers do not share process memory. Do not implement user deletion or RAS Disconnect until deployment topology and authoritative online-session/restart behavior are resolved.

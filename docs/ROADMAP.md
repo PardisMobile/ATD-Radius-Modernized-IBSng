@@ -1,5 +1,8 @@
 # ATD Radius Modernized IBSng — Roadmap
 
+## Verified checkpoint — 2026-10-10
+The native Accounting-Request path now serializes identity resolution through persistence/session side effects, and the normal `atd_radius.main` launcher shares one in-process runtime owner between UDP and the API app. Full CI passed on Python 3.11/3.12 (654 passed each). This is not complete A1.24 session parity: cross-process/restart session truth, safe Disconnect, user deletion and remaining accounting/billing behavior are still open. See `docs/A1.24-SESSION-CONCURRENCY-AUDIT.md` and `docs/CURRENT-STATUS.md`.
+
 ## Phase 1 — Behavioral foundation
 - [x] Typed attribute engine
 - [x] Attribute precedence and provenance

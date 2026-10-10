@@ -164,3 +164,14 @@ All work above must be driven by repository documents and the A1.24 Source of Tr
 - Added `tests/api/test_api_contracts.py` covering both payload contracts.
 - Commits: `f7abef610438b15f7e8a82247777afda77a8c91d`, `3df950962b7f861841f7c1267cb6b6b4dc7e62c8`, `e18d0c2bf43da1111962d28f09ee53f9a0cb4968`.
 - This batch does not change UI, RADIUS protocol semantics, or canonical A1.24 source-derived provider behavior.
+
+
+## Latest verified handoff — 2026-10-10 (runtime lock and ownership)
+
+Canonical A1.24 archive SHA-256 remains `c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839614bb9349d18a8`. Do not substitute guessed semantics for source behavior.
+
+Latest code/test commit: `28d0989c6f43c3fcc8be18b54e5f2caa40dc68f7`. `RadiusRuntimeHandler` now holds the same `SessionRegistry.synchronized()` lock across Accounting-Request dispatch, user/RAS identity resolution, accounting session apply and IP-pool side effects. `atd_radius.main._start_radius_servers` places its exact `NativeRadiusRuntimeState` on `app.state.radius_runtime_state` so the API can share the UDP process's registry when launched through this entry point.
+
+Verification: full CI passed Python 3.11 and 3.12 with **654 passed, 2 warnings** per matrix job (https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38074052515). Python-only: **652 passed, 2 skipped, 2 warnings**; skipped cases are live UDP/PostgreSQL integration tests (https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38074052624).
+
+Limitations are binding: this is process-local only. External ASGI launchers, multi-worker operation and restart recovery do not share/restore authoritative session truth. RAS Disconnect and user deletion remain intentionally unimplemented; deletion also still requires source-compatible mailbox post-commit handling, refund/ledger/IAS/audit transaction behavior, and full dependent-table cleanup. Next work must continue from this checkpoint, trace behavior in the A1.24 archive first, add tests, and update this handoff/status after each cohesive verified batch.
