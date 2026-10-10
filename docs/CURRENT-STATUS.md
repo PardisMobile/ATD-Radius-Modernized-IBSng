@@ -56,11 +56,11 @@ Latest code/test commit: `a5a96c692168e30191a4642b797dc3ae34a3ded1` (user attrib
 
 ## Latest attribute mutation increment — 2026-10-10
 
-Direct source trace: \`core/user/user_handler.py::updateUserAttrs\`, \`core/user/user_actions.py::updateUserAttrsQuery\`, \`core/user/attribute_manager.py::getAttrUpdaters\`, \`core/user/attr_updater.py\` generic query/audit behavior, and \`core/user/plugins/comment.py\`.
+Direct source trace: `core/user/user_handler.py::updateUserAttrs`, `core/user/user_actions.py::updateUserAttrsQuery`, `core/user/attribute_manager.py::getAttrUpdaters`, `core/user/attr_updater.py` generic query/audit behavior, and `core/user/plugins/comment.py`.
 
-Added \`PUT /api/v1/users/{username}/attributes\` for \`name\`, \`comment\`, and \`phone\` only. It requires \`CHANGE USER ATTRIBUTES\` with the native \`GET USER INFORMATION\` dependency and owner scope; locks the user row; upserts/deletes native \`user_attrs\`; preserves \`USER_AUDIT_LOG\`, \`_NOVALUE_\`, and \`insert_user_audit_log\` behavior; and writes operational audit in the same transaction. Specialized and unknown attributes are rejected. Added repository and API regression tests. Code/test checkpoint: \`a5a96c692168e30191a4642b797dc3ae34a3ded1\`; full CI verification is pending and must be checked before calling this increment green.
+Added `PUT /api/v1/users/{username}/attributes` for `name`, `comment`, and `phone` only. It requires `CHANGE USER ATTRIBUTES` with the native `GET USER INFORMATION` dependency and owner scope; locks the user row; upserts/deletes native `user_attrs`; preserves `USER_AUDIT_LOG`, `_NOVALUE_`, and `insert_user_audit_log` behavior; and writes operational audit in the same transaction. Specialized and unknown attributes are rejected. Added repository and API regression tests. Code/test checkpoint: `a5a96c692168e30191a4642b797dc3ae34a3ded1`; full CI verification is pending and must be checked before calling this increment green.
 
-Next: extend only to specialized attribute families after their source validators, query builders, broadcast and \`postUpdate\` effects are implemented. User deletion/owner transfer and online-session safety remain open. Native admin deletion is complete; do not redo that slice without contradictory source evidence.
+Next: extend only to specialized attribute families after their source validators, query builders, broadcast and `postUpdate` effects are implemented. User deletion/owner transfer and online-session safety remain open. Native admin deletion is complete; do not redo that slice without contradictory source evidence.
 
 
 ## Administrator creation IAS parity — 2026-10-10
