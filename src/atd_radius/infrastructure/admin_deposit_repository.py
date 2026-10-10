@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from decimal import Decimal
 from typing import Protocol
 
+from atd_radius.infrastructure.ias_events import is_ias_enabled
+
 
 class DepositConnection(Protocol):
     def execute(self, sql: str, params=()): ...
@@ -69,15 +71,16 @@ class AdminDepositRepository:
             "UPDATE admins SET deposit = deposit + %s WHERE admin_id = %s",
             (delta, target.admin_id),
         )
-        event_id = int(
-            self.conn.execute("SELECT nextval('ias_event_event_id')").fetchone()[0]
-        )
-        self.conn.execute(
-            """
-            INSERT INTO ias_event
-                (event_id, event_type, actor, amount, destinations, comment)
-            VALUES (%s, 2, %s, %s, %s, %s)
-            """,
-            (event_id, actor_username, delta, target.username, ""),
-        )
+        if is_ias_enabled(self.conn):
+            event_id = int(
+                self.conn.execute("SELECT nextval('ias_event_event_id')").fetchone()[0]
+            )
+            self.conn.execute(
+                """
+                INSERT INTO ias_event
+                    (event_id, event_type, actor, amount, destinations, comment)
+                VALUES (%s, 2, %s, %s, %s, %s)
+                """,
+                (event_id, actor_username, delta, target.username, ""),
+            )
         return resulting_deposit

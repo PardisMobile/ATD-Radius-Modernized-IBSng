@@ -38,13 +38,16 @@ def test_credit_repository_uses_native_credit_column_and_function():
     assert repo.get(7) == Decimal("25.50")
 
 class AdminCreditConn:
-    def __init__(self, *, user_credit="25.00", owner_id=7, deposit="100.00"):
+    def __init__(self, *, user_credit="25.00", owner_id=7, deposit="100.00", ias_enabled="I1\n."):
         self.calls = []
         self.user_row = (42, "alice", owner_id, Decimal(user_credit))
         self.deposit = Decimal(deposit)
+        self.ias_enabled = ias_enabled
 
     def execute(self, sql, params=()):
         self.calls.append((sql, params))
+        if "SELECT value FROM defs WHERE name = %s" in sql:
+            return Result((self.ias_enabled,))
         if "FOR UPDATE OF u" in sql:
             return Result(self.user_row)
         if "FROM admins" in sql and "FOR UPDATE" in sql:
@@ -178,4 +181,24 @@ def test_bulk_admin_credit_change_applies_per_user_delta_and_one_native_log():
     assert [call[1] for call in links] == [(101, 42), (101, 43)]
     ias_log = next(call for call in conn.calls if "INSERT INTO ias_event" in call[0])
     assert ias_log[1] == (501, "operator", Decimal("2.00"), "42,43", "batch top-up")
+
+
+def test_admin_credit_change_skips_ias_event_when_disabled():
+    conn = AdminCreditConn(user_credit="25.00", deposit="100.00", ias_enabled="I0\n.")
+    repo = UserCreditRepository(conn)
+    target = repo.lock_target("alice")
+    assert target is not None
+
+    repo.apply_admin_change(
+        target,
+        admin_id=7,
+        admin_username="operator",
+        delta=Decimal("2.00"),
+        remote_addr="192.0.2.20",
+        comment="top-up",
+        allow_negative_deposit=False,
+    )
+    assert any("INSERT INTO credit_change" in sql for sql, _ in conn.calls)
+    assert not any("nextval('ias_event_event_id')" in sql for sql, _ in conn.calls)
+    assert not any("INSERT INTO ias_event" in sql for sql, _ in conn.calls)
 

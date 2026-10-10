@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from decimal import Decimal
 from typing import Protocol
 
+from atd_radius.infrastructure.ias_events import is_ias_enabled
+
 
 class CreditConnection(Protocol):
     def execute(self, sql: str, params=()): ...
@@ -127,18 +129,20 @@ class UserCreditRepository:
             (credit_change_id, user_id),
         )
 
-        for event_type, amount in ((3, Decimal("0.00")), (1, credit)):
-            event_id = int(
-                self.conn.execute("SELECT nextval('ias_event_event_id')").fetchone()[0]
-            )
-            self.conn.execute(
-                """
-                INSERT INTO ias_event
-                    (event_id, event_type, actor, amount, destinations, comment)
-                VALUES (%s, %s, %s, %s, %s, %s)
-                """,
-                (event_id, event_type, admin_username, amount, str(user_id), ""),
-            )
+        # Native IASActions.logEvent is a no-op when IAS_ENABLED is false.
+        if is_ias_enabled(self.conn):
+            for event_type, amount in ((3, Decimal("0.00")), (1, credit)):
+                event_id = int(
+                    self.conn.execute("SELECT nextval('ias_event_event_id')").fetchone()[0]
+                )
+                self.conn.execute(
+                    """
+                    INSERT INTO ias_event
+                        (event_id, event_type, actor, amount, destinations, comment)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    """,
+                    (event_id, event_type, admin_username, amount, str(user_id), ""),
+                )
 
     def apply_admin_change(
         self,
@@ -224,21 +228,22 @@ class UserCreditRepository:
                 (credit_change_id, target.user_id),
             )
 
-        ias_event_id = int(
-            self.conn.execute("SELECT nextval('ias_event_event_id')").fetchone()[0]
-        )
-        self.conn.execute(
-            """
-            INSERT INTO ias_event
-                (event_id, event_type, actor, amount, destinations, comment)
-            VALUES (%s, 1, %s, %s, %s, %s)
-            """,
-            (
-                ias_event_id,
-                admin_username,
-                delta,
-                ",".join(str(target.user_id) for target in targets),
-                comment,
-            ),
-        )
+        if is_ias_enabled(self.conn):
+            ias_event_id = int(
+                self.conn.execute("SELECT nextval('ias_event_event_id')").fetchone()[0]
+            )
+            self.conn.execute(
+                """
+                INSERT INTO ias_event
+                    (event_id, event_type, actor, amount, destinations, comment)
+                VALUES (%s, 1, %s, %s, %s, %s)
+                """,
+                (
+                    ias_event_id,
+                    admin_username,
+                    delta,
+                    ",".join(str(target.user_id) for target in targets),
+                    comment,
+                ),
+            )
         return resulting_credits

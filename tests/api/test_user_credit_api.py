@@ -34,6 +34,8 @@ class CreditAPIFakeConnection:
 
     def execute(self, sql, params=()):
         self.calls.append((sql, params))
+        if "SELECT value FROM defs WHERE name = %s" in sql:
+            return Result(("I1\n.",))
         if "FOR UPDATE OF u" in sql:
             return Result(self.user_rows[0] if self.user_rows else None, self.user_rows)
         if "FROM admins" in sql and "FOR UPDATE" in sql:

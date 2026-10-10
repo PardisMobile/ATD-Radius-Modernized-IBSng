@@ -27,6 +27,8 @@ class CreationConnection:
 
     def execute(self, sql, params=()):
         self.calls.append((sql, params))
+        if "SELECT value FROM defs WHERE name = %s" in sql:
+            return Result(("I1\n.",))
         if "FROM admins" in sql and "FOR UPDATE" in sql:
             return Result((self.deposit,))
         if "UPDATE admins SET deposit" in sql:
