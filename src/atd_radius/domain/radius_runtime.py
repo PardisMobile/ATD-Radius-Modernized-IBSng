@@ -4,9 +4,18 @@ from dataclasses import dataclass, field
 from decimal import Decimal
 from datetime import datetime, timezone
 from time import monotonic
+from threading import RLock
+from functools import wraps
 from typing import Generic, Mapping, TypeVar
 
 T=TypeVar("T")
+
+def _registry_locked(method):
+    @wraps(method)
+    def wrapped(self, *args, **kwargs):
+        with self._lock:
+            return method(self, *args, **kwargs)
+    return wrapped
 
 @dataclass(frozen=True,slots=True)
 class RequestKey:
@@ -24,6 +33,7 @@ class CachedRequest(Generic[T]):
 
 class DuplicateRequestCache(Generic[T]):
     def __init__(self): self._items:dict[RequestKey,CachedRequest[T]]={}
+    @_registry_locked
     def get(self,key:RequestKey)->CachedRequest[T]|None: return self._items.get(key)
     def add(self,key:RequestKey)->CachedRequest[T]:
         item=CachedRequest(key); self._items[key]=item; return item
@@ -62,7 +72,14 @@ class SessionState:
     ras_multi_login_allowed: bool | None = None
 
 class SessionRegistry:
-    def __init__(self): self._sessions:dict[SessionKey,SessionState]={}
+    def __init__(self):
+        self._sessions:dict[SessionKey,SessionState]={}
+        self._lock = RLock()
+
+    def synchronized(self):
+        """Hold the registry lock across a compound session lifecycle operation."""
+        return self._lock
+    @_registry_locked
     def start(self,key,attributes=None,input_octets=0,output_octets=0,started_at=None,ras_multi_login_allowed=None)->SessionState:
         state=SessionState(
             key, attributes or {}, True, False, input_octets, output_octets,
@@ -71,31 +88,38 @@ class SessionRegistry:
         )
         self._sessions[key]=state; return state
     def get(self,key): return self._sessions.get(key)
+    @_registry_locked
     def update(self,key,input_octets,output_octets):
         state=self._sessions[key]
         di=max(0,input_octets-state.input_octets); do=max(0,output_octets-state.output_octets)
         state.input_octets=input_octets; state.output_octets=output_octets
         return di,do
+    @_registry_locked
     def stop(self,key,input_octets=0,output_octets=0):
         state=self._sessions[key]; state.input_octets=input_octets; state.output_octets=output_octets; state.stopped=True; return state
+    @_registry_locked
     def find_by_unique_id(self,unique_id): 
         for state in self._sessions.values():
             if state.key.unique_id==unique_id: return state
         return None
+    @_registry_locked
     def matching(self,attributes):
         names={"NAS-IP-Address","NAS-Identifier","User-Name","NAS-Port","Framed-IP-Address","Calling-Station-Id","Called-Station-Id","Acct-Session-Id","Acct-Multi-Session-Id","NAS-Port-Id","Chargeable-User-Identity"}
         ids={k:v for k,v in attributes.items() if k in names}
         if not ids:return ()
         return tuple(s for s in self._sessions.values() if s.started and not s.stopped and all(s.attributes.get(k)==v for k,v in ids.items()))
+    @_registry_locked
     def disconnect_matching(self,attributes):
         matches=self.matching(attributes)
         for state in matches: state.stopped=True
         return matches
+    @_registry_locked
     def apply_authorization(self,attributes):
         matches=self.matching(attributes); changes={k:v for k,v in attributes.items() if k in {"Filter-Id","NAS-Filter-Rule"}}
         if not changes:return ()
         for state in matches:
             updated=dict(state.attributes); updated.update(changes); state.attributes=updated
         return matches
+    @_registry_locked
     def active_for_user(self,user_id):
         return tuple(s for s in self._sessions.values() if s.key.user_id==user_id and s.started and not s.stopped)
