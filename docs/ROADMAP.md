@@ -61,4 +61,4 @@ A1.24's special VoIP caller_id updater is now implemented for one user at a time
 
 ## Verified attribute increment — 2026-10-10
 
-Enabled A1.24 `voip_preferred_language` in the generic user attribute API after source tracing its updater. It persists in `user_attrs` and uses the generic attribute authorization/audit path. Regression test added. This does not imply parity for VoIP credentials, tariffs, preferred-language consumers or other VoIP plugins.
+Enabled A1.24 `voip_preferred_language` in the generic user attribute API after source tracing its updater. It persists in `user_attrs` and uses the generic attribute authorization/audit path. Regression test added. Full CI passed on Python 3.11 and 3.12: 663 passed, 2 warnings per matrix job, run https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38082360746. Code/test commit: `581fd60d87f2e15f6f4dd81cf50e0cbbb3772ed6`. This does not imply parity for VoIP credentials, tariffs, preferred-language consumers or other VoIP plugins.

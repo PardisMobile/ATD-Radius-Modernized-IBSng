@@ -3,7 +3,7 @@
 Updated: 2026-10-10  
 Repository: `PardisMobile/ATD-Radius-Modernized-IBSng`  
 Branch: `main`  
-Latest code/test commit: `ff29222f03cfacbe9dc7c8ecf143e81f327c7121` (source-backed VoIP caller-ID mutation; CI verified)
+Latest code/test commit: `581fd60d87f2e15f6f4dd81cf50e0cbbb3772ed6` (source-backed VoIP preferred-language attribute; CI verified)
 
 ## Authority and validation
 
@@ -109,4 +109,4 @@ Detailed source audit: docs/A1.24-CALLER-ID-AUDIT.md. The implemented endpoints 
 
 ## Latest user-attribute increment — 2026-10-10
 
-Enabled `voip_preferred_language` through the existing generic user-attribute mutation endpoint after tracing `IBSng/core/user/plugins/voip_preferred_language.py`. It uses native `user_attrs` storage, generic user-attribute permission/owner scope, and native user audit; no dedicated VoIP table or endpoint is required. Added regression coverage. This is one additional source-backed plugin, not complete VoIP attribute parity. See `docs/A1.24-ATTRIBUTE-BEHAVIOR-AUDIT.md`.
+Enabled `voip_preferred_language` through the existing generic user-attribute mutation endpoint after tracing `IBSng/core/user/plugins/voip_preferred_language.py`. It uses native `user_attrs` storage, generic user-attribute permission/owner scope, and native user audit; no dedicated VoIP table or endpoint is required. Added regression coverage. This is one additional source-backed plugin, not complete VoIP attribute parity. Full CI on Python 3.11 and 3.12 passed: **663 passed, 2 warnings** per matrix job (compile, Ruff, PHP syntax and PostgreSQL integration included). Run: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38082360746. Commit: `581fd60d87f2e15f6f4dd81cf50e0cbbb3772ed6`. See `docs/A1.24-ATTRIBUTE-BEHAVIOR-AUDIT.md`.
