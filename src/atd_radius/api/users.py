@@ -614,7 +614,7 @@ def delete_user_caller_ids(
         raise HTTPException(status_code=400, detail="A valid administrator remote address is required") from exc
     try:
         with connection() as conn:
-            repository = UserAttributeMutationRepository(conn)
+            repository = CallerIDMutationRepository(conn)
             target = repository.lock_target(username)
             if target is None:
                 raise HTTPException(status_code=404, detail="user not found")
