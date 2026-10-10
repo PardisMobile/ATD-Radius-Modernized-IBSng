@@ -25,7 +25,7 @@ class Connection:
     def execute(self, sql, params=()):
         self.calls.append((sql, params))
         if "SELECT admin_id, username, deposit::numeric" in sql:
-            return Result(self.target if params == ("target",) else None)
+            return Result(self.target if self.target is not None and params == (self.target[1],) else None)
         if "SELECT value FROM defs WHERE name = %s" in sql:
             return Result((self.ias_enabled,))
         if "nextval('ias_event_event_id')" in sql:
