@@ -3,7 +3,7 @@
 Updated: 2026-10-10  
 Repository: `PardisMobile/ATD-Radius-Modernized-IBSng`  
 Branch: `main`  
-Latest code/test commit: `3177193269ce94b36ae29e336b0f790820d6af17`
+Latest code/test commit: `a5a96c692168e30191a4642b797dc3ae34a3ded1` (user attribute mutation; CI pending)
 
 ## Authority and validation
 
@@ -34,8 +34,8 @@ Latest code/test commit: `3177193269ce94b36ae29e336b0f790820d6af17`
 
 ## Still open — do not mark complete
 
-1. Admin deletion and volatile activity fields remain open. Permission editing is implemented and CI-verified: Administrator permission editing code/test commit `e16d155e6ff7805f3825248b84cd922157c3e780` passed full CI on Python 3.11 and 3.12: **630 passed, 2 warnings** per matrix job; compile, Ruff, PHP syntax and PostgreSQL integration all passed. Python-only workflow passed **628 passed, 2 skipped, 2 warnings**; its two skips are UDP/PostgreSQL integration tests not configured in that workflow. Full CI: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38062133621 ; Python-only: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38062133543.
-2. User attribute mutation/deletion/owner transfer through source-equivalent A1.24 action/plugin paths.
+1. Administrator volatile activity fields (`last_request_ip`, `last_activity`, `online_status`) remain open; administrator permission editing and deletion are implemented and tested.
+2. Extend the initial user-attribute mutation slice (`name`, `comment`, `phone`) to specialized plugin families; user deletion and owner transfer remain open.
 3. Online-user listing/permissions and safe disconnect/CoA session resolution, permission, side-effect and audit sequencing. **RAS disconnect remains unmounted.**
 4. Full billing persistence, charging/usage integration, expiry/subscription and report parity.
 5. Complete RAS provider runtime/transport interoperability and RADIUS dictionary coverage.
@@ -54,9 +54,13 @@ Latest code/test commit: `3177193269ce94b36ae29e336b0f790820d6af17`
 - Shared API Bearer token is a perimeter gate, never an admin identity.
 - Each coherent change requires regression tests, CI and updates to this status ledger/context/roadmap.
 
-## Next work
+## Latest attribute mutation increment — 2026-10-10
 
-Continue with **user attribute mutation/deletion through A1.24 plugin/action paths**. Native admin deletion is implemented with the complete source side effects and tests; do not redo already-tested slices without contradictory direct source evidence.
+Direct source trace: \`core/user/user_handler.py::updateUserAttrs\`, \`core/user/user_actions.py::updateUserAttrsQuery\`, \`core/user/attribute_manager.py::getAttrUpdaters\`, \`core/user/attr_updater.py\` generic query/audit behavior, and \`core/user/plugins/comment.py\`.
+
+Added \`PUT /api/v1/users/{username}/attributes\` for \`name\`, \`comment\`, and \`phone\` only. It requires \`CHANGE USER ATTRIBUTES\` with the native \`GET USER INFORMATION\` dependency and owner scope; locks the user row; upserts/deletes native \`user_attrs\`; preserves \`USER_AUDIT_LOG\`, \`_NOVALUE_\`, and \`insert_user_audit_log\` behavior; and writes operational audit in the same transaction. Specialized and unknown attributes are rejected. Added repository and API regression tests. Code/test checkpoint: \`a5a96c692168e30191a4642b797dc3ae34a3ded1\`; full CI verification is pending and must be checked before calling this increment green.
+
+Next: extend only to specialized attribute families after their source validators, query builders, broadcast and \`postUpdate\` effects are implemented. User deletion/owner transfer and online-session safety remain open. Native admin deletion is complete; do not redo that slice without contradictory source evidence.
 
 
 ## Administrator creation IAS parity — 2026-10-10
