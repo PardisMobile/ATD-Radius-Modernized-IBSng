@@ -3,11 +3,11 @@
 Updated: 2026-10-10  
 Repository: `PardisMobile/ATD-Radius-Modernized-IBSng`  
 Branch: `main`  
-Latest code/test commit: `ffa7c9b43e745cf7b7f740d34f0c0e77a4ec9879`
+Latest code/test commit: `15a4bd24f16449f77c1ae4236d00dddc0e89d4be`
 
 ## Authority and validation
 
-- Administrator-permission-viewing batch is committed through `ffa7c9b43e745cf7b7f740d34f0c0e77a4ec9879`. Lightweight Python CI passed on this commit; full Python 3.11/3.12 CI is still running. Previous green baseline remains the 607-pass main CI noted below.
+- Administrator permission viewing and native admin creation are committed through `15a4bd24f16449f77c1ae4236d00dddc0e89d4be`. Lightweight Python CI passed: **611 passed, 2 skipped, 2 warnings**. Full Python 3.11/3.12 CI for this commit is still running. Previous green baseline was 610 passed per Python matrix job on the permission-viewing batch.
 
 - Canonical behavior source: `Source of Truth/IBSng-A1.24.tar.bz2`
 - SHA-256: `c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839614bb9349d18a8`
@@ -20,6 +20,7 @@ Latest code/test commit: `ffa7c9b43e745cf7b7f740d34f0c0e77a4ec9879`
 - Native admin login/session/logout; opaque session token digest storage, expiry/revocation and lock recheck.
 - Native admin list/detail with source visibility rules, name/comment update, password change, deposit adjustment and lock/unlock.
 - Native administrator permission viewing: `GET /api/v1/admins/{username}/permissions`, gated by `SEE ADMIN PERMISSIONS` and its `SEE ADMIN INFO` dependency; values are returned in stable order without exposing password material.
+- Native administrator creation: `POST /api/v1/admins`, gated by `ADD NEW ADMIN`; validates A1.24 username/password character rules, uses `admins_id_seq`, stores a native MD5-crypt hash, trims name/comment, sets `creator_id` to the authenticated administrator, initializes deposit/due to zero, and commits operational audit in the same transaction.
 - Password change preserves A1.24 behavior: self-change exemption; other-admin change requires `CHANGE ADMIN PASSWORD` → `SEE ADMIN INFO`; trim and ASCII letters/digits/underscore/hyphen validation; native MD5-crypt output with random 8-character salt. The password/hash is never written to operational audit.
 - Lock/unlock preserves A1.24 `admin_locks` semantics. Multiple lock rows can exist; removing one lock does not unlock the admin if another row remains.
 - RAS CRUD slice with native session and `LIST RAS` / `GET RAS INFORMATION` / `CHANGE RAS` checks; secret omitted from list response.
@@ -31,7 +32,7 @@ Latest code/test commit: `ffa7c9b43e745cf7b7f740d34f0c0e77a4ec9879`
 
 ## Still open — do not mark complete
 
-1. Admin permission editing, admin creation/deletion, and volatile activity fields. Permission viewing API is now implemented; editing remains blocked until full source permission value validation/dependency behavior is registered.
+1. Admin permission editing, admin deletion, volatile activity fields, and IAS `ADD_ADMIN` event parity. Admin creation and permission viewing APIs are implemented; permission editing remains blocked until full source permission value validation/dependency behavior is registered.
 2. User attribute mutation/deletion/owner transfer through source-equivalent A1.24 action/plugin paths.
 3. Online-user listing/permissions and safe disconnect/CoA session resolution, permission, side-effect and audit sequencing. **RAS disconnect remains unmounted.**
 4. Full billing persistence, charging/usage integration, expiry/subscription and report parity.
@@ -53,4 +54,4 @@ Latest code/test commit: `ffa7c9b43e745cf7b7f740d34f0c0e77a4ec9879`
 
 ## Next work
 
-Continue with **admin permission editing and admin creation/deletion**, only after tracing A1.24 handlers, permission value validators/dependencies, password/permission storage and IAS behavior. Then proceed to user attribute lifecycle through source plugins. Do not redo already-tested slices above without contradictory direct source evidence.
+Continue with **admin permission editing and deletion**, after tracing A1.24 permission value validators/dependencies and delete cascades. Then proceed to user attribute lifecycle through source plugins. Do not redo already-tested slices above without contradictory direct source evidence.
