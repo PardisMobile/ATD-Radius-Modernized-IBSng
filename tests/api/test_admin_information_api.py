@@ -232,6 +232,7 @@ def test_admin_creation_persists_native_fields_and_audits_without_password(monke
     )
     assert (view.admin_id, view.username, view.creator_id) == (18, "new_admin7", 7)
     assert captured["create"]["creator_id"] == 7
+    assert captured["create"]["creator_username"] == "operator"
     assert captured["create"]["name"] == " New Admin "
     assert verify_ibsng_password("Secret_123", captured["create"]["password_hash"])
     assert captured["audit"]["action"] == "admin.create"

@@ -80,6 +80,7 @@ def create_admin(
                 name=payload.name,
                 comment=payload.comment,
                 creator_id=admin.admin_id,
+                creator_username=admin.username,
             )
             record = AdminInformationRepository(conn).get_by_username(created.username)
             if record is None:

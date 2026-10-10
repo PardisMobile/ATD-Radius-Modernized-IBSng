@@ -14,7 +14,7 @@ Value types:
 |---|---|---|---|
 | ACCESS ALL CHARGES | No value | — | Not implemented |
 | ACCESS ALL GROUPS | No value | — | Implemented for group visibility |
-| ADD NEW ADMIN | No value | — | Implemented for native administrator creation API; IAS event parity remains open |
+| ADD NEW ADMIN | No value | — | Implemented for native administrator creation API with IAS `ADD_ADMIN` type-5 event; CI verification pending |
 | ADD NEW GROUP | No value | — | Implemented for group API |
 | ADD NEW USER | No value | — | Implemented for user creation |
 | CHANGE ADMIN DEPOSIT | No value | CHANGE ADMIN INFO | Implemented for deposit adjustment API; broader admin workflows remain open |
@@ -105,3 +105,8 @@ Source trace: `core/admin/admin_handler.py` `lockAdmin`/`unlockAdmin` and `core/
 ### Administrator password update — 2026-10-10
 
 Source trace: `IBSng/core/admin/admin_handler.py:47-52`, `core/admin/perms/CHANGE_ADMIN_PASSWORD.py`, `core/lib/password_lib.py`, and `core/admin/admin_actions.py:54-81`. A1.24 allows an administrator to change their own password without `CHANGE ADMIN PASSWORD`; changing another administrator requires that permission and its `SEE ADMIN INFO` dependency. The submitted value is stripped and must be non-empty ASCII letters/digits/underscore/hyphen; A1.24 stores MD5-crypt. ATD now preserves those native storage semantics with a random 8-character salt, updates only `admins.password`, and records operational audit without logging the password/hash. This route is for native A1.24 compatibility and does not imply MD5-crypt is recommended for new unrelated applications.
+
+
+## Administrator creation IAS parity — 2026-10-10
+
+Source audit against the checksum-verified A1.24 archive confirms `IBSng/core/admin/admin_actions.py` composes the native admin insert and `ias_main.getActionsManager().logEvent("ADD_ADMIN", creator_username, 0, username)` in one database transaction. `IBSng/core/ias/ias_actions.py` maps `ADD_ADMIN` to IAS event type **5**. ATD's native admin creation repository now writes the corresponding `ias_event` row (actor = creator username, amount = 0, destination = created username, empty comment) in the same caller-owned transaction as the `admins` insert and operational audit. Focused repository/API tests assert the event fields and creator identity. CI validation for this change is pending; do not treat it as verified until GitHub Actions completes.

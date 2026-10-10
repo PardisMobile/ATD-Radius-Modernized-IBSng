@@ -19,6 +19,10 @@ class Connection:
             return Result((18,))
         if "INSERT INTO admins" in sql:
             return Result((18, params[1]))
+        if "nextval('ias_event_event_id')" in sql:
+            return Result((901,))
+        if "INSERT INTO ias_event" in sql:
+            return Result(None)
         raise AssertionError(sql)
 
 
@@ -30,6 +34,7 @@ def test_admin_creation_uses_native_sequence_fields_and_creator():
         name=" New Admin ",
         comment=" note ",
         creator_id=7,
+        creator_username="operator",
     )
     assert (created.admin_id, created.username) == (18, "new_admin")
     assert conn.calls[0] == ("SELECT nextval('admins_id_seq')", ())
@@ -37,3 +42,7 @@ def test_admin_creation_uses_native_sequence_fields_and_creator():
     assert "INSERT INTO admins" in sql
     assert "(admin_id, username, password, name, comment, creator_id, deposit, due)" in sql
     assert params == (18, "new_admin", "$1$12345678$hash", "New Admin", "note", 7)
+    assert "nextval('ias_event_event_id')" in conn.calls[2][0]
+    event_sql, event_params = conn.calls[3]
+    assert "INSERT INTO ias_event" in event_sql
+    assert event_params == (901, "operator", "new_admin", "")

@@ -3,7 +3,7 @@
 Updated: 2026-10-10  
 Repository: `PardisMobile/ATD-Radius-Modernized-IBSng`  
 Branch: `main`  
-Latest code/test commit: `15a4bd24f16449f77c1ae4236d00dddc0e89d4be`
+Latest code/test commit before IAS parity increment: `c8a79050c3da83c2025abaf81b641a01d20fd485`
 
 ## Authority and validation
 
@@ -20,7 +20,7 @@ Latest code/test commit: `15a4bd24f16449f77c1ae4236d00dddc0e89d4be`
 - Native admin login/session/logout; opaque session token digest storage, expiry/revocation and lock recheck.
 - Native admin list/detail with source visibility rules, name/comment update, password change, deposit adjustment and lock/unlock.
 - Native administrator permission viewing: `GET /api/v1/admins/{username}/permissions`, gated by `SEE ADMIN PERMISSIONS` and its `SEE ADMIN INFO` dependency; values are returned in stable order without exposing password material.
-- Native administrator creation: `POST /api/v1/admins`, gated by `ADD NEW ADMIN`; validates A1.24 username/password character rules, uses `admins_id_seq`, stores a native MD5-crypt hash, trims name/comment, sets `creator_id` to the authenticated administrator, initializes deposit/due to zero, and commits operational audit in the same transaction.
+- Native administrator creation: `POST /api/v1/admins`, gated by `ADD NEW ADMIN`; validates A1.24 username/password character rules, uses `admins_id_seq`, stores a native MD5-crypt hash, trims name/comment, sets `creator_id` to the authenticated administrator, initializes deposit/due to zero, writes native IAS `ADD_ADMIN` (type 5), and commits native IAS plus operational audit in the same transaction.
 - Password change preserves A1.24 behavior: self-change exemption; other-admin change requires `CHANGE ADMIN PASSWORD` → `SEE ADMIN INFO`; trim and ASCII letters/digits/underscore/hyphen validation; native MD5-crypt output with random 8-character salt. The password/hash is never written to operational audit.
 - Lock/unlock preserves A1.24 `admin_locks` semantics. Multiple lock rows can exist; removing one lock does not unlock the admin if another row remains.
 - RAS CRUD slice with native session and `LIST RAS` / `GET RAS INFORMATION` / `CHANGE RAS` checks; secret omitted from list response.
@@ -32,7 +32,7 @@ Latest code/test commit: `15a4bd24f16449f77c1ae4236d00dddc0e89d4be`
 
 ## Still open — do not mark complete
 
-1. Admin permission editing, admin deletion, volatile activity fields, and IAS `ADD_ADMIN` event parity. Admin creation and permission viewing APIs are implemented; permission editing remains blocked until full source permission value validation/dependency behavior is registered.
+1. Admin permission editing, admin deletion, and volatile activity fields. Admin creation now writes native IAS `ADD_ADMIN` event type 5; CI verification for this increment is pending. Permission editing remains blocked until full source permission value validation/dependency behavior is registered.
 2. User attribute mutation/deletion/owner transfer through source-equivalent A1.24 action/plugin paths.
 3. Online-user listing/permissions and safe disconnect/CoA session resolution, permission, side-effect and audit sequencing. **RAS disconnect remains unmounted.**
 4. Full billing persistence, charging/usage integration, expiry/subscription and report parity.
@@ -55,3 +55,8 @@ Latest code/test commit: `15a4bd24f16449f77c1ae4236d00dddc0e89d4be`
 ## Next work
 
 Continue with **admin permission editing and deletion**, after tracing A1.24 permission value validators/dependencies and delete cascades. Then proceed to user attribute lifecycle through source plugins. Do not redo already-tested slices above without contradictory direct source evidence.
+
+
+## Administrator creation IAS parity — 2026-10-10
+
+Source audit against the checksum-verified A1.24 archive confirms `IBSng/core/admin/admin_actions.py` composes the native admin insert and `ias_main.getActionsManager().logEvent("ADD_ADMIN", creator_username, 0, username)` in one database transaction. `IBSng/core/ias/ias_actions.py` maps `ADD_ADMIN` to IAS event type **5**. ATD's native admin creation repository now writes the corresponding `ias_event` row (actor = creator username, amount = 0, destination = created username, empty comment) in the same caller-owned transaction as the `admins` insert and operational audit. Focused repository/API tests assert the event fields and creator identity. CI validation for this change is pending; do not treat it as verified until GitHub Actions completes.

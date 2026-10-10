@@ -16,7 +16,7 @@ class CreatedAdmin:
 
 
 class AdminCreationRepository:
-    """Create an admin using the native schema; caller owns transaction and audit."""
+    """Create an admin and its native A1.24 IAS event in the caller transaction."""
 
     def __init__(self, conn: AdminCreationConnection) -> None:
         self.conn = conn
@@ -29,6 +29,7 @@ class AdminCreationRepository:
         name: str,
         comment: str,
         creator_id: int,
+        creator_username: str,
     ) -> CreatedAdmin:
         admin_id = int(self.conn.execute("SELECT nextval('admins_id_seq')").fetchone()[0])
         row = self.conn.execute(
@@ -42,4 +43,17 @@ class AdminCreationRepository:
         ).fetchone()
         if row is None:
             raise RuntimeError("administrator insert returned no row")
+
+        # A1.24 ias_actions.TYPES assigns ADD_ADMIN event type 5. The event is
+        # part of the same transaction as the admins insert; the API caller owns
+        # commit/rollback. The source event records the creator and new username.
+        event_id = int(self.conn.execute("SELECT nextval('ias_event_event_id')").fetchone()[0])
+        self.conn.execute(
+            """
+            INSERT INTO ias_event
+                (event_id, event_type, actor, amount, destinations, comment)
+            VALUES (%s, 5, %s, 0, %s, %s)
+            """,
+            (event_id, creator_username, str(row[1]), ""),
+        )
         return CreatedAdmin(admin_id=int(row[0]), username=str(row[1]))
