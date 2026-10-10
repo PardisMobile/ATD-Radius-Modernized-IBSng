@@ -3,7 +3,7 @@
 Updated: 2026-10-10  
 Repository: `PardisMobile/ATD-Radius-Modernized-IBSng`  
 Branch: `main`  
-Latest code/test commit: `a5a96c692168e30191a4642b797dc3ae34a3ded1` (user attribute mutation; CI pending)
+Latest code/test commit: `a5a96c692168e30191a4642b797dc3ae34a3ded1` (user attribute mutation; CI verified)
 
 ## Authority and validation
 
@@ -58,7 +58,7 @@ Latest code/test commit: `a5a96c692168e30191a4642b797dc3ae34a3ded1` (user attrib
 
 Direct source trace: `core/user/user_handler.py::updateUserAttrs`, `core/user/user_actions.py::updateUserAttrsQuery`, `core/user/attribute_manager.py::getAttrUpdaters`, `core/user/attr_updater.py` generic query/audit behavior, and `core/user/plugins/comment.py`.
 
-Added `PUT /api/v1/users/{username}/attributes` for `name`, `comment`, and `phone` only. It requires `CHANGE USER ATTRIBUTES` with the native `GET USER INFORMATION` dependency and owner scope; locks the user row; upserts/deletes native `user_attrs`; preserves `USER_AUDIT_LOG`, `_NOVALUE_`, and `insert_user_audit_log` behavior; and writes operational audit in the same transaction. Specialized and unknown attributes are rejected. Added repository and API regression tests. Code/test checkpoint: `a5a96c692168e30191a4642b797dc3ae34a3ded1`; full CI verification is pending and must be checked before calling this increment green.
+Added `PUT /api/v1/users/{username}/attributes` for `name`, `comment`, and `phone` only. It requires `CHANGE USER ATTRIBUTES` with the native `GET USER INFORMATION` dependency and owner scope; locks the user row; upserts/deletes native `user_attrs`; preserves `USER_AUDIT_LOG`, `_NOVALUE_`, and `insert_user_audit_log` behavior; and writes operational audit in the same transaction. Specialized and unknown attributes are rejected. Added repository and API regression tests. Code/test checkpoint `a5a96c692168e30191a4642b797dc3ae34a3ded1` passed full CI on Python 3.11 and 3.12: **643 passed, 2 warnings** per matrix job, including compile, Ruff, PHP syntax and PostgreSQL integration. Python-only workflow passed **641 passed, 2 skipped, 2 warnings**; its two skips are the live UDP/PostgreSQL integration tests not configured in that workflow. Full CI: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38063095619 ; Python-only: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38063095630.
 
 Next: extend only to specialized attribute families after their source validators, query builders, broadcast and `postUpdate` effects are implemented. User deletion/owner transfer and online-session safety remain open. Native admin deletion is complete; do not redo that slice without contradictory source evidence.
 
