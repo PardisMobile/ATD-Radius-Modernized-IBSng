@@ -49,6 +49,14 @@ class GroupRepository:
         ).fetchone()
         return self._record(row) if row else None
 
+    def get_by_name_for_share(self, name: str) -> GroupRecord | None:
+        """Resolve and lock a target group while checking assignment permissions."""
+        row = self.conn.execute(
+            "SELECT group_id, group_name, owner_id, comment FROM groups WHERE group_name=%s FOR SHARE",
+            (name,),
+        ).fetchone()
+        return self._record(row) if row else None
+
     def update(self, group_id: int, name: str, comment: str | None, owner_id: int) -> GroupRecord:
         self._validate_name(name)
         current = self.get(group_id)
