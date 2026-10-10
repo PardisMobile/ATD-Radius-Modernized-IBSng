@@ -110,3 +110,8 @@ Detailed source audit: docs/A1.24-CALLER-ID-AUDIT.md. The implemented endpoints 
 ## Latest user-attribute increment — 2026-10-10
 
 Enabled `voip_preferred_language` through the existing generic user-attribute mutation endpoint after tracing `IBSng/core/user/plugins/voip_preferred_language.py`. It uses native `user_attrs` storage, generic user-attribute permission/owner scope, and native user audit; no dedicated VoIP table or endpoint is required. Added regression coverage. This is one additional source-backed plugin, not complete VoIP attribute parity. Full CI on Python 3.11 and 3.12 passed: **663 passed, 2 warnings** per matrix job (compile, Ruff, PHP syntax and PostgreSQL integration included). Run: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38082360746. Commit: `581fd60d87f2e15f6f4dd81cf50e0cbbb3772ed6`. See `docs/A1.24-ATTRIBUTE-BEHAVIOR-AUDIT.md`.
+
+
+## Current work in progress — save_bw_usage marker
+
+Added `save_bw_usage` to the generic attribute mutation slice from `IBSng/core/user/plugins/save_bw_usage.py`. Only the native empty-string marker is accepted; the existing delete path removes it and native audit behavior is retained. A regression test covers marker storage. CI is running for this increment; do not treat the feature as CI-verified until the workflow finishes. The actual bandwidth-usage consumer remains pending.
