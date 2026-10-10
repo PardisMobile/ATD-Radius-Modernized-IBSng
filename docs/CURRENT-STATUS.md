@@ -17,6 +17,7 @@ Latest code/test commit: `1faae684bef7a342d3a2f56ca53f9ed7b1657bf6`
 
 - Native admin login/session/logout; opaque session token digest storage, expiry/revocation and lock recheck.
 - Native admin list/detail with source visibility rules, name/comment update, password change, deposit adjustment and lock/unlock.
+- Native administrator permission viewing: `GET /api/v1/admins/{username}/permissions`, gated by `SEE ADMIN PERMISSIONS` and its `SEE ADMIN INFO` dependency; values are returned in stable order without exposing password material.
 - Password change preserves A1.24 behavior: self-change exemption; other-admin change requires `CHANGE ADMIN PASSWORD` → `SEE ADMIN INFO`; trim and ASCII letters/digits/underscore/hyphen validation; native MD5-crypt output with random 8-character salt. The password/hash is never written to operational audit.
 - Lock/unlock preserves A1.24 `admin_locks` semantics. Multiple lock rows can exist; removing one lock does not unlock the admin if another row remains.
 - RAS CRUD slice with native session and `LIST RAS` / `GET RAS INFORMATION` / `CHANGE RAS` checks; secret omitted from list response.
@@ -28,7 +29,7 @@ Latest code/test commit: `1faae684bef7a342d3a2f56ca53f9ed7b1657bf6`
 
 ## Still open — do not mark complete
 
-1. Admin permission viewing/editing, admin creation/deletion, and volatile activity fields.
+1. Admin permission editing, admin creation/deletion, and volatile activity fields. Permission viewing API is now implemented; editing remains blocked until full source permission value validation/dependency behavior is registered.
 2. User attribute mutation/deletion/owner transfer through source-equivalent A1.24 action/plugin paths.
 3. Online-user listing/permissions and safe disconnect/CoA session resolution, permission, side-effect and audit sequencing. **RAS disconnect remains unmounted.**
 4. Full billing persistence, charging/usage integration, expiry/subscription and report parity.
@@ -50,4 +51,4 @@ Latest code/test commit: `1faae684bef7a342d3a2f56ca53f9ed7b1657bf6`
 
 ## Next work
 
-Continue with **admin permission view/edit and admin creation/deletion**, only after tracing A1.24 handlers, permission dependencies, password/permission storage and IAS behavior. Then proceed to user attribute lifecycle through source plugins. Do not redo already-tested slices above without contradictory direct source evidence.
+Continue with **admin permission editing and admin creation/deletion**, only after tracing A1.24 handlers, permission value validators/dependencies, password/permission storage and IAS behavior. Then proceed to user attribute lifecycle through source plugins. Do not redo already-tested slices above without contradictory direct source evidence.
