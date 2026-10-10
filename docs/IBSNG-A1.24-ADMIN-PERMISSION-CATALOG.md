@@ -18,7 +18,7 @@ Value types:
 | ADD NEW GROUP | No value | — | Implemented for group API |
 | ADD NEW USER | No value | — | Implemented for user creation |
 | CHANGE ADMIN DEPOSIT | No value | CHANGE ADMIN INFO | Implemented for deposit adjustment API; broader admin workflows remain open |
-| CHANGE ADMIN INFO | No value | SEE ADMIN INFO | Implemented for native name/comment update, lock/unlock and as dependency for deposit adjustment; password/permission/create/delete workflows remain open |
+| CHANGE ADMIN INFO | No value | SEE ADMIN INFO | Implemented for native name/comment update, lock/unlock, admin creation visibility dependency, permission viewing dependency and as dependency for deposit adjustment; permission editing/deletion workflows remain open |
 | CHANGE ADMIN PASSWORD | No value | SEE ADMIN INFO | Implemented for changing another admin's password; self-change follows source exemption |
 | CHANGE ADMIN PERMISSIONS | No value | SEE ADMIN INFO; SEE ADMIN PERMISSIONS | Not implemented |
 | CHANGE BANDWIDTH MANAGER | No value | CHANGE CHARGE | Not implemented |
