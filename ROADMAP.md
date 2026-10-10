@@ -91,6 +91,14 @@
 Every phase requires automated tests and documentation updates before it is considered complete.
 
 
+## User deletion source audit — 2026-10-10
+
+- [x] Trace A1.24 delete-user authorization, offline guard, credit refund, credit-history/IAS events, table cleanup, cache broadcast, and mailbox side effects
+- [ ] Implement transaction-safe deletion with authoritative online-session resolution, native log-retention options, rollback coverage, and post-commit side effects
+- [ ] Add PostgreSQL integration/parity tests for online-user rejection, refunds, IAS on/off, optional log deletion, rollback and concurrency
+
+Audit record: `docs/A1.24-USER-DELETION-AUDIT.md`. Source review is complete for the listed call path; the feature is **not implemented** and must not be counted as complete.
+
 ## UI sequencing rule — established project decision
 UI implementation is frozen while core parity work is active. Existing shell/foundation work is retained, but no further UI workflow expansion is to be treated as active roadmap progress. Final UI implementation begins only after Core/RADIUS/RAS/Billing/DB/API/Migration/Deployment are stabilized and the real IBSng A1.24 UI has been fully reviewed and mapped to the finished core.
 
