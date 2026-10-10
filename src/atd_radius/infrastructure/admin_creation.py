@@ -4,6 +4,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Protocol
 
+from atd_radius.infrastructure.ias_events import is_ias_enabled
+
 
 class AdminCreationConnection(Protocol):
     def execute(self, sql: str, params=()): ...
@@ -44,16 +46,17 @@ class AdminCreationRepository:
         if row is None:
             raise RuntimeError("administrator insert returned no row")
 
-        # A1.24 ias_actions.TYPES assigns ADD_ADMIN event type 5. The event is
-        # part of the same transaction as the admins insert; the API caller owns
-        # commit/rollback. The source event records the creator and new username.
-        event_id = int(self.conn.execute("SELECT nextval('ias_event_event_id')").fetchone()[0])
-        self.conn.execute(
-            """
-            INSERT INTO ias_event
-                (event_id, event_type, actor, amount, destinations, comment)
-            VALUES (%s, 5, %s, 0, %s, %s)
-            """,
-            (event_id, creator_username, str(row[1]), ""),
-        )
+        # A1.24 ias_actions.TYPES assigns ADD_ADMIN event type 5. Source
+        # ias_actions.logEvent emits nothing when defs.IAS_ENABLED is false.
+        # When enabled, the event shares this transaction with the admin insert.
+        if is_ias_enabled(self.conn):
+            event_id = int(self.conn.execute("SELECT nextval('ias_event_event_id')").fetchone()[0])
+            self.conn.execute(
+                """
+                INSERT INTO ias_event
+                    (event_id, event_type, actor, amount, destinations, comment)
+                VALUES (%s, 5, %s, 0, %s, %s)
+                """,
+                (event_id, creator_username, str(row[1]), ""),
+            )
         return CreatedAdmin(admin_id=int(row[0]), username=str(row[1]))
