@@ -17,7 +17,7 @@ GENERIC_USER_ATTRIBUTE_HANDLERS = {
     "phone": "comment.PhoneAttrUpdater",
 }
 AUDIT_LOG_NOVALUE = "_NOVALUE_"
-_INTEGER_FLAG = re.compile(r"I([01])\\s*\\.")
+_INTEGER_FLAG = re.compile(r"I([01])\s*\.")
 
 
 class UserAttributeMutationError(ValueError):
