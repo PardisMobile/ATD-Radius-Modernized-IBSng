@@ -3,9 +3,11 @@
 Updated: 2026-10-10  
 Repository: `PardisMobile/ATD-Radius-Modernized-IBSng`  
 Branch: `main`  
-Latest code/test commit: `1faae684bef7a342d3a2f56ca53f9ed7b1657bf6`
+Latest code/test commit: `9bdb91875b7027ff041b25f46c7fea573abdd325`
 
 ## Authority and validation
+
+- New administrator-permission-viewing batch is committed through `9bdb91875b7027ff041b25f46c7fea573abdd325`; CI for this batch has not yet been verified. Previous green baseline remains the 607-pass main CI noted below.
 
 - Canonical behavior source: `Source of Truth/IBSng-A1.24.tar.bz2`
 - SHA-256: `c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839614bb9349d18a8`
