@@ -181,3 +181,81 @@ def test_unlock_admin_returns_404_for_missing_target_lock(monkeypatch):
             "target", 91, principal({"SEE ADMIN INFO": "", "CHANGE ADMIN INFO": ""})
         )
     assert missing.value.status_code == 404
+
+
+
+def test_admin_creation_persists_native_fields_and_audits_without_password(monkeypatch):
+    from atd_radius.domain.ibsng_password import verify_ibsng_password
+
+    conn = type("Conn", (), {"commits": 0, "commit": lambda self: setattr(self, "commits", self.commits + 1)})()
+    captured = {}
+
+    class CreationRepo:
+        def __init__(self, _conn):
+            pass
+
+        def create(self, **kwargs):
+            captured["create"] = kwargs
+            return SimpleNamespace(admin_id=18, username=kwargs["username"])
+
+    class InfoRepo:
+        def __init__(self, _conn):
+            pass
+
+        def get_by_username(self, username):
+            return SimpleNamespace(
+                admin_id=18, username=username, name="New Admin", comment="hello",
+                deposit=Decimal("0"), creator_id=7, creator="operator", locks=(),
+            )
+
+    class Audit:
+        def __init__(self, _conn):
+            pass
+
+        def append(self, **kwargs):
+            captured["audit"] = kwargs
+
+    @contextmanager
+    def fake_connection():
+        yield conn
+
+    monkeypatch.setattr(admins_api, "connection", fake_connection)
+    monkeypatch.setattr(admins_api, "AdminCreationRepository", CreationRepo)
+    monkeypatch.setattr(admins_api, "AdminInformationRepository", InfoRepo)
+    monkeypatch.setattr(admins_api, "OperationalAuditRepository", Audit)
+    view = admins_api.create_admin(
+        admins_api.AdminCreate(
+            username="new_admin7", password="Secret_123", name=" New Admin ",
+            comment=" hello ",
+        ),
+        principal({"ADD NEW ADMIN": ""}),
+    )
+    assert (view.admin_id, view.username, view.creator_id) == (18, "new_admin7", 7)
+    assert captured["create"]["creator_id"] == 7
+    assert captured["create"]["name"] == " New Admin "
+    assert verify_ibsng_password("Secret_123", captured["create"]["password_hash"])
+    assert captured["audit"]["action"] == "admin.create"
+    assert "password_hash" not in str(captured["audit"])
+    assert conn.commits == 1
+
+
+def test_admin_creation_rejects_invalid_username_and_password_before_database(monkeypatch):
+    @contextmanager
+    def no_connection():
+        raise AssertionError("invalid input must be rejected before database access")
+        yield
+
+    monkeypatch.setattr(admins_api, "connection", no_connection)
+    with pytest.raises(HTTPException) as bad_username:
+        admins_api.create_admin(
+            admins_api.AdminCreate(username="7bad", password="Secret_123", name="A", comment=""),
+            principal({"ADD NEW ADMIN": ""}),
+        )
+    assert bad_username.value.status_code == 422
+
+    with pytest.raises(HTTPException) as bad_password:
+        admins_api.create_admin(
+            admins_api.AdminCreate(username="valid", password="has space", name="A", comment=""),
+            principal({"ADD NEW ADMIN": ""}),
+        )
+    assert bad_password.value.status_code == 422
