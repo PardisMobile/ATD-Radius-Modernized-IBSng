@@ -73,7 +73,7 @@
 - [ ] User Information edit actions and high-frequency IBSng actions
 - [ ] GROUP and IBSng user/group policy workflows
 - [ ] RAS, IPPool, Online Users, Connection Logs, Connection Usages, Charge and REPORT workflows
-- [ ] ADMIN workflows (deposit adjustment, source-scoped persisted info list/detail, name/comment update, and lock/unlock implemented; remaining admin CRUD and volatile activity parity open)
+- [ ] ADMIN workflows (deposit adjustment, source-scoped persisted info list/detail, name/comment update, and lock/unlock implemented; permission editing implemented; admin deletion and volatile activity parity remain open)
 - [ ] IBSng user portal workflows
 
 ## Phase 6 — Migration
@@ -157,3 +157,15 @@ Latest code/test commit: `1faae684bef7a342d3a2f56ca53f9ed7b1657bf6` (administrat
 ## Administrator creation IAS parity — 2026-10-10
 
 Source audit against the checksum-verified A1.24 archive confirms `IBSng/core/admin/admin_actions.py` composes the native admin insert and `ias_main.getActionsManager().logEvent("ADD_ADMIN", creator_username, 0, username)` in one database transaction. `IBSng/core/ias/ias_actions.py` maps `ADD_ADMIN` to IAS event type **5**. `IASActions.logEvent` writes no event when `defs.IAS_ENABLED` is false; A1.24's default is `0` in `core/defs_lib/defs_defaults.py`. ATD now checks the native serialized integer flag and, only when enabled, writes the corresponding `ias_event` row (actor = creator username, amount = 0, destination = created username, empty comment) in the same caller-owned transaction as the `admins` insert and operational audit. Missing flag means disabled; malformed serialized values fail closed. ATD's native admin creation repository now writes the corresponding `ias_event` row (actor = creator username, amount = 0, destination = created username, empty comment) in the same caller-owned transaction as the `admins` insert and operational audit. Focused repository/API tests assert the event fields and creator identity. CI verification for code/test commit `aefba4b1079b7ddb7940461e59e572bebd21b834` passed: full CI on Python 3.11 and 3.12, **613 passed, 2 warnings** per matrix job, including compile, Ruff, PHP syntax and PostgreSQL integration; Python-only workflow passed **611 passed, 2 skipped, 2 warnings** (the two live UDP/PostgreSQL tests are skipped in that workflow). Full CI: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38059979595 ; Python workflow: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38059979654.
+
+
+## Administrator permission editing — 2026-10-10
+
+- [x] Source-derived catalog for all 51 A1.24 admin permission names, value types and declared dependencies.
+- [x] Add permission after checking its declared dependency presence; validate native All/Restricted and the source-defined group, charge and login-address values.
+- [x] Change existing SingleValue values and append MultiValue values without duplicates; NoValue permissions cannot be “changed” once present, matching A1.24.
+- [x] Delete permission only if no other assigned permission depends on it.
+- [x] Delete one MultiValue item and scope persistence updates to the target admin. This intentionally avoids a source query defect in A1.24 that omits `admin_id` from its UPDATE predicate.
+- [x] Same-transaction operational audit and regression tests for mutation paths.
+- [x] CI verified on code/test commit `e16d155e6ff7805f3825248b84cd922157c3e780`: 630 passed on each Python 3.11/3.12 matrix job, 2 warnings; Python-only run 628 passed, 2 skipped, 2 warnings.
+- [ ] Native admin deletion, including all source side effects and post-delete cache/reference handling.

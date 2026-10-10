@@ -18,9 +18,9 @@ Value types:
 | ADD NEW GROUP | No value | — | Implemented for group API |
 | ADD NEW USER | No value | — | Implemented for user creation |
 | CHANGE ADMIN DEPOSIT | No value | CHANGE ADMIN INFO | Implemented for deposit adjustment API; broader admin workflows remain open |
-| CHANGE ADMIN INFO | No value | SEE ADMIN INFO | Implemented for native name/comment update, lock/unlock, admin creation visibility dependency, permission viewing dependency and as dependency for deposit adjustment; permission editing/deletion workflows remain open |
+| CHANGE ADMIN INFO | No value | SEE ADMIN INFO | Implemented for name/comment update, lock/unlock and as a dependency for deposit adjustment and permission viewing/editing; admin deletion remains open |
 | CHANGE ADMIN PASSWORD | No value | SEE ADMIN INFO | Implemented for changing another admin's password; self-change follows source exemption |
-| CHANGE ADMIN PERMISSIONS | No value | SEE ADMIN INFO; SEE ADMIN PERMISSIONS | Not implemented |
+| CHANGE ADMIN PERMISSIONS | No value | SEE ADMIN INFO; SEE ADMIN PERMISSIONS | Implemented for native add/change/delete permission API, with source dependency/value checks and transaction audit; broader templates and UI remain open |
 | CHANGE BANDWIDTH MANAGER | No value | CHANGE CHARGE | Not implemented |
 | CHANGE CHARGE | No value | ACCESS ALL CHARGES | Not implemented |
 | CHANGE GROUP | All/Restricted | ADD NEW GROUP | Implemented for group API; All also checks group access |
@@ -110,3 +110,16 @@ Source trace: `IBSng/core/admin/admin_handler.py:47-52`, `core/admin/perms/CHANG
 ## Administrator creation IAS parity — 2026-10-10
 
 Source audit against the checksum-verified A1.24 archive confirms `IBSng/core/admin/admin_actions.py` composes the native admin insert and `ias_main.getActionsManager().logEvent("ADD_ADMIN", creator_username, 0, username)` in one database transaction. `IBSng/core/ias/ias_actions.py` maps `ADD_ADMIN` to IAS event type **5**. `IASActions.logEvent` writes no event when `defs.IAS_ENABLED` is false; A1.24's default is `0` in `core/defs_lib/defs_defaults.py`. ATD now checks the native serialized integer flag and, only when enabled, writes the corresponding `ias_event` row (actor = creator username, amount = 0, destination = created username, empty comment) in the same caller-owned transaction as the `admins` insert and operational audit. Missing flag means disabled; malformed serialized values fail closed. ATD's native admin creation repository now writes the corresponding `ias_event` row (actor = creator username, amount = 0, destination = created username, empty comment) in the same caller-owned transaction as the `admins` insert and operational audit. Focused repository/API tests assert the event fields and creator identity. CI verification for code/test commit `aefba4b1079b7ddb7940461e59e572bebd21b834` passed: full CI on Python 3.11 and 3.12, **613 passed, 2 warnings** per matrix job, including compile, Ruff, PHP syntax and PostgreSQL integration; Python-only workflow passed **611 passed, 2 skipped, 2 warnings** (the two live UDP/PostgreSQL tests are skipped in that workflow). Full CI: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38059979595 ; Python workflow: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38059979654.
+
+
+## Permission editing implementation checkpoint — 2026-10-10
+
+ATD now exposes these native admin-session endpoints, all gated by `CHANGE ADMIN PERMISSIONS` (which depends on both `SEE ADMIN INFO` and `SEE ADMIN PERMISSIONS`):
+
+- `PUT /api/v1/admins/{username}/permissions/{permission_name}`: add a missing permission or change a value according to the registered A1.24 value type.
+- `DELETE /api/v1/admins/{username}/permissions/{permission_name}`: delete an assigned permission only when no currently assigned permission declares it as a dependency.
+- `DELETE /api/v1/admins/{username}/permissions/{permission_name}/values?value=...`: remove one assigned item from a multi-value permission.
+
+Source validation follows `core/admin/perm_actions.py` and the registered permission modules: All/Restricted single values are exact-case, GROUP ACCESS and CHARGE ACCESS require an existing native group/charge, and LIMIT LOGIN ADDR accepts only a valid IP/network. Multi-value additions reject duplicates. Mutations lock the target admin row and append ATD operational audit in the same transaction. The A1.24 `deleteFromPermValues` SQL omits `admin_id`; ATD deliberately scopes the update to both `admin_id` and `perm_name` to avoid changing another administrator's value.
+
+Validation: Administrator permission editing code/test commit `e16d155e6ff7805f3825248b84cd922157c3e780` passed full CI on Python 3.11 and 3.12: **630 passed, 2 warnings** per matrix job; compile, Ruff, PHP syntax and PostgreSQL integration all passed. Python-only workflow passed **628 passed, 2 skipped, 2 warnings**; its two skips are UDP/PostgreSQL integration tests not configured in that workflow. Full CI: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38062133621 ; Python-only: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38062133543.
