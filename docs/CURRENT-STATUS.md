@@ -3,11 +3,11 @@
 Updated: 2026-10-10  
 Repository: `PardisMobile/ATD-Radius-Modernized-IBSng`  
 Branch: `main`  
-Latest code/test commit: `e16d155e6ff7805f3825248b84cd922157c3e780`
+Latest code/test commit: `3177193269ce94b36ae29e336b0f790820d6af17`
 
 ## Authority and validation
 
-- Administrator permission editing code/test commit `e16d155e6ff7805f3825248b84cd922157c3e780` passed full CI on Python 3.11 and 3.12: **630 passed, 2 warnings** per matrix job; compile, Ruff, PHP syntax and PostgreSQL integration all passed. Python-only workflow passed **628 passed, 2 skipped, 2 warnings**; its two skips are UDP/PostgreSQL integration tests not configured in that workflow. Full CI: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38062133621 ; Python-only: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38062133543.
+- Administrator permission editing and native administrator deletion are implemented. Administrator deletion code/test commit `3177193269ce94b36ae29e336b0f790820d6af17` passed full CI on Python 3.11 and 3.12: **636 passed, 2 warnings** per matrix job; compile, Ruff, PHP syntax and PostgreSQL integration all passed. Python-only workflow passed **634 passed, 2 skipped, 2 warnings**; its two skips are UDP/PostgreSQL integration tests not configured in that workflow. Full CI: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38062380412 ; Python-only: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38062380419.
 
 - Canonical behavior source: `Source of Truth/IBSng-A1.24.tar.bz2`
 - SHA-256: `c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839614bb9349d18a8`
@@ -21,6 +21,7 @@ Latest code/test commit: `e16d155e6ff7805f3825248b84cd922157c3e780`
 - Native admin list/detail with source visibility rules, name/comment update, password change, deposit adjustment and lock/unlock.
 - Native administrator permission viewing: `GET /api/v1/admins/{username}/permissions`, gated by `SEE ADMIN PERMISSIONS` and its `SEE ADMIN INFO` dependency; values are returned in stable order without exposing password material.
 - Native administrator permission editing: `PUT /api/v1/admins/{username}/permissions/{permission_name}` adds a permission or changes a source-supported value; `DELETE /api/v1/admins/{username}/permissions/{permission_name}` removes a permission only when no assigned permission depends on it; `DELETE /api/v1/admins/{username}/permissions/{permission_name}/values?value=...` removes one value from a multi-value permission. All are gated by `CHANGE ADMIN PERMISSIONS` → `SEE ADMIN INFO` + `SEE ADMIN PERMISSIONS`, use a row lock and same-transaction operational audit. The source-derived catalog covers all 51 A1.24 permissions, including All/Restricted validation and GROUP ACCESS / CHARGE ACCESS / LIMIT LOGIN ADDR value validation.
+- Native administrator deletion: `DELETE /api/v1/admins/{username}`, gated by `DELETE ADMIN` → `SEE ADMIN INFO`. It protects the native system account and applies the full A1.24 cleanup/reassignment sequence, emits IAS `DELETE_ADMIN` type 6 only when enabled, revokes sessions through FK cascade, and records ATD operational audit in the same transaction.
 - Native administrator creation: `POST /api/v1/admins`, gated by `ADD NEW ADMIN`; validates A1.24 username/password character rules, uses `admins_id_seq`, stores a native MD5-crypt hash, trims name/comment, sets `creator_id` to the authenticated administrator, initializes deposit/due to zero, writes native IAS `ADD_ADMIN` (type 5) only when the native `IAS_ENABLED` flag is enabled (default off), and commits it plus operational audit in the same transaction.
 - Password change preserves A1.24 behavior: self-change exemption; other-admin change requires `CHANGE ADMIN PASSWORD` → `SEE ADMIN INFO`; trim and ASCII letters/digits/underscore/hyphen validation; native MD5-crypt output with random 8-character salt. The password/hash is never written to operational audit.
 - Lock/unlock preserves A1.24 `admin_locks` semantics. Multiple lock rows can exist; removing one lock does not unlock the admin if another row remains.
@@ -55,7 +56,7 @@ Latest code/test commit: `e16d155e6ff7805f3825248b84cd922157c3e780`
 
 ## Next work
 
-Continue with **native admin deletion**, after implementing and testing all A1.24 side effects and safe reference cleanup. The source deletion trace is recorded in the active chat and source archive; do not simplify it to deleting only the admins row. Then proceed to user attribute lifecycle through source plugins. Do not redo already-tested slices above without contradictory direct source evidence.
+Continue with **user attribute mutation/deletion through A1.24 plugin/action paths**. Native admin deletion is implemented with the complete source side effects and tests; do not redo already-tested slices without contradictory direct source evidence.
 
 
 ## Administrator creation IAS parity — 2026-10-10

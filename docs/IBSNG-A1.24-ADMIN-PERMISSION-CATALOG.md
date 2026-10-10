@@ -36,7 +36,7 @@ Value types:
 | CHANGE VOIP USER ATTRIBUTES | All/Restricted | CHANGE USER ATTRIBUTES | Not implemented |
 | CHARGE ACCESS | Multi-value | — | Not implemented |
 | CLEAR USER | All/Restricted | SEE ONLINE USERS | Not implemented |
-| DELETE ADMIN | No value | SEE ADMIN INFO | Not implemented |
+| DELETE ADMIN | No value | SEE ADMIN INFO | Implemented for native admin deletion with full A1.24 side effects, system-account protection, IAS type-6 event and same-transaction operational audit |
 | DELETE REPORTS | No value | — | Not implemented |
 | DELETE USER | All/Restricted | GET USER INFORMATION | Registered; delete API not implemented |
 | GET RAS INFORMATION | No value | LIST RAS | Implemented for RAS API |
@@ -123,3 +123,10 @@ ATD now exposes these native admin-session endpoints, all gated by `CHANGE ADMIN
 Source validation follows `core/admin/perm_actions.py` and the registered permission modules: All/Restricted single values are exact-case, GROUP ACCESS and CHARGE ACCESS require an existing native group/charge, and LIMIT LOGIN ADDR accepts only a valid IP/network. Multi-value additions reject duplicates. Mutations lock the target admin row and append ATD operational audit in the same transaction. The A1.24 `deleteFromPermValues` SQL omits `admin_id`; ATD deliberately scopes the update to both `admin_id` and `perm_name` to avoid changing another administrator's value.
 
 Validation: Administrator permission editing code/test commit `e16d155e6ff7805f3825248b84cd922157c3e780` passed full CI on Python 3.11 and 3.12: **630 passed, 2 warnings** per matrix job; compile, Ruff, PHP syntax and PostgreSQL integration all passed. Python-only workflow passed **628 passed, 2 skipped, 2 warnings**; its two skips are UDP/PostgreSQL integration tests not configured in that workflow. Full CI: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38062133621 ; Python-only: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38062133543.
+
+
+## Native admin deletion implementation checkpoint — 2026-10-10
+
+ATD exposes `DELETE /api/v1/admins/{username}`, guarded by native `DELETE ADMIN` and its `SEE ADMIN INFO` dependency. It locks the target admin row, refuses to delete `system`/ID 0, and preserves A1.24's dependent-record cleanup and reassignment of owner/locker/changer/audit/creator references. It removes saved-user detail children before parent save rows, removes target locks/deposit history/permissions, and emits IAS `DELETE_ADMIN` type 6 only when native `IAS_ENABLED` is enabled. The ATD operational audit is in the same transaction, and active admin sessions cascade from the deleted admin FK.
+
+Validation: Administrator deletion code/test commit `3177193269ce94b36ae29e336b0f790820d6af17` passed full CI on Python 3.11 and 3.12: **636 passed, 2 warnings** per matrix job; compile, Ruff, PHP syntax and PostgreSQL integration all passed. Python-only workflow passed **634 passed, 2 skipped, 2 warnings**; its two skips are UDP/PostgreSQL integration tests not configured in that workflow. Full CI: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38062380412 ; Python-only: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38062380419.

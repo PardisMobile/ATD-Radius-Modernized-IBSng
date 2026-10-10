@@ -73,7 +73,7 @@
 - [ ] User Information edit actions and high-frequency IBSng actions
 - [ ] GROUP and IBSng user/group policy workflows
 - [ ] RAS, IPPool, Online Users, Connection Logs, Connection Usages, Charge and REPORT workflows
-- [ ] ADMIN workflows (deposit adjustment, source-scoped persisted info list/detail, name/comment update, and lock/unlock implemented; permission editing implemented; admin deletion and volatile activity parity remain open)
+- [ ] ADMIN workflows (deposit adjustment, source-scoped persisted info list/detail, name/comment update, and lock/unlock implemented; permission editing and native admin deletion implemented; volatile activity parity remains open)
 - [ ] IBSng user portal workflows
 
 ## Phase 6 — Migration
@@ -169,3 +169,13 @@ Source audit against the checksum-verified A1.24 archive confirms `IBSng/core/ad
 - [x] Same-transaction operational audit and regression tests for mutation paths.
 - [x] CI verified on code/test commit `e16d155e6ff7805f3825248b84cd922157c3e780`: 630 passed on each Python 3.11/3.12 matrix job, 2 warnings; Python-only run 628 passed, 2 skipped, 2 warnings.
 - [ ] Native admin deletion, including all source side effects and post-delete cache/reference handling.
+
+
+## Native administrator deletion — 2026-10-10
+
+- [x] Protect native system administrator (ID 0 / username `system`).
+- [x] Reproduce A1.24 delete ordering for admin locks, deposit history, permissions, saved-user records, owner reassignment, locker/changer/audit references, admin deletion and creator reassignment.
+- [x] Emit IAS `DELETE_ADMIN` event type 6 only when native `IAS_ENABLED` is enabled; preserve target deposit and deleter username in event fields.
+- [x] Delete admin sessions through the ATD FK cascade; write ATD operational audit in the same transaction.
+- [x] Regression tests for full side-effect sequence, IAS enabled/disabled, missing target and protected system account.
+- [x] CI verified on code/test commit `3177193269ce94b36ae29e336b0f790820d6af17`: 636 passed on each Python 3.11/3.12 matrix job, 2 warnings; Python-only run 634 passed, 2 skipped, 2 warnings.
