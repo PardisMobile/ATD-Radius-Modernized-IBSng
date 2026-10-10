@@ -3,7 +3,7 @@
 Updated: 2026-10-10  
 Repository: `PardisMobile/ATD-Radius-Modernized-IBSng`  
 Branch: `main`  
-Latest code/test commit: `60237946c885c8f541480f9b2428f253950f7772` (user owner transfer; CI verified)
+Latest code/test commit: `25b7b9b0f96bf81c68708990bab5f68e13ddbbda` (session concurrency locking; CI verified)
 
 ## Authority and validation
 
@@ -71,3 +71,10 @@ Next: extend only to specialized attribute families after their source validator
 ## Administrator creation IAS parity — 2026-10-10
 
 Source audit against the checksum-verified A1.24 archive confirms `IBSng/core/admin/admin_actions.py` composes the native admin insert and `ias_main.getActionsManager().logEvent("ADD_ADMIN", creator_username, 0, username)` in one database transaction. `IBSng/core/ias/ias_actions.py` maps `ADD_ADMIN` to IAS event type **5**. `IASActions.logEvent` writes no event when `defs.IAS_ENABLED` is false; A1.24's default is `0` in `core/defs_lib/defs_defaults.py`. ATD now checks the native serialized integer flag and, only when enabled, writes the corresponding `ias_event` row (actor = creator username, amount = 0, destination = created username, empty comment) in the same caller-owned transaction as the `admins` insert and operational audit. Missing flag means disabled; malformed serialized values fail closed. ATD's native admin creation repository now writes the corresponding `ias_event` row (actor = creator username, amount = 0, destination = created username, empty comment) in the same caller-owned transaction as the `admins` insert and operational audit. Focused repository/API tests assert the event fields and creator identity. CI verification for code/test commit `aefba4b1079b7ddb7940461e59e572bebd21b834` passed: full CI on Python 3.11 and 3.12, **613 passed, 2 warnings** per matrix job, including compile, Ruff, PHP syntax and PostgreSQL integration; Python-only workflow passed **611 passed, 2 skipped, 2 warnings** (the two live UDP/PostgreSQL tests are skipped in that workflow). Full CI: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38059979595 ; Python workflow: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38059979654.
+
+
+## Session concurrency increment — 2026-10-10
+
+Added a re-entrant synchronization boundary for the in-process duplicate-request cache and live session registry. `AccountingSessionService.apply` now holds the registry lock across its compound Start/Interim/Stop decisions and related persistence/charging side effects. Added a parallel duplicate-Start regression test (24 concurrent calls, one session and one connection-log insert). Code/test commit: `25b7b9b0f96bf81c68708990bab5f68e13ddbbda`. Full CI passed on Python 3.11 and 3.12: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38070540152 ; Python-only: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38070540153.
+
+Important limitation: this only serializes operations within one process. The API and UDP runtime still do not share an authoritative runtime owner, and multi-process active-session truth/restart recovery remain unresolved. Therefore RAS Disconnect and user deletion are still intentionally not exposed. See `docs/A1.24-SESSION-CONCURRENCY-AUDIT.md`.
