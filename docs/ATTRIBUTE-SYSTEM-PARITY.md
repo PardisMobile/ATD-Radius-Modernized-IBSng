@@ -74,6 +74,10 @@ compatibility fixture
 
 Only a passing fixture permits `Verified` status.
 
+## Current mutation boundary
+
+ATD now has a source-derived mutation slice for the A1.24 generic comment plugin family: \`name\`, \`comment\`, and \`phone\`. It uses the native \`CHANGE USER ATTRIBUTES\` permission/owner scope, row-locks the target, preserves \`USER_AUDIT_LOG\` and \`_NOVALUE_\` semantics, and rejects all attributes that require specialized handlers. This does not yet provide full \`user_attrs\` lifecycle parity.
+
 ## Next implementation boundary
 
-The next code milestone is persistence for `user_attrs`, `group_attrs` and `ras_attrs`, followed by repository-backed resolution and fixtures that compare effective values and protocol-facing results with A1.24 behavior.
+Continue by implementing specialized user-attribute handlers one family at a time, including each source \`checkInput\`, persistence/query builder, runtime broadcast or \`postUpdate\`, and compatibility fixture. Do not expose \`multi_login\`, \`lock\`, credentials, caller-ID, IP-pool, charging, expiry, or \`radius_attrs\` through the generic endpoint until those exact source contracts are implemented. Then extend repository-backed resolution and fixtures to group/RAS attributes.
