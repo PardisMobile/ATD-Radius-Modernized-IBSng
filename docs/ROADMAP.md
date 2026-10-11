@@ -77,3 +77,10 @@ Added mutation/storage support for A1.24 `fast_dial` from `IBSng/core/user/plugi
 ## Fast-dial runtime audit — 2026-10-11
 
 Source trace and explicit implementation gates are recorded in `docs/A1.24-FAST-DIAL-RUNTIME-AUDIT.md`. Mutation/storage is verified by the existing full CI checkpoint (667 passed on Python 3.11 and 3.12, 2 warnings each); this is not runtime parity. Remaining work: VoIP/RAS called-number rewrite and redirect reply, per-instance index metadata, and source-compatible add/get actions-manager endpoints/adapter. Add source-derived regression tests for prefix handling, malformed/out-of-range indices, empty destinations, login/update lifecycle, redirect side effects and concurrent updates before changing the compatibility status. Do not expose user deletion or RAS Disconnect as part of this increment.
+
+
+## Fast-dial runtime foundation — 2026-10-11
+
+Implemented and regression-tested a source-shaped domain primitive in `domain/fast_dial.py` for prefix handling, destination indexing, redirect callback and per-instance index tracking. Separate action-manager destination validation is also represented. Next gate: wire this into an authoritative VoIP/RAS login/update lifecycle and source-compatible actions-manager/API adapter; do not expose it as a generic RADIUS response attribute. CI status must be checked on the current branch before treating this increment as verified. See `docs/A1.24-FAST-DIAL-RUNTIME-AUDIT.md`.
+
+Source archive integrity discrepancy: the previously specified hash is 61 hex characters (not a valid SHA-256); the uploaded archive hashes to `c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839614bb9349d18a8`. Resolve the intended canonical hash before describing it as pinned/verified.
