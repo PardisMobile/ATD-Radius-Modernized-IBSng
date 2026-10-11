@@ -49,3 +49,8 @@ The new `domain/fast_dial.py` helper covers source-shaped prefix/index selection
 ### Fast-dial action API — 2026-10-12
 
 A1.24-compatible admin API GET/PUT operations now read or update one fast-dial slot by VoIP username. The write path validates digits-only destinations and indexes 0–9, locks the user row against concurrent slot writes, preserves native user-audit suppression, and writes operational audit. The production RAS `s_login`/`s_update` redirect side effect and per-instance metadata lifecycle are still pending; this attribute is not yet fully migrated.
+
+
+### Bandwidth snapshot consumer — 2026-10-12
+
+The RADIUS accounting runtime now writes counter deltas into the native `internet_bw_snapshot` table only for normal users whose effective attributes include `save_bw_usage`; group defaults are inherited and user attributes override group values. The write path aggregates deltas into one-minute buckets. This is a first production consumer integration, but its event-driven sampling differs from A1.24's periodic per-instance online loop. Keep full parity pending until missed Interim-Updates and provider counter behavior are validated.
