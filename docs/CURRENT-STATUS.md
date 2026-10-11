@@ -115,3 +115,8 @@ Enabled `voip_preferred_language` through the existing generic user-attribute mu
 ## Current work in progress — save_bw_usage marker
 
 Added `save_bw_usage` to the generic attribute mutation slice from `IBSng/core/user/plugins/save_bw_usage.py`. Only the native empty-string marker is accepted; the existing delete path removes it and native audit behavior is retained. Full CI passed on the tested feature commit on Python 3.11 and 3.12: 664 passed, 2 warnings per matrix job (compile, Ruff, PHP syntax and PostgreSQL integration included). Run: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38082764002. The actual bandwidth-usage consumer remains pending.
+
+
+## Source-backed attribute increment — fast_dial (2026-10-11)
+
+Enabled `fast_dial` in the generic user-attribute mutation API after tracing `IBSng/core/user/plugins/fast_dial.py`. The string representation must contain exactly ten comma-separated entries; each entry is empty or digits only, matching the source's ten-item validation. The source explicitly disables native user audit for both change and delete, so ATD preserves that exception rather than applying the generic audit behavior. Three regression tests cover valid persistence/audit suppression, invalid input rejection before writes, and delete/audit suppression. This is mutation/storage support only; fast-dial runtime redirection and VoIP actions remain open. Full CI is pending for this increment.
