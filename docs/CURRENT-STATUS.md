@@ -136,3 +136,8 @@ Enabled `fast_dial` in the generic user-attribute mutation API after tracing `IB
 - This is a tested foundation, **not yet wired into a production VoIP/RAS login/update message path**. Runtime adapter integration and XML-RPC/action-manager endpoints remain open.
 - Hash check correction: the hash string previously supplied in project instructions has 61 hex characters and is not a valid SHA-256. The uploaded archive's actual SHA-256 is `c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839614bb9349d18a8` (64 hex characters). Do not record these as matching; reconcile the intended reference hash before relying on it as a pin.
 - Commits: `318b9b0f` (runtime helper), `8b70ba9b` (tests), `383472b2` (fixture correction). CI for these commits is pending until GitHub Actions completes.
+
+
+## Fast-dial runtime foundation CI result — 2026-10-11
+
+Current main HEAD: `2dd944de4f8df82792f23912f301d6725263d9ff`. Full CI succeeded on Python 3.11 and 3.12, including compile, Ruff, PHP syntax and test steps: **672 passed, 2 warnings** on Python 3.11 (the Python 3.12 job also passed). CI: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38159213377 ; Python workflow: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38159213530. An earlier intermediate test commit failed because its fixture accidentally used index 72; this was corrected in `383472b2`, and the final HEAD is green. Runtime helper remains unintegrated into the production VoIP/RAS lifecycle.
