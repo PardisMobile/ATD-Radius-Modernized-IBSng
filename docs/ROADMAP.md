@@ -72,3 +72,8 @@ Enabled A1.24 `voip_preferred_language` in the generic user attribute API after 
 ## Source-backed attribute increment — fast_dial
 
 Added mutation/storage support for A1.24 `fast_dial` from `IBSng/core/user/plugins/fast_dial.py`: exactly ten comma-separated entries, each empty or digit-only. The source explicitly passes `False` to `useGenerateQuery` for both update and delete, so native user-audit writes are suppressed for this attribute. Three regression tests added. Runtime called-number redirection, FASTDIAL_PREFIX processing and the source actions-manager API remain incomplete. Full CI passed on Python 3.11 and 3.12: 667 tests passed per matrix job, 2 warnings per job (https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38126347300). Python-only workflow passed (https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38126347240).
+
+
+## Fast-dial runtime audit — 2026-10-11
+
+Source trace and explicit implementation gates are recorded in `docs/A1.24-FAST-DIAL-RUNTIME-AUDIT.md`. Mutation/storage is verified by the existing full CI checkpoint (667 passed on Python 3.11 and 3.12, 2 warnings each); this is not runtime parity. Remaining work: VoIP/RAS called-number rewrite and redirect reply, per-instance index metadata, and source-compatible add/get actions-manager endpoints/adapter. Add source-derived regression tests for prefix handling, malformed/out-of-range indices, empty destinations, login/update lifecycle, redirect side effects and concurrent updates before changing the compatibility status. Do not expose user deletion or RAS Disconnect as part of this increment.
