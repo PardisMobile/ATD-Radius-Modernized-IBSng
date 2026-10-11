@@ -20,13 +20,11 @@ class PostgresBandwidthSnapshotRepository:
     def bucket_time(snapshot_at: datetime, interval_seconds: int = 60) -> datetime:
         if interval_seconds <= 0:
             raise ValueError("interval_seconds must be positive")
-        if snapshot_at.tzinfo is None:
-            normalized = snapshot_at.replace(tzinfo=timezone.utc)
-        else:
-            normalized = snapshot_at.astimezone(timezone.utc)
-        epoch = int(normalized.timestamp())
+        # A1.24 dbTimeFromEpoch uses time.localtime(), and the native column
+        # is timestamp without time zone. Bucket by epoch, then store local time.
+        epoch = int(snapshot_at.timestamp())
         bucket = epoch - (epoch % interval_seconds)
-        return datetime.fromtimestamp(bucket, timezone.utc).replace(tzinfo=None)
+        return datetime.fromtimestamp(bucket)
 
     def record_usage(
         self,
@@ -53,8 +51,10 @@ class PostgresBandwidthSnapshotRepository:
     def add_usage(
         self, snapshot_at: datetime, usage_by_user: dict[int, tuple[int, int]]
     ) -> None:
+        # Match A1.24 dbTimeFromEpoch: convert aware instants to local server
+        # time before writing into the timestamp-without-time-zone column.
         if snapshot_at.tzinfo is not None:
-            snapshot_at = snapshot_at.astimezone(timezone.utc).replace(tzinfo=None)
+            snapshot_at = snapshot_at.astimezone().replace(tzinfo=None)
         for user_id, (input_delta, output_delta) in sorted(usage_by_user.items()):
             if user_id < 0 or input_delta < 0 or output_delta < 0:
                 raise ValueError("user IDs and bandwidth deltas must be non-negative")
