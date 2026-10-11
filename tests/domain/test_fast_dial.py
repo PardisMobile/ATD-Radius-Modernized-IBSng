@@ -9,7 +9,7 @@ def test_fast_dial_rewrites_redirect_and_records_instance_index():
     instance_attrs = {}
     redirects = []
     result = apply_fast_dial(
-        called_number="*72",
+        called_number="*2",
         prefix="*",
         destinations=("", "12345", "98765", "", "", "", "", "", "", ""),
         instance_attributes=instance_attrs,
