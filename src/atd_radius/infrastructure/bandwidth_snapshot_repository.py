@@ -1,7 +1,7 @@
 """PostgreSQL persistence for the native A1.24 internet_bw_snapshot table."""
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 class PostgresBandwidthSnapshotRepository:
