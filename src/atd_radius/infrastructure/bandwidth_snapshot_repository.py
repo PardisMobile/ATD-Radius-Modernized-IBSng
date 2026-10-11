@@ -16,6 +16,40 @@ class PostgresBandwidthSnapshotRepository:
     def __init__(self, conn) -> None:
         self.conn = conn
 
+    @staticmethod
+    def bucket_time(snapshot_at: datetime, interval_seconds: int = 60) -> datetime:
+        if interval_seconds <= 0:
+            raise ValueError("interval_seconds must be positive")
+        if snapshot_at.tzinfo is None:
+            normalized = snapshot_at.replace(tzinfo=timezone.utc)
+        else:
+            normalized = snapshot_at.astimezone(timezone.utc)
+        epoch = int(normalized.timestamp())
+        bucket = epoch - (epoch % interval_seconds)
+        return datetime.fromtimestamp(bucket, timezone.utc).replace(tzinfo=None)
+
+    def record_usage(
+        self,
+        snapshot_at: datetime,
+        user_id: int,
+        input_delta: int,
+        output_delta: int,
+        interval_seconds: int = 60,
+    ) -> None:
+        if user_id < 0 or input_delta < 0 or output_delta < 0:
+            raise ValueError("user IDs and bandwidth deltas must be non-negative")
+        if input_delta == 0 and output_delta == 0:
+            return
+        self.conn.execute(
+            self.UPSERT,
+            (
+                self.bucket_time(snapshot_at, interval_seconds),
+                user_id,
+                int(input_delta),
+                int(output_delta),
+            ),
+        )
+
     def add_usage(
         self, snapshot_at: datetime, usage_by_user: dict[int, tuple[int, int]]
     ) -> None:
