@@ -43,7 +43,7 @@ Latest code/test commit: `f97af48b94204ac2e7d6065d522c29d2583dc76e` (bandwidth s
 6. XML-RPC compatibility.
 7. Database importer, parity validation and rollback.
 8. Installer, systemd, TLS, backup/upgrade, supported OS and licensing/edition enforcement.
-9. Full UI workflows — UI expansion remains frozen until core, RADIUS/RAS, billing, DB/API, migration and deployment stabilize.
+9. Full UI workflows remain an active parallel workstream; continue UI inventory/specification and non-destructive implementation alongside core, RADIUS/RAS, billing, DB/API, migration and deployment work. Do not silently freeze or drop a workstream; sequence dependent production mutations behind their source-safety gates.
 
 ## User deletion source audit — 2026-10-10
 
@@ -156,7 +156,7 @@ Code/test commits: `94485ec9`, `781d8f78`, `b1eec8e8`, `291aec12`, `04d0f713`, `
 
 Traced A1.24 `core/snapshot/bw_snapshot.py`, `core/snapshot/plugins/internet_bw.py`, `core/snapshot/snapshot_main.py`, and `db/tables.sql`. Added `PostgresBandwidthSnapshotRepository` for the native `internet_bw_snapshot(snp_date,user_id,in_rate,out_rate)` table, with non-negative counter checks, timezone normalization, one-minute bucket aggregation, and conflict accumulation. Wired the RADIUS accounting runtime to record positive input/output counter deltas only when the resolved account is a normal user and its **effective** attributes (group defaults then user overrides) contain `save_bw_usage`. Added tests for aggregation, SQL key semantics, retry-safe collector behavior, marker gating and non-normal-user exclusion.
 
-**Compatibility boundary:** A1.24 samples each active instance on its periodic online loop (default `SNAPSHOT_BW_INTERVAL=60`) and sums rates per user. ATD currently derives deltas from Accounting-Request counter changes and buckets those deltas into one-minute rows; this is a useful live integration but is not yet identical to sampling all active instances. Missed Interim-Updates and provider counter behavior need acceptance validation before marking full bandwidth-snapshot parity. Full CI for the latest commit must be checked before this increment is called verified.
+**Compatibility boundary:** A1.24 samples each active instance on its periodic online loop (default `SNAPSHOT_BW_INTERVAL=60`) and sums rates per user. ATD currently derives deltas from Accounting-Request counter changes and buckets those deltas into one-minute rows; this is a useful live integration but is not yet identical to sampling all active instances. Missed Interim-Updates and provider counter behavior need acceptance validation before marking full bandwidth-snapshot parity. Full CI passed on code/test HEAD `f97af48b94204ac2e7d6065d522c29d2583dc76e` (694 passed, 2 warnings on Python 3.11 and 3.12); the subsequent docs-only checkpoint `f87a63cf46c6b271d6efdcc2a7d80af2d649c760` passed both full and Python-only CI. Newer documentation-only commits are tracked separately and must pass CI before they are called green.
 
 
 ## Latest bandwidth snapshot verification — 2026-10-12
