@@ -204,3 +204,10 @@ Current main at the start of this increment was `aed0b3f112fc7aafd1176b2bd658f5c
 Added source-backed `SEE VOIP TARIFF` authorization and read-only API routes for tariff listing and tariff detail by native tariff name. The list omits prefixes as A1.24 `listTariffs` does; detail can include prefixes and applies the native prefix-name regular-expression filter. API output preserves the source spelling `min_chargable_duration`. Regression tests cover permission denial, listing order, optional prefix filtering, unknown tariffs and invalid regex input.
 
 This is the read-only API slice only. `CHANGE VOIP TARIFF` mutation workflows, native validation and transaction semantics, cache reload behavior, and live VoIP charging remain unfinished. UI/installer are still reserved for the final stage.
+
+
+## VoIP tariff mutation API increment — 2026-10-12
+
+Extended the native tariff adapter beyond reads: create/update/delete tariff, add/update/delete prefix operations now target the A1.24 `voip_charge_rule_tariff` and `tariff_prefix_list` tables. Source-backed checks include the native tariff-name character rule, digit-only prefix codes, non-negative rate/duration values, duplicate tariff/prefix prevention, and blocking tariff deletion while a native `voip_charge_rules` row references it. Mutations use row/table locking and parameterized SQL, then write operational audit in the same transaction.
+
+This does not complete VoIP charging parity. Source-driven tariff mutation APIs are present, but source-compatible cache/live-call lifecycle effects, exact end-to-end charging, billing settlement and full PostgreSQL integration coverage still need verification. CI for this increment is required before treating it as verified.
