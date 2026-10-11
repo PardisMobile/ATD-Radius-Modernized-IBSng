@@ -69,9 +69,9 @@ class FastDialActionsRepository:
         return slots
 
     def get_destination(self, user_id: int, index: int) -> str:
-        # Native getFastDialDestination catches all lookup/index failures and
-        # returns an empty string. Keep that contract for negative/out-of-range
-        # indexes and for a missing/unset attribute.
+        # Native getFastDialDestination catches lookup/index failures and
+        # returns an empty string for missing/out-of-range slots. Preserve
+        # Python list behavior for negative indexes, which select from the end.
         try:
             return self._slots(user_id)[index]
         except (IndexError, RuntimeError):
