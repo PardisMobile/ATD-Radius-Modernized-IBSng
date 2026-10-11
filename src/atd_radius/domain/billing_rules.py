@@ -88,3 +88,18 @@ def select_effective_rule(
         if rule.priority > selected.priority:
             selected = rule
     return selected
+
+@dataclass(frozen=True, slots=True)
+class VoipChargeRule(ChargeRule):
+    """A1.24 voip_charge_rules row mapped over the shared charge_rules fields."""
+
+    charge_id: int = 0
+    tariff_id: int = 0
+    time_limit: int | None = None
+
+    def __post_init__(self) -> None:
+        ChargeRule.__post_init__(self)
+        if self.charge_id <= 0 or self.tariff_id <= 0:
+            raise BillingError("VoIP charge and tariff IDs must be positive")
+        if self.time_limit is not None and self.time_limit < 0:
+            raise BillingError("time limit cannot be negative")

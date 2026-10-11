@@ -216,3 +216,8 @@ This does not complete VoIP charging parity. Source-driven tariff mutation APIs 
 ## A1.24 charge-rule port semantics correction — 2026-10-12
 
 Direct source trace of `IBSng/core/charge/charge_rule.py::anytimeAppliable` found a domain mismatch: A1.24 requires exact port membership or explicit `_ALL_`; an empty port list is not wildcard. Corrected `ChargeRule.applies_to` and changed test fixtures to use explicit `_ALL_` for intended wildcard rules. Added regression coverage for the empty-port case. This affects source-compatible billing rule selection and must remain distinct from the frozen PAP/CHAP/MS-CHAP/MPPE and accounting persistence contracts. Full CI on the resulting commit must pass before this correction is verified.
+
+
+## Native VoIP charge-rule persistence — 2026-10-12
+
+Added a read-only `PostgresVoipChargeRuleRepository` mapping the native inherited `voip_charge_rules` table and its days/ports child tables. The domain record now preserves `charge_id`, `tariff_id` and `time_limit`, with regression tests for native mapping and charge filtering. This is not yet connected to a production VoIP call lifecycle or credit settlement. The separate source-backed empty-port semantics correction is included in the same source-to-ATD parity track.

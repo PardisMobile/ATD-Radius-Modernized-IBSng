@@ -142,3 +142,8 @@ Added source-backed tariff and prefix CRUD endpoints under `/api/v1/voip-tariffs
 ## A1.24 charge-rule port semantics correction — 2026-10-12
 
 Fixed the source-backed wildcard rule: only the explicit `_ALL_` port marker represents all ports; an empty configured port set matches no port, exactly as `ChargeRule.anytimeAppliable` specifies. Added regression coverage and corrected fixtures that previously relied on the ATD mismatch. Re-run full CI before marking this behavior verified.
+
+
+## Native VoIP charge-rule loader — 2026-10-12
+
+Added source-backed mapping of `voip_charge_rules` plus `charge_rule_day_of_weeks` and `charge_rule_ports`, preserving inherited `charge_id`, `time_limit`, RAS and tariff ID. This is the next persistence building block for VoIP charging; live RAS call timing, tariff-prefix transitions, free seconds, rounding, missed-call behavior and credit settlement remain unfinished.
