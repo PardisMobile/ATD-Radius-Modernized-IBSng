@@ -16,31 +16,43 @@ def packet():
     )
 
 
-def test_runtime_records_bandwidth_deltas_only_for_normal_users_with_save_marker():
-    start_at = datetime(2026, 10, 12, 12, 0, 10, tzinfo=timezone.utc)
-    interim_at = datetime(2026, 10, 12, 12, 0, 25, tzinfo=timezone.utc)
-    events = [
-        AccountingEvent(AccountingStatus.START, "alice", "sid", input_octets=100,
-                        output_octets=200, observed_at=start_at),
-        AccountingEvent(AccountingStatus.INTERIM, "alice", "sid", input_octets=150,
-                        output_octets=260, observed_at=interim_at),
-    ]
+def event(status, input_octets, output_octets, observed_at):
+    return AccountingEvent(
+        status, "alice", "sid", input_octets=input_octets,
+        output_octets=output_octets, observed_at=observed_at,
+    )
+
+
+def setup_handler(events, *, normal=True, marker=True):
     dispatcher = Mock()
     dispatcher.accounting.side_effect = [
-        DispatchResult(RadiusPacket(RadiusCode.ACCOUNTING_RESPONSE, 9, {}, b"0123456789abcdef"), event)
-        for event in events
+        DispatchResult(
+            RadiusPacket(RadiusCode.ACCOUNTING_RESPONSE, 9, {}, b"0123456789abcdef"),
+            item,
+        )
+        for item in events
     ]
     identities = Mock()
     identities.user_id.return_value = 7
     identities.ras_id.return_value = 3
     identities.ras.get.return_value = None
-    identities.users.normal_credentials.return_value = ("alice", "stored-hash")
-    identities.users.policy_attributes.return_value = [("save_bw_usage", "")]
-    snapshot_repo = Mock()
-    service = AccountingSessionService(SessionRegistry())
+    identities.users.normal_credentials.return_value = ("alice", "stored-hash") if normal else None
+    identities.users.policy_attributes.return_value = [("save_bw_usage", "")] if marker else []
+    snapshots = Mock()
     handler = RadiusRuntimeHandler(
-        dispatcher, service, identities, bandwidth_snapshots=snapshot_repo
+        dispatcher, AccountingSessionService(SessionRegistry()), identities,
+        bandwidth_snapshots=snapshots,
     )
+    return handler, snapshots
+
+
+def test_runtime_records_bandwidth_deltas_only_for_normal_users_with_save_marker():
+    start_at = datetime(2026, 10, 12, 12, 0, 10, tzinfo=timezone.utc)
+    interim_at = datetime(2026, 10, 12, 12, 0, 25, tzinfo=timezone.utc)
+    handler, snapshot_repo = setup_handler([
+        event(AccountingStatus.START, 100, 200, start_at),
+        event(AccountingStatus.INTERIM, 150, 260, interim_at),
+    ])
 
     handler(packet(), ("192.0.2.1", 1812))
     handler(packet(), ("192.0.2.1", 1812))
@@ -48,32 +60,29 @@ def test_runtime_records_bandwidth_deltas_only_for_normal_users_with_save_marker
     snapshot_repo.record_usage.assert_called_once_with(interim_at, 7, 50, 60)
 
 
-def test_runtime_does_not_record_bandwidth_when_marker_is_absent_or_user_is_not_normal():
-    event = AccountingEvent(
-        AccountingStatus.INTERIM, "alice", "sid", input_octets=10,
-        output_octets=20, observed_at=datetime(2026, 10, 12, 12, 1, tzinfo=timezone.utc)
-    )
-    dispatcher = Mock()
-    dispatcher.accounting.return_value = DispatchResult(
-        RadiusPacket(RadiusCode.ACCOUNTING_RESPONSE, 9, {}, b"0123456789abcdef"), event
-    )
-    identities = Mock()
-    identities.user_id.return_value = 7
-    identities.ras_id.return_value = 3
-    identities.ras.get.return_value = None
-    identities.users.normal_credentials.return_value = ("alice", "stored-hash")
-    identities.users.policy_attributes.return_value = [("comment", "ordinary")]
-    snapshot_repo = Mock()
-    handler = RadiusRuntimeHandler(
-        dispatcher, AccountingSessionService(SessionRegistry()), identities,
-        bandwidth_snapshots=snapshot_repo
-    )
+def test_runtime_skips_bandwidth_snapshot_without_effective_save_marker():
+    start_at = datetime(2026, 10, 12, 12, 1, 0, tzinfo=timezone.utc)
+    interim_at = datetime(2026, 10, 12, 12, 1, 15, tzinfo=timezone.utc)
+    handler, snapshot_repo = setup_handler([
+        event(AccountingStatus.START, 100, 200, start_at),
+        event(AccountingStatus.INTERIM, 150, 260, interim_at),
+    ], marker=False)
 
+    handler(packet(), ("192.0.2.1", 1812))
     handler(packet(), ("192.0.2.1", 1812))
 
     snapshot_repo.record_usage.assert_not_called()
 
-    identities.users.normal_credentials.return_value = None
-    identities.users.policy_attributes.return_value = [("save_bw_usage", "")]
+
+def test_runtime_skips_bandwidth_snapshot_for_non_normal_user():
+    start_at = datetime(2026, 10, 12, 12, 2, 0, tzinfo=timezone.utc)
+    interim_at = datetime(2026, 10, 12, 12, 2, 15, tzinfo=timezone.utc)
+    handler, snapshot_repo = setup_handler([
+        event(AccountingStatus.START, 100, 200, start_at),
+        event(AccountingStatus.INTERIM, 150, 260, interim_at),
+    ], normal=False, marker=True)
+
     handler(packet(), ("192.0.2.1", 1812))
+    handler(packet(), ("192.0.2.1", 1812))
+
     snapshot_repo.record_usage.assert_not_called()
