@@ -1,6 +1,6 @@
 # Current project status — ATD Radius / Modernized IBSng
 
-Updated: 2026-10-10  
+Updated: 2026-10-12  
 Repository: `PardisMobile/ATD-Radius-Modernized-IBSng`  
 Branch: `main`  
 Latest code/test commit: `581fd60d87f2e15f6f4dd81cf50e0cbbb3772ed6` (source-backed VoIP preferred-language attribute; CI verified)
@@ -162,3 +162,22 @@ Traced A1.24 `core/snapshot/bw_snapshot.py`, `core/snapshot/plugins/internet_bw.
 ## Latest bandwidth snapshot verification — 2026-10-12
 
 Implementation commits include `fbbee3e9` (runtime wiring), `38d68bb7` (record method), `bcb942ad` (A1.24 local-time conversion), `4fc25c53` (batch timestamp normalization), and the follow-up regression commits through `f97af48b`. Python-only CI passed on latest code/test HEAD `f97af48b94204ac2e7d6065d522c29d2583dc76e`: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38180272821. Full CI passed on implementation commit `bcb942adf311b3369dbe1a9d1da486bc1b633433`: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38180263093. The full CI run for the newest test-only adjustment is still in progress; do not claim that exact HEAD's full matrix is green until it completes.
+
+
+## Current main verification and full Markdown review — 2026-10-12
+
+- Current main HEAD: `f87a63cf46c6b271d6efdcc2a7d80af2d649c760`.
+- Full CI on this exact HEAD passed: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38180343444
+- Python-only CI on this exact HEAD passed: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38180343421
+- The full suite on the preceding implementation/test HEAD `f97af48b94204ac2e7d6065d522c29d2583dc76e` passed on Python 3.11 and 3.12: 694 passed, 2 warnings per matrix job.
+- A repository-tree pass found 65 Markdown files. All 65 files were fetched from current `main` and inventoried by headings, status markers, dates, and latest recorded checkpoints. This is the start of a content-consistency audit, not a claim that every historical assertion in every document has already been source-verified.
+- The first inconsistency found is stale historical verification language: some older documents still describe later CI runs as pending or describe implementation wiring as pending. Historical checkpoints must remain historically accurate; current status should point to the latest verified HEAD and clearly distinguish full feature parity from tested partial slices.
+- The uploaded archive was independently re-hashed: `c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839614bb9349d18a8`. It contains 2,477 archive members and 2,295 regular source files; file inventory includes 453 Python sources, 530 PHP files, 284 Smarty templates, and 20 SQL files.
+- Full source review remains an active requirement. Inventory counts are not evidence that every file has been semantically reviewed. Source passes must trace each file's callers, consumers, database effects, runtime hooks, and corresponding ATD implementation/tests, while preserving frozen verified behavior.
+
+### Active continuation order
+
+1. Complete a semantic consistency pass across all 65 Markdown files and correct only demonstrable stale/conflicting current-state statements.
+2. Continue full A1.24 source-to-ATD parity passes by subsystem, recording exact source paths and consumers in the parity ledger.
+3. Prioritize production integration gaps already source-traced: Fast Dial's authoritative VoIP/RAS login/update lifecycle, bandwidth snapshot sampling semantics, accounting/charging persistence, session/login-in-progress truth, provider interoperability, XML-RPC, schema migration/import, installer/upgrade/rollback.
+4. For each coherent implementation batch: source evidence first, focused regression tests, full CI on the resulting HEAD, and status/context/roadmap update. Do not mark a feature complete based on inventory or unit tests alone.
