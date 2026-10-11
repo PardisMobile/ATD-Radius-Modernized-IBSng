@@ -137,3 +137,8 @@ The read-only tariff API is now wired with source-backed `SEE VOIP TARIFF` permi
 ## VoIP tariff management API — 2026-10-12
 
 Added source-backed tariff and prefix CRUD endpoints under `/api/v1/voip-tariffs`, guarded by `CHANGE VOIP TARIFF`; reads remain guarded by `SEE VOIP TARIFF`. The adapter uses native tariff/prefix tables, preserves `min_chargable_duration`, validates names/codes/rates/durations, rejects duplicate names/codes, and blocks deleting a tariff referenced by `voip_charge_rules`. Remaining: verify native sequence names on restored A1.24 databases, test mutations against PostgreSQL, and wire tariff/rule evaluation into the real VoIP/RAS call lifecycle. Do not count this as VoIP charge runtime parity.
+
+
+## A1.24 charge-rule port semantics correction — 2026-10-12
+
+Fixed the source-backed wildcard rule: only the explicit `_ALL_` port marker represents all ports; an empty configured port set matches no port, exactly as `ChargeRule.anytimeAppliable` specifies. Added regression coverage and corrected fixtures that previously relied on the ATD mismatch. Re-run full CI before marking this behavior verified.

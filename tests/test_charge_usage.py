@@ -3,7 +3,7 @@ from decimal import Decimal
 import pytest
 
 from atd_radius.domain.charge_usage import calculate_internet_instance_usage
-from atd_radius.domain.billing_rules import InternetChargeRule
+from atd_radius.domain.billing_rules import ALL, InternetChargeRule
 
 
 def rule(cpm="60", cpk="0.5"):
@@ -12,6 +12,7 @@ def rule(cpm="60", cpk="0.5"):
         days=frozenset({0}),
         start_second=0,
         end_second=86399,
+        ports=frozenset({ALL}),
         cpm=Decimal(cpm),
         cpk=Decimal(cpk),
     )

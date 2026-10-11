@@ -44,7 +44,10 @@ class ChargeRule:
             return False
         if self.ras_id is not None and self.ras_id != ras_id:
             return False
-        if self.ports and ALL not in self.ports and port not in self.ports:
+        # A1.24 ChargeRule.anytimeAppliable requires either an exact port
+        # membership or the explicit _ALL_ marker. An empty port set is not
+        # a wildcard and therefore does not apply to any port.
+        if port not in self.ports and ALL not in self.ports:
             return False
         return True
 

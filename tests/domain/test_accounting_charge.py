@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from decimal import Decimal
 from atd_radius.domain.accounting_charge import InternetChargeSettlement
-from atd_radius.domain.billing_rules import InternetChargeRule
+from atd_radius.domain.billing_rules import ALL, InternetChargeRule
 from atd_radius.domain.radius_runtime import SessionKey, SessionRegistry
 
 class Rules:
@@ -17,7 +17,7 @@ class Credits:
         self.changes.append((user_id,delta)); return Decimal("0")
 
 def test_internet_charge_settlement_uses_rule_start_counters_and_time():
-    rule=InternetChargeRule(1,frozenset({0}),0,86399,cpm=Decimal("60"),cpk=Decimal("1"))
+    rule=InternetChargeRule(1,frozenset({0}),0,86399,ports=frozenset({ALL}),cpm=Decimal("60"),cpk=Decimal("1"))
     credits=Credits()
     settlement=InternetChargeSettlement(Rules(rule),Policies(),credits)
     registry=SessionRegistry()
@@ -33,8 +33,8 @@ def test_internet_charge_settlement_uses_rule_start_counters_and_time():
 
 
 def test_rule_transition_accumulates_previous_rule_before_resetting_baseline():
-    first=InternetChargeRule(1,frozenset({0}),0,39600,cpm=Decimal("60"),cpk=Decimal("1"))
-    second=InternetChargeRule(2,frozenset({0}),39600,86399,cpm=Decimal("120"),cpk=Decimal("1"))
+    first=InternetChargeRule(1,frozenset({0}),0,39600,ports=frozenset({ALL}),cpm=Decimal("60"),cpk=Decimal("1"))
+    second=InternetChargeRule(2,frozenset({0}),39600,86399,ports=frozenset({ALL}),cpm=Decimal("120"),cpk=Decimal("1"))
     class TwoRules:
         def list(self, charge_id=None): return [first,second]
     settlement=InternetChargeSettlement(TwoRules(),Policies(),Credits())
@@ -57,7 +57,7 @@ def test_rule_transition_accumulates_previous_rule_before_resetting_baseline():
     assert used==Decimal("3843.953125")
 
 def test_multiple_instances_keep_independent_charge_baselines():
-    rule=InternetChargeRule(1,frozenset({0}),0,86399,cpm=Decimal("60"),cpk=Decimal("1"))
+    rule=InternetChargeRule(1,frozenset({0}),0,86399,ports=frozenset({ALL}),cpm=Decimal("60"),cpk=Decimal("1"))
     settlement=InternetChargeSettlement(Rules(rule),Policies(),Credits())
     registry=SessionRegistry()
     start=datetime(2026,1,5,10,0,tzinfo=timezone.utc)
@@ -73,7 +73,7 @@ def test_multiple_instances_keep_independent_charge_baselines():
 
 
 def test_counter_reset_never_creates_negative_transfer_usage():
-    rule=InternetChargeRule(1,frozenset({0}),0,86399,cpm=Decimal("0"),cpk=Decimal("1"))
+    rule=InternetChargeRule(1,frozenset({0}),0,86399,ports=frozenset({ALL}),cpm=Decimal("0"),cpk=Decimal("1"))
     settlement=InternetChargeSettlement(Rules(rule),Policies(),Credits())
     registry=SessionRegistry()
     start=datetime(2026,1,5,10,0,tzinfo=timezone.utc)
@@ -85,7 +85,7 @@ def test_counter_reset_never_creates_negative_transfer_usage():
     assert settlement.settle(state,stop,3,None)==Decimal("0")
 
 def test_zero_credit_settlement_is_still_committed_as_zero():
-    rule=InternetChargeRule(1,frozenset({0}),0,86399,cpm=Decimal("0"),cpk=Decimal("0"))
+    rule=InternetChargeRule(1,frozenset({0}),0,86399,ports=frozenset({ALL}),cpm=Decimal("0"),cpk=Decimal("0"))
     credits=Credits()
     settlement=InternetChargeSettlement(Rules(rule),Policies(),credits)
     registry=SessionRegistry()

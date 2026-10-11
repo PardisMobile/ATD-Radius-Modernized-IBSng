@@ -7,7 +7,7 @@ from atd_radius.domain.billing import BillingUsage, BillingError
 from atd_radius.domain.billing_rules import ALL, InternetChargeRule, select_effective_rule
 
 
-def rule(rule_id, *, ras_id=None, ports=frozenset()):
+def rule(rule_id, *, ras_id=None, ports=frozenset({ALL})):
     return InternetChargeRule(
         rule_id=rule_id,
         days=frozenset({0}),
@@ -73,3 +73,14 @@ def test_equal_priority_keeps_loader_order():
         port="ppp0",
     )
     assert selected.rule_id == 20
+
+
+def test_empty_port_list_is_not_a_wildcard_in_a124():
+    when = datetime(2026, 10, 5, 12, 0, 0)
+    with pytest.raises(BillingError, match="no applicable"):
+        select_effective_rule(
+            [rule(30, ras_id=10, ports=frozenset())],
+            when,
+            ras_id=10,
+            port="ppp0",
+        )
