@@ -108,8 +108,22 @@ _RAS_PERMISSIONS = AdminPermissionEvaluator(
 _TARIFF_PERMISSIONS = AdminPermissionEvaluator(
     [
         PermissionSpec("GOD", PermissionKind.NO_VALUE),
-        PermissionSpec("SEE VOIP TARIFF", PermissionKind.NO_VALUE),
-        PermissionSpec("CHANGE VOIP TARIFF", PermissionKind.NO_VALUE),
+        PermissionSpec("ACCESS ALL CHARGES", PermissionKind.NO_VALUE),
+        PermissionSpec(
+            "CHANGE CHARGE",
+            PermissionKind.NO_VALUE,
+            dependencies=("ACCESS ALL CHARGES",),
+        ),
+        PermissionSpec(
+            "SEE VOIP TARIFF",
+            PermissionKind.NO_VALUE,
+            dependencies=("CHANGE CHARGE",),
+        ),
+        PermissionSpec(
+            "CHANGE VOIP TARIFF",
+            PermissionKind.NO_VALUE,
+            dependencies=("CHANGE CHARGE",),
+        ),
     ]
 )
 

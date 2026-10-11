@@ -16,10 +16,13 @@ def principal(perms):
 
 def test_voip_tariff_permission_is_source_backed_and_not_group_fallback():
     require = require_admin_permission("SEE VOIP TARIFF")
-    assert require(principal({"SEE VOIP TARIFF": ""})).username == "operator"
+    assert require(principal({"ACCESS ALL CHARGES": "", "CHANGE CHARGE": "", "SEE VOIP TARIFF": ""})).username == "operator"
     with pytest.raises(HTTPException) as denied:
         require(principal({"LIST RAS": "", "GET RAS INFORMATION": ""}))
     assert denied.value.status_code == 403
+    with pytest.raises(HTTPException) as missing_dependency:
+        require(principal({"SEE VOIP TARIFF": ""}))
+    assert missing_dependency.value.status_code == 403
 
 
 def install_connection(monkeypatch):
@@ -62,7 +65,7 @@ def install_connection(monkeypatch):
 
 def test_list_tariffs_omits_prefixes_and_sorts_by_name(monkeypatch):
     install_connection(monkeypatch)
-    result = api.list_voip_tariffs(principal({"SEE VOIP TARIFF": ""}))
+    result = api.list_voip_tariffs(principal({"ACCESS ALL CHARGES": "", "CHANGE CHARGE": "", "SEE VOIP TARIFF": ""}))
     assert [item.tariff_name for item in result] == ["Alpha", "Zulu"]
     assert all(item.prefixes == [] for item in result)
 
@@ -70,7 +73,7 @@ def test_list_tariffs_omits_prefixes_and_sorts_by_name(monkeypatch):
 def test_tariff_detail_uses_native_field_names_and_prefix_name_regex(monkeypatch):
     install_connection(monkeypatch)
     result = api.get_voip_tariff(
-        "Alpha", True, "^Mobile$", principal({"SEE VOIP TARIFF": ""})
+        "Alpha", True, "^Mobile$", principal({"ACCESS ALL CHARGES": "", "CHANGE CHARGE": "", "SEE VOIP TARIFF": ""})
     )
     assert result.tariff_id == 1
     assert [item.prefix_code for item in result.prefixes] == ["989"]
@@ -80,22 +83,22 @@ def test_tariff_detail_uses_native_field_names_and_prefix_name_regex(monkeypatch
 def test_tariff_detail_returns_404_for_unknown_name(monkeypatch):
     install_connection(monkeypatch)
     with pytest.raises(HTTPException) as error:
-        api.get_voip_tariff("missing", True, "", principal({"SEE VOIP TARIFF": ""}))
+        api.get_voip_tariff("missing", True, "", principal({"ACCESS ALL CHARGES": "", "CHANGE CHARGE": "", "SEE VOIP TARIFF": ""}))
     assert error.value.status_code == 404
 
 
 def test_tariff_detail_rejects_invalid_regex(monkeypatch):
     install_connection(monkeypatch)
     with pytest.raises(HTTPException) as error:
-        api.get_voip_tariff("Alpha", True, "[", principal({"SEE VOIP TARIFF": ""}))
+        api.get_voip_tariff("Alpha", True, "[", principal({"ACCESS ALL CHARGES": "", "CHANGE CHARGE": "", "SEE VOIP TARIFF": ""}))
     assert error.value.status_code == 422
 
 
 def test_tariff_mutation_permission_is_required_separately():
     require = require_admin_permission("CHANGE VOIP TARIFF")
-    assert require(principal({"CHANGE VOIP TARIFF": ""})).username == "operator"
+    assert require(principal({"ACCESS ALL CHARGES": "", "CHANGE CHARGE": "", "CHANGE VOIP TARIFF": ""})).username == "operator"
     with pytest.raises(HTTPException) as denied:
-        require(principal({"SEE VOIP TARIFF": ""}))
+        require(principal({"ACCESS ALL CHARGES": "", "CHANGE CHARGE": "", "SEE VOIP TARIFF": ""}))
     assert denied.value.status_code == 403
 
 
@@ -130,7 +133,7 @@ def test_create_tariff_writes_audit_and_commits_after_reload(monkeypatch):
     monkeypatch.setattr(api, "OperationalAuditRepository", Audit)
     result = api.create_voip_tariff(
         api.TariffPayload(tariff_name="New_Tariff", comment=""),
-        principal({"CHANGE VOIP TARIFF": ""}),
+        principal({"ACCESS ALL CHARGES": "", "CHANGE CHARGE": "", "CHANGE VOIP TARIFF": ""}),
     )
     assert result.tariff_id == 15
     assert captured["create"] == ("New_Tariff", "")
@@ -156,7 +159,7 @@ def test_delete_tariff_maps_source_in_use_guard_without_commit(monkeypatch):
     monkeypatch.setattr(api, "connection", fake_connection)
     monkeypatch.setattr(api, "PostgresVoipTariffRepository", Repository)
     with pytest.raises(HTTPException) as error:
-        api.delete_voip_tariff("used", principal({"CHANGE VOIP TARIFF": ""}))
+        api.delete_voip_tariff("used", principal({"ACCESS ALL CHARGES": "", "CHANGE CHARGE": "", "CHANGE VOIP TARIFF": ""}))
     assert error.value.status_code == 409
     assert conn.committed is False
 
