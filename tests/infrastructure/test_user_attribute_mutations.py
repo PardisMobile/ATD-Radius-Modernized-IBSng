@@ -243,3 +243,47 @@ def test_save_bw_usage_empty_marker():
     result = repo.apply(target, admin_id=9, attrs={"save_bw_usage": ""}, to_delete=[])
     assert ("save_bw_usage", "") in result.attributes
     assert conn.current["save_bw_usage"] == ""
+
+
+
+def test_fast_dial_requires_ten_digit_or_empty_entries_and_skips_native_audit():
+    conn = FakeConnection()
+    repo = UserAttributeMutationRepository(conn)
+    target = repo.lock_target("alice")
+    assert target is not None
+
+    value = "123,,456,0,99,,,,,7"
+    result = repo.apply(target, admin_id=9, attrs={"fast_dial": value}, to_delete=[])
+
+    assert conn.current["fast_dial"] == value
+    assert ("fast_dial", value) in result.attributes
+    assert not any("SELECT insert_user_audit_log" in sql for sql, _ in conn.calls)
+
+
+def test_fast_dial_rejects_wrong_entry_count_and_non_digit_entries_before_writes():
+    for invalid in ("123", "1,2,3,4,5,6,7,8,9,abc", "1,2,3,4,5,6,7,8,9, "):
+        conn = FakeConnection()
+        repo = UserAttributeMutationRepository(conn)
+        target = repo.lock_target("alice")
+        assert target is not None
+
+        try:
+            repo.apply(target, admin_id=9, attrs={"fast_dial": invalid}, to_delete=[])
+        except UserAttributeMutationError:
+            pass
+        else:
+            raise AssertionError(f"fast_dial value {invalid!r} should be rejected")
+
+        assert not any("INSERT INTO user_attrs" in sql or "UPDATE user_attrs" in sql for sql, _ in conn.calls)
+
+
+def test_fast_dial_delete_matches_source_audit_suppression():
+    conn = FakeConnection(current={"fast_dial": "1,2,3,4,5,6,7,8,9,10"})
+    repo = UserAttributeMutationRepository(conn)
+    target = repo.lock_target("alice")
+    assert target is not None
+
+    repo.apply(target, admin_id=9, attrs={}, to_delete=["fast_dial"])
+
+    assert "fast_dial" not in conn.current
+    assert not any("SELECT insert_user_audit_log" in sql for sql, _ in conn.calls)

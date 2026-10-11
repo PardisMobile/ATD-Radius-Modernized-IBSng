@@ -21,6 +21,7 @@ USER_ATTRIBUTE_UPDATER_HANDLERS = {
     "idle_timeout": "idle_timeout.IdleTimeoutAttrUpdater",
     "voip_preferred_language": "voip_preferred_language.VoIPPreferredLanguageAttrUpdater",
     "save_bw_usage": "save_bw_usage.SaveBWUsageAttrUpdater",
+    "fast_dial": "fast_dial.FastDialAttrUpdater",
 }
 AUDIT_LOG_NOVALUE = "_NOVALUE_"
 _INTEGER_FLAG = re.compile(r"I([01])\s*\.")
@@ -113,6 +114,12 @@ class UserAttributeMutationRepository:
         normalized = dict(attrs)
         if "save_bw_usage" in normalized and normalized["save_bw_usage"] != "":
             raise UserAttributeMutationError("save_bw_usage is a marker attribute and must have an empty value")
+        if "fast_dial" in normalized:
+            entries = normalized["fast_dial"].split(",")
+            if len(entries) != 10:
+                raise UserAttributeMutationError("fast_dial: expected exactly 10 comma-separated entries")
+            if any(entry != "" and not entry.isdigit() for entry in entries):
+                raise UserAttributeMutationError("fast_dial: entries must be empty or contain digits only")
         for name in ("multi_login", "session_timeout", "idle_timeout"):
             if name not in normalized:
                 continue
@@ -170,7 +177,9 @@ class UserAttributeMutationRepository:
                     """,
                     (target.user_id, name, value),
                 )
-            if audit_enabled and old_value != value:
+            # A1.24 FastDialAttrUpdater passes False to useGenerateQuery for
+            # both change and delete, explicitly suppressing native user audit.
+            if audit_enabled and name != "fast_dial" and old_value != value:
                 self._audit(admin_id, target.user_id, name, old_value, value)
 
         for name in to_delete:
@@ -180,7 +189,7 @@ class UserAttributeMutationRepository:
                 "DELETE FROM user_attrs WHERE user_id = %s AND attr_name = %s",
                 (target.user_id, name),
             )
-            if audit_enabled:
+            if audit_enabled and name != "fast_dial":
                 self._audit(
                     admin_id, target.user_id, name, current[name], AUDIT_LOG_NOVALUE
                 )
