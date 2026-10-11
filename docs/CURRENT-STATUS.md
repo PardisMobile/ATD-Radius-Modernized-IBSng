@@ -221,3 +221,6 @@ Direct source trace of `IBSng/core/charge/charge_rule.py::anytimeAppliable` foun
 ## Native VoIP charge-rule persistence — 2026-10-12
 
 Added a read-only `PostgresVoipChargeRuleRepository` mapping the native inherited `voip_charge_rules` table and its days/ports child tables. The domain record now preserves `charge_id`, `tariff_id` and `time_limit`, with regression tests for native mapping and charge filtering. This is not yet connected to a production VoIP call lifecycle or credit settlement. The separate source-backed empty-port semantics correction is included in the same source-to-ATD parity track.
+
+
+CI fixture correction — 2026-10-12: the source-backed empty-port change exposed an integration fixture that inserted an internet charge rule without any `charge_rule_ports` rows. A1.24 does not treat that as a wildcard, so the fixture now inserts the explicit `_ALL_` marker for the intended all-port rule. This keeps the live UDP/PostgreSQL test representative of the native source rather than reverting the compatibility fix.

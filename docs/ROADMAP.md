@@ -147,3 +147,6 @@ Fixed the source-backed wildcard rule: only the explicit `_ALL_` port marker rep
 ## Native VoIP charge-rule loader — 2026-10-12
 
 Added source-backed mapping of `voip_charge_rules` plus `charge_rule_day_of_weeks` and `charge_rule_ports`, preserving inherited `charge_id`, `time_limit`, RAS and tariff ID. This is the next persistence building block for VoIP charging; live RAS call timing, tariff-prefix transitions, free seconds, rounding, missed-call behavior and credit settlement remain unfinished.
+
+
+CI fixture correction — 2026-10-12: the source-backed empty-port change exposed an integration fixture that inserted an internet charge rule without any `charge_rule_ports` rows. A1.24 does not treat that as a wildcard, so the fixture now inserts the explicit `_ALL_` marker for the intended all-port rule. This keeps the live UDP/PostgreSQL test representative of the native source rather than reverting the compatibility fix.
