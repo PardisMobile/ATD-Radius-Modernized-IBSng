@@ -167,6 +167,13 @@ class UserRepository:
     def find_by_username(self, username: str) -> UserRecord | None:
         return self.get_by_username(username)
 
+    def is_normal_user(self, user_id: int) -> bool:
+        row = self.conn.execute(
+            "SELECT EXISTS (SELECT 1 FROM normal_users WHERE user_id=%s)",
+            (user_id,),
+        ).fetchone()
+        return bool(row[0]) if row else False
+
     def normal_credentials(self, user_id: int) -> tuple[str, str] | None:
         row = self.conn.execute(
             "SELECT normal_username, normal_password FROM normal_users WHERE user_id=%s",
