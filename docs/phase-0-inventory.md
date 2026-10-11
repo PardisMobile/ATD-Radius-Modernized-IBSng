@@ -44,11 +44,13 @@ The reference admin UI includes user search, add-user, user information, edit at
 - old repository code
 - legacy generated artifacts
 
-## Next inventory targets
+## Remaining semantic-review targets
 
-1. Complete DB schema extraction and mapping.
-2. Enumerate all RADIUS attributes and authentication methods.
-3. Enumerate permission names and admin roles.
-4. Enumerate all XML-RPC handlers and method signatures.
-5. Map every admin/user page to an ATD route.
-6. Build parity fixtures.
+The structural inventories for SQL/schema, RADIUS dictionaries, the 51 admin permission modules and UI page files already exist. Do not repeat them as filename-only tasks. The remaining work is content/call-path review:
+
+1. Finish column-by-column schema migration mapping and the import/parity report framework.
+2. Trace each RADIUS attribute and authentication method through packet parsing, plugin consumers, response construction and accounting/session effects.
+3. Trace each permission from its definition to all handlers and page visibility; distinguish registered permission evaluation from a completed workflow.
+4. Inventory and trace every XML-RPC handler/signature and its callers.
+5. Map every legacy admin/user page to implemented UI/API routes, including missing workflows.
+6. Build source-vs-ATD fixtures for each verified behavior and label untested areas as partial.

@@ -22,4 +22,4 @@ Behavior is the reference; obsolete implementation techniques are not. Each migr
 
 ## Source-review status
 
-The project maintains a growing subsystem inventory from the A1.24 source and runtime evidence. The next required extraction pass is the complete database schema, permission catalog, RADIUS attribute dictionary, XML-RPC method inventory, and page-to-route map.
+The project has already established structural inventories for the A1.24 database schema, all 51 administrator permission modules, RADIUS dictionaries, UI pages and major runtime/provider families. Those inventories are not equivalent to semantic completion. The next pass is content-level: trace remaining XML-RPC method signatures and callers, connect each permission/attribute to all real consumers and DB side effects, complete column-by-column migration mappings, and verify every inventory claim against both the archive and ATD code/tests.

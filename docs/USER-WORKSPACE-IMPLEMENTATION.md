@@ -32,12 +32,13 @@ The API returns applicable user/group/service bindings ordered by precedence. Th
 
 ## Next user-workspace steps
 
-1. Add explicit effective-policy resolution.
-2. Add edit operations for status and credentials through application services.
-3. Add group/service assignment and removal.
-4. Add attribute editing with validation and audit records.
-5. Add session actions such as disconnect/kill with permission checks.
-6. Add credit actions through the billing ledger rather than direct balance mutation.
-7. Add audit timeline to the workspace.
+The backend/API now supports selected source-backed edits (generic attributes, owner/group assignment, caller IDs, VoIP preferred language, fast-dial slot management and credit changes). These are not yet equivalent to a complete operator UI workflow. Continue the UI and service integration in parallel:
+
+1. Wire the workspace to explicit effective-policy resolution and explain group/user precedence.
+2. Add UI flows for implemented status/attribute/owner/group/credit APIs without duplicating business rules in PHP.
+3. Add remaining credential and specialized attribute workflows only after their source validators and persistence side effects exist.
+4. Add session listing only when the online-state model is authoritative; keep destructive disconnect/kill hidden until its permission, provider operation and audit sequence are safe.
+5. Add the audit timeline with source-specific visibility checks.
+6. Complete group/service assignment visibility and removal flows while preserving native permission and owner scope.
 
 The UI must continue to use contextual tabs/drawers only as presentation mechanics; operator-facing names and workflows remain those of IBSng A1.24.

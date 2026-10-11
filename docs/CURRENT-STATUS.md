@@ -3,7 +3,7 @@
 Updated: 2026-10-12  
 Repository: `PardisMobile/ATD-Radius-Modernized-IBSng`  
 Branch: `main`  
-Latest code/test commit: `f97af48b94204ac2e7d6065d522c29d2583dc76e` (bandwidth snapshot runtime integration and localtime regression tests; full CI: 694 passed, 2 warnings on Python 3.11 and 3.12). Latest main docs checkpoint: `52d3c15209c89072f32e10848fa06c6b52d4e310` (its CI was queued at last check).
+Latest code/test commit: `f97af48b94204ac2e7d6065d522c29d2583dc76e` (bandwidth snapshot runtime integration and localtime regression tests; full CI: 694 passed, 2 warnings on Python 3.11 and 3.12). Last fully verified docs-only checkpoint: `f87a63cf46c6b271d6efdcc2a7d80af2d649c760` (both full and Python-only CI passed). Subsequent commits correct content-level inconsistencies across the audit ledgers; their exact-HEAD CI is in progress and must not be called green until completed.
 
 ## Authority and validation
 
@@ -181,3 +181,10 @@ Implementation commits include `fbbee3e9` (runtime wiring), `38d68bb7` (record m
 2. Continue full A1.24 source-to-ATD parity passes by subsystem, recording exact source paths and consumers in the parity ledger.
 3. Prioritize production integration gaps already source-traced: Fast Dial's authoritative VoIP/RAS login/update lifecycle, bandwidth snapshot sampling semantics, accounting/charging persistence, session/login-in-progress truth, provider interoperability, XML-RPC, schema migration/import, installer/upgrade/rollback.
 4. For each coherent implementation batch: source evidence first, focused regression tests, full CI on the resulting HEAD, and status/context/roadmap update. Do not mark a feature complete based on inventory or unit tests alone.
+
+
+## Content review — specific corrections made 2026-10-12
+
+This review is reading document content against source paths and current code, not counting filenames. Corrections made so far: `save_bw_usage` is now described as a partial accounting-delta consumer rather than unimplemented; native connection-log persistence is recorded as runtime-wired while full source parity remains open; the RADIUS Disconnect/CoA packet boundary is distinguished from an authenticated/provider-integrated kill workflow; current admin creation/deletion/password/permission capabilities are reconciled with older checkpoint text; and UI work is recorded as a continuing parallel workstream rather than frozen. Direct source tracing also confirmed that A1.24 Fast Dial is a VoIP/RAS message hook on both login and update, mutates called_number, stores fast_dial_index per instance, and invokes setRedirectNumber on the reply packet—none of which is provided by ATD's RADIUS-only production runtime today.
+
+The full semantic review of every Markdown document and every source file is not yet complete. Files are marked reviewed only after their claims, dependencies, call sites, persistence effects, implementation and test evidence have been checked; structural inventory alone does not count.

@@ -18,7 +18,7 @@ Value types:
 | ADD NEW GROUP | No value | — | Implemented for group API |
 | ADD NEW USER | No value | — | Implemented for user creation |
 | CHANGE ADMIN DEPOSIT | No value | CHANGE ADMIN INFO | Implemented for deposit adjustment API; broader admin workflows remain open |
-| CHANGE ADMIN INFO | No value | SEE ADMIN INFO | Implemented for name/comment update, lock/unlock and as a dependency for deposit adjustment and permission viewing/editing; admin deletion remains open |
+| CHANGE ADMIN INFO | No value | SEE ADMIN INFO | Implemented for name/comment update, lock/unlock and as a dependency for deposit adjustment, permission operations and admin deletion; volatile activity fields remain open |
 | CHANGE ADMIN PASSWORD | No value | SEE ADMIN INFO | Implemented for changing another admin's password; self-change follows source exemption |
 | CHANGE ADMIN PERMISSIONS | No value | SEE ADMIN INFO; SEE ADMIN PERMISSIONS | Implemented for native add/change/delete permission API, with source dependency/value checks and transaction audit; broader templates and UI remain open |
 | CHANGE BANDWIDTH MANAGER | No value | CHANGE CHARGE | Not implemented |
@@ -29,11 +29,11 @@ Value types:
 | CHANGE MAILBOX | No value | CHANGE NORMAL USER ATTRIBUTES | Not implemented |
 | CHANGE NORMAL USER ATTRIBUTES | All/Restricted | CHANGE USER ATTRIBUTES | Not implemented |
 | CHANGE RAS | No value | LIST RAS; GET RAS INFORMATION | Implemented for RAS API |
-| CHANGE USER ATTRIBUTES | All/Restricted | GET USER INFORMATION | Registered; mutation API not implemented |
-| CHANGE USER CREDIT | All/Restricted | GET USER INFORMATION | Implemented for single-user credit-change API with native deposit checks and logs |
-| CHANGE USERS OWNER | No value | — | Not implemented |
+| CHANGE USER ATTRIBUTES | All/Restricted | GET USER INFORMATION | Partial: selected generic attributes, owner/group workflows and source-backed specialized slices; remaining handlers are rejected until implemented |
+| CHANGE USER CREDIT | All/Restricted | GET USER INFORMATION | Implemented for single and bounded bulk credit changes, native deposit checks, credit/IAS logs and operational audit |
+| CHANGE USERS OWNER | No value | — | Implemented for source-backed owner reassignment API; other owner-dependent workflows remain separate |
 | CHANGE VOIP TARIFF | No value | CHANGE CHARGE | Not implemented |
-| CHANGE VOIP USER ATTRIBUTES | All/Restricted | CHANGE USER ATTRIBUTES | Not implemented |
+| CHANGE VOIP USER ATTRIBUTES | All/Restricted | CHANGE USER ATTRIBUTES | Partial: caller-ID and fast-dial management APIs; complete VoIP credentials/tariffs/runtime handlers remain open |
 | CHARGE ACCESS | Multi-value | — | Not implemented |
 | CLEAR USER | All/Restricted | SEE ONLINE USERS | Not implemented |
 | DELETE ADMIN | No value | SEE ADMIN INFO | Implemented for native admin deletion with full A1.24 side effects, system-account protection, IAS type-6 event and same-transaction operational audit |
@@ -130,3 +130,8 @@ Validation: Administrator permission editing code/test commit `e16d155e6ff7805f3
 ATD exposes `DELETE /api/v1/admins/{username}`, guarded by native `DELETE ADMIN` and its `SEE ADMIN INFO` dependency. It locks the target admin row, refuses to delete `system`/ID 0, and preserves A1.24's dependent-record cleanup and reassignment of owner/locker/changer/audit/creator references. It removes saved-user detail children before parent save rows, removes target locks/deposit history/permissions, and emits IAS `DELETE_ADMIN` type 6 only when native `IAS_ENABLED` is enabled. The ATD operational audit is in the same transaction, and active admin sessions cascade from the deleted admin FK.
 
 Validation: Administrator deletion code/test commit `3177193269ce94b36ae29e336b0f790820d6af17` passed full CI on Python 3.11 and 3.12: **636 passed, 2 warnings** per matrix job; compile, Ruff, PHP syntax and PostgreSQL integration all passed. Python-only workflow passed **634 passed, 2 skipped, 2 warnings**; its two skips are UDP/PostgreSQL integration tests not configured in that workflow. Full CI: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38062380412 ; Python-only: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38062380419.
+
+
+## Current-status reconciliation — 2026-10-12
+
+The table above is the current permission/workflow status, not a claim that every registered permission consumer is implemented. Earlier dated paragraphs in this document intentionally preserve historical checkpoints and may say a workflow was open at that time; later source-traced checkpoints supersede those statements. In particular, administrator creation/deletion, password update and permission editing are implemented; selected user attribute/owner/group/caller-ID/fast-dial APIs and single/bulk credit changes are implemented. `DELETE USER`, `KILL USER`/online-user listing, mailbox, IPPool, billing administration, saved passwords, user audit reports, messages and remaining reports/graphs still lack complete endpoint/workflow parity. Do not treat registering a permission in the evaluator as proof that its entire IBSng feature is complete.
