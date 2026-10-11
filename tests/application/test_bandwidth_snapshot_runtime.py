@@ -100,3 +100,19 @@ def test_runtime_records_final_stop_counter_delta_for_snapshot_enabled_user():
     handler(packet(), ("192.0.2.1", 1812))
 
     snapshot_repo.record_usage.assert_called_once_with(stop_at, 7, 140, 100)
+
+
+def test_runtime_counter_reset_never_persists_negative_or_wrapped_bandwidth():
+    start_at = datetime(2026, 10, 12, 12, 4, 0, tzinfo=timezone.utc)
+    reset_at = datetime(2026, 10, 12, 12, 4, 15, tzinfo=timezone.utc)
+    next_at = datetime(2026, 10, 12, 12, 4, 30, tzinfo=timezone.utc)
+    handler, snapshot_repo = setup_handler([
+        event(AccountingStatus.START, 500, 900, start_at),
+        event(AccountingStatus.INTERIM, 10, 20, reset_at),
+        event(AccountingStatus.INTERIM, 20, 30, next_at),
+    ])
+
+    for _ in range(3):
+        handler(packet(), ("192.0.2.1", 1812))
+
+    snapshot_repo.record_usage.assert_called_once_with(next_at, 7, 10, 10)
