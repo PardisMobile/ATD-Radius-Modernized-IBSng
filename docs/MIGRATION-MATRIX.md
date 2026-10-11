@@ -4,18 +4,18 @@ This is the master parity checklist. Implemented means ATD code exists; Verified
 
 | IBSng subsystem | A1.24 source area | ATD target | Status |
 |---|---|---|---|
-| Admin/auth | admins, admin_perms | A1.24 ADMIN implementation | Schema native / runtime pending |
-| RAS | ras, ras_ports, ras_attrs | A1.24 RAS implementation | Schema native / runtime lifecycle pending |
+| Admin/auth | admins, admin_perms | A1.24 ADMIN implementation | Native admin login/session and tested CRUD/permission slices implemented / full admin UI and volatile activity parity pending |
+| RAS | ras, ras_ports, ras_attrs | A1.24 RAS implementation | Native repository/runtime registry and admin CRUD slice implemented / provider mutation reload and live device interoperability pending |
 | RAS schema | ras, ras_attrs, ras_ports, ras_ippools | RAS repository + runtime registry | Native / runtime registry implemented; mutation reload integration pending |
 | IP pools | ippool, ippool_ips, ras_ippools | IP allocation service | Native ippool/ippool_ips repository + runtime state implemented / RAS binding and live session lifecycle integration pending |
-| Users | users, normal_users, voip_users | A1.24 USER implementation | Schema native / USER API refactor in progress |
+| Users | users, normal_users, voip_users | A1.24 USER implementation | Native list/detail/create and selected attribute/credit/owner/group APIs implemented / specialized attribute handlers and full lifecycle parity pending |
 | Groups | groups, group_attrs | A1.24 GROUP implementation | Schema native / runtime pending |
 | Attribute system | user_attrs, group_attrs, ras_attrs | typed compatibility attribute engine | Implemented boundary / parity pending |
 | Caller ID | caller_id_users | authentication policy | Inventory |
 | Persistent LAN | persistent_lan_users | session/address policy | Inventory |
 | Sessions | connection_log, online user lifecycle | A1.24 online/session lifecycle | Runtime implemented / persistence and source parity pending |
-| Accounting | connection_log, ias_event, ias_event_extended | A1.24 accounting implementation | Runtime implemented / live connection-log persistence pending |
-| Bandwidth | bw_* | A1.24 Bandwidth Management implementation | Inventory |
+| Accounting | connection_log, ias_event, ias_event_extended | A1.24 accounting implementation | RADIUS Start/Interim/Stop/Alive runtime and native connection-log persistence wired / full IAS, charging, restart and source parity pending |
+| Bandwidth | internet_bw_snapshot and bw_* | A1.24 Bandwidth Management implementation | `save_bw_usage` Accounting-Request delta consumer writes native snapshot table; periodic per-instance sampling parity and bandwidth-management UI/runtime remain pending |
 | Charges | charges | A1.24 Charge implementation | Implemented boundary / persistence and parity pending |
 | Internet billing | charge_rules, internet_charge_rules | A1.24 Internet Charge Rule implementation | Implemented boundary / source parity and persistence pending |
 | VoIP billing | voip_charge_rules, tariffs, prefixes | A1.24 VoIP Charge Rule / VoIP Tariff implementation | Implemented boundary / source parity and persistence pending |
