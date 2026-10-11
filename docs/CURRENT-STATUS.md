@@ -3,7 +3,7 @@
 Updated: 2026-10-12  
 Repository: `PardisMobile/ATD-Radius-Modernized-IBSng`  
 Branch: `main`  
-Latest code/test commit: `581fd60d87f2e15f6f4dd81cf50e0cbbb3772ed6` (source-backed VoIP preferred-language attribute; CI verified)
+Latest code/test commit: `f97af48b94204ac2e7d6065d522c29d2583dc76e` (bandwidth snapshot runtime integration and localtime regression tests; full CI: 694 passed, 2 warnings on Python 3.11 and 3.12). Latest main docs checkpoint: `52d3c15209c89072f32e10848fa06c6b52d4e310` (its CI was queued at last check).
 
 ## Authority and validation
 
