@@ -54,3 +54,6 @@ A1.24-compatible admin API GET/PUT operations now read or update one fast-dial s
 ### Bandwidth snapshot consumer — 2026-10-12
 
 The RADIUS accounting runtime now writes counter deltas into the native `internet_bw_snapshot` table only for normal users whose effective attributes include `save_bw_usage`; group defaults are inherited and user attributes override group values. The write path aggregates deltas into one-minute buckets. This is a first production consumer integration, but its event-driven sampling differs from A1.24's periodic per-instance online loop. Keep full parity pending until missed Interim-Updates and provider counter behavior are validated.
+
+
+Verification update — 2026-10-12: bandwidth snapshot runtime integration is tested by the Python workflow at HEAD `f97af48b94204ac2e7d6065d522c29d2583dc76e`; full CI passed on the underlying implementation commit `bcb942adf311b3369dbe1a9d1da486bc1b633433`. The latest full matrix is still pending. State remains partial because the source uses periodic per-instance polling while ATD currently uses RADIUS counter deltas.
