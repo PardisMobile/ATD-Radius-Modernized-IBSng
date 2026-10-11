@@ -86,3 +86,17 @@ def test_runtime_skips_bandwidth_snapshot_for_non_normal_user():
     handler(packet(), ("192.0.2.1", 1812))
 
     snapshot_repo.record_usage.assert_not_called()
+
+
+def test_runtime_records_final_stop_counter_delta_for_snapshot_enabled_user():
+    start_at = datetime(2026, 10, 12, 12, 3, 0, tzinfo=timezone.utc)
+    stop_at = datetime(2026, 10, 12, 12, 3, 30, tzinfo=timezone.utc)
+    handler, snapshot_repo = setup_handler([
+        event(AccountingStatus.START, 500, 900, start_at),
+        event(AccountingStatus.STOP, 640, 1_000, stop_at),
+    ])
+
+    handler(packet(), ("192.0.2.1", 1812))
+    handler(packet(), ("192.0.2.1", 1812))
+
+    snapshot_repo.record_usage.assert_called_once_with(stop_at, 7, 140, 100)
