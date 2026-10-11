@@ -36,7 +36,7 @@ def setup_handler(events, *, normal=True, marker=True):
     identities.user_id.return_value = 7
     identities.ras_id.return_value = 3
     identities.ras.get.return_value = None
-    identities.users.normal_credentials.return_value = ("alice", "stored-hash") if normal else None
+    identities.users.is_normal_user.return_value = normal
     identities.users.policy_attributes.return_value = [("save_bw_usage", "")] if marker else []
     snapshots = Mock()
     handler = RadiusRuntimeHandler(
