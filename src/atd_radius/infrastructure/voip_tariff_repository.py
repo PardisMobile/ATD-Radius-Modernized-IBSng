@@ -31,6 +31,19 @@ class PostgresVoipTariffRepository:
             return None
         return self._build(rows[0])
 
+    def get_by_name(self, tariff_name: str) -> VoipTariff | None:
+        rows = self.conn.execute(
+            """
+            SELECT tariff_id, tariff_name, comment
+            FROM voip_charge_rule_tariff
+            WHERE tariff_name = %s
+            """,
+            (tariff_name,),
+        ).fetchall()
+        if not rows:
+            return None
+        return self._build(rows[0])
+
     def list(self) -> list[VoipTariff]:
         rows = self.conn.execute(
             """

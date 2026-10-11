@@ -105,6 +105,15 @@ _RAS_PERMISSIONS = AdminPermissionEvaluator(
     ]
 )
 
+_TARIFF_PERMISSIONS = AdminPermissionEvaluator(
+    [
+        PermissionSpec("GOD", PermissionKind.NO_VALUE),
+        PermissionSpec("SEE VOIP TARIFF", PermissionKind.NO_VALUE),
+        PermissionSpec("CHANGE VOIP TARIFF", PermissionKind.NO_VALUE),
+    ]
+)
+
+
 _ADMIN_PERMISSIONS = AdminPermissionEvaluator(
     [
         PermissionSpec("GOD", PermissionKind.NO_VALUE),
@@ -193,6 +202,8 @@ def require_admin_permission(permission_name: str):
             evaluator = _USER_PERMISSIONS
         elif permission_name in {"SEE CONNECTION LOGS", "SEE CREDIT CHANGES"}:
             evaluator = _REPORT_PERMISSIONS
+        elif permission_name in {"SEE VOIP TARIFF", "CHANGE VOIP TARIFF"}:
+            evaluator = _TARIFF_PERMISSIONS
         elif permission_name in {
             "ADD NEW ADMIN", "SEE ADMIN INFO", "SEE ADMIN PERMISSIONS", "CHANGE ADMIN PERMISSIONS",
             "CHANGE ADMIN INFO", "CHANGE ADMIN DEPOSIT", "CHANGE ADMIN PASSWORD", "DELETE ADMIN"

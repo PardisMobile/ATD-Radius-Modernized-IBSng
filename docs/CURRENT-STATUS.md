@@ -197,3 +197,10 @@ Added `PostgresVoipTariffRepository` for source-defined `voip_charge_rule_tariff
 This closes the **read-only tariff persistence adapter slice only**. It does not wire VoIP tariff selection into the live RAS/VoIP call lifecycle, implement tariff mutation/permission/audit actions, or prove VoIP charge settlement parity. Those remain backend work; UI and installer remain later-stage workstreams.
 
 Current main at the start of this increment was `aed0b3f112fc7aafd1176b2bd658f5c4ad1f88b3`; full Python workflow run `38183660075` completed successfully. CI for this new increment must be checked on the resulting commit before calling it verified.
+
+
+## Native VoIP tariff read API — 2026-10-12
+
+Added source-backed `SEE VOIP TARIFF` authorization and read-only API routes for tariff listing and tariff detail by native tariff name. The list omits prefixes as A1.24 `listTariffs` does; detail can include prefixes and applies the native prefix-name regular-expression filter. API output preserves the source spelling `min_chargable_duration`. Regression tests cover permission denial, listing order, optional prefix filtering, unknown tariffs and invalid regex input.
+
+This is the read-only API slice only. `CHANGE VOIP TARIFF` mutation workflows, native validation and transaction semantics, cache reload behavior, and live VoIP charging remain unfinished. UI/installer are still reserved for the final stage.

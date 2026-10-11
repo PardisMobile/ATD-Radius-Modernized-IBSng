@@ -127,3 +127,8 @@ Latest known code/test CI baseline remains `f97af48b94204ac2e7d6065d522c29d2583d
 ## VoIP tariff persistence adapter — 2026-10-12
 
 Added a read-only PostgreSQL adapter against the exact A1.24 tariff tables `voip_charge_rule_tariff` and `tariff_prefix_list`. Source-specific `min_chargable_duration` spelling is retained at the SQL boundary. Tests cover mapping, unknown IDs and longest-prefix lookup. This is a persistence foundation, not complete VoIP billing parity: runtime RAS call lifecycle, charge-rule selection/transition, credit settlement, mutation authorization/audit and integration tests remain open. Keep this backend work ahead of the final UI/installer stage.
+
+
+## Native VoIP tariff read API — 2026-10-12
+
+The read-only tariff API is now wired with source-backed `SEE VOIP TARIFF` permission. It exposes native tariff list/detail and optional prefix-name regex filtering. The native PostgreSQL loader and API tests are present. Remaining backend parity includes `CHANGE VOIP TARIFF` operations, A1.24 validation and mutation/reload semantics, and connection to the live VoIP/RAS charging lifecycle. Do not mark VoIP tariff/charging complete from read API coverage.
