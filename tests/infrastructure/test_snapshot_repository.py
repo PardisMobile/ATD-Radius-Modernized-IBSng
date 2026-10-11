@@ -32,7 +32,8 @@ def test_bandwidth_snapshot_buckets_to_native_default_one_minute_interval():
     )
     sql, params = conn.calls[0]
     assert "INSERT INTO internet_bw_snapshot" in sql
-    assert params == (datetime(2026, 10, 12, 12, 1), 7, 100, 200)
+    expected = datetime.fromtimestamp(datetime(2026, 10, 12, 12, 1, 59, tzinfo=timezone.utc).timestamp() // 60 * 60)
+    assert params == (expected, 7, 100, 200)
 
 
 def test_bandwidth_snapshot_normalizes_timezone_and_accumulates_by_native_key():
@@ -47,7 +48,8 @@ def test_bandwidth_snapshot_normalizes_timezone_and_accumulates_by_native_key():
     sql, params = conn.calls[0]
     assert "ON CONFLICT (user_id, snp_date)" in sql
     assert "out_rate = internet_bw_snapshot.out_rate + EXCLUDED.out_rate" in sql
-    assert params == (datetime(2026, 10, 12, 14, 1), 7, 50, 60)
+    expected = datetime.fromtimestamp(datetime(2026, 10, 12, 14, 1, 20, tzinfo=timezone.utc).timestamp() // 60 * 60)
+    assert params == (expected, 7, 50, 60)
 
 
 def test_bandwidth_snapshot_rejects_invalid_interval_and_negative_deltas():
@@ -66,4 +68,5 @@ def test_batched_bandwidth_snapshot_normalizes_aware_timestamp_for_native_column
         datetime(2026, 10, 12, 14, 0, tzinfo=timezone.utc),
         {7: (10, 20)},
     )
-    assert conn.calls[0][1] == (datetime(2026, 10, 12, 14, 0), 7, 10, 20)
+    expected = datetime.fromtimestamp(datetime(2026, 10, 12, 14, 0, tzinfo=timezone.utc).timestamp())
+    assert conn.calls[0][1] == (expected, 7, 10, 20)
