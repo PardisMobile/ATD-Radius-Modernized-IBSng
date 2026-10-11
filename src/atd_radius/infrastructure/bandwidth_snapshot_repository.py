@@ -53,6 +53,8 @@ class PostgresBandwidthSnapshotRepository:
     def add_usage(
         self, snapshot_at: datetime, usage_by_user: dict[int, tuple[int, int]]
     ) -> None:
+        if snapshot_at.tzinfo is not None:
+            snapshot_at = snapshot_at.astimezone(timezone.utc).replace(tzinfo=None)
         for user_id, (input_delta, output_delta) in sorted(usage_by_user.items()):
             if user_id < 0 or input_delta < 0 or output_delta < 0:
                 raise ValueError("user IDs and bandwidth deltas must be non-negative")
