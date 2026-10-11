@@ -31,6 +31,8 @@ from atd_radius.infrastructure import UserRepository
 class UserSource(Protocol):
     def get_authentication_record(self, username: str) -> tuple[int, str, bool] | None: ...
     def attributes(self, user_id: int) -> list[tuple[str, str]]: ...
+    def is_normal_user(self, user_id: int) -> bool: ...
+    def policy_attributes(self, user_id: int) -> list[tuple[str, str]]: ...
 
 
 class AccountingIdentityResolver(Protocol):
@@ -141,12 +143,12 @@ class RadiusRuntimeHandler:
                                 accounting_result.delta_input_octets > 0
                                 or accounting_result.delta_output_octets > 0
                             ) and users is not None:
-                                normal_credentials = getattr(users, "normal_credentials", None)
+                                is_normal_user = getattr(users, "is_normal_user", None)
                                 policy_attributes = getattr(users, "policy_attributes", None)
-                                if callable(normal_credentials) and callable(policy_attributes):
-                                    normal_record = normal_credentials(user_id)
+                                if callable(is_normal_user) and callable(policy_attributes):
+                                    normal_user = is_normal_user(user_id)
                                     effective_attrs = dict(policy_attributes(user_id))
-                                    if normal_record is not None and "save_bw_usage" in effective_attrs:
+                                    if normal_user and "save_bw_usage" in effective_attrs:
                                         self.bandwidth_snapshots.record_usage(
                                             event.observed_at,
                                             user_id,
