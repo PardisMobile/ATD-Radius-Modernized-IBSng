@@ -814,7 +814,11 @@ def set_fast_dial_destination(
     payload: FastDialDestinationChange,
     admin: AdminPrincipal = Depends(require_admin_session),
 ) -> FastDialDestinationView:
-    """Update one native ten-slot fast-dial destination using A1.24 action semantics."""
+    """Update one fast-dial slot with A1.24 validation and persistence semantics.
+
+    This API does not yet refresh an authoritative live VoIP user instance; the
+    production RAS login/update lifecycle remains a separate integration task.
+    """
     if admin.remote_addr is None:
         raise HTTPException(status_code=400, detail="A valid administrator remote address is required")
     try:
