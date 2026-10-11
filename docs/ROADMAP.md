@@ -102,3 +102,14 @@ Implemented native-table persistence for `internet_bw_snapshot` and wired RADIUS
 
 
 Verification update — 2026-10-12: Python-only CI passed on latest test HEAD `f97af48b94204ac2e7d6065d522c29d2583dc76e` (https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38180272821). Full CI passed on the implementation commit `bcb942adf311b3369dbe1a9d1da486bc1b633433` (https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38180263093); full CI for the latest test-only adjustment remains pending. Do not mark full bandwidth snapshot parity complete until periodic per-instance sampling is matched or the documented event-driven transformation is explicitly accepted by compatibility tests.
+
+
+## Full source + Markdown audit checkpoint — 2026-10-12
+
+Current verified implementation baseline before documentation-only audit updates: `f87a63cf46c6b271d6efdcc2a7d80af2d649c760`; full CI and Python-only CI both passed on that exact HEAD (runs 38180343444 and 38180343421). The status/context audit notes were then updated in documentation-only commits; CI must be checked on the newest main HEAD before claiming the documentation commits are green.
+
+The user explicitly requires continuing all workstreams without pausing, reviewing the complete IBSng A1.24 source archive semantically (not just inventorying files), and reviewing every project Markdown file. First pass fetched and inventoried all 65 repository Markdown files. Next: resolve cross-document stale/current-state statements while preserving historically accurate checkpoint notes, then continue source-to-ATD semantic review by subsystem.
+
+The archive has 2,477 members and 2,295 regular source files (453 Python, 530 PHP, 284 Smarty templates, 20 SQL files). Inventory counts are not source-review completion. For each source pass, track source file and callers, behavior, DB side effects, runtime hooks, ATD implementation/tests, compatibility gaps, and evidence. Never claim full parity from unit tests alone.
+
+Do not stop or silently drop UI, migration, RADIUS/RAS, billing, EAP, XML-RPC, API, source audit, or deployment work. Prioritize cohesive implementation batches across the remaining gaps and keep frozen source-verified protocol/authentication/MultiLogin/persistence behavior unchanged unless exact A1.24 evidence requires correction.
