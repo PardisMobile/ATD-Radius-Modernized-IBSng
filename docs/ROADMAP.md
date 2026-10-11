@@ -113,3 +113,12 @@ The user explicitly requires continuing all workstreams without pausing, reviewi
 The archive has 2,477 members and 2,295 regular source files (453 Python, 530 PHP, 284 Smarty templates, 20 SQL files). Inventory counts are not source-review completion. For each source pass, track source file and callers, behavior, DB side effects, runtime hooks, ATD implementation/tests, compatibility gaps, and evidence. Never claim full parity from unit tests alone.
 
 Do not stop or silently drop UI, migration, RADIUS/RAS, billing, EAP, XML-RPC, API, source audit, or deployment work. Prioritize cohesive implementation batches across the remaining gaps and keep frozen source-verified protocol/authentication/MultiLogin/persistence behavior unchanged unless exact A1.24 evidence requires correction.
+
+
+## Content-level audit corrections and parallel workstreams — 2026-10-12
+
+A direct content review has begun across the source and subsystem Markdown files; this is not merely a filename inventory. Confirmed corrections have been made to the current status, compatibility/migration ledgers, bandwidth attribute consumer map, Fast Dial runtime audit, connection-log/persistence audit, RADIUS dispatch parity, runtime batch audit and session-state audit. Those edits distinguish historical checkpoints from current implementation status and explicitly record the evidence/source call chains.
+
+No project workstream is to be silently stopped. UI inventory/specification and safe non-destructive UI implementation continue in parallel with RADIUS/RAS, billing, EAP, API/RBAC, XML-RPC, database import/parity, source review and deployment work. Operations that can corrupt user/accounting state or terminate a live session remain gated until their A1.24 lifecycle and safety requirements are implemented; this is a safety dependency, not abandonment of that workstream.
+
+Latest known code/test CI baseline remains `f97af48b94204ac2e7d6065d522c29d2583dc76e` (full matrix passed, 694 passed and 2 warnings on Python 3.11 and 3.12). Docs-only commit `f87a63cf46c6b271d6efdcc2a7d80af2d649c760` also passed both workflows. The current documentation review has generated newer commits; their CI status must be checked on the exact current HEAD before they are called green.
