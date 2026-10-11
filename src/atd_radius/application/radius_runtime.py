@@ -20,6 +20,7 @@ from atd_radius.domain.ras_provider import provider_session_id, provider_service
 from atd_radius.domain.user_policies import ras_allows_multi_login
 from atd_radius.infrastructure.accounting_persistence import NativeAccountingPersistence
 from atd_radius.infrastructure.connection_log_repository import ConnectionLogRepository
+from atd_radius.infrastructure.bandwidth_snapshot_repository import PostgresBandwidthSnapshotRepository
 from atd_radius.infrastructure.billing_rules import PostgresInternetChargeRuleRepository
 from atd_radius.infrastructure.credit_repository import UserCreditRepository
 from atd_radius.infrastructure.ip_pool_repository import PostgresIPPoolRepository
@@ -86,6 +87,7 @@ class RadiusRuntimeHandler:
         identities: AccountingIdentityResolver,
         persistence=None,
         ip_pool_sessions: IPPoolSessionManager | None = None,
+        bandwidth_snapshots: PostgresBandwidthSnapshotRepository | None = None,
     ) -> None:
         self.dispatcher = dispatcher
         self.accounting_sessions = (
@@ -95,6 +97,7 @@ class RadiusRuntimeHandler:
         )
         self.identities = identities
         self.ip_pool_sessions = ip_pool_sessions
+        self.bandwidth_snapshots = bandwidth_snapshots
         if self.dispatcher.session_control is None:
             self.dispatcher.session_control = RegistrySessionControl(accounting_sessions.registry)
 
@@ -127,7 +130,29 @@ class RadiusRuntimeHandler:
                                 event,
                                 ras_multi_login_allowed=ras_allowed,
                             )
-                        self.accounting_sessions.apply(event, user_id, ras_id)
+                        accounting_result = self.accounting_sessions.apply(event, user_id, ras_id)
+                        # A1.24 BWSnapShotOnlinesLoopClient only records normal
+                        # users with the effective save_bw_usage marker. RADIUS
+                        # counter deltas are aggregated into the native snapshot
+                        # table by the configured snapshot interval bucket.
+                        if self.bandwidth_snapshots is not None:
+                            users = getattr(self.identities, "users", None)
+                            if (
+                                accounting_result.delta_input_octets > 0
+                                or accounting_result.delta_output_octets > 0
+                            ) and users is not None:
+                                normal_credentials = getattr(users, "normal_credentials", None)
+                                policy_attributes = getattr(users, "policy_attributes", None)
+                                if callable(normal_credentials) and callable(policy_attributes):
+                                    normal_record = normal_credentials(user_id)
+                                    effective_attrs = dict(policy_attributes(user_id))
+                                    if normal_record is not None and "save_bw_usage" in effective_attrs:
+                                        self.bandwidth_snapshots.record_usage(
+                                            event.observed_at,
+                                            user_id,
+                                            accounting_result.delta_input_octets,
+                                            accounting_result.delta_output_octets,
+                                        )
                         if self.ip_pool_sessions:
                             if event.status.value == "Start":
                                 self.ip_pool_sessions.accounting_start(event, ras_id)
@@ -195,6 +220,7 @@ class NativeRadiusPacketHandler:
                 accounting,
                 identities,
                 ip_pool_sessions=IPPoolSessionManager(pools, ras),
+                bandwidth_snapshots=PostgresBandwidthSnapshotRepository(conn),
             )
             return handler(packet, peer)
 
@@ -317,4 +343,5 @@ def build_native_radius_runtime(
         accounting,
         identities,
         ip_pool_sessions=IPPoolSessionManager(state.pools, state.ras),
+        bandwidth_snapshots=PostgresBandwidthSnapshotRepository(conn),
     )
