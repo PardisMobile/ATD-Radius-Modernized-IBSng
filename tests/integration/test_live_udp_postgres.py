@@ -168,6 +168,10 @@ def test_live_transaction_rolls_back_connection_log_and_credit_on_settlement_fai
         conn.execute(
             "INSERT INTO charge_rule_day_of_weeks (charge_rule_id, day_of_week) VALUES (1, 0),(1,1),(1,2),(1,3),(1,4),(1,5),(1,6)"
         )
+        # A1.24 treats only the explicit _ALL_ marker as a wildcard port.
+        conn.execute(
+            "INSERT INTO charge_rule_ports (charge_rule_id, ras_port) VALUES (1, '_ALL_')"
+        )
         conn.execute(
             """
             INSERT INTO user_attrs (user_id, attr_name, attr_value)
