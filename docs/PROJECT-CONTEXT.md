@@ -244,3 +244,16 @@ Important parity boundary: IBSng periodically polls each active instance and sum
 
 
 Latest verification note (2026-10-12): Python-only CI passed at HEAD `f97af48b94204ac2e7d6065d522c29d2583dc76e` (https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38180272821). Full CI passed on the same implementation after the source-backed localtime fix at `bcb942adf311b3369dbe1a9d1da486bc1b633433` (https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38180263093). Full matrix for the latest test-only commit remains in progress. Bandwidth sampling remains partial parity because event-driven RADIUS deltas cannot guarantee the original periodic per-instance snapshots.
+
+
+## Mandatory carry-forward — full source and Markdown audit (2026-10-12)
+
+Current repository HEAD at this checkpoint: `f82961255d42b14f5378b69759163d8bdc168d10` (status-ledger refresh; code unchanged). Current main CI for the preceding code/docs checkpoint `f87a63cf46c6b271d6efdcc2a7d80af2d649c760` passed both full and Python-only workflows:
+- Full: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38180343444
+- Python-only: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38180343421
+
+User instruction reaffirmed: do not stop any workstream. The entire IBSng A1.24 archive and every Markdown file in the ATD repository must be reviewed; an inventory alone is insufficient. The repository tree currently contains 65 Markdown files; all were fetched for a first-pass inventory of headings, dates, TODO/checklist markers and recent checkpoints. Continue with semantic cross-document consistency review, then correct source/status contradictions with evidence. Do not claim the complete content audit is finished merely because files were fetched.
+
+The local canonical archive hash is `c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839614bb9349d18a8`; tar inventory reports 2,477 members, 2,295 regular source files, 453 Python files, 530 PHP files, 284 Smarty templates, and 20 SQL files. Every source review pass must record file/call path, consumers, DB side effects, runtime lifecycle, ATD mapping, tests, and status. Preserve already verified/frozen PAP, CHAP, MS-CHAPv1/v2, MS-CHAP2-Success/AuthResponse, MPPE, MultiLogin, feature/persistence/accounting core unless exact A1.24 source evidence proves a required correction.
+
+Immediate implementation priorities remain parallel, not replacements for one another: Fast Dial production VoIP/RAS lifecycle, bandwidth periodic-sampling parity, billing/accounting settlement, source-compatible login/session-in-progress truth and safe destructive operations, provider interoperability, XML-RPC, schema import/parity, and installation/upgrade/rollback. Each batch must end with regression tests, CI on the resulting HEAD, and status/roadmap/context updates.
