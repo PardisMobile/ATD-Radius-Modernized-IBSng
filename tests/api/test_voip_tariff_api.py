@@ -89,3 +89,11 @@ def test_tariff_detail_rejects_invalid_regex(monkeypatch):
     with pytest.raises(HTTPException) as error:
         api.get_voip_tariff("Alpha", True, "[", principal({"SEE VOIP TARIFF": ""}))
     assert error.value.status_code == 422
+
+
+def test_tariff_mutation_permission_is_required_separately():
+    require = require_admin_permission("CHANGE VOIP TARIFF")
+    assert require(principal({"CHANGE VOIP TARIFF": ""})).username == "operator"
+    with pytest.raises(HTTPException) as denied:
+        require(principal({"SEE VOIP TARIFF": ""}))
+    assert denied.value.status_code == 403

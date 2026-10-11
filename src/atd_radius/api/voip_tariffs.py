@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import re
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field, field_validator
@@ -171,10 +171,10 @@ def create_voip_tariff(
             repo = PostgresVoipTariffRepository(conn)
             tariff_id = repo.create_tariff(payload.tariff_name, payload.comment)
             _audit(conn, admin, "voip_tariff.create", str(tariff_id), {"tariff_name": payload.tariff_name})
-            conn.commit()
             tariff = repo.get(tariff_id)
             if tariff is None:
                 raise RuntimeError("created tariff could not be reloaded")
+            conn.commit()
             return _view(tariff, include_prefixes=True, name_regex="")
     except (TariffAlreadyExists,) as exc:
         raise _mutation_error(exc) from exc
@@ -231,9 +231,9 @@ def add_voip_prefixes(
             prefix_ids = repo.add_prefixes(tariff_name, [item.to_domain() for item in prefixes])
             _audit(conn, admin, "voip_tariff.prefixes.add", tariff_name, {"prefix_ids": prefix_ids})
             tariff = repo.get_by_name(tariff_name)
-            conn.commit()
             if tariff is None:
                 raise RuntimeError("tariff could not be reloaded")
+            conn.commit()
             selected = {item.prefix_id for item in tariff.prefixes if item.prefix_id in prefix_ids}
             return [_view(tariff, include_prefixes=True, name_regex="").prefixes[i]
                     for i, item in enumerate(tariff.prefixes) if item.prefix_id in selected]
