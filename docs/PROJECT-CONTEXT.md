@@ -208,3 +208,10 @@ Canonical source `IBSng/core/user/plugins/fast_dial.py` was read from the pinned
 ## Fast-dial runtime source audit — 2026-10-11
 
 The current main branch contains source-backed fast_dial mutation/storage and green CI for the code/test checkpoint. The archive SHA-256 was rechecked as `c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839bb9349d18a8`. Read `docs/A1.24-FAST-DIAL-RUNTIME-AUDIT.md` before implementing the runtime consumer. A1.24's plugin acts on VoIP/RAS messages during login/update: it checks `FASTDIAL_PREFIX`, parses the called-number suffix, rewrites `called_number`, invokes `setRedirectNumber(reply_packet, destination)`, and stores the selected index in instance metadata. The source actions manager also exposes add/get destination methods. None of those runtime/actions-manager semantics should be approximated as generic RADIUS reply attributes. Runtime integration and its source-derived tests remain open. Preserve all previously verified PAP/CHAP/MS-CHAP/MPPE, MultiLogin, Accounting and Persistence behavior.
+
+
+## Fast-dial runtime foundation — 2026-10-11
+
+A new source-shaped domain helper and regression suite were added: `src/atd_radius/domain/fast_dial.py`, `tests/domain/test_fast_dial.py`. It models A1.24's prefix gate, integer suffix/list-index semantics, instance `fast_dial_index`, and redirect callback; destination editing separately enforces the actions-manager's digit-only destination and 0–9 slot checks. This helper is not yet connected to the production VoIP/RAS message lifecycle; do not claim fast-dial runtime parity. GitHub commits: `318b9b0f`, `8b70ba9b`, `383472b2`.
+
+Checksum issue: the project-provided hash literal `c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839bb9349d18a8` is only 61 hex characters, so it cannot be a SHA-256. The uploaded archive computes to `c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839614bb9349d18a8`. Treat this as a discrepancy requiring reconciliation, not a successful match. Keep all validated authentication, MPPE, session, accounting and persistence behavior frozen.
