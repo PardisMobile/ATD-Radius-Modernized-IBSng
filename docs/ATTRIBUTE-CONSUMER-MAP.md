@@ -14,7 +14,7 @@ An attribute is **not migrated** merely because its name exists in the catalog. 
 | `session_timeout` | RADIUS policy | `Session-Timeout` + session enforcement | catalogued; mapping pending |
 | `idle_timeout` | RADIUS policy | `Idle-Timeout` + session enforcement | catalogued; mapping pending |
 | `save_bw_usage` | Accounting policy | usage recorder | attribute mutation implemented; usage recorder integration pending |
-| `fast_dial` | VoIP call routing | called-number rewrite / redirect-number reply | mutation/storage implemented; runtime redirection and actions-manager integration pending |
+| `fast_dial` | VoIP call routing | called-number rewrite / redirect-number reply | mutation/storage and admin action API implemented; production VoIP runtime redirection pending |
 | `normal_charge` | Billing policy | charge resolver | catalogued; implementation pending |
 | `voip_charge` | Billing policy | charge resolver | catalogued; implementation pending |
 | `radius_attrs` | Protocol policy | RADIUS attribute mapper | catalogued; implementation pending |
@@ -44,3 +44,8 @@ The project must not mark an attribute `migrated` based only on schema presence.
 ### Fast-dial runtime foundation — 2026-10-11
 
 The new `domain/fast_dial.py` helper covers source-shaped prefix/index selection, instance index mutation and a redirect callback, with separate native actions-manager slot validation. It is not yet invoked by the production VoIP/RAS message lifecycle. Keep the consumer state as **runtime integration pending**, not implemented/verified. See `docs/A1.24-FAST-DIAL-RUNTIME-AUDIT.md`.
+
+
+### Fast-dial action API — 2026-10-12
+
+A1.24-compatible admin API GET/PUT operations now read or update one fast-dial slot by VoIP username. The write path validates digits-only destinations and indexes 0–9, locks the user row against concurrent slot writes, preserves native user-audit suppression, and writes operational audit. The production RAS `s_login`/`s_update` redirect side effect and per-instance metadata lifecycle are still pending; this attribute is not yet fully migrated.
