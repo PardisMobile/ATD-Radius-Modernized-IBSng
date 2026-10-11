@@ -94,3 +94,8 @@ Latest main HEAD `2dd944de4f8df82792f23912f301d6725263d9ff` passed full CI on Py
 ## Fast-dial action-manager API increment — 2026-10-12
 
 Added the native-style fast-dial slot repository and admin GET/PUT API keyed by VoIP username. Writes validate destination/index as A1.24 does, lock the owning user row to avoid lost updates, preserve native USER_AUDIT_LOG suppression, and emit transactional operational audit. Regression coverage includes slot semantics and API permission checks. This closes the API/action-manager persistence slice only. The production VoIP `s_login`/`s_update` message rewrite, redirect-reply integration, and per-instance index lifecycle remain open. Do not mark fast_dial runtime parity complete before those are wired and verified.
+
+
+## Bandwidth snapshot runtime increment — 2026-10-12
+
+Implemented native-table persistence for `internet_bw_snapshot` and wired RADIUS Accounting-Request input/output deltas into it when the resolved user is normal and the effective A1.24 `save_bw_usage` marker exists. User and group attribute precedence is resolved through the existing repository. Rows aggregate by the source default one-minute interval bucket and repeated writes accumulate at `(user_id, snp_date)`. Tests cover runtime eligibility and SQL behavior. This is **partial consumer integration**, not complete A1.24 parity: the original samples every online instance periodically; ATD currently depends on Accounting-Request deltas. Validate gaps, counter resets, and provider Interim-Update intervals before marking the feature verified.
