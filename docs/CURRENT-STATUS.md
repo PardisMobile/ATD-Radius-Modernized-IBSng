@@ -141,3 +141,12 @@ Enabled `fast_dial` in the generic user-attribute mutation API after tracing `IB
 ## Fast-dial runtime foundation CI result — 2026-10-11
 
 Current main HEAD: `2dd944de4f8df82792f23912f301d6725263d9ff`. Full CI succeeded on Python 3.11 and 3.12, including compile, Ruff, PHP syntax and test steps: **672 passed, 2 warnings** on Python 3.11 (the Python 3.12 job also passed). CI: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38159213377 ; Python workflow: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38159213530. An earlier intermediate test commit failed because its fixture accidentally used index 72; this was corrected in `383472b2`, and the final HEAD is green. Runtime helper remains unintegrated into the production VoIP/RAS lifecycle.
+
+
+## Fast-dial action-manager API — 2026-10-12
+
+Implemented `src/atd_radius/infrastructure/fast_dial_actions.py` plus owner-scoped GET/PUT routes under `/api/v1/users/voip/{voip_username}/fast-dial/{index}`. GET returns the stored destination or an empty string for missing/out-of-range slots; PUT validates a digits-only destination and index 0–9, takes a row lock before changing one of ten slots, suppresses native user audit exactly as A1.24 does, and records ATD operational audit. Tests cover storage semantics, negative-index read compatibility, invalid writes, row locking, API permission checks and audit.
+
+**Boundary:** admin action API/storage is implemented; the production VoIP/RAS `s_login`/`s_update` runtime path still does not call the redirect helper. Called-number rewrite, redirect reply and per-instance `fast_dial_index` lifecycle remain open. Do not report full fast-dial parity yet.
+
+Code/test commits: `94485ec9`, `781d8f78`, `b1eec8e8`, `291aec12`, `04d0f713`, `0807517e`. CI for the latest API/test increment was still running when this note was authored; verify the newest run before marking it green.
