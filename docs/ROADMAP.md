@@ -67,3 +67,8 @@ Enabled A1.24 `voip_preferred_language` in the generic user attribute API after 
 ## Source-backed attribute increment — save_bw_usage
 
 `save_bw_usage` marker mutation matches A1.24's empty-string persistence and generic delete path. Regression coverage is included. Full CI passed on the tested feature commit on Python 3.11 and 3.12: 664 passed, 2 warnings per matrix job (https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38082764002). Bandwidth accounting consumer integration remains pending.
+
+
+## Source-backed attribute increment — fast_dial
+
+Added mutation/storage support for A1.24 `fast_dial` from `IBSng/core/user/plugins/fast_dial.py`: exactly ten comma-separated entries, each empty or digit-only. The source explicitly passes `False` to `useGenerateQuery` for both update and delete, so native user-audit writes are suppressed for this attribute. Three regression tests added. Runtime called-number redirection, FASTDIAL_PREFIX processing and the source actions-manager API remain incomplete. CI must pass before this increment is considered verified.
