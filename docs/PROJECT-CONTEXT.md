@@ -198,3 +198,8 @@ Compatibility note: these are single-user endpoints only; do not claim parity fo
 ## Handoff — save_bw_usage marker
 
 The generic user-attribute mutation API now includes A1.24 `save_bw_usage` based on `IBSng/core/user/plugins/save_bw_usage.py`. It is a presence marker persisted in `user_attrs` with an empty string, not a boolean string or numeric value. The current mutation endpoint accepts only `""`; deletion follows generic delete semantics. Generic owner-scoped authorization and native user audit are retained. A focused regression test was added. CI is running; verify it before calling this increment complete. Bandwidth usage accounting still needs consumer integration and parity tests.
+
+
+## Handoff — fast_dial attribute mutation (2026-10-11)
+
+Canonical source `IBSng/core/user/plugins/fast_dial.py` was read from the pinned A1.24 archive. `FastDialAttrUpdater.changeInit()` requires ten entries, validates each as empty or digit-only, stores a comma-joined string and calls `useGenerateQuery(..., False)`; `deleteInit()` also disables native user audit. ATD now exposes this attribute through the existing generic mutation service with equivalent string validation and audit suppression on both mutation paths. Added three regression tests. Runtime behavior (FASTDIAL_PREFIX called-number conversion, reply redirect-number, fast-dial index state) and the source actions manager are not implemented by this increment. Verify CI before marking this checkpoint complete.
