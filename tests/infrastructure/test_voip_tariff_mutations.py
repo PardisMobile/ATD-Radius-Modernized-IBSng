@@ -47,7 +47,7 @@ def prefix(code="98"):
 
 
 def test_create_tariff_uses_native_table_and_sequence_with_parameterized_values():
-    conn = ScriptedConn([Result(row=None), Result(row=(15,)), Result()])
+    conn = ScriptedConn([Result(), Result(row=None), Result(row=(15,)), Result()])
     tariff_id = PostgresVoipTariffRepository(conn).create_tariff("New_Tariff-1", "note")
     assert tariff_id == 15
     assert "LOCK TABLE voip_charge_rule_tariff" in conn.calls[0][0]

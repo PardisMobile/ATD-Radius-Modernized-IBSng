@@ -43,7 +43,7 @@ class VoipTariffView(BaseModel):
 
 
 class TariffPayload(BaseModel):
-    tariff_name: str = Field(min_length=1, max_length=255)
+    tariff_name: str = Field(min_length=1)
     comment: str = ""
 
     @field_validator("tariff_name")
@@ -270,7 +270,7 @@ def update_voip_prefix(
 @router.delete("/{tariff_name}/prefixes", status_code=204)
 def delete_voip_prefixes(
     tariff_name: str,
-    prefix_code: list[str] = Query(min_length=1),
+    prefix_code: list[str] = Query(...),
     admin: AdminPrincipal = Depends(require_admin_permission("CHANGE VOIP TARIFF")),
 ) -> None:
     try:
