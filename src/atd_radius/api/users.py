@@ -33,6 +33,7 @@ from atd_radius.infrastructure.user_attribute_mutations import (
     UserAttributeMutationRepository,
 )
 from atd_radius.infrastructure.caller_id_mutations import CallerIDMutationRepository
+from atd_radius.infrastructure.fast_dial_actions import FastDialActionError, FastDialActionsRepository
 
 router = APIRouter(prefix="/users", tags=["USER"])
 
@@ -770,3 +771,87 @@ def change_users_credit_bulk(
     except Exception as exc:
         raise HTTPException(status_code=409, detail="USER credit batch could not be changed") from exc
 
+
+
+class FastDialDestinationChange(BaseModel):
+    destination: str = Field(min_length=1, max_length=255)
+
+
+class FastDialDestinationView(BaseModel):
+    user_id: int
+    voip_username: str
+    index: int
+    destination: str
+
+
+@router.get("/voip/{voip_username}/fast-dial/{index}", response_model=FastDialDestinationView)
+def get_fast_dial_destination(
+    voip_username: str,
+    index: int,
+    admin: AdminPrincipal = Depends(require_admin_session),
+) -> FastDialDestinationView:
+    """Read one A1.24 fast-dial slot; unset/invalid indexes return an empty destination."""
+    with connection() as conn:
+        repository = FastDialActionsRepository(conn)
+        target = repository.get_target(voip_username)
+        if target is None:
+            raise HTTPException(status_code=404, detail="VoIP user not found")
+        if not can_access_user(admin, target.owner_id):
+            raise HTTPException(status_code=403, detail="Administrator permission denied")
+        destination = repository.get_destination(target.user_id, index)
+    return FastDialDestinationView(
+        user_id=target.user_id,
+        voip_username=target.voip_username,
+        index=index,
+        destination=destination,
+    )
+
+
+@router.put("/voip/{voip_username}/fast-dial/{index}", response_model=FastDialDestinationView)
+def set_fast_dial_destination(
+    voip_username: str,
+    index: int,
+    payload: FastDialDestinationChange,
+    admin: AdminPrincipal = Depends(require_admin_session),
+) -> FastDialDestinationView:
+    """Update one native ten-slot fast-dial destination using A1.24 action semantics."""
+    if admin.remote_addr is None:
+        raise HTTPException(status_code=400, detail="A valid administrator remote address is required")
+    try:
+        remote_addr = str(ipaddress.ip_address(admin.remote_addr))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="A valid administrator remote address is required") from exc
+
+    try:
+        with connection() as conn:
+            repository = FastDialActionsRepository(conn)
+            target = repository.lock_target(voip_username)
+            if target is None:
+                raise HTTPException(status_code=404, detail="VoIP user not found")
+            if not can_change_voip_user_attributes(admin, target.owner_id):
+                raise HTTPException(status_code=403, detail="Administrator permission denied")
+            try:
+                destination = repository.set_destination(target.user_id, index, payload.destination)
+            except FastDialActionError as exc:
+                raise HTTPException(status_code=422, detail=str(exc)) from exc
+            OperationalAuditRepository(conn).append(
+                actor_admin_id=admin.admin_id,
+                actor_username=admin.username,
+                action="user.fast_dial.destination.set",
+                outcome="success",
+                target_type="user",
+                target_id=str(target.user_id),
+                remote_addr=remote_addr,
+                details={"voip_username": target.voip_username, "index": index, "destination": destination},
+            )
+            conn.commit()
+            return FastDialDestinationView(
+                user_id=target.user_id,
+                voip_username=target.voip_username,
+                index=index,
+                destination=destination,
+            )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=409, detail="Fast-dial destination could not be changed") from exc
