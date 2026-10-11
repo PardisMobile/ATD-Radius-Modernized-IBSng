@@ -14,6 +14,7 @@ An attribute is **not migrated** merely because its name exists in the catalog. 
 | `session_timeout` | RADIUS policy | `Session-Timeout` + session enforcement | catalogued; mapping pending |
 | `idle_timeout` | RADIUS policy | `Idle-Timeout` + session enforcement | catalogued; mapping pending |
 | `save_bw_usage` | Accounting policy | usage recorder | attribute mutation implemented; usage recorder integration pending |
+| `fast_dial` | VoIP call routing | called-number rewrite / redirect-number reply | mutation/storage implemented; runtime redirection and actions-manager integration pending |
 | `normal_charge` | Billing policy | charge resolver | catalogued; implementation pending |
 | `voip_charge` | Billing policy | charge resolver | catalogued; implementation pending |
 | `radius_attrs` | Protocol policy | RADIUS attribute mapper | catalogued; implementation pending |
