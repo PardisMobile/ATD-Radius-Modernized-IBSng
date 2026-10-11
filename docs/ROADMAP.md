@@ -84,3 +84,8 @@ Source trace and explicit implementation gates are recorded in `docs/A1.24-FAST-
 Implemented and regression-tested a source-shaped domain primitive in `domain/fast_dial.py` for prefix handling, destination indexing, redirect callback and per-instance index tracking. Separate action-manager destination validation is also represented. Next gate: wire this into an authoritative VoIP/RAS login/update lifecycle and source-compatible actions-manager/API adapter; do not expose it as a generic RADIUS response attribute. CI status must be checked on the current branch before treating this increment as verified. See `docs/A1.24-FAST-DIAL-RUNTIME-AUDIT.md`.
 
 Source archive integrity discrepancy: the previously specified hash is 61 hex characters (not a valid SHA-256); the uploaded archive hashes to `c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839614bb9349d18a8`. Resolve the intended canonical hash before describing it as pinned/verified.
+
+
+## Fast-dial foundation verification — 2026-10-11
+
+Latest main HEAD `2dd944de4f8df82792f23912f301d6725263d9ff` passed full CI on Python 3.11 and 3.12; Python 3.11 reported 672 passed, 2 warnings. This verifies the new helper and regressions, not production runtime parity. Next implementation step is the authoritative VoIP/RAS login/update adapter and source-compatible actions-manager API, with explicit redirect and instance-state integration tests. Archive hash pin remains unresolved because the supplied literal is not valid SHA-256.
