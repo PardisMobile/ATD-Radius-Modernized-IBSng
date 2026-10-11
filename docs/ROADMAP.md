@@ -89,3 +89,8 @@ Source archive integrity discrepancy: the previously specified hash is 61 hex ch
 ## Fast-dial foundation verification — 2026-10-11
 
 Latest main HEAD `2dd944de4f8df82792f23912f301d6725263d9ff` passed full CI on Python 3.11 and 3.12; Python 3.11 reported 672 passed, 2 warnings. This verifies the new helper and regressions, not production runtime parity. Next implementation step is the authoritative VoIP/RAS login/update adapter and source-compatible actions-manager API, with explicit redirect and instance-state integration tests. Archive hash pin remains unresolved because the supplied literal is not valid SHA-256.
+
+
+## Fast-dial action-manager API increment — 2026-10-12
+
+Added the native-style fast-dial slot repository and admin GET/PUT API keyed by VoIP username. Writes validate destination/index as A1.24 does, lock the owning user row to avoid lost updates, preserve native USER_AUDIT_LOG suppression, and emit transactional operational audit. Regression coverage includes slot semantics and API permission checks. This closes the API/action-manager persistence slice only. The production VoIP `s_login`/`s_update` message rewrite, redirect-reply integration, and per-instance index lifecycle remain open. Do not mark fast_dial runtime parity complete before those are wired and verified.
