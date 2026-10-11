@@ -39,3 +39,8 @@ An attribute is **not migrated** merely because its name exists in the catalog. 
 - `migrated`: all required stages are complete.
 
 The project must not mark an attribute `migrated` based only on schema presence.
+
+
+### Fast-dial runtime foundation — 2026-10-11
+
+The new `domain/fast_dial.py` helper covers source-shaped prefix/index selection, instance index mutation and a redirect callback, with separate native actions-manager slot validation. It is not yet invoked by the production VoIP/RAS message lifecycle. Keep the consumer state as **runtime integration pending**, not implemented/verified. See `docs/A1.24-FAST-DIAL-RUNTIME-AUDIT.md`.
