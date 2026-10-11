@@ -97,3 +97,71 @@ def test_tariff_mutation_permission_is_required_separately():
     with pytest.raises(HTTPException) as denied:
         require(principal({"SEE VOIP TARIFF": ""}))
     assert denied.value.status_code == 403
+
+
+def test_create_tariff_writes_audit_and_commits_after_reload(monkeypatch):
+    conn = SimpleNamespace(committed=False)
+    conn.commit = lambda: setattr(conn, "committed", True)
+    captured = {}
+    tariff = SimpleNamespace(tariff_id=15, name="New_Tariff", comment="", prefixes=())
+
+    class Repository:
+        def __init__(self, _conn):
+            pass
+        def create_tariff(self, name, comment):
+            captured["create"] = (name, comment)
+            return 15
+        def get(self, tariff_id):
+            assert tariff_id == 15
+            return tariff
+
+    class Audit:
+        def __init__(self, _conn):
+            pass
+        def append(self, **kwargs):
+            captured["audit"] = kwargs
+
+    @contextmanager
+    def fake_connection():
+        yield conn
+
+    monkeypatch.setattr(api, "connection", fake_connection)
+    monkeypatch.setattr(api, "PostgresVoipTariffRepository", Repository)
+    monkeypatch.setattr(api, "OperationalAuditRepository", Audit)
+    result = api.create_voip_tariff(
+        api.TariffPayload(tariff_name="New_Tariff", comment=""),
+        principal({"CHANGE VOIP TARIFF": ""}),
+    )
+    assert result.tariff_id == 15
+    assert captured["create"] == ("New_Tariff", "")
+    assert captured["audit"]["action"] == "voip_tariff.create"
+    assert conn.committed is True
+
+
+def test_delete_tariff_maps_source_in_use_guard_without_commit(monkeypatch):
+    conn = SimpleNamespace(committed=False)
+    conn.commit = lambda: setattr(conn, "committed", True)
+
+    class Repository:
+        def __init__(self, _conn):
+            pass
+        def delete_tariff(self, _name):
+            from atd_radius.infrastructure.voip_tariff_repository import TariffInUseError
+            raise TariffInUseError("used")
+
+    @contextmanager
+    def fake_connection():
+        yield conn
+
+    monkeypatch.setattr(api, "connection", fake_connection)
+    monkeypatch.setattr(api, "PostgresVoipTariffRepository", Repository)
+    with pytest.raises(HTTPException) as error:
+        api.delete_voip_tariff("used", principal({"CHANGE VOIP TARIFF": ""}))
+    assert error.value.status_code == 409
+    assert conn.committed is False
+
+
+def test_tariff_name_validation_matches_native_character_contract():
+    assert api.TariffPayload(tariff_name="Alpha-2_test").tariff_name == "Alpha-2_test"
+    with pytest.raises(ValueError):
+        api.TariffPayload(tariff_name="bad name")
