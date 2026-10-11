@@ -188,3 +188,12 @@ Implementation commits include `fbbee3e9` (runtime wiring), `38d68bb7` (record m
 This review is reading document content against source paths and current code, not counting filenames. Corrections made so far: `save_bw_usage` is now described as a partial accounting-delta consumer rather than unimplemented; native connection-log persistence is recorded as runtime-wired while full source parity remains open; the RADIUS Disconnect/CoA packet boundary is distinguished from an authenticated/provider-integrated kill workflow; current admin creation/deletion/password/permission capabilities are reconciled with older checkpoint text; and UI work is recorded as a continuing parallel workstream rather than frozen. Direct source tracing also confirmed that A1.24 Fast Dial is a VoIP/RAS message hook on both login and update, mutates called_number, stores fast_dial_index per instance, and invokes setRedirectNumber on the reply packet—none of which is provided by ATD's RADIUS-only production runtime today.
 
 The full semantic review of every Markdown document and every source file is not yet complete. Files are marked reviewed only after their claims, dependencies, call sites, persistence effects, implementation and test evidence have been checked; structural inventory alone does not count.
+
+
+## VoIP tariff persistence increment — 2026-10-12
+
+Added `PostgresVoipTariffRepository` for source-defined `voip_charge_rule_tariff` and `tariff_prefix_list`. The mapping deliberately preserves the native SQL spelling `min_chargable_duration` while exposing the domain field `min_chargeable_duration`; it uses parameterized lookup, supports a missing tariff, and loads prefixes into the existing longest-prefix domain selector. Regression tests cover native column mapping, longest-prefix selection, missing tariff behavior and listing.
+
+This closes the **read-only tariff persistence adapter slice only**. It does not wire VoIP tariff selection into the live RAS/VoIP call lifecycle, implement tariff mutation/permission/audit actions, or prove VoIP charge settlement parity. Those remain backend work; UI and installer remain later-stage workstreams.
+
+Current main at the start of this increment was `aed0b3f112fc7aafd1176b2bd658f5c4ad1f88b3`; full Python workflow run `38183660075` completed successfully. CI for this new increment must be checked on the resulting commit before calling it verified.

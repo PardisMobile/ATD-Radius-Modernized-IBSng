@@ -122,3 +122,8 @@ A direct content review has begun across the source and subsystem Markdown files
 No project workstream is to be silently stopped. UI inventory/specification and safe non-destructive UI implementation continue in parallel with RADIUS/RAS, billing, EAP, API/RBAC, XML-RPC, database import/parity, source review and deployment work. Operations that can corrupt user/accounting state or terminate a live session remain gated until their A1.24 lifecycle and safety requirements are implemented; this is a safety dependency, not abandonment of that workstream.
 
 Latest known code/test CI baseline remains `f97af48b94204ac2e7d6065d522c29d2583dc76e` (full matrix passed, 694 passed and 2 warnings on Python 3.11 and 3.12). Docs-only commit `f87a63cf46c6b271d6efdcc2a7d80af2d649c760` also passed both workflows. The current documentation review has generated newer commits; their CI status must be checked on the exact current HEAD before they are called green.
+
+
+## VoIP tariff persistence adapter — 2026-10-12
+
+Added a read-only PostgreSQL adapter against the exact A1.24 tariff tables `voip_charge_rule_tariff` and `tariff_prefix_list`. Source-specific `min_chargable_duration` spelling is retained at the SQL boundary. Tests cover mapping, unknown IDs and longest-prefix lookup. This is a persistence foundation, not complete VoIP billing parity: runtime RAS call lifecycle, charge-rule selection/transition, credit settlement, mutation authorization/audit and integration tests remain open. Keep this backend work ahead of the final UI/installer stage.
