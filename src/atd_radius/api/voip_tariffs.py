@@ -90,7 +90,9 @@ def _view(tariff, *, include_prefixes: bool, name_regex: str) -> VoipTariffView:
             pattern = re.compile(name_regex) if name_regex else None
         except re.error as exc:
             raise HTTPException(status_code=422, detail="Invalid prefix name regular expression") from exc
-        for prefix in tariff.prefixes:
+        # A1.24 Tariff.__getPrefixesInfo sorts prefix_name ascending after
+        # applying the optional regex filter.
+        for prefix in sorted(tariff.prefixes, key=lambda item: item.name):
             if pattern is None or pattern.match(prefix.name):
                 prefixes.append(
                     PrefixView(
@@ -234,9 +236,12 @@ def add_voip_prefixes(
             if tariff is None:
                 raise RuntimeError("tariff could not be reloaded")
             conn.commit()
-            selected = {item.prefix_id for item in tariff.prefixes if item.prefix_id in prefix_ids}
-            return [_view(tariff, include_prefixes=True, name_regex="").prefixes[i]
-                    for i, item in enumerate(tariff.prefixes) if item.prefix_id in selected]
+            selected = set(prefix_ids)
+            return [
+                item
+                for item in _view(tariff, include_prefixes=True, name_regex="").prefixes
+                if item.prefix_id in selected
+            ]
     except Exception as exc:
         raise _mutation_error(exc) from exc
 
@@ -260,9 +265,11 @@ def update_voip_prefix(
             if prefix is None:
                 raise RuntimeError("updated prefix could not be reloaded")
             conn.commit()
-            return _view(tariff, include_prefixes=True, name_regex="").prefixes[
-                next(i for i, item in enumerate(tariff.prefixes) if item.prefix_id == prefix_id)
-            ]
+            return next(
+                item
+                for item in _view(tariff, include_prefixes=True, name_regex="").prefixes
+                if item.prefix_id == prefix_id
+            )
     except Exception as exc:
         raise _mutation_error(exc) from exc
 

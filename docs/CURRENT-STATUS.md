@@ -224,3 +224,6 @@ Added a read-only `PostgresVoipChargeRuleRepository` mapping the native inherite
 
 
 CI fixture correction — 2026-10-12: the source-backed empty-port change exposed an integration fixture that inserted an internet charge rule without any `charge_rule_ports` rows. A1.24 does not treat that as a wildcard, so the fixture now inserts the explicit `_ALL_` marker for the intended all-port rule. This keeps the live UDP/PostgreSQL test representative of the native source rather than reverting the compatibility fix.
+
+
+Source correction — prefix ordering: A1.24 `Tariff.__getPrefixesInfo` applies the optional name regex and then sorts prefix records by `prefix_name` ascending. The API now follows that order. Prefix mutation responses select by `prefix_id` rather than relying on repository row order.

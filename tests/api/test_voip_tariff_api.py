@@ -45,12 +45,12 @@ def install_connection(monkeypatch):
                 comment="A",
                 prefixes=(
                     SimpleNamespace(
-                        prefix_id=9, code="98", name="Iran", cpm=Decimal("60.00"),
-                        free_seconds=10, min_duration=3, round_to=30, min_chargeable_duration=20,
-                    ),
-                    SimpleNamespace(
                         prefix_id=10, code="989", name="Mobile", cpm=Decimal("90.00"),
                         free_seconds=5, min_duration=2, round_to=6, min_chargeable_duration=12,
+                    ),
+                    SimpleNamespace(
+                        prefix_id=9, code="98", name="Iran", cpm=Decimal("60.00"),
+                        free_seconds=10, min_duration=3, round_to=30, min_chargeable_duration=20,
                     ),
                 ),
             )
@@ -168,3 +168,11 @@ def test_tariff_name_validation_matches_native_character_contract():
     assert api.TariffPayload(tariff_name="Alpha-2_test").tariff_name == "Alpha-2_test"
     with pytest.raises(ValueError):
         api.TariffPayload(tariff_name="bad name")
+
+
+def test_tariff_detail_sorts_prefixes_by_name_like_a124(monkeypatch):
+    install_connection(monkeypatch)
+    result = api.get_voip_tariff(
+        "Alpha", True, "", principal({"ACCESS ALL CHARGES": "", "CHANGE CHARGE": "", "SEE VOIP TARIFF": ""})
+    )
+    assert [item.prefix_name for item in result.prefixes] == ["Iran", "Mobile"]
