@@ -27,11 +27,11 @@ This is the master parity ledger. A feature is not considered migrated merely be
 | Accounting | radius_server/* + accounting plugins | Accounting engine | Start/Stop/Alive + native connection-log + no_connection_log + Charge/Credit runtime + live UDP wiring implemented / live integration parity pending |
 | Duplicate requests | IBSng RADIUS request handling | Request deduplication/idempotency | Implemented boundary / full parity pending |
 | Disconnect | RADIUS/RAS behavior | RADIUS CoA/Disconnect adapter | RADIUS control packet boundary and session matching implemented; provider side effects and admin HTTP action remain gated/unmounted / full RAS interoperability pending |
-| Charging | charge plugins/core | Billing/charge engine | Internet charge runtime implemented / broader billing persistence parity pending |
+| Charging | charge plugins/core | Billing/charge engine | Internet charge runtime implemented; native VoIP tariff/prefix CRUD and VoIP charge-rule reader added; live VoIP/RAS settlement and full billing parity pending |
 | Credit | credit plugins/core | Credit ledger/policy | Foundation |
 | Reports | interface/admin/report/* | Report subsystem | Not started |
 | Graphs | interface/admin/graph/* | Metrics/graphs | Not started |
-| Admin permissions | admin/user management | RBAC/permission service | Foundation |
+| Admin permissions | admin/user management | RBAC/permission service | Source-backed evaluator plus selected admin/user/RAS/VoIP-tariff API workflows implemented; remaining feature workflows pending |
 | XML-RPC/IAS | IBSng XML-RPC interfaces | Compatibility adapter | Not started |
 | Admin UI | interface/admin/* + Smarty | Modern PHP 8 ATD UI | In progress |
 | User UI | interface/user/* + Smarty | Modern user workspace | In progress |

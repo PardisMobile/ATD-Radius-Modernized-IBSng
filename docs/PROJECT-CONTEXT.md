@@ -261,3 +261,22 @@ Immediate implementation priorities remain parallel, not replacements for one an
 ## Content-audit reconciliation — 2026-10-12
 
 Direct content review found that some older checkpoint paragraphs still said a later CI run was pending or described already-wired accounting persistence as absent. Those paragraphs are historical; the later explicit corrections in `docs/CURRENT-STATUS.md`, `docs/A1.24-RADIUS-DISPATCH-PARITY.md`, `docs/A1.24-RUNTIME-BATCH-AUDIT.md`, `docs/A1.24-LOGGING-SCHEMA-PARITY.md`, and `docs/A1.24-PERSISTENCE-SQL-AUDIT.md` supersede their current-state interpretation. Full CI passed on code/test HEAD `f97af48b94204ac2e7d6065d522c29d2583dc76e` (694 passed, 2 warnings per Python 3.11/3.12 job), and on docs checkpoint `f87a63cf46c6b271d6efdcc2a7d80af2d649c760`. Subsequent content-audit commits are documentation-only and their exact-HEAD CI must still be checked. The archive and full-parity requirements remain unchanged.
+
+
+## Verified backend increment — 2026-10-12 (current checkpoint)
+
+Current code HEAD before this status-only commit: `057b69789e9c353a8531d927129e09fafaf3105d`.
+
+Verified on that exact HEAD:
+- Full CI: Python 3.11 **720 passed, 2 warnings**; Python 3.12 **720 passed, 2 warnings**. Compile, Ruff, PHP syntax and PostgreSQL integration all passed: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38184422207
+- Python-only: **718 passed, 2 skipped, 2 warnings**; the skips are PostgreSQL/UDP integration tests excluded from that workflow: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38184422151
+
+Source-backed work in this increment:
+- Added native PostgreSQL VoIP tariff/prefix read and mutation support against `voip_charge_rule_tariff` and `tariff_prefix_list`, including parameterized writes, duplicate prevention, locking, and deletion refusal when a tariff is referenced by `voip_charge_rules`.
+- Added `GET/POST/PUT/DELETE /api/v1/voip-tariffs` workflows and prefix add/update/delete endpoints; reads use `SEE VOIP TARIFF`, mutations use `CHANGE VOIP TARIFF`.
+- Corrected the native permission chain: `CHANGE CHARGE` depends on `ACCESS ALL CHARGES`; `SEE VOIP TARIFF` and `CHANGE VOIP TARIFF` depend on `CHANGE CHARGE`.
+- Added a native `voip_charge_rules` reader preserving `charge_id`, `tariff_id`, `time_limit`, days and ports.
+- Corrected A1.24 port semantics: only explicit `_ALL_` is wildcard; an empty port set matches no port. The live PostgreSQL fixture now inserts `_ALL_` where intended.
+- Corrected VoIP prefix API ordering to match A1.24's `prefix_name` ascending order.
+
+Still open before UI/installer: VoIP call/RAS lifecycle and charge settlement parity; Fast Dial runtime wiring; periodic bandwidth snapshot parity; authoritative login-in-progress/session state and safe destructive operations; remaining billing administration and rule mutation; XML-RPC/IAS; full database restore/import parity; provider-backed Disconnect/CoA; remaining reports and user/admin workflows. Do not claim backend complete yet. UI and installer remain final-stage workstreams after these backend gates are addressed.

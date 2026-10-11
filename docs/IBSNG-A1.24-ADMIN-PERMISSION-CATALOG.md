@@ -135,3 +135,14 @@ Validation: Administrator deletion code/test commit `3177193269ce94b36ae29e336b0
 ## Current-status reconciliation — 2026-10-12
 
 The table above is the current permission/workflow status, not a claim that every registered permission consumer is implemented. Earlier dated paragraphs in this document intentionally preserve historical checkpoints and may say a workflow was open at that time; later source-traced checkpoints supersede those statements. In particular, administrator creation/deletion, password update and permission editing are implemented; selected user attribute/owner/group/caller-ID/fast-dial APIs and single/bulk credit changes are implemented. `DELETE USER`, `KILL USER`/online-user listing, mailbox, IPPool, billing administration, saved passwords, user audit reports, messages and remaining reports/graphs still lack complete endpoint/workflow parity. Do not treat registering a permission in the evaluator as proof that its entire IBSng feature is complete.
+
+
+## VoIP tariff permission/API checkpoint — 2026-10-12
+
+The API now exposes native tariff/prefix read and mutation workflows. The dependency chain was verified directly from `core/admin/perms/CHANGE_CHARGE.py`, `SEE_VOIP_TARIFF.py`, and `CHANGE_VOIP_TARIFF.py`:
+
+- `CHANGE CHARGE` requires `ACCESS ALL CHARGES`.
+- `SEE VOIP TARIFF` requires `CHANGE CHARGE`.
+- `CHANGE VOIP TARIFF` requires `CHANGE CHARGE`.
+
+The ATD evaluator enforces that chain instead of treating tariff permissions as standalone grants. Read routes require `SEE VOIP TARIFF`; create/update/delete tariff and prefix routes require `CHANGE VOIP TARIFF`. Operational audit entries are committed with each successful mutation. Full CI on code HEAD `057b69789e9c353a8531d927129e09fafaf3105d` passed both Python 3.11 and 3.12 (720 passed, 2 warnings per job). This is not a claim that all charge-management workflows are complete.

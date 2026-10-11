@@ -153,3 +153,10 @@ CI fixture correction — 2026-10-12: the source-backed empty-port change expose
 
 
 Source correction — prefix ordering: A1.24 `Tariff.__getPrefixesInfo` applies the optional name regex and then sorts prefix records by `prefix_name` ascending. The API now follows that order. Prefix mutation responses select by `prefix_id` rather than relying on repository row order.
+
+
+## Latest verified checkpoint — 2026-10-12
+
+Current code checkpoint `057b69789e9c353a8531d927129e09fafaf3105d` passed full CI on Python 3.11 and 3.12 (**720 passed, 2 warnings per matrix job**) and Python-only (**718 passed, 2 skipped, 2 warnings**). See the full run and Python-only run in `docs/CURRENT-STATUS.md`.
+
+The native VoIP tariff/prefix management API and read-only VoIP charge-rule repository are implemented and tested. Source corrections from this pass: tariff permission dependencies follow A1.24; tariff prefixes are returned by name ascending; empty port lists are not wildcards (only `_ALL_` is). This does not finish billing: live VoIP/RAS call lifecycle and settlement, rule mutation/overlap checks, and active-session side effects remain backend work. Keep UI and installer at the end.
