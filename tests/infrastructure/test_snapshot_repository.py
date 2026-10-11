@@ -57,3 +57,13 @@ def test_bandwidth_snapshot_rejects_invalid_interval_and_negative_deltas():
         repo.record_usage(datetime(2026, 10, 12), 7, 1, 1, interval_seconds=0)
     with pytest.raises(ValueError):
         repo.record_usage(datetime(2026, 10, 12), 7, -1, 1)
+
+
+def test_batched_bandwidth_snapshot_normalizes_aware_timestamp_for_native_column():
+    conn = FakeConnection()
+    repo = PostgresBandwidthSnapshotRepository(conn)
+    repo.add_usage(
+        datetime(2026, 10, 12, 14, 0, tzinfo=timezone.utc),
+        {7: (10, 20)},
+    )
+    assert conn.calls[0][1] == (datetime(2026, 10, 12, 14, 0), 7, 10, 20)
