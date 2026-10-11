@@ -220,3 +220,17 @@ Checksum issue: the project-provided hash literal `c7117a6a2fd252aa9b8149a1ee660
 ## Verified checkpoint — 2026-10-11
 
 Latest main HEAD `2dd944de4f8df82792f23912f301d6725263d9ff` passed full CI: 672 tests passed, 2 warnings on Python 3.11; Python 3.12 job also succeeded. See https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38159213377. The fast-dial helper is a tested domain primitive only; the production VoIP/RAS lifecycle and actions-manager endpoints remain unfinished. Preserve the archive checksum discrepancy documented in CURRENT-STATUS; do not claim the malformed 61-character supplied hash matches the 64-character hash computed from the uploaded archive.
+
+
+## Continuation checkpoint — fast-dial action API (2026-10-12)
+
+Source-of-truth rules unchanged: the IBSng A1.24 archive wins; do not modify the frozen PAP/CHAP/MS-CHAP, MS-CHAP2 response, MPPE, MultiLogin, persistence/accounting semantics without a source trace. The uploaded archive's actual SHA-256 remains `c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839614bb9349d18a8`; the older supplied literal is invalid (61 hex characters).
+
+Implemented a source-backed admin action API for fast-dial slots:
+- `src/atd_radius/infrastructure/fast_dial_actions.py` maps the A1.24 actions manager to `user_attrs.fast_dial`.
+- `GET /api/v1/users/voip/{voip_username}/fast-dial/{index}` is owner-scoped by GET USER INFORMATION and returns an empty string for unset/out-of-range slots.
+- `PUT /api/v1/users/voip/{voip_username}/fast-dial/{index}` requires CHANGE VOIP USER ATTRIBUTES and dependencies, validates destination digits and index 0–9, locks the owning user row, updates one slot, preserves native fast_dial user-audit suppression, and writes operational audit.
+- Tests cover storage, slot isolation, index behavior, row lock, owner permission, denied writes, and audit.
+- Python-only CI for API/test commit `0807517e0cadfe271dc3a776d41c2c20949a595b` passed. The subsequent full CI for the latest documentation HEAD must be verified before reporting the checkpoint fully green.
+
+Remaining fast-dial blocker: this API/action-manager slice does not wire the domain helper into the production VoIP/RAS `s_login` and `s_update` lifecycle. Called-number rewrite, redirect-number reply, and authoritative per-instance `fast_dial_index` lifecycle remain incomplete. Next priority is to trace and implement that runtime boundary without routing it through generic RADIUS Access-Accept attributes. Do not mark full fast-dial parity complete.
