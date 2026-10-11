@@ -60,3 +60,22 @@ def test_native_user_components_follow_a124_tables():
     assert repo.voip_credentials(7) == ("1001", "voip-secret")
     assert repo.caller_ids(7) == ["0912", "0935"]
     assert repo.persistent_lan(7) == [("00:11:22:33:44:55", "10.0.0.2/32", 7)]
+
+
+def test_is_normal_user_checks_native_normal_users_membership_without_loading_credentials():
+    class NormalMembershipConn:
+        def __init__(self, exists):
+            self.exists = exists
+            self.calls = []
+
+        def execute(self, sql, params=()):
+            self.calls.append((sql, params))
+            assert "SELECT EXISTS (SELECT 1 FROM normal_users WHERE user_id=%s)" in sql
+            return Result((self.exists,))
+
+    for expected in (True, False):
+        conn = NormalMembershipConn(expected)
+        assert UserRepository(conn).is_normal_user(7) is expected
+        assert conn.calls == [
+            ("SELECT EXISTS (SELECT 1 FROM normal_users WHERE user_id=%s)", (7,))
+        ]
