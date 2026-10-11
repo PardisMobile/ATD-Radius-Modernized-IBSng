@@ -13,7 +13,7 @@ An attribute is **not migrated** merely because its name exists in the catalog. 
 | `multi_login` | Policy | Session admission / concurrency guard | implemented; source-semantic acceptance tests added |
 | `session_timeout` | RADIUS policy | `Session-Timeout` + session enforcement | catalogued; mapping pending |
 | `idle_timeout` | RADIUS policy | `Idle-Timeout` + session enforcement | catalogued; mapping pending |
-| `save_bw_usage` | Accounting policy | usage recorder | attribute mutation implemented; usage recorder integration pending |
+| `save_bw_usage` | Snapshot/accounting policy | periodic per-instance bandwidth sampler and `internet_bw_snapshot` consumer | RADIUS accounting delta integration implemented; source-equivalent periodic sampling and missed-update parity pending |
 | `fast_dial` | VoIP call routing | called-number rewrite / redirect-number reply | mutation/storage and admin action API implemented; production VoIP runtime redirection pending |
 | `normal_charge` | Billing policy | charge resolver | catalogued; implementation pending |
 | `voip_charge` | Billing policy | charge resolver | catalogued; implementation pending |
@@ -56,4 +56,9 @@ A1.24-compatible admin API GET/PUT operations now read or update one fast-dial s
 The RADIUS accounting runtime now writes counter deltas into the native `internet_bw_snapshot` table only for normal users whose effective attributes include `save_bw_usage`; group defaults are inherited and user attributes override group values. The write path aggregates deltas into one-minute buckets. This is a first production consumer integration, but its event-driven sampling differs from A1.24's periodic per-instance online loop. Keep full parity pending until missed Interim-Updates and provider counter behavior are validated.
 
 
-Verification update — 2026-10-12: bandwidth snapshot runtime integration is tested by the Python workflow at HEAD `f97af48b94204ac2e7d6065d522c29d2583dc76e`; full CI passed on the underlying implementation commit `bcb942adf311b3369dbe1a9d1da486bc1b633433`. The latest full matrix is still pending. State remains partial because the source uses periodic per-instance polling while ATD currently uses RADIUS counter deltas.
+Verification update — 2026-10-12: the implementation/test commit `f97af48b94204ac2e7d6065d522c29d2583dc76e` passed full CI on Python 3.11 and 3.12 (694 passed, 2 warnings per matrix job). The docs-only checkpoint `f87a63cf46c6b271d6efdcc2a7d80af2d649c760` also passed both full and Python-only CI: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38180343444 and https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38180343421. State remains partial because the source uses periodic per-instance polling while ATD currently uses RADIUS counter deltas.
+
+
+### Source-content review correction — 2026-10-12
+
+Direct review of `IBSng/core/user/plugins/save_bw_usage.py`, `IBSng/core/snapshot/bw_snapshot.py`, `IBSng/core/snapshot/snapshot_main.py`, `IBSng/core/snapshot/onlines_loop.py`, and `IBSng/core/snapshot/snapshot_searcher.py` confirms the marker is consumed by a periodic online-instance loop, not by the plugin itself. The consumer samples `getInOutBytes(instance)`, aggregates positive rates by user for that loop, and inserts timestamped rows into `internet_bw_snapshot`; the report sums `in_rate` and `out_rate` grouped by `snp_date`. ATD's accounting-delta consumer is therefore a different sampling model and cannot be labeled full parity. Preserve this explicit limitation until periodic sampling or a source-tested equivalent is implemented.
