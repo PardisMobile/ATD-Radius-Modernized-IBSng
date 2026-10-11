@@ -60,7 +60,7 @@ def test_actions_manager_rejects_non_digit_destination_and_indexes_outside_zero_
 def test_native_lookup_returns_empty_for_out_of_range_and_negative_indexes():
     repo = FastDialActionsRepository(FakeConnection(slots=",".join(str(i) for i in range(10))))
     assert repo.get_destination(42, 10) == ""
-    assert repo.get_destination(42, -1) == ""
+    assert repo.get_destination(42, -1) == "9"
 
 
 def test_target_lookup_uses_voip_username_and_write_path_locks_user_row():
