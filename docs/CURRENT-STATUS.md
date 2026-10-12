@@ -422,3 +422,10 @@ Code/test commit `111f8adc590f755ae62f974a7b46c2fa288e38b7` passed full CI run `
 When both RAS timestamps and the called number are available, ATD now recalculates the entire call across effective rule interval ends rather than relying on Accounting packet timing; free seconds are applied once at call start. A regression test spans a 11:00 rule boundary and proves 10 seconds at CPM 60 plus 10 seconds at CPM 120 yields 30 credit units even when Accounting-Stop arrives later. RAS times are converted using the host's local timezone for rule/day selection, matching the legacy epoch/time-of-day model.
 
 Remaining limits: this is source-shaped non-lazy settlement, not full VoIP parity. Exact handling of overlapping rule start boundaries, asynchronous `checkLimits` credit/free-seconds scheduling and RAS kill actions, restart-safe state, and provider-backed end-to-end call fixtures remain open. UI and installer remain deferred.
+
+
+## Verified first-prefix metadata after late Accounting start — 2026-10-12
+
+Follow-up regression coverage confirms that when Accounting-Start arrives after a tariff transition, the call's `min_duration` and `prefix_name` are taken from the effective prefix at the authoritative RAS connect time, not from the rule active when accounting began. This keeps the missed-call threshold consistent with the same first-prefix semantics used for the source's free-second allowance.
+
+Code/test commit `a0e232b0ab664246f1576c4e9f6bf3c54e5a64c8` passed full CI run `38290092747`: Python 3.11 and 3.12 each **811 passed, 2 warnings**, including Ruff, compilation, PHP syntax and PostgreSQL integration. Python-only run `38290092706` passed **803 passed, 8 skipped, 2 warnings**. Full non-lazy RAS-time calculation checkpoint: `111f8adc590f755ae62f974a7b46c2fa288e38b7` (full CI run `38289856978`, 810 passed per Python version).
