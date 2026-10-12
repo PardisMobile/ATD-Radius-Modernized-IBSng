@@ -13,6 +13,10 @@ from atd_radius.application.radius_runtime import NativeRadiusPacketHandler, Nat
 from atd_radius.domain.radius import RadiusCode, RadiusPacket
 from atd_radius.domain.radius_codec import decode, encode
 from atd_radius.infrastructure.radius_udp import RadiusUDPServer
+from atd_radius.infrastructure.voip_charge_rules import (
+    PostgresVoipChargeRuleRepository,
+    VoipChargeRuleInput,
+)
 
 
 
@@ -262,3 +266,74 @@ def test_live_transaction_rolls_back_connection_log_and_credit_on_settlement_fai
             cleanup.execute("DROP FUNCTION IF EXISTS atd_fail_credit_update()")
             cleanup.commit()
         server.close()
+
+
+def test_postgres_voip_charge_rule_create_update_delete_round_trip(live_db):
+    with psycopg.connect(live_db) as conn:
+        conn.execute(
+            "INSERT INTO charges (charge_id, name, charge_type) VALUES (1, 'live-voip', 'VoIP')"
+        )
+        conn.execute(
+            "INSERT INTO voip_charge_rule_tariff (tariff_id, tariff_name, comment) VALUES (1, 'Business', '')"
+        )
+        conn.execute(
+            "INSERT INTO ras_ports (ras_id, port_name, type) VALUES (1, 'ppp0', 'PPP')"
+        )
+        conn.commit()
+
+    payload = VoipChargeRuleInput(
+        start_time="08:00",
+        end_time="18:00",
+        days=("Monday", "Tuesday"),
+        tariff_name="Business",
+        ras_id=1,
+        ports=("ppp0",),
+    )
+    with psycopg.connect(live_db) as conn:
+        repo = PostgresVoipChargeRuleRepository(conn)
+        rule_id = repo.create("live-voip", payload)
+        conn.commit()
+
+    with psycopg.connect(live_db) as conn:
+        rule = PostgresVoipChargeRuleRepository(conn).get(rule_id)
+        assert rule is not None
+        assert rule.charge_id == 1
+        assert rule.tariff_id == 1
+        assert rule.days == frozenset({0, 1})
+        assert rule.ports == frozenset({"ppp0"})
+        assert rule.ras_id == 1
+
+    updated = VoipChargeRuleInput(
+        start_time="09:00",
+        end_time="17:00",
+        days=("Wednesday",),
+        tariff_name="Business",
+        ras_id=1,
+        ports=("ppp0",),
+    )
+    with psycopg.connect(live_db) as conn:
+        PostgresVoipChargeRuleRepository(conn).update("live-voip", rule_id, updated)
+        conn.commit()
+
+    with psycopg.connect(live_db) as conn:
+        rule = PostgresVoipChargeRuleRepository(conn).get(rule_id)
+        assert rule is not None
+        assert rule.start_second == 9 * 3600
+        assert rule.end_second == 17 * 3600
+        assert rule.days == frozenset({2})
+
+    with psycopg.connect(live_db) as conn:
+        PostgresVoipChargeRuleRepository(conn).delete("live-voip", rule_id)
+        conn.commit()
+
+    with psycopg.connect(live_db) as conn:
+        repo = PostgresVoipChargeRuleRepository(conn)
+        assert repo.get(rule_id) is None
+        assert conn.execute(
+            "SELECT count(*) FROM charge_rule_ports WHERE charge_rule_id = %s",
+            (rule_id,),
+        ).fetchone()[0] == 0
+        assert conn.execute(
+            "SELECT count(*) FROM charge_rule_day_of_weeks WHERE charge_rule_id = %s",
+            (rule_id,),
+        ).fetchone()[0] == 0
