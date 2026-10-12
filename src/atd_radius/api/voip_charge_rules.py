@@ -28,7 +28,7 @@ class VoipChargeRulePayload(BaseModel):
     days: list[str] = Field(min_length=1)
     tariff_name: str = Field(min_length=1)
     ras_id: int | None = None
-    ports: list[str | None] = Field(default_factory=list)
+    ports: list[str] = Field(default_factory=list)
 
 
 class VoipChargeRuleView(BaseModel):
@@ -40,7 +40,7 @@ class VoipChargeRuleView(BaseModel):
     end_time: str
     days: list[str]
     ras_id: int | None
-    ports: list[str]
+    ports: list[str | None]
     time_limit: int | None
 
 

@@ -140,8 +140,6 @@ def test_voip_rule_selection_allows_empty_called_number_before_ras_acquires_it()
 
 
 def test_null_port_marker_is_not_a_wildcard():
-    from atd_radius.domain.billing_rules import VoipChargeRule, select_effective_voip_rule
-    from atd_radius.domain.voip_tariff import VoipTariff
     when = datetime(2026, 10, 5, 12)
     rule = VoipChargeRule(rule_id=1, days=frozenset({0}), start_second=0, end_second=86399, ras_id=None, ports=frozenset({None}), charge_id=1, tariff_id=1)
     with pytest.raises(BillingError, match="no applicable"):
