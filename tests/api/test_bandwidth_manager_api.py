@@ -99,7 +99,7 @@ class TreeConn:
             return TreeResult([(1, "eth0", "uplink"), (2, "ppp0", "")])
         if "FROM bw_interface WHERE interface_name" in sql:
             return TreeResult([(1, "eth0", "uplink")])
-        if "FROM bw_node WHERE interface_id" in sql:
+        if "FROM bw_node" in sql and "interface_id = %s" in sql and "parent_id IS NULL" in sql:
             return TreeResult([(10,)])
         if "FROM bw_node WHERE parent_id" in sql:
             return TreeResult({10: [(11,), (12,)], 11: [], 12: []}[params[0]])
