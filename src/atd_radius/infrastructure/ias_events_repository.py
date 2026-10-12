@@ -45,6 +45,8 @@ class PostgresIASEventRepository:
     def list_events(self, from_event_id: int, offset: int, to: int) -> list[IASEvent]:
         if offset < 0 or to < 0 or to > 50 * 1024 * 1024 or offset > to:
             raise ValueError("invalid IAS event range")
+        # A1.24's DB helper omits LIMIT when from == to; reject that edge
+        # rather than accidentally returning an unbounded event set.
         if offset == to:
             raise ValueError("IAS event range must have a positive length")
         if to - offset > 3000:

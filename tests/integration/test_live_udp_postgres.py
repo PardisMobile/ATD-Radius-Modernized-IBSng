@@ -503,6 +503,7 @@ def test_postgres_user_charge_assignment_round_trip_for_normal_and_voip(live_db)
 
 
 def test_postgres_ias_event_list_and_delete_round_trip(live_db):
+    from decimal import Decimal
     from atd_radius.infrastructure.ias_events_repository import PostgresIASEventRepository
 
     with psycopg.connect(live_db) as conn:
