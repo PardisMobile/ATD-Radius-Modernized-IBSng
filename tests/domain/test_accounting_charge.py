@@ -253,3 +253,35 @@ def test_voip_missed_call_uses_authoritative_ras_connect_and_disconnect_times():
     assert used == Decimal("0")
     assert state.voip_missed_call is True
     assert credits.changes == [(7, Decimal("0"))]
+
+ 
+def test_voip_settlement_recalculates_full_call_across_rule_boundary_from_ras_times():
+    first = _voip_rule(1, 5, 0, 39600)
+    second = _voip_rule(2, 6, 39600, 86399)
+    credits = Credits()
+    settlement = VoipChargeSettlement(
+        VoipRules([first, second]), VoipPolicies(),
+        Tariffs({
+            5: _voip_tariff(5, "60"),
+            6: _voip_tariff(6, "120"),
+        }), credits,
+    )
+    start = datetime(2026, 1, 5, 10, 59, 50, tzinfo=timezone.utc)
+    end = datetime(2026, 1, 5, 11, 0, 10, tzinfo=timezone.utc)
+    state = SessionRegistry().start(
+        SessionKey(7, 3, "voip-non-lazy-boundary"),
+        {
+            "Called-Station-Id": "98912",
+            "connect_time": str(start.timestamp()),
+            "disconnect_time": str(end.timestamp()),
+        },
+        started_at=start,
+    )
+    settlement.start(state, start, 3, None)
+
+    # A late Accounting-Stop timestamp must not make the second rule's rate
+    # apply to the entire call: 10s at CPM 60 + 10s at CPM 120 = 30.
+    used = settlement.settle(state, end.replace(hour=11, minute=5), 3, None)
+
+    assert used == Decimal("30")
+    assert credits.changes == [(7, Decimal("-30"))]

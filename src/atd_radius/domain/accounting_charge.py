@@ -1,9 +1,9 @@
 """A1.24 source-traced Internet charge settlement state."""
 from __future__ import annotations
-from datetime import datetime
+from datetime import datetime, time, timedelta
 from decimal import Decimal
 from typing import Protocol
-from .billing import BillingUsage
+from .billing import BillingError, BillingUsage
 from .billing_rules import InternetChargeRule, VoipChargeRule, select_effective_rule, select_effective_voip_rule
 from .radius_runtime import SessionState
 
@@ -121,27 +121,83 @@ class VoipChargeSettlement:
         return state.charge_accrued + self._current_usage(state, when, rounded=False)
 
     def settle(self, state: SessionState, when: datetime, ras_id: int, port: str | None) -> Decimal:
-        self.update(state, when, ras_id, port)
-        total = state.charge_accrued + self._current_usage(state, when, rounded=True)
+        call_started = _ras_epoch_time(state.attributes.get("connect_time"))
+        call_ended = _ras_epoch_time(state.attributes.get("disconnect_time"))
+        called_number = _called_number(state.attributes)
+        # A1.24's non-lazy path recalculates the entire call from RAS connect
+        # time, walking effective-rule intervals rather than trusting when
+        # Accounting packets happened to arrive.
+        if state.charge_id is not None and call_started and call_ended and called_number:
+            total = self._calculate_from_call_times(state, call_started, call_ended, ras_id, port)
+        else:
+            self.update(state, when, ras_id, port)
+            total = state.charge_accrued + self._current_usage(state, when, rounded=True)
+
         # A1.24 VoipUser.logout treats calls shorter than the first prefix's
-        # min_duration as missed calls: usage is zero, independently of
-        # min_chargable_duration/round_to, which only govern charge rounding.
+        # min_duration as missed calls; this differs from billing rounding.
         min_duration = int(state.attributes.get("min_duration", "0") or "0")
-        # RAS plugins in A1.24 provide epoch timestamps as connect_time and
-        # disconnect_time; prefer them for the missed-call threshold when present.
-        call_started = (
-            _ras_epoch_time(state.attributes.get("connect_time"))
-            or state.voip_call_started_at
-            or state.started_at
-        )
-        call_ended = _ras_epoch_time(state.attributes.get("disconnect_time")) or when
-        duration = max(0, int((call_ended - call_started).total_seconds())) if call_started else 0
+        effective_start = call_started or state.voip_call_started_at or state.started_at
+        effective_end = call_ended or when
+        duration = max(0, int((effective_end - effective_start).total_seconds())) if effective_start else 0
         if min_duration > 0 and duration < min_duration:
             state.voip_missed_call = True
             total = Decimal("0")
         if state.charge_id is not None:
             self.credits.change(state.key.user_id, -total)
         return total
+
+    def _calculate_from_call_times(
+        self, state: SessionState, start: datetime, end: datetime, ras_id: int, port: str | None
+    ) -> Decimal:
+        if end <= start:
+            return Decimal("0")
+        rules = self.rules.list(state.charge_id)
+        called_number = _called_number(state.attributes)
+        tariffs = self._tariffs_for(rules)
+        initial_rule = select_effective_voip_rule(rules, start, ras_id, port, called_number, tariffs)
+        initial_prefix = tariffs[initial_rule.tariff_id].find_prefix(called_number)
+        if initial_prefix is None:
+            return Decimal("0")
+
+        # The native non-lazy path starts charging after the first prefix's
+        # free seconds, then walks each active rule until its interval ends.
+        cursor = start + timedelta(seconds=initial_prefix.free_seconds)
+        duration = max(0, int((end - start).total_seconds()))
+        usage = Decimal("0")
+        final_prefix = initial_prefix
+        final_cpm = Decimal("0")
+        while cursor < end:
+            local_cursor = cursor.astimezone()
+            try:
+                rule = select_effective_voip_rule(
+                    rules, local_cursor, ras_id, port, called_number, tariffs
+                )
+            except BillingError:
+                break
+            prefix = tariffs[rule.tariff_id].find_prefix(called_number)
+            if prefix is None:
+                break
+            rule_end = datetime.combine(
+                local_cursor.date(), time.min, tzinfo=local_cursor.tzinfo
+            ) + timedelta(seconds=rule.end_second)
+            next_event = min(rule_end, end)
+            if next_event <= cursor:
+                # A1.24 advances at least one second if a rule end resolves
+                # to the current instant (notably at the end-of-day boundary).
+                next_event = min(cursor + timedelta(seconds=1), end)
+            elapsed = max(0, int((next_event - cursor).total_seconds()))
+            usage += prefix.cpm * Decimal(elapsed) / Decimal(60)
+            final_prefix, final_cpm = prefix, prefix.cpm
+            cursor = next_event
+
+        # The legacy calculation rounds with the last effective prefix and
+        # whole-call duration, but only if there was chargeable interval usage.
+        if final_cpm > 0 and duration > 0:
+            if final_prefix.min_chargeable_duration and duration < final_prefix.min_chargeable_duration:
+                usage += final_cpm * Decimal(final_prefix.min_chargeable_duration - duration) / Decimal(60)
+            elif final_prefix.round_to:
+                usage += final_cpm * Decimal(final_prefix.round_to - duration % final_prefix.round_to) / Decimal(60)
+        return usage
 
     def _select_and_begin(self, state: SessionState, when: datetime, ras_id: int, port: str | None) -> None:
         rules = self.rules.list(state.charge_id)
@@ -229,7 +285,7 @@ def _ras_epoch_time(value) -> datetime | None:
     if value is None or value == "":
         return None
     try:
-        return datetime.fromtimestamp(float(value), tz=__import__("datetime").timezone.utc)
+        return datetime.fromtimestamp(float(value)).astimezone()
     except (TypeError, ValueError, OverflowError, OSError):
         return None
 
