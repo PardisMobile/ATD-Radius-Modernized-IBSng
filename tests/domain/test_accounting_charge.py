@@ -186,3 +186,45 @@ def test_voip_free_seconds_are_consumed_before_called_number_arrives():
     settlement.update(state, when, 3, None)
     assert state.voip_free_seconds_remaining == 5
     assert state.attributes["min_duration"] == "8"
+
+ 
+def test_voip_call_shorter_than_native_min_duration_is_missed_and_not_charged():
+    rule = _voip_rule(1, 5, 0, 86399)
+    credits = Credits()
+    settlement = VoipChargeSettlement(
+        VoipRules([rule]), VoipPolicies(),
+        Tariffs({5: _voip_tariff(5, "60", min_duration=8)}), credits,
+    )
+    start = datetime(2026, 1, 5, 10, 0, tzinfo=timezone.utc)
+    state = SessionRegistry().start(
+        SessionKey(7, 3, "voip-missed"), {"Called-Station-Id": "98912"},
+        started_at=start,
+    )
+    settlement.start(state, start, 3, None)
+
+    used = settlement.settle(state, start.replace(second=7), 3, None)
+
+    assert used == Decimal("0")
+    assert state.voip_missed_call is True
+    assert credits.changes == [(7, Decimal("0"))]
+
+
+def test_voip_call_at_native_min_duration_is_not_marked_missed():
+    rule = _voip_rule(1, 5, 0, 86399)
+    credits = Credits()
+    settlement = VoipChargeSettlement(
+        VoipRules([rule]), VoipPolicies(),
+        Tariffs({5: _voip_tariff(5, "60", min_duration=8)}), credits,
+    )
+    start = datetime(2026, 1, 5, 10, 0, tzinfo=timezone.utc)
+    state = SessionRegistry().start(
+        SessionKey(7, 3, "voip-min-duration"), {"Called-Station-Id": "98912"},
+        started_at=start,
+    )
+    settlement.start(state, start, 3, None)
+
+    used = settlement.settle(state, start.replace(second=8), 3, None)
+
+    assert used == Decimal("8")
+    assert state.voip_missed_call is False
+    assert credits.changes == [(7, Decimal("-8"))]

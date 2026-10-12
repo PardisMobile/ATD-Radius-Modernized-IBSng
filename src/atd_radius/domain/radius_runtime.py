@@ -79,6 +79,7 @@ class SessionState:
     voip_call_started_at: datetime | None = None
     voip_free_seconds_remaining: int = 0
     voip_current_prefix: object | None = None
+    voip_missed_call: bool = False
     ras_multi_login_allowed: bool | None = None
 
 class SessionRegistry:

@@ -123,6 +123,15 @@ class VoipChargeSettlement:
     def settle(self, state: SessionState, when: datetime, ras_id: int, port: str | None) -> Decimal:
         self.update(state, when, ras_id, port)
         total = state.charge_accrued + self._current_usage(state, when, rounded=True)
+        # A1.24 VoipUser.logout treats calls shorter than the first prefix's
+        # min_duration as missed calls: usage is zero, independently of
+        # min_chargable_duration/round_to, which only govern charge rounding.
+        min_duration = int(state.attributes.get("min_duration", "0") or "0")
+        call_started = state.voip_call_started_at or state.started_at
+        duration = max(0, int((when - call_started).total_seconds())) if call_started else 0
+        if min_duration > 0 and duration < min_duration:
+            state.voip_missed_call = True
+            total = Decimal("0")
         if state.charge_id is not None:
             self.credits.change(state.key.user_id, -total)
         return total
