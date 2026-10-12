@@ -38,7 +38,6 @@ from atd_radius.infrastructure.fast_dial_actions import FastDialActionError, Fas
 from atd_radius.infrastructure.user_charge_assignments import (
     UserChargeAssignmentRepository,
     UserChargeNotFound,
-    UserChargeTargetNotFound,
     UserChargeTypeError,
 )
 
