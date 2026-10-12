@@ -263,3 +263,19 @@ Implemented `select_effective_voip_rule` matching `VoipChargeRule.anytimeAppliab
 ## VoIP charge-rule CRUD regression coverage — 2026-10-12
 
 Added repository tests for updating a rule while replacing its day/port child rows, deleting child rows before the inherited VoIP rule row, and refusing to mutate a rule belonging to a different charge. RAS-specific rules now validate that the RAS exists and that every named port is configured on that RAS; `_ALL_` remains an explicit marker.
+
+
+## VoIP charge-rule backend increment — 2026-10-12
+
+Code checkpoint before this documentation update: `2d645d7a08e599e53006d38c4d868987caed0aa8`.
+
+New source-backed work in this increment:
+- Added VoIP charge-rule list/create/update/delete API workflows using `CHANGE CHARGE` and `ACCESS ALL CHARGES` permission checks, with transactional operational audit.
+- Added native PostgreSQL persistence against inherited `voip_charge_rules`, `charge_rule_day_of_weeks`, and `charge_rule_ports`, using `charge_rules_id_seq`.
+- Added validation for native charge type, tariff existence, time/day fields, source-style overlap behavior, RAS existence, and named ports configured for the selected RAS.
+- Added `select_effective_voip_rule` to match A1.24 `VoipChargeRule.anytimeAppliable`: a non-empty called number must match a prefix in the candidate tariff; an empty called number remains eligible while the RAS has not supplied it.
+- Added mocked CRUD regressions and a real PostgreSQL create/update/delete round-trip test using the CI schema.
+
+CI: the preceding code checkpoint `452b9b67cc060136778f8edeb2b5e7ba0c9813c1` passed full CI with **737 passed, 2 warnings** on both Python 3.11 and 3.12. Python-only for the code checkpoint containing the PostgreSQL round-trip test reported **735 passed, 3 skipped, 2 warnings**; PostgreSQL integration is excluded from that workflow. Full CI for `2d645d7` was still running when this note was written, so do not mark that exact checkpoint verified until its CI finishes.
+
+Still open before UI/installer: the native charge loader/cache reload side effect, production VoIP/RAS call lifecycle, call-time rule transitions, free-second tracking, missed-call behavior, rounding across rule transitions, credit settlement, and broader remaining backend parity. Do not enable destructive user/RAS operations until authoritative session/login-in-progress state and provider-backed termination are safe.

@@ -177,3 +177,8 @@ Implemented `select_effective_voip_rule` matching `VoipChargeRule.anytimeAppliab
 ## VoIP charge-rule CRUD regression coverage — 2026-10-12
 
 Added repository tests for updating a rule while replacing its day/port child rows, deleting child rows before the inherited VoIP rule row, and refusing to mutate a rule belonging to a different charge. RAS-specific rules now validate that the RAS exists and that every named port is configured on that RAS; `_ALL_` remains an explicit marker.
+
+
+## VoIP charge-rule CRUD and prefix applicability — 2026-10-12
+
+The native VoIP charge-rule API now includes list/create/update/delete and RAS/port validation; tests include an actual PostgreSQL round trip. The domain selector also enforces called-number prefix matching as A1.24 does. See `docs/A1.24-BILLING-RULE-PARITY.md` for exact boundaries. The latest exact code checkpoint's full CI must pass before this increment is considered verified. Production call lifecycle and settlement remain unfinished; UI and installer stay last.
