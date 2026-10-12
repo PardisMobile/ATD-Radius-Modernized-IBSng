@@ -17,6 +17,7 @@ from atd_radius.infrastructure.voip_charge_rules import (
     PostgresVoipChargeRuleRepository,
     VoipChargeRuleInput,
 )
+from atd_radius.infrastructure.charges import ChargeInUseError, PostgresChargeRepository
 
 
 
@@ -398,3 +399,59 @@ def test_postgres_internet_charge_rule_create_update_delete_round_trip(live_db):
 
     with psycopg.connect(live_db) as conn:
         assert PostgresInternetChargeRuleRepository(conn).get(rule_id) is None
+
+
+def test_postgres_charge_catalog_update_and_source_delete_guard(live_db):
+    with psycopg.connect(live_db) as conn:
+        conn.execute(
+            "INSERT INTO admins (admin_id, username, password, name) VALUES (7, 'admin', repeat('a', 34), 'Admin')"
+        )
+        conn.commit()
+
+    with psycopg.connect(live_db) as conn:
+        repo = PostgresChargeRepository(conn)
+        charge_id = repo.create("live-internet", "initial", "Internet", 7, False)
+        conn.commit()
+
+    with psycopg.connect(live_db) as conn:
+        repo = PostgresChargeRepository(conn)
+        charge = repo.get(charge_id)
+        assert charge is not None
+        assert charge.name == "live-internet"
+        assert charge.charge_type == "Internet"
+        assert charge.admin_id == 7
+        repo.update(charge_id, "renamed-internet", "updated", True)
+        conn.commit()
+
+    with psycopg.connect(live_db) as conn:
+        conn.execute(
+            "INSERT INTO internet_charge_rules (charge_id, charge_rule_id, start_time, end_time, cpm, cpk, assumed_kps, bandwidth_limit_kbytes) VALUES (%s, 99, '08:00:00', '18:00:00', 1, 1, 128, 4096)",
+            (charge_id,),
+        )
+        conn.execute(
+            "INSERT INTO charge_rule_ports (charge_rule_id, ras_port) VALUES (99, '_ALL_')"
+        )
+        conn.execute(
+            "INSERT INTO charge_rule_day_of_weeks (charge_rule_id, day_of_week) VALUES (99, 0)"
+        )
+        conn.execute(
+            "INSERT INTO user_attrs (user_id, attr_name, attr_value) VALUES (1, 'normal_charge', %s)",
+            (str(charge_id),),
+        )
+        conn.commit()
+
+    with psycopg.connect(live_db) as conn:
+        import pytest
+        with pytest.raises(ChargeInUseError):
+            PostgresChargeRepository(conn).delete("renamed-internet")
+
+    with psycopg.connect(live_db) as conn:
+        conn.execute("DELETE FROM user_attrs WHERE user_id=1 AND attr_name='normal_charge'")
+        PostgresChargeRepository(conn).delete("renamed-internet")
+        conn.commit()
+
+    with psycopg.connect(live_db) as conn:
+        assert conn.execute("SELECT count(*) FROM charges WHERE charge_id=%s", (charge_id,)).fetchone()[0] == 0
+        assert conn.execute("SELECT count(*) FROM internet_charge_rules WHERE charge_rule_id=99").fetchone()[0] == 0
+        assert conn.execute("SELECT count(*) FROM charge_rule_ports WHERE charge_rule_id=99").fetchone()[0] == 0
+        assert conn.execute("SELECT count(*) FROM charge_rule_day_of_weeks WHERE charge_rule_id=99").fetchone()[0] == 0
