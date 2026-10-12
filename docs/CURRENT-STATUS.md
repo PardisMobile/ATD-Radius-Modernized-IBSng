@@ -336,7 +336,7 @@ Code checkpoint `35f23bea970f519f3779a7a5afd548951c94a18f` passed full CI:
 - Ruff, compilation, PHP syntax and PostgreSQL integration passed: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38190051467
 - Python-only workflow passed: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38190051470
 
-Added native IAS event list/delete API guarded by `HANDLE IAS EVENTS`, using A1.24 event-type IDs, `event_id > from_event_id`, ordered pagination, and parameterized deletes. The API caps pagination at 3000 rows and rejects the legacy `from == to` edge because A1.24's DB helper accidentally omits LIMIT in that case. PostgreSQL integration verifies IAS event read/delete. Still pending in IAS: `getIASUserInfo`, `lockUser`, `lockAdmin`, and the native XML-RPC handler compatibility layer.
+Added native IAS event list/delete API with GOD-only authorization, using A1.24 event-type IDs, `event_id > from_event_id`, ordered pagination, and parameterized deletes. The API caps pagination at 3000 rows and rejects the legacy `from == to` edge because A1.24's DB helper accidentally omits LIMIT in that case. PostgreSQL integration verifies IAS event read/delete. IAS event list/delete and user-info REST endpoints are implemented with GOD-only authorization. Source audit found no registered `HANDLE IAS EVENTS` permission class; the native IAS handler methods `lockUser` and `lockAdmin` are defined but not registered, so they are not exposed source methods and should not be treated as missing parity. Native XML-RPC transport/auth compatibility remains open.
 
 
 ## IAS permission source correction — 2026-10-12

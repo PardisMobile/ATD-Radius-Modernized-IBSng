@@ -32,7 +32,7 @@ This is the master parity ledger. A feature is not considered migrated merely be
 | Reports | interface/admin/report/* | Report subsystem | Not started |
 | Graphs | interface/admin/graph/* | Metrics/graphs | Not started |
 | Admin permissions | admin/user management | RBAC/permission service | Source-backed evaluator plus selected admin/user/RAS/VoIP-tariff API workflows implemented; remaining feature workflows pending |
-| XML-RPC/IAS | IBSng XML-RPC interfaces and IAS handler | IAS event REST adapter / XML-RPC compatibility adapter | IAS event list/delete REST slice implemented; getIASUserInfo/lockUser/lockAdmin and native XML-RPC compatibility pending |
+| XML-RPC/IAS | IBSng XML-RPC interfaces and IAS handler | IAS event REST adapter / XML-RPC compatibility adapter | IAS event list/delete and user-info REST slices implemented with GOD-only access; native XML-RPC transport/auth compatibility pending (source lockUser/lockAdmin methods are not registered) |
 | Admin UI | interface/admin/* + Smarty | Modern PHP 8 ATD UI | Deferred until backend parity; final stage |
 | User UI | interface/user/* + Smarty | Modern user workspace | Deferred until backend parity; final stage |
 | EAP | Not present in A1.24 | EAP subsystem | ATD-only / foundation |

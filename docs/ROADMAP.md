@@ -201,7 +201,7 @@ Added native charge catalog CRUD and user `normal_charge`/`voip_charge` assignme
 
 ## Verified IAS event management — 2026-10-12
 
-Added REST endpoints for IAS event listing and deletion with GOD-only access, matching the source's unregistered `HANDLE IAS EVENTS` permission, with native event-type mapping, bounded pagination, operational audit on deletion, and PostgreSQL integration coverage. Full CI on `35f23bea970f519f3779a7a5afd548951c94a18f` passed 778 tests on Python 3.11 and 3.12. Remaining IAS/XML-RPC work includes user-info lookup, lock-user/lock-admin workflows, and protocol compatibility.
+Added REST endpoints for IAS event listing and deletion with GOD-only access, matching the source's unregistered `HANDLE IAS EVENTS` permission, with native event-type mapping, bounded pagination, operational audit on deletion, and PostgreSQL integration coverage. Full CI on `35f23bea970f519f3779a7a5afd548951c94a18f` passed 778 tests on Python 3.11 and 3.12. Remaining IAS/XML-RPC work is the native XML-RPC transport/auth compatibility layer. IAS user-info REST is implemented; `lockUser` and `lockAdmin` exist in source but are not registered by `IASHandler.__init__`, so they are not exposed A1.24 handler methods.
 
 
 ## IAS permission source correction — 2026-10-12
