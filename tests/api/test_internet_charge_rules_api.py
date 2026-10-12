@@ -52,3 +52,10 @@ def test_internet_rule_errors_map_to_native_api_statuses():
     assert api._mutation_error(InternetChargeTypeError("wrong type")).status_code == 422
     assert api._mutation_error(InternetRuleConflictError("overlap")).status_code == 409
     assert api._mutation_error(InternetRuleInputError("bad input")).status_code == 422
+
+
+def test_rule_list_uses_source_charge_visibility_scope():
+    import inspect
+    source = inspect.getsource(api.list_internet_charge_rules)
+    assert "accessible_charge_ids" in source
+    assert "require_admin_session" in source

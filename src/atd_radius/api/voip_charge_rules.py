@@ -4,8 +4,10 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from atd_radius.api.admin_dependencies import AdminPrincipal, require_admin_permission
+from atd_radius.api.admin_dependencies import AdminPrincipal, require_admin_permission, require_admin_session
 from atd_radius.infrastructure.db import connection
+from atd_radius.infrastructure.charges import PostgresChargeRepository
+from atd_radius.api.charges import accessible_charge_ids
 from atd_radius.infrastructure.operational_audit import OperationalAuditRepository
 from atd_radius.infrastructure.voip_charge_rules import (
     ChargeNotFound,
@@ -101,11 +103,12 @@ def _raise_mutation_error(exc: Exception) -> HTTPException:
 @router.get("", response_model=list[VoipChargeRuleView])
 def list_voip_charge_rules(
     charge_id: int | None = None,
-    admin: AdminPrincipal = Depends(require_admin_permission("ACCESS ALL CHARGES")),
+    admin: AdminPrincipal = Depends(require_admin_session),
 ) -> list[VoipChargeRuleView]:
     with connection() as conn:
         repo = PostgresVoipChargeRuleRepository(conn)
-        rules = repo.list(charge_id)
+        charge_ids = accessible_charge_ids(PostgresChargeRepository(conn).list(), admin, charge_id)
+        rules = [rule for selected_id in charge_ids for rule in repo.list(selected_id)]
         tariffs = {
             int(row[0]): str(row[1])
             for row in conn.execute(

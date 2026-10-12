@@ -6,7 +6,7 @@ import re
 
 from pydantic import BaseModel, Field, field_validator
 
-from atd_radius.api.admin_dependencies import AdminPrincipal, require_admin_permission
+from atd_radius.api.admin_dependencies import AdminPrincipal, can_use_charge, require_admin_permission, require_admin_session
 from atd_radius.infrastructure.charges import (
     ChargeAlreadyExists,
     ChargeInUseError,
@@ -63,6 +63,21 @@ class ChargeView(BaseModel):
     visible_to_all: bool
 
 
+def accessible_charge_ids(charges, admin: AdminPrincipal, charge_id: int | None) -> list[int]:
+    """Resolve charge visibility using A1.24 Admin.canUseCharge semantics."""
+    if charge_id is not None:
+        selected = next((charge for charge in charges if charge.charge_id == charge_id), None)
+        if selected is None:
+            raise HTTPException(status_code=404, detail="Charge not found")
+        if not can_use_charge(admin, selected.name, selected.visible_to_all):
+            raise HTTPException(status_code=403, detail="Administrator cannot use this charge")
+        return [selected.charge_id]
+    return [
+        charge.charge_id for charge in charges
+        if can_use_charge(admin, charge.name, charge.visible_to_all)
+    ]
+
+
 def _view(charge) -> ChargeView:
     return ChargeView(
         charge_id=charge.charge_id, charge_name=charge.name, comment=charge.comment,
@@ -96,21 +111,24 @@ def _error(exc: Exception) -> HTTPException:
 
 @router.get("", response_model=list[ChargeView])
 def list_charges(
-    admin: AdminPrincipal = Depends(require_admin_permission("ACCESS ALL CHARGES")),
+    admin: AdminPrincipal = Depends(require_admin_session),
 ) -> list[ChargeView]:
     with connection() as conn:
-        return [_view(charge) for charge in PostgresChargeRepository(conn).list()]
+        charges = PostgresChargeRepository(conn).list()
+        return [_view(charge) for charge in charges if can_use_charge(admin, charge.name, charge.visible_to_all)]
 
 
 @router.get("/{charge_name}", response_model=ChargeView)
 def get_charge(
     charge_name: str,
-    admin: AdminPrincipal = Depends(require_admin_permission("ACCESS ALL CHARGES")),
+    admin: AdminPrincipal = Depends(require_admin_session),
 ) -> ChargeView:
     with connection() as conn:
         charge = PostgresChargeRepository(conn).get_by_name(charge_name)
     if charge is None:
         raise HTTPException(status_code=404, detail="Charge not found")
+    if not can_use_charge(admin, charge.name, charge.visible_to_all):
+        raise HTTPException(status_code=403, detail="Administrator cannot use this charge")
     return _view(charge)
 
 

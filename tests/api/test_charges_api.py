@@ -48,3 +48,25 @@ def test_charge_payload_validates_native_name_and_type():
         api.ChargeCreatePayload(charge_name="bad name", charge_type="Internet")
     with pytest.raises(ValueError):
         api.ChargeCreatePayload(charge_name="valid_name", charge_type="Unknown")
+
+
+def test_charge_visibility_matches_native_can_use_charge_rules():
+    from atd_radius.api.admin_dependencies import can_use_charge
+    restricted = principal({"CHARGE ACCESS": "Allowed"})
+    assert can_use_charge(restricted, "Allowed", False) is True
+    assert can_use_charge(restricted, "Denied", False) is False
+    assert can_use_charge(principal({}), "Public", True) is True
+    assert can_use_charge(principal({"ACCESS ALL CHARGES": ""}), "Hidden", False) is True
+
+
+def test_accessible_charge_ids_filters_and_enforces_requested_scope():
+    from atd_radius.api.charges import accessible_charge_ids
+    public = SimpleNamespace(charge_id=1, name="Public", visible_to_all=True)
+    allowed = SimpleNamespace(charge_id=2, name="Allowed", visible_to_all=False)
+    hidden = SimpleNamespace(charge_id=3, name="Hidden", visible_to_all=False)
+    admin = principal({"CHARGE ACCESS": "Allowed"})
+    assert accessible_charge_ids([public, allowed, hidden], admin, None) == [1, 2]
+    assert accessible_charge_ids([public, allowed, hidden], admin, 2) == [2]
+    with pytest.raises(HTTPException) as denied:
+        accessible_charge_ids([public, allowed, hidden], admin, 3)
+    assert denied.value.status_code == 403

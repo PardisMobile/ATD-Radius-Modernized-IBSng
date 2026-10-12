@@ -33,3 +33,10 @@ def test_payload_preserves_native_day_names_and_wildcard_port():
     converted = api._payload(payload)
     assert converted.days == ("Monday",)
     assert converted.ports == ("_ALL_",)
+
+
+def test_rule_list_uses_source_charge_visibility_scope():
+    import inspect
+    source = inspect.getsource(api.list_voip_charge_rules)
+    assert "accessible_charge_ids" in source
+    assert "require_admin_session" in source

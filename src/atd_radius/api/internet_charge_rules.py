@@ -6,7 +6,7 @@ from decimal import Decimal
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from atd_radius.api.admin_dependencies import AdminPrincipal, require_admin_permission
+from atd_radius.api.admin_dependencies import AdminPrincipal, require_admin_permission, require_admin_session
 from atd_radius.infrastructure.billing_rules import (
     InternetChargeNotFound,
     InternetChargeRuleInput,
@@ -17,6 +17,8 @@ from atd_radius.infrastructure.billing_rules import (
     PostgresInternetChargeRuleRepository,
 )
 from atd_radius.infrastructure.db import connection
+from atd_radius.infrastructure.charges import PostgresChargeRepository
+from atd_radius.api.charges import accessible_charge_ids
 from atd_radius.infrastructure.operational_audit import OperationalAuditRepository
 
 router = APIRouter(prefix="/internet-charge-rules", tags=["INTERNET CHARGE RULES"])
@@ -125,11 +127,12 @@ def _mutation_error(exc: Exception) -> HTTPException:
 @router.get("", response_model=list[InternetChargeRuleView])
 def list_internet_charge_rules(
     charge_id: int | None = None,
-    admin: AdminPrincipal = Depends(require_admin_permission("ACCESS ALL CHARGES")),
+    admin: AdminPrincipal = Depends(require_admin_session),
 ) -> list[InternetChargeRuleView]:
     with connection() as conn:
         repo = PostgresInternetChargeRuleRepository(conn)
-        return [_view(conn, rule) for rule in repo.list(charge_id)]
+        charge_ids = accessible_charge_ids(PostgresChargeRepository(conn).list(), admin, charge_id)
+        return [_view(conn, rule) for selected_id in charge_ids for rule in repo.list(selected_id)]
 
 
 @router.post("", response_model=InternetChargeRuleView, status_code=201)
