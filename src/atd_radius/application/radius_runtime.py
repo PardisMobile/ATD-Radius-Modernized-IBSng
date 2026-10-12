@@ -6,7 +6,7 @@ from dataclasses import replace
 
 from atd_radius.domain.aaa import PluginPipeline, PluginSpec
 from atd_radius.domain.accounting_session import AccountingSessionService
-from atd_radius.domain.accounting_charge import InternetChargeSettlement
+from atd_radius.domain.accounting_charge import InternetChargeSettlement, VoipChargeSettlement, UserChargeSettlement
 from atd_radius.domain.radius import RadiusCode, RadiusPacket
 from atd_radius.domain.radius_dispatch import DispatchResult, RadiusDispatcher
 from atd_radius.domain.session_policy import ActiveSessionView
@@ -22,6 +22,8 @@ from atd_radius.infrastructure.accounting_persistence import NativeAccountingPer
 from atd_radius.infrastructure.connection_log_repository import ConnectionLogRepository
 from atd_radius.infrastructure.bandwidth_snapshot_repository import PostgresBandwidthSnapshotRepository
 from atd_radius.infrastructure.billing_rules import PostgresInternetChargeRuleRepository
+from atd_radius.infrastructure.voip_charge_rules import PostgresVoipChargeRuleRepository
+from atd_radius.infrastructure.voip_tariff_repository import PostgresVoipTariffRepository
 from atd_radius.infrastructure.credit_repository import UserCreditRepository
 from atd_radius.infrastructure.ip_pool_repository import PostgresIPPoolRepository
 from atd_radius.infrastructure.ras import RASRepository
@@ -204,11 +206,15 @@ class NativeRadiusPacketHandler:
             ras = self.state.ras
             pools = self.state.pools
             persistence = NativeAccountingPersistence(ConnectionLogRepository(conn))
-            charge = InternetChargeSettlement(
-                PostgresInternetChargeRuleRepository(conn),
-                users,
-                UserCreditRepository(conn),
+            credits = UserCreditRepository(conn)
+            internet_charge = InternetChargeSettlement(
+                PostgresInternetChargeRuleRepository(conn), users, credits,
             )
+            voip_charge = VoipChargeSettlement(
+                PostgresVoipChargeRuleRepository(conn), users,
+                PostgresVoipTariffRepository(conn), credits,
+            )
+            charge = UserChargeSettlement(users, internet_charge, voip_charge)
             accounting = AccountingSessionService(self.state.sessions, persistence, charge)
             dispatcher = build_radius_dispatcher(
                 users,

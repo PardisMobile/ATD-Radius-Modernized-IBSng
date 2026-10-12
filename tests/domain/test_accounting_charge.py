@@ -1,7 +1,8 @@
 from datetime import datetime, timezone
+from unittest.mock import Mock
 from decimal import Decimal
-from atd_radius.domain.accounting_charge import InternetChargeSettlement
-from atd_radius.domain.billing_rules import ALL, InternetChargeRule
+from atd_radius.domain.accounting_charge import InternetChargeSettlement, VoipChargeSettlement, UserChargeSettlement
+from atd_radius.domain.billing_rules import ALL, InternetChargeRule, VoipChargeRule
 from atd_radius.domain.radius_runtime import SessionKey, SessionRegistry
 
 class Rules:

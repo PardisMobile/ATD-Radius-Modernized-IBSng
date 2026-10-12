@@ -76,6 +76,9 @@ class SessionState:
     charge_rule_input_octets:int=0
     charge_rule_output_octets:int=0
     charge_accrued: Decimal = field(default_factory=lambda: Decimal("0"))
+    voip_call_started_at: datetime | None = None
+    voip_free_seconds_remaining: int = 0
+    voip_current_prefix: object | None = None
     ras_multi_login_allowed: bool | None = None
 
 class SessionRegistry:

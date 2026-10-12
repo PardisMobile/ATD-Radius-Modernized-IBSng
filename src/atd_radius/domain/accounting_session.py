@@ -58,7 +58,8 @@ class AccountingSessionService:
                 return AccountingSessionResult(state,connection_log_id=log_id)
             raise LookupError("RADIUS session not found")
         log_id=int(current.attributes["__connection_log_id"]) if "__connection_log_id" in current.attributes else None
-        port=event.attributes.get("NAS-Port") or event.attributes.get("NAS-Port-Id")
+        port=event.attributes.get("NAS-Port") or event.attributes.get("NAS-Port-Id") or current.attributes.get("NAS-Port") or current.attributes.get("NAS-Port-Id")
+        current.attributes = {**current.attributes, **event.attributes}
         if event.status in (AccountingStatus.INTERIM,AccountingStatus.ALIVE):
             di,do=self.registry.update(key,event.input_octets,event.output_octets)
             if self.charge: self.charge.update(current,event.observed_at,ras_id,port)
