@@ -158,6 +158,14 @@ class VoipChargeSettlement:
         initial_prefix = tariffs[initial_rule.tariff_id].find_prefix(called_number)
         if initial_prefix is None:
             return Decimal("0")
+        # Accounting can arrive after a tariff transition. Native min_duration
+        # and prefix metadata belong to the call's first effective prefix, not
+        # whichever rule happened to be active when Accounting-Start arrived.
+        state.attributes = {
+            **state.attributes,
+            "min_duration": str(initial_prefix.min_duration),
+            "prefix_name": initial_prefix.name,
+        }
 
         # The native non-lazy path starts charging after the first prefix's
         # free seconds, then walks each active rule until its interval ends.
