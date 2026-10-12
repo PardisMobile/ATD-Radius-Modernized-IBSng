@@ -1,5 +1,9 @@
 # Project Context — Carry-Forward Memory
 
+## Latest verified checkpoint — 2026-10-12
+
+Code/test commit `98e43155ad63b211c4fd289d9d7a0fd999a40401` passed full CI: Python 3.11 and 3.12 each **801 passed, 2 warnings** (run `38284989251`); Python-only CI: **793 passed, 8 skipped, 2 warnings** (run `38284989298`). VoIP settlement is connected to accounting Start/Interim/Stop, but timer-driven rule transitions, RAS prefix/min-duration effects and full billing parity remain open. See `docs/A1.24-VOIP-CHARGING-AUDIT.md`.
+
 ## Identity
 ATD Radius Modernized IBSng is a clean-room modernization project whose behavioral reference is the uploaded IBSng A1.24 source archive. The old Go-based ATD repository is not part of this repository and must not be copied here.
 

@@ -3,7 +3,7 @@
 Updated: 2026-10-12  
 Repository: `PardisMobile/ATD-Radius-Modernized-IBSng`  
 Branch: `main`  
-Latest verified code/test commit: `98e43155ad63b211c4fd289d9d7a0fd999a40401` (VoIP accounting settlement wired into Accounting Start/Interim/Stop; full CI run `38284989251`: Python 3.11 and 3.12 each 801 passed, 2 warnings; Ruff, compilation, PHP syntax and PostgreSQL integration passed). Python-only run `38284989298`: 793 passed, 8 skipped, 2 warnings. The current documentation checkpoint records this verified code commit; check Actions separately for the docs-only follow-up.
+Latest verified code/test commit: `98e43155ad63b211c4fd289d9d7a0fd999a40401` (VoIP accounting settlement wired into Accounting Start/Interim/Stop; full CI run `38284989251`: Python 3.11 and 3.12 each 801 passed, 2 warnings; Ruff, compilation, PHP syntax and PostgreSQL integration passed). Python-only run `38284989298`: 793 passed, 8 skipped, 2 warnings. This is a documentation follow-up to the verified code checkpoint; check Actions for the exact current docs HEAD before treating the documentation-only run as green.
 
 ## Authority and validation
 
