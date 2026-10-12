@@ -1,7 +1,15 @@
 from datetime import time
 from decimal import Decimal
 
-from atd_radius.infrastructure.billing_rules import PostgresInternetChargeRuleRepository
+import pytest
+
+from atd_radius.infrastructure.billing_rules import (
+    InternetChargeRuleInput,
+    InternetChargeTypeError,
+    InternetRuleConflictError,
+    InternetRuleInputError,
+    PostgresInternetChargeRuleRepository,
+)
 
 
 class Result:
@@ -38,15 +46,6 @@ def test_repository_maps_native_internet_charge_rule_tables():
     assert rule.charge_id == 5
     assert rule.bw_transmit_leaf_id is None
     assert rule.bw_receive_leaf_id is None
-
-
-from atd_radius.infrastructure.billing_rules import (
-    InternetChargeRuleInput,
-    InternetChargeNotFound,
-    InternetChargeTypeError,
-    InternetRuleConflictError,
-    InternetRuleInputError,
-)
 
 
 class MutationConn:
