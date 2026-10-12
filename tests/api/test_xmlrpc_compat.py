@@ -138,10 +138,8 @@ def test_xmlrpc_endpoint_enforces_body_limit_while_streaming(monkeypatch):
         client=SimpleNamespace(host="127.0.0.1"),
     )
     response = __import__("asyncio").run(api.xmlrpc_compatibility_endpoint(request))
-    (fault,), method = xmlrpc.client.loads(response.body)
-    assert method is None
-    assert isinstance(fault, xmlrpc.client.Fault)
-    assert "too large" in fault.faultString
+    with pytest.raises(xmlrpc.client.Fault, match="too large"):
+        xmlrpc.client.loads(response.body)
     assert consumed == ["first", "second"]
 
 
@@ -156,7 +154,5 @@ def test_xmlrpc_endpoint_rejects_declared_oversize_without_reading_body(monkeypa
         client=SimpleNamespace(host="127.0.0.1"),
     )
     response = __import__("asyncio").run(api.xmlrpc_compatibility_endpoint(request))
-    (fault,), method = xmlrpc.client.loads(response.body)
-    assert method is None
-    assert isinstance(fault, xmlrpc.client.Fault)
-    assert "too large" in fault.faultString
+    with pytest.raises(xmlrpc.client.Fault, match="too large"):
+        xmlrpc.client.loads(response.body)
