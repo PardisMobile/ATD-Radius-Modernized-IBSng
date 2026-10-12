@@ -109,3 +109,30 @@ def test_same_interval_different_ras_is_not_conflict_per_a124():
     assert PostgresVoipChargeRuleRepository(conn).create(
         "Calls", payload(ras_id=None, ports=(ALL,))
     ) == 21
+
+
+def test_specific_ras_requires_every_named_port_to_exist_on_that_ras():
+    conn = Conn([
+        Result(rows=[(10, "VoIP")]),
+        Result(rows=[(3,)]),
+        Result(rows=[(10,)]),  # RAS exists
+        Result(rows=[("ppp0",)]),  # ppp1 was not configured on this RAS
+    ])
+    with pytest.raises(Exception, match="port"):
+        PostgresVoipChargeRuleRepository(conn).create(
+            "Calls", payload(ras_id=10, ports=("ppp0", "ppp1"))
+        )
+
+
+def test_specific_ras_validation_preserves_all_ports_marker():
+    conn = Conn([
+        Result(rows=[(10, "VoIP")]),
+        Result(rows=[(3,)]),
+        Result(rows=[(10,)]),
+        Result(),  # conflict query
+        Result(row=(21,)),
+        Result(), Result(), Result(),
+    ])
+    assert PostgresVoipChargeRuleRepository(conn).create(
+        "Calls", payload(ras_id=10, ports=(ALL,))
+    ) == 21

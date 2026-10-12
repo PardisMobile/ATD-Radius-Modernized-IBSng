@@ -65,7 +65,7 @@ class PostgresVoipChargeRuleRepository:
         charge_id = self._require_voip_charge(charge_name)
         tariff_id = self._require_tariff(payload.tariff_name)
         normalized = self._validate(payload)
-        self._require_ras(payload.ras_id)
+        self._require_ras_ports(payload.ras_id, payload.ports)
         self._check_conflict(charge_id, normalized, payload.ras_id)
         rule_id = int(self.conn.execute(
             "SELECT nextval('charge_rules_id_seq')"
@@ -90,7 +90,7 @@ class PostgresVoipChargeRuleRepository:
             raise VoipRuleNotFound(str(rule_id))
         tariff_id = self._require_tariff(payload.tariff_name)
         normalized = self._validate(payload)
-        self._require_ras(payload.ras_id)
+        self._require_ras_ports(payload.ras_id, payload.ports)
         self._check_conflict(charge_id, normalized, payload.ras_id, ignore_rule_id=rule_id)
         self.conn.execute(
             """UPDATE voip_charge_rules
@@ -128,7 +128,7 @@ class PostgresVoipChargeRuleRepository:
             raise ChargeTypeError(charge_name)
         return int(rows[0][0])
 
-    def _require_ras(self, ras_id: int | None) -> None:
+    def _require_ras_ports(self, ras_id: int | None, ports: tuple[str, ...]) -> None:
         if ras_id is None:
             return
         rows = self.conn.execute(
@@ -136,6 +136,20 @@ class PostgresVoipChargeRuleRepository:
         ).fetchall()
         if not rows:
             raise VoipRuleInputError(f"RAS ID does not exist: {ras_id}")
+        if ALL in ports:
+            return
+        configured = {
+            str(row[0])
+            for row in self.conn.execute(
+                "SELECT port_name FROM ras_ports WHERE ras_id = %s AND port_name = ANY(%s)",
+                (ras_id, list(ports)),
+            ).fetchall()
+        }
+        if configured != set(ports):
+            missing = sorted(set(ports) - configured)
+            raise VoipRuleInputError(
+                f"port(s) not configured on RAS {ras_id}: {', '.join(missing)}"
+            )
 
     def _require_tariff(self, tariff_name: str) -> int:
         rows = self.conn.execute(
