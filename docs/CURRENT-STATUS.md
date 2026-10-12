@@ -326,3 +326,14 @@ New source-backed functionality:
 - Integration tests cover real PostgreSQL charge catalog mutation/deletion guard and normal/VoIP user charge assignment round trips.
 
 Still open before UI/installer: bandwidth hierarchy writes and runtime shaping, charge loader/RAS reload effects, complete VoIP call lifecycle/settlement, periodic bandwidth snapshot parity, authoritative login-in-progress/session state, provider-backed Disconnect/CoA, XML-RPC/IAS, and complete import/report/workspace parity. This checkpoint does not certify all backend parity.
+
+
+## Verified IAS event API increment — 2026-10-12
+
+Code checkpoint `35f23bea970f519f3779a7a5afd548951c94a18f` passed full CI:
+- Python 3.11: **778 passed, 2 warnings**
+- Python 3.12: **778 passed, 2 warnings**
+- Ruff, compilation, PHP syntax and PostgreSQL integration passed: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38190051467
+- Python-only workflow passed: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38190051470
+
+Added native IAS event list/delete API guarded by `HANDLE IAS EVENTS`, using A1.24 event-type IDs, `event_id > from_event_id`, ordered pagination, and parameterized deletes. The API caps pagination at 3000 rows and rejects the legacy `from == to` edge because A1.24's DB helper accidentally omits LIMIT in that case. PostgreSQL integration verifies IAS event read/delete. Still pending in IAS: `getIASUserInfo`, `lockUser`, `lockAdmin`, and the native XML-RPC handler compatibility layer.

@@ -197,3 +197,8 @@ Added read-only native bandwidth leaf listing and lookup by name, guarded by the
 ## Verified charge assignment workflow — 2026-10-12
 
 Added native charge catalog CRUD and user `normal_charge`/`voip_charge` assignment endpoints with A1.24 type checks, `canUseCharge` permission/visibility semantics, native audit, and PostgreSQL round-trip tests. Full CI for `09044676484684c9400025abe3b7364ed924f33e` passed **771 tests** on Python 3.11 and 3.12. Bandwidth hierarchy writes/shaping and production VoIP runtime/settlement remain backend tasks; UI and installer remain last.
+
+
+## Verified IAS event management — 2026-10-12
+
+Added REST endpoints for IAS event listing and deletion under `HANDLE IAS EVENTS`, with native event-type mapping, bounded pagination, operational audit on deletion, and PostgreSQL integration coverage. Full CI on `35f23bea970f519f3779a7a5afd548951c94a18f` passed 778 tests on Python 3.11 and 3.12. Remaining IAS/XML-RPC work includes user-info lookup, lock-user/lock-admin workflows, and protocol compatibility.
