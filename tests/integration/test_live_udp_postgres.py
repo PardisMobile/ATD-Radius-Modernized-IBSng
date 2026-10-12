@@ -527,6 +527,7 @@ def test_postgres_ias_event_list_and_delete_round_trip(live_db):
 
 
 def test_postgres_ias_user_info_projection_round_trip(live_db):
+    from decimal import Decimal
     from atd_radius.infrastructure.ias_user_info import PostgresIASUserInfoRepository
 
     with psycopg.connect(live_db) as conn:
