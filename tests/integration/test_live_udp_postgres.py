@@ -455,3 +455,48 @@ def test_postgres_charge_catalog_update_and_source_delete_guard(live_db):
         assert conn.execute("SELECT count(*) FROM internet_charge_rules WHERE charge_rule_id=99").fetchone()[0] == 0
         assert conn.execute("SELECT count(*) FROM charge_rule_ports WHERE charge_rule_id=99").fetchone()[0] == 0
         assert conn.execute("SELECT count(*) FROM charge_rule_day_of_weeks WHERE charge_rule_id=99").fetchone()[0] == 0
+
+
+def test_postgres_user_charge_assignment_round_trip_for_normal_and_voip(live_db):
+    from atd_radius.infrastructure.user_charge_assignments import UserChargeAssignmentRepository
+
+    with psycopg.connect(live_db) as conn:
+        conn.execute(
+            "INSERT INTO admins (admin_id, username, password, name) VALUES (7, 'admin', repeat('a', 34), 'Admin')"
+        )
+        conn.execute(
+            "INSERT INTO charges (charge_id, name, comment, charge_type, admin_id, visible_to_all) VALUES (11, 'InternetPlan', '', 'Internet', 7, true), (12, 'VoIPPlan', '', 'VoIP', 7, true)"
+        )
+        conn.execute(
+            "INSERT INTO voip_users (user_id, voip_username, voip_password) VALUES (1, 'live-voip', 'password')"
+        )
+        conn.commit()
+
+    for username, attribute_name, charge_name, expected_id in [
+        ("live-user", "normal_charge", "InternetPlan", 11),
+        ("live-voip", "voip_charge", "VoIPPlan", 12),
+    ]:
+        with psycopg.connect(live_db) as conn:
+            repo = UserChargeAssignmentRepository(conn)
+            target = repo.lock_target(username, attribute_name)
+            assert target is not None
+            assigned = repo.assign(target, admin_id=7, charge_name=charge_name)
+            conn.commit()
+            assert assigned.charge_id == expected_id
+            assert assigned.charge_name == charge_name
+
+        with psycopg.connect(live_db) as conn:
+            repo = UserChargeAssignmentRepository(conn)
+            target = repo.lock_target(username, attribute_name)
+            assert target is not None
+            stored = repo.get(target)
+            assert stored.charge_id == expected_id
+            assert stored.charge_name == charge_name
+            repo.delete(target, admin_id=7)
+            conn.commit()
+
+        with psycopg.connect(live_db) as conn:
+            assert conn.execute(
+                "SELECT count(*) FROM user_attrs WHERE user_id=1 AND attr_name=%s",
+                (attribute_name,),
+            ).fetchone()[0] == 0
