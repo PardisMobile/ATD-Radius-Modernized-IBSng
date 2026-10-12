@@ -228,3 +228,28 @@ def test_voip_call_at_native_min_duration_is_not_marked_missed():
     assert used == Decimal("8")
     assert state.voip_missed_call is False
     assert credits.changes == [(7, Decimal("-8"))]
+
+ 
+def test_voip_missed_call_uses_authoritative_ras_connect_and_disconnect_times():
+    rule = _voip_rule(1, 5, 0, 86399)
+    credits = Credits()
+    settlement = VoipChargeSettlement(
+        VoipRules([rule]), VoipPolicies(),
+        Tariffs({5: _voip_tariff(5, "60", min_duration=8)}), credits,
+    )
+    start = datetime(2026, 1, 5, 10, 0, tzinfo=timezone.utc)
+    connect = start.replace(second=10).timestamp()
+    disconnect = start.replace(second=17).timestamp()
+    state = SessionRegistry().start(
+        SessionKey(7, 3, "voip-ras-times"),
+        {"Called-Station-Id": "98912", "connect_time": str(connect)},
+        started_at=start,
+    )
+    settlement.start(state, start, 3, None)
+    state.attributes = {**state.attributes, "disconnect_time": str(disconnect)}
+
+    used = settlement.settle(state, start.replace(second=30), 3, None)
+
+    assert used == Decimal("0")
+    assert state.voip_missed_call is True
+    assert credits.changes == [(7, Decimal("0"))]

@@ -127,8 +127,15 @@ class VoipChargeSettlement:
         # min_duration as missed calls: usage is zero, independently of
         # min_chargable_duration/round_to, which only govern charge rounding.
         min_duration = int(state.attributes.get("min_duration", "0") or "0")
-        call_started = state.voip_call_started_at or state.started_at
-        duration = max(0, int((when - call_started).total_seconds())) if call_started else 0
+        # RAS plugins in A1.24 provide epoch timestamps as connect_time and
+        # disconnect_time; prefer them for the missed-call threshold when present.
+        call_started = (
+            _ras_epoch_time(state.attributes.get("connect_time"))
+            or state.voip_call_started_at
+            or state.started_at
+        )
+        call_ended = _ras_epoch_time(state.attributes.get("disconnect_time")) or when
+        duration = max(0, int((call_ended - call_started).total_seconds())) if call_started else 0
         if min_duration > 0 and duration < min_duration:
             state.voip_missed_call = True
             total = Decimal("0")
@@ -165,7 +172,9 @@ class VoipChargeSettlement:
             # prefix metadata only for the first prefix of the call. If the
             # called number arrives after Accounting-Start, consume elapsed
             # time against that original call start rather than resetting it.
-            state.voip_call_started_at = state.started_at or when
+            state.voip_call_started_at = (
+                _ras_epoch_time(state.attributes.get("connect_time")) or state.started_at or when
+            )
             elapsed_before_prefix = max(0, int((when - state.voip_call_started_at).total_seconds()))
             state.voip_free_seconds_remaining = max(0, prefix.free_seconds - elapsed_before_prefix)
             state.attributes = {
@@ -213,6 +222,16 @@ def _policy_charge_id(source: PolicySource, user_id: int, attr_name: str) -> int
             except ValueError:
                 return None
     return None
+
+
+def _ras_epoch_time(value) -> datetime | None:
+    """Convert the epoch-second values used by A1.24 RAS call-time attributes."""
+    if value is None or value == "":
+        return None
+    try:
+        return datetime.fromtimestamp(float(value), tz=__import__("datetime").timezone.utc)
+    except (TypeError, ValueError, OverflowError, OSError):
+        return None
 
 
 def _called_number(attributes) -> str:
