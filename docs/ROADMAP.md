@@ -182,3 +182,8 @@ Added repository tests for updating a rule while replacing its day/port child ro
 ## VoIP charge-rule CRUD and prefix applicability — 2026-10-12
 
 The native VoIP charge-rule API now includes list/create/update/delete and RAS/port validation; tests include an actual PostgreSQL round trip. The domain selector also enforces called-number prefix matching as A1.24 does. See `docs/A1.24-BILLING-RULE-PARITY.md` for exact boundaries. The latest exact code checkpoint's full CI must pass before this increment is considered verified. Production call lifecycle and settlement remain unfinished; UI and installer stay last.
+
+
+## Verified Internet + VoIP charge administration — 2026-10-12
+
+The code checkpoint `1e66ad4e9f0b418f46da2568915879ceb8ea292f` passed full CI on Python 3.11 and 3.12 (**749 passed, 2 warnings each**), including PostgreSQL integration. Python-only reported 745 passed, 4 skipped. Added Internet charge-rule CRUD API and repository alongside VoIP tariff/prefix and VoIP charge-rule CRUD. Native bandwidth leaf IDs are preserved, paired leaf selection and source validation are enforced, and PostgreSQL integration tests cover create/update/delete. Production billing/runtime parity remains incomplete; keep UI and installer last.
