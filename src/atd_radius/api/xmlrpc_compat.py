@@ -121,20 +121,53 @@ def _execute_ias_method(method: str, params, remote_addr: str | None):
         return result
 
 
-@router.post("/xmlrpc")
-async def xmlrpc_compatibility_endpoint(request: Request) -> Response:
+class _RequestTooLarge(ValueError):
+    """Raised while streaming an XML-RPC body that exceeds the transport limit."""
+
+
+async def _read_limited_body(request: Request) -> bytes:
+    # Check a declared length before consuming the body, but do not trust it:
+    # chunked requests and incorrect Content-Length values still need a hard cap.
+    headers = getattr(request, "headers", {})
+    declared_length = headers.get("content-length") if hasattr(headers, "get") else None
+    if declared_length is not None:
+        try:
+            if int(declared_length) > _MAX_BODY_BYTES:
+                raise _RequestTooLarge("XML-RPC request is too large")
+        except ValueError as exc:
+            if isinstance(exc, _RequestTooLarge):
+                raise
+            # Let the XML-RPC parser produce the normal malformed-request fault.
+            pass
+
+    stream = getattr(request, "stream", None)
+    if callable(stream):
+        chunks: list[bytes] = []
+        size = 0
+        async for chunk in stream():
+            size += len(chunk)
+            if size > _MAX_BODY_BYTES:
+                raise _RequestTooLarge("XML-RPC request is too large")
+            chunks.append(chunk)
+        return b"".join(chunks)
+
+    # Lightweight request doubles and compatible adapters may expose body()
+    # rather than an ASGI stream. Keep the same hard limit for those callers.
     body = await request.body()
     if len(body) > _MAX_BODY_BYTES:
-        fault = xmlrpc.client.Fault(1, "XML-RPC request is too large")
-        return Response(
-            content=xmlrpc.client.dumps(fault, encoding="utf-8"),
-            media_type="text/xml",
-            status_code=200,
-        )
+        raise _RequestTooLarge("XML-RPC request is too large")
+    return body
+
+
+@router.post("/xmlrpc")
+async def xmlrpc_compatibility_endpoint(request: Request) -> Response:
     try:
+        body = await _read_limited_body(request)
         params, method = xmlrpc.client.loads(body, use_builtin_types=True)
         result = _execute_ias_method(method, params, request.client.host if request.client else None)
         payload = xmlrpc.client.dumps((result,), methodresponse=True, allow_none=False, encoding="utf-8")
+    except _RequestTooLarge as exc:
+        payload = xmlrpc.client.dumps(xmlrpc.client.Fault(1, str(exc)), encoding="utf-8")
     except Exception as exc:
         payload = xmlrpc.client.dumps(xmlrpc.client.Fault(1, str(exc)), encoding="utf-8")
     return Response(content=payload, media_type="text/xml", status_code=200)
