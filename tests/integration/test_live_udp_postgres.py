@@ -337,3 +337,64 @@ def test_postgres_voip_charge_rule_create_update_delete_round_trip(live_db):
             "SELECT count(*) FROM charge_rule_day_of_weeks WHERE charge_rule_id = %s",
             (rule_id,),
         ).fetchone()[0] == 0
+
+
+def test_postgres_internet_charge_rule_create_update_delete_round_trip(live_db):
+    from decimal import Decimal
+    from atd_radius.infrastructure.billing_rules import (
+        InternetChargeRuleInput,
+        PostgresInternetChargeRuleRepository,
+    )
+
+    with psycopg.connect(live_db) as conn:
+        conn.execute(
+            "INSERT INTO charges (charge_id, name, charge_type) VALUES (1, 'live-internet', 'Internet')"
+        )
+        conn.execute(
+            "INSERT INTO ras_ports (ras_id, port_name, type) VALUES (1, 'ppp0', 'PPP')"
+        )
+        conn.commit()
+
+    payload = InternetChargeRuleInput(
+        start_time="08:00", end_time="18:00", days=("Monday", "Tuesday"),
+        cpm=Decimal("2.50"), cpk=Decimal("0.25"), assumed_kps=128,
+        bandwidth_limit_kbytes=4096, tx_leaf_name="", rx_leaf_name="",
+        ras_id=1, ports=("ppp0",),
+    )
+    with psycopg.connect(live_db) as conn:
+        repo = PostgresInternetChargeRuleRepository(conn)
+        rule_id = repo.create("live-internet", payload)
+        conn.commit()
+
+    with psycopg.connect(live_db) as conn:
+        rule = PostgresInternetChargeRuleRepository(conn).get(rule_id)
+        assert rule is not None
+        assert rule.charge_id == 1
+        assert rule.cpm == Decimal("2.50")
+        assert rule.bw_transmit_leaf_id is None
+        assert rule.days == frozenset({0, 1})
+
+    updated = InternetChargeRuleInput(
+        start_time="09:00", end_time="17:00", days=("Wednesday",),
+        cpm=Decimal("3.00"), cpk=Decimal("0.50"), assumed_kps=256,
+        bandwidth_limit_kbytes=8192, tx_leaf_name="", rx_leaf_name="",
+        ras_id=1, ports=("ppp0",),
+    )
+    with psycopg.connect(live_db) as conn:
+        PostgresInternetChargeRuleRepository(conn).update("live-internet", rule_id, updated)
+        conn.commit()
+
+    with psycopg.connect(live_db) as conn:
+        rule = PostgresInternetChargeRuleRepository(conn).get(rule_id)
+        assert rule is not None
+        assert rule.start_second == 9 * 3600
+        assert rule.cpm == Decimal("3.00")
+        assert rule.assumed_kps == 256
+        assert rule.days == frozenset({2})
+
+    with psycopg.connect(live_db) as conn:
+        PostgresInternetChargeRuleRepository(conn).delete("live-internet", rule_id)
+        conn.commit()
+
+    with psycopg.connect(live_db) as conn:
+        assert PostgresInternetChargeRuleRepository(conn).get(rule_id) is None

@@ -36,3 +36,77 @@ def test_repository_maps_native_internet_charge_rule_tables():
     assert rule.charge_id == 5
     assert rule.bw_transmit_leaf_id is None
     assert rule.bw_receive_leaf_id is None
+
+
+from atd_radius.infrastructure.billing_rules import (
+    InternetChargeRuleInput,
+    InternetChargeNotFound,
+    InternetChargeTypeError,
+    InternetRuleConflictError,
+    InternetRuleInputError,
+)
+
+
+class MutationConn:
+    def __init__(self, responses):
+        self.responses = list(responses)
+        self.calls = []
+
+    def execute(self, sql, params=()):
+        self.calls.append((sql, params))
+        if not self.responses:
+            return Result([])
+        result = self.responses.pop(0)
+        if isinstance(result, Exception):
+            raise result
+        return result
+
+
+def internet_payload(**changes):
+    values = dict(
+        start_time="08:00", end_time="18:00", days=("Monday", "Tuesday"),
+        cpm=Decimal("2.50"), cpk=Decimal("0.25"), assumed_kps=128,
+        bandwidth_limit_kbytes=4096, tx_leaf_name="", rx_leaf_name="",
+        ras_id=None, ports=("_ALL_",),
+    )
+    values.update(changes)
+    return InternetChargeRuleInput(**values)
+
+
+def test_internet_rule_create_writes_native_columns_and_sequence():
+    conn = MutationConn([
+        Result([(5, "Internet")]), Result([]), Result([]),
+        Result([(31,)]), Result([]), Result([]), Result([]), Result([]),
+    ])
+    rule_id = PostgresInternetChargeRuleRepository(conn).create("Broadband", internet_payload())
+    assert rule_id == 31
+    insert = next((sql, params) for sql, params in conn.calls if "INSERT INTO internet_charge_rules" in sql)
+    assert "bw_transmit_leaf_id" in insert[0]
+    assert "bw_receive_leaf_id" in insert[0]
+    assert insert[1] == (5, 31, "08:00:00", "18:00:00", Decimal("2.50"), Decimal("0.25"), 128, 4096, None, None, None)
+
+
+def test_internet_rule_validation_requires_positive_assumed_kps_and_leaf_pair():
+    repo = PostgresInternetChargeRuleRepository(MutationConn([]))
+    with pytest.raises(InternetRuleInputError, match="assumed_kps"):
+        repo._validate(internet_payload(assumed_kps=0))
+    with pytest.raises(InternetRuleInputError, match="both be set"):
+        repo._require_leaf_pair("tx", "")
+
+
+def test_internet_rule_rejects_wrong_charge_type():
+    repo = PostgresInternetChargeRuleRepository(MutationConn([Result([(5, "VoIP")])]))
+    with pytest.raises(InternetChargeTypeError):
+        repo.create("Calls", internet_payload())
+
+
+def test_internet_rule_detects_native_overlap_for_same_ras_port_day_time():
+    conn = MutationConn([
+        Result([(5, "Internet")]), Result([]),
+        Result([(17, time(9), time(17), None)]),
+        Result([("_ALL_",)]), Result([(0,)]),
+    ])
+    with pytest.raises(InternetRuleConflictError):
+        PostgresInternetChargeRuleRepository(conn).create(
+            "Broadband", internet_payload(start_time="10:00", end_time="12:00", days=("Monday",))
+        )
