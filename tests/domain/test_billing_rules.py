@@ -4,7 +4,14 @@ from decimal import Decimal
 import pytest
 
 from atd_radius.domain.billing import BillingUsage, BillingError
-from atd_radius.domain.billing_rules import ALL, InternetChargeRule, select_effective_rule
+from atd_radius.domain.billing_rules import (
+    ALL,
+    InternetChargeRule,
+    VoipChargeRule,
+    select_effective_rule,
+    select_effective_voip_rule,
+)
+from atd_radius.domain.voip_tariff import VoipPrefix, VoipTariff
 
 
 def rule(rule_id, *, ras_id=None, ports=frozenset({ALL})):
@@ -85,9 +92,6 @@ def test_empty_port_list_is_not_a_wildcard_in_a124():
             port="ppp0",
         )
 
-
-from atd_radius.domain.billing_rules import VoipChargeRule, select_effective_voip_rule
-from atd_radius.domain.voip_tariff import VoipPrefix, VoipTariff
 
 
 def voip_rule(rule_id, tariff_id, *, ras_id=None, ports=frozenset({ALL})):
