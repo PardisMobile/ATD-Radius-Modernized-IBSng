@@ -18,6 +18,7 @@ from atd_radius.api.bandwidth_manager import router as bandwidth_manager_router
 from atd_radius.api.charges import router as charges_router
 from atd_radius.api.ias_events import router as ias_events_router
 from atd_radius.api.ias_users import router as ias_users_router
+from atd_radius.api.xmlrpc_compat import router as xmlrpc_compat_router
 
 app = FastAPI(title=settings.app_name, version=__version__)
 
@@ -63,6 +64,7 @@ app.include_router(bandwidth_manager_router, prefix=settings.api_prefix)
 app.include_router(charges_router, prefix=settings.api_prefix)
 app.include_router(ias_events_router, prefix=settings.api_prefix)
 app.include_router(ias_users_router, prefix=settings.api_prefix)
+app.include_router(xmlrpc_compat_router)
 
 
 @app.get("/health")
