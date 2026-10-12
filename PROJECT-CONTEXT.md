@@ -1405,5 +1405,5 @@ Latest code/test commit: `60237946c885c8f541480f9b2428f253950f7772`. Full CI pas
 ### XML-RPC request-boundary checkpoint — 2026-10-12
 - The registered IAS XML-RPC endpoint now applies its 1 MiB limit while consuming the ASGI stream and rejects a larger declared Content-Length before reading.
 - Regression tests cover streamed and declared oversize payloads.
-- Code/test commit: 2b6849b10613ba24354c3296b9c6ed5f17b012f6; Python-only workflow passed. Full matrix status was still running when this checkpoint was written.
+- Code/test commit: 2b6849b10613ba24354c3296b9c6ed5f17b012f6; Full CI passed on code/test commit 2b6849b10613ba24354c3296b9c6ed5f17b012f6: Python 3.11 and 3.12 each reported 791 passed, 2 warnings; Ruff, compilation, PHP syntax, and PostgreSQL integration passed (run 38228913843). Python-only workflow passed (run 38228913960).
 - This does not close XML-RPC/IAS parity: only the three methods actually registered by A1.24 are exposed; exact legacy transport/error semantics and end-to-end fixtures remain.

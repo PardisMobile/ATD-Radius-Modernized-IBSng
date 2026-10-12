@@ -54,3 +54,8 @@ No subsystem is marked complete until its source inventory, ATD implementation, 
 
 
 - Provider-critical Cisco, Quintum and MikroTik VSAs: source-derived wire fixtures implemented; full vendor dictionary parity remains open.
+
+
+## XML-RPC bounded transport verification — 2026-10-12
+
+The request-body limit is now enforced incrementally and before streaming when Content-Length already exceeds 1 MiB. Code/test commit 2b6849b10613ba24354c3296b9c6ed5f17b012f6 passed full CI: 791 tests on Python 3.11 and 3.12, 2 warnings each, including PostgreSQL integration, Ruff, compilation and PHP syntax. Python-only CI passed as well. This verifies transport hardening, not complete XML-RPC/IAS semantic parity.
