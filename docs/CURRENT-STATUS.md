@@ -258,3 +258,8 @@ This is management/persistence parity only. The source's `charge_main.getLoader(
 ## Source-backed VoIP prefix applicability — 2026-10-12
 
 Implemented `select_effective_voip_rule` matching `VoipChargeRule.anytimeAppliable`: for a non-empty called number, a candidate rule is applicable only if its tariff has a matching prefix; an empty called number is allowed before the RAS supplies it. Effective selection retains A1.24's strict-greater-priority replacement behavior. Regression tests cover a non-matching higher candidate, no matching tariff prefix, and the not-yet-acquired called number case. This is a domain primitive; production call lifecycle wiring remains open.
+
+
+## VoIP charge-rule CRUD regression coverage — 2026-10-12
+
+Added repository tests for updating a rule while replacing its day/port child rows, deleting child rows before the inherited VoIP rule row, and refusing to mutate a rule belonging to a different charge. RAS-specific rules now validate that the RAS exists and that every named port is configured on that RAS; `_ALL_` remains an explicit marker.

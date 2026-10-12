@@ -136,3 +136,49 @@ def test_specific_ras_validation_preserves_all_ports_marker():
     assert PostgresVoipChargeRuleRepository(conn).create(
         "Calls", payload(ras_id=10, ports=(ALL,))
     ) == 21
+
+
+def test_update_rewrites_native_rule_and_replaces_day_port_children():
+    conn = Conn([
+        Result(rows=[(10, "VoIP")]),
+        Result(row=(21,)),
+        Result(rows=[(3,)]),
+        Result(),  # no overlap
+        Result(),  # update voip_charge_rules
+        Result(),  # delete old ports
+        Result(),  # delete old days
+        Result(), Result(), Result(),  # insert two days and one port
+    ])
+    PostgresVoipChargeRuleRepository(conn).update("Calls", 21, payload())
+    assert any("UPDATE voip_charge_rules" in sql for sql, _ in conn.calls)
+    assert sum("DELETE FROM charge_rule_ports" in sql for sql, _ in conn.calls) == 1
+    assert sum("DELETE FROM charge_rule_day_of_weeks" in sql for sql, _ in conn.calls) == 1
+    assert sum("INSERT INTO charge_rule_day_of_weeks" in sql for sql, _ in conn.calls) == 2
+
+
+def test_delete_removes_child_rows_before_native_voip_rule():
+    conn = Conn([
+        Result(rows=[(10, "VoIP")]),
+        Result(row=(21,)),
+        Result(), Result(), Result(),
+    ])
+    PostgresVoipChargeRuleRepository(conn).delete("Calls", 21)
+    statements = [sql for sql, _ in conn.calls]
+    assert statements.index("DELETE FROM charge_rule_ports WHERE charge_rule_id = %s") < next(
+        i for i, sql in enumerate(statements) if "DELETE FROM voip_charge_rules" in sql
+    )
+    assert statements.index("DELETE FROM charge_rule_day_of_weeks WHERE charge_rule_id = %s") < next(
+        i for i, sql in enumerate(statements) if "DELETE FROM voip_charge_rules" in sql
+    )
+
+
+def test_update_and_delete_reject_rule_from_another_charge():
+    for operation in ("update", "delete"):
+        conn = Conn([Result(rows=[(10, "VoIP")]), Result()])
+        repo = PostgresVoipChargeRuleRepository(conn)
+        with pytest.raises(Exception, match="21"):
+            if operation == "update":
+                repo.update("Calls", 21, payload())
+            else:
+                repo.delete("Calls", 21)
+        assert not any("DELETE FROM" in sql or "UPDATE voip_charge_rules" in sql for sql, _ in conn.calls)
