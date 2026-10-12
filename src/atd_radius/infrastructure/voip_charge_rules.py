@@ -182,7 +182,10 @@ class PostgresVoipChargeRuleRepository:
             raise VoipRuleInputError("port names cannot be empty")
         if ALL in payload.ports and len(payload.ports) > 1:
             raise VoipRuleInputError("_ALL_ cannot be combined with named ports")
-        return start, end, days, tuple(payload.ports)
+        # A1.24 inserts one NULL ras_port row when the submitted port list is
+        # empty. Preserve that DB shape; it is not a wildcard at runtime.
+        normalized_ports: tuple[str | None, ...] = tuple(payload.ports) if payload.ports else (None,)
+        return start, end, days, normalized_ports
 
     @staticmethod
     def _parse_time(value: str) -> str:
@@ -215,9 +218,13 @@ class PostgresVoipChargeRuleRepository:
             other_ras = int(row[3]) if row[3] is not None else None
             if other_ras != ras_id:
                 continue
-            other_ports = {str(item[0]) for item in self.conn.execute(
-                "SELECT ras_port FROM charge_rule_ports WHERE charge_rule_id = %s", (other_id,)
-            ).fetchall()}
+            other_ports = {
+                item[0] if item[0] is None else str(item[0])
+                for item in self.conn.execute(
+                    "SELECT ras_port FROM charge_rule_ports WHERE charge_rule_id = %s",
+                    (other_id,),
+                ).fetchall()
+            }
             if not set(ports).intersection(other_ports):
                 continue
             other_days = {int(item[0]) for item in self.conn.execute(
@@ -237,7 +244,9 @@ class PostgresVoipChargeRuleRepository:
         parts = str(value).split(":")
         return int(parts[0]) * 3600 + int(parts[1]) * 60 + int(Decimal(parts[2]))
 
-    def _insert_days_and_ports(self, rule_id: int, days: frozenset[int], ports: tuple[str, ...]) -> None:
+    def _insert_days_and_ports(
+        self, rule_id: int, days: frozenset[int], ports: tuple[str | None, ...]
+    ) -> None:
         for day in sorted(days):
             self.conn.execute(
                 "INSERT INTO charge_rule_day_of_weeks (charge_rule_id, day_of_week) VALUES (%s, %s)",
@@ -263,7 +272,7 @@ class PostgresVoipChargeRuleRepository:
             rule_id=rule_id, days=frozenset(int(item[0]) for item in days),
             start_second=self._seconds(row[2]), end_second=self._seconds(row[3]),
             ras_id=int(row[5]) if row[5] is not None else None,
-            ports=frozenset(str(item[0]) for item in ports),
+            ports=frozenset(item[0] if item[0] is None else str(item[0]) for item in ports),
             charge_id=int(row[1]), tariff_id=int(row[6]),
             time_limit=int(row[4]) if row[4] is not None else None,
         )

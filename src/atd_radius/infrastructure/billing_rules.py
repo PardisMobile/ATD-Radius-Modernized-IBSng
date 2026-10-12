@@ -90,12 +90,12 @@ class PostgresInternetChargeRuleRepository:
         ).fetchall()
         return [int(row[0]) for row in rows]
 
-    def _ports(self, rule_id: int) -> list[str]:
+    def _ports(self, rule_id: int) -> list[str | None]:
         rows = self.conn.execute(
             "SELECT ras_port FROM charge_rule_ports WHERE charge_rule_id=%s ORDER BY ras_port",
             (rule_id,),
         ).fetchall()
-        return [str(row[0]) for row in rows]
+        return [row[0] if row[0] is None else str(row[0]) for row in rows]
 
     @staticmethod
     def _seconds(value) -> int:

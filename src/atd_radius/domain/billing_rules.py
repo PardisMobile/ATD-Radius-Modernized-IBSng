@@ -19,7 +19,7 @@ class ChargeRule:
     start_second: int
     end_second: int
     ras_id: int | None = None
-    ports: frozenset[str] = frozenset()
+    ports: frozenset[str | None] = frozenset()
 
     def __post_init__(self) -> None:
         if not self.days:

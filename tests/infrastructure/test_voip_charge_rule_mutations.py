@@ -182,3 +182,18 @@ def test_update_and_delete_reject_rule_from_another_charge():
             else:
                 repo.delete("Calls", 21)
         assert not any("DELETE FROM" in sql or "UPDATE voip_charge_rules" in sql for sql, _ in conn.calls)
+
+
+def test_empty_submitted_ports_persist_source_defined_null_row_not_no_row():
+    conn = Conn([
+        Result(rows=[(10, "VoIP")]),
+        Result(rows=[(3,)]),
+        Result(),  # no conflicts
+        Result(row=(21,)),
+        Result(), Result(), Result(),
+    ])
+    repo = PostgresVoipChargeRuleRepository(conn)
+    rule_id = repo.create("Calls", payload(ports=()))
+    port_insert = next((sql, params) for sql, params in conn.calls if "INSERT INTO charge_rule_ports" in sql)
+    assert rule_id == 21
+    assert port_insert[1] == (21, None)

@@ -279,3 +279,8 @@ New source-backed work in this increment:
 CI: the preceding code checkpoint `452b9b67cc060136778f8edeb2b5e7ba0c9813c1` passed full CI with **737 passed, 2 warnings** on both Python 3.11 and 3.12. Python-only for the code checkpoint containing the PostgreSQL round-trip test reported **735 passed, 3 skipped, 2 warnings**; PostgreSQL integration is excluded from that workflow. Full CI for `2d645d7` was still running when this note was written, so do not mark that exact checkpoint verified until its CI finishes.
 
 Still open before UI/installer: the native charge loader/cache reload side effect, production VoIP/RAS call lifecycle, call-time rule transitions, free-second tracking, missed-call behavior, rounding across rule transitions, credit settlement, and broader remaining backend parity. Do not enable destructive user/RAS operations until authoritative session/login-in-progress state and provider-backed termination are safe.
+
+
+## Source-accurate empty-port persistence — 2026-10-12
+
+A deeper trace of `ChargeActions.__addChargeRulePortsQuery` found that an empty submitted port list is stored as one `charge_rule_ports.ras_port = NULL` row, not as zero child rows. The loader returns that SQL NULL unchanged, and `ChargeRule.anytimeAppliable` still does not treat it as a wildcard; only a literal port match or `_ALL_` applies. The VoIP adapter now preserves this exact storage/mapping behavior and overlap checks distinguish SQL NULL from the string `"None"`.

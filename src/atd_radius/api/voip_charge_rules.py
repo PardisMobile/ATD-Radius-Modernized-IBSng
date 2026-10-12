@@ -28,7 +28,7 @@ class VoipChargeRulePayload(BaseModel):
     days: list[str] = Field(min_length=1)
     tariff_name: str = Field(min_length=1)
     ras_id: int | None = None
-    ports: list[str] = Field(default_factory=list)
+    ports: list[str | None] = Field(default_factory=list)
 
 
 class VoipChargeRuleView(BaseModel):
@@ -68,7 +68,7 @@ def _view(rule, tariff_name: str) -> VoipChargeRuleView:
         end_time=f"{rule.end_second // 3600:02d}:{(rule.end_second % 3600) // 60:02d}:{rule.end_second % 60:02d}",
         days=[_DAY_NAMES[day] for day in sorted(rule.days)],
         ras_id=rule.ras_id,
-        ports=sorted(rule.ports),
+        ports=sorted(rule.ports, key=lambda port: "" if port is None else port),
         time_limit=rule.time_limit,
     )
 
