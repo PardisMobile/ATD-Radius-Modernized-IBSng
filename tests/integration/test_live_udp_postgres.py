@@ -500,3 +500,26 @@ def test_postgres_user_charge_assignment_round_trip_for_normal_and_voip(live_db)
                 "SELECT count(*) FROM user_attrs WHERE user_id=1 AND attr_name=%s",
                 (attribute_name,),
             ).fetchone()[0] == 0
+
+
+def test_postgres_ias_event_list_and_delete_round_trip(live_db):
+    from atd_radius.infrastructure.ias_events_repository import PostgresIASEventRepository
+
+    with psycopg.connect(live_db) as conn:
+        conn.execute(
+            "INSERT INTO ias_event (event_id, event_type, actor, amount, destinations, comment) VALUES (501, 1, 'admin', 25, '1,2', 'test event')"
+        )
+        conn.commit()
+
+    with psycopg.connect(live_db) as conn:
+        repo = PostgresIASEventRepository(conn)
+        events = repo.list_events(0, 0, 10)
+        event = next(item for item in events if item.event_id == 501)
+        assert event.event_type_name == "CHANGE_CREDIT"
+        assert event.amount == Decimal("25")
+        assert event.destinations == "1,2"
+        assert repo.delete_events([501]) == 1
+        conn.commit()
+
+    with psycopg.connect(live_db) as conn:
+        assert conn.execute("SELECT count(*) FROM ias_event WHERE event_id=501").fetchone()[0] == 0
