@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
+import re
+
+from pydantic import BaseModel, Field, field_validator
 
 from atd_radius.api.admin_dependencies import AdminPrincipal, require_admin_permission
 from atd_radius.infrastructure.charges import (
@@ -24,11 +26,32 @@ class ChargeCreatePayload(BaseModel):
     charge_type: str
     visible_to_all: bool = False
 
+    @field_validator("charge_name")
+    @classmethod
+    def source_valid_name(cls, value: str) -> str:
+        if not re.fullmatch(r"[A-Za-z0-9_-]+", value):
+            raise ValueError("invalid A1.24 charge name")
+        return value
+
+    @field_validator("charge_type")
+    @classmethod
+    def source_valid_type(cls, value: str) -> str:
+        if value not in {"Internet", "VoIP"}:
+            raise ValueError("charge_type must be Internet or VoIP")
+        return value
+
 
 class ChargeUpdatePayload(BaseModel):
     charge_name: str = Field(min_length=1)
     comment: str = ""
     visible_to_all: bool = False
+
+    @field_validator("charge_name")
+    @classmethod
+    def source_valid_name(cls, value: str) -> str:
+        if not re.fullmatch(r"[A-Za-z0-9_-]+", value):
+            raise ValueError("invalid A1.24 charge name")
+        return value
 
 
 class ChargeView(BaseModel):
