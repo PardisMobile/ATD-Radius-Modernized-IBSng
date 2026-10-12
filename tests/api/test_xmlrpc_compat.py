@@ -119,3 +119,44 @@ def test_xmlrpc_compatibility_rejects_unregistered_handlers(monkeypatch):
     install_admin(monkeypatch)
     with pytest.raises(ValueError, match="no registered method"):
         api._execute_ias_method("user.getInfo", ({},), "127.0.0.1")
+
+
+
+def test_xmlrpc_endpoint_enforces_body_limit_while_streaming(monkeypatch):
+    monkeypatch.setattr(api, "_MAX_BODY_BYTES", 8)
+    consumed = []
+
+    async def stream():
+        consumed.append("first")
+        yield b"123456"
+        consumed.append("second")
+        yield b"789"
+
+    request = SimpleNamespace(
+        stream=stream,
+        headers={},
+        client=SimpleNamespace(host="127.0.0.1"),
+    )
+    response = __import__("asyncio").run(api.xmlrpc_compatibility_endpoint(request))
+    (fault,), method = xmlrpc.client.loads(response.body)
+    assert method is None
+    assert isinstance(fault, xmlrpc.client.Fault)
+    assert "too large" in fault.faultString
+    assert consumed == ["first", "second"]
+
+
+def test_xmlrpc_endpoint_rejects_declared_oversize_without_reading_body(monkeypatch):
+    monkeypatch.setattr(api, "_MAX_BODY_BYTES", 8)
+    async def stream():
+        raise AssertionError("oversized body should be rejected before reading")
+        yield b""
+    request = SimpleNamespace(
+        stream=stream,
+        headers={"content-length": "9"},
+        client=SimpleNamespace(host="127.0.0.1"),
+    )
+    response = __import__("asyncio").run(api.xmlrpc_compatibility_endpoint(request))
+    (fault,), method = xmlrpc.client.loads(response.body)
+    assert method is None
+    assert isinstance(fault, xmlrpc.client.Fault)
+    assert "too large" in fault.faultString
