@@ -109,6 +109,7 @@ _TARIFF_PERMISSIONS = AdminPermissionEvaluator(
     [
         PermissionSpec("GOD", PermissionKind.NO_VALUE),
         PermissionSpec("ACCESS ALL CHARGES", PermissionKind.NO_VALUE),
+        PermissionSpec("CHARGE ACCESS", PermissionKind.MULTI_VALUE),
         PermissionSpec(
             "CHANGE CHARGE",
             PermissionKind.NO_VALUE,
@@ -236,6 +237,17 @@ def require_admin_permission(permission_name: str):
 
     dependency.__name__ = f"require_admin_{permission_name.lower().replace(' ', '_')}"
     return dependency
+
+
+def can_use_charge(principal: AdminPrincipal, charge_name: str, visible_to_all: bool) -> bool:
+    """Match A1.24 Admin.canUseCharge for a resolved native charge."""
+    if visible_to_all or principal.permissions.is_god():
+        return True
+    if _TARIFF_PERMISSIONS.can_do(principal.permissions, "ACCESS ALL CHARGES"):
+        return True
+    return _TARIFF_PERMISSIONS.can_do(
+        principal.permissions, "CHARGE ACCESS", requested_value=charge_name
+    )
 
 
 def can_access_user(principal: AdminPrincipal, owner_id: int | None) -> bool:

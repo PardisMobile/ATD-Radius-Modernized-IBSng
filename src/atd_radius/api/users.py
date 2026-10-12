@@ -12,6 +12,7 @@ from atd_radius.api.admin_dependencies import (
     can_change_user,
     can_change_user_credit,
     can_change_voip_user_attributes,
+    can_use_charge,
     can_use_group,
     can_view_connection_logs,
     can_view_credit_changes,
@@ -34,6 +35,12 @@ from atd_radius.infrastructure.user_attribute_mutations import (
 )
 from atd_radius.infrastructure.caller_id_mutations import CallerIDMutationRepository
 from atd_radius.infrastructure.fast_dial_actions import FastDialActionError, FastDialActionsRepository
+from atd_radius.infrastructure.user_charge_assignments import (
+    UserChargeAssignmentRepository,
+    UserChargeNotFound,
+    UserChargeTargetNotFound,
+    UserChargeTypeError,
+)
 
 router = APIRouter(prefix="/users", tags=["USER"])
 
@@ -49,6 +56,18 @@ class UserCreate(BaseModel):
 class UserAttributeMutation(BaseModel):
     attrs: dict[str, str] = Field(default_factory=dict)
     to_delete: list[str] = Field(default_factory=list)
+
+
+class UserChargeAssignmentPayload(BaseModel):
+    charge_name: str = Field(min_length=1, max_length=255)
+
+
+class UserChargeAssignmentView(BaseModel):
+    user_id: int
+    username: str
+    attribute_name: str
+    charge_id: int | None
+    charge_name: str | None
 
 
 class UserAttributeMutationView(BaseModel):
@@ -859,3 +878,115 @@ def set_fast_dial_destination(
         raise
     except Exception as exc:
         raise HTTPException(status_code=409, detail="Fast-dial destination could not be changed") from exc
+
+
+def _charge_assignment_view(assignment) -> UserChargeAssignmentView:
+    return UserChargeAssignmentView(
+        user_id=assignment.user_id,
+        username=assignment.username,
+        attribute_name=assignment.attribute_name,
+        charge_id=assignment.charge_id,
+        charge_name=assignment.charge_name,
+    )
+
+
+def _charge_attribute_access(admin: AdminPrincipal, owner_id: int | None, attribute_name: str) -> bool:
+    if attribute_name == "normal_charge":
+        return can_change_user(admin, owner_id)
+    if attribute_name == "voip_charge":
+        return can_change_voip_user_attributes(admin, owner_id)
+    return False
+
+
+@router.get("/{username}/charges/{attribute_name}", response_model=UserChargeAssignmentView)
+def get_user_charge_assignment(
+    username: str,
+    attribute_name: str,
+    admin: AdminPrincipal = Depends(require_admin_session),
+) -> UserChargeAssignmentView:
+    if attribute_name not in {"normal_charge", "voip_charge"}:
+        raise HTTPException(status_code=404, detail="Charge attribute not found")
+    with connection() as conn:
+        repo = UserChargeAssignmentRepository(conn)
+        target = repo.lock_target(username, attribute_name)
+        if target is None:
+            raise HTTPException(status_code=404, detail="User component not found")
+        if not can_access_user(admin, target.owner_id):
+            raise HTTPException(status_code=403, detail="Administrator permission denied")
+        try:
+            assignment = repo.get(target)
+        except RuntimeError as exc:
+            raise HTTPException(status_code=409, detail="Stored charge assignment is invalid") from exc
+    return _charge_assignment_view(assignment)
+
+
+@router.put("/{username}/charges/{attribute_name}", response_model=UserChargeAssignmentView)
+def assign_user_charge(
+    username: str,
+    attribute_name: str,
+    payload: UserChargeAssignmentPayload,
+    admin: AdminPrincipal = Depends(require_admin_session),
+) -> UserChargeAssignmentView:
+    if attribute_name not in {"normal_charge", "voip_charge"}:
+        raise HTTPException(status_code=404, detail="Charge attribute not found")
+    with connection() as conn:
+        repo = UserChargeAssignmentRepository(conn)
+        target = repo.lock_target(username, attribute_name)
+        if target is None:
+            raise HTTPException(status_code=404, detail="User component not found")
+        if not _charge_attribute_access(admin, target.owner_id, attribute_name):
+            raise HTTPException(status_code=403, detail="Administrator permission denied")
+        charge_rows = conn.execute(
+            "SELECT charge_id, name, charge_type, visible_to_all FROM charges WHERE name=%s",
+            (payload.charge_name,),
+        ).fetchall()
+        if not charge_rows:
+            raise HTTPException(status_code=404, detail="Charge not found")
+        charge = charge_rows[0]
+        expected_type = "Internet" if attribute_name == "normal_charge" else "VoIP"
+        if str(charge[2]) != expected_type:
+            raise HTTPException(status_code=422, detail=f"{attribute_name} requires a {expected_type} charge")
+        if not can_use_charge(admin, str(charge[1]), bool(charge[3])):
+            raise HTTPException(status_code=403, detail="Administrator cannot use this charge")
+        try:
+            assignment = repo.assign(target, admin_id=admin.admin_id, charge_name=payload.charge_name)
+        except UserChargeNotFound as exc:
+            raise HTTPException(status_code=404, detail="Charge not found") from exc
+        except UserChargeTypeError as exc:
+            raise HTTPException(status_code=422, detail="Charge type does not match attribute") from exc
+        OperationalAuditRepository(conn).append(
+            actor_admin_id=admin.admin_id, actor_username=admin.username,
+            action="user.charge.assign", outcome="success",
+            target_type="user", target_id=str(target.user_id),
+            remote_addr=admin.remote_addr,
+            details={"attribute_name": attribute_name, "charge_name": assignment.charge_name},
+        )
+        conn.commit()
+    return _charge_assignment_view(assignment)
+
+
+@router.delete("/{username}/charges/{attribute_name}", response_model=UserChargeAssignmentView)
+def delete_user_charge_assignment(
+    username: str,
+    attribute_name: str,
+    admin: AdminPrincipal = Depends(require_admin_session),
+) -> UserChargeAssignmentView:
+    if attribute_name not in {"normal_charge", "voip_charge"}:
+        raise HTTPException(status_code=404, detail="Charge attribute not found")
+    with connection() as conn:
+        repo = UserChargeAssignmentRepository(conn)
+        target = repo.lock_target(username, attribute_name)
+        if target is None:
+            raise HTTPException(status_code=404, detail="User component not found")
+        if not _charge_attribute_access(admin, target.owner_id, attribute_name):
+            raise HTTPException(status_code=403, detail="Administrator permission denied")
+        assignment = repo.delete(target, admin_id=admin.admin_id)
+        OperationalAuditRepository(conn).append(
+            actor_admin_id=admin.admin_id, actor_username=admin.username,
+            action="user.charge.delete", outcome="success",
+            target_type="user", target_id=str(target.user_id),
+            remote_addr=admin.remote_addr,
+            details={"attribute_name": attribute_name, "previous_charge_name": assignment.charge_name},
+        )
+        conn.commit()
+    return _charge_assignment_view(assignment)
