@@ -131,7 +131,7 @@ def test_bandwidth_manager_repository_lists_interfaces_and_reconstructs_native_t
 def test_bandwidth_manager_repository_rejects_cyclic_parent_links():
     class CyclicConn:
         def execute(self, sql, params=()):
-            if "FROM bw_node WHERE interface_id" in sql:
+            if "FROM bw_node" in sql and "interface_id = %s" in sql and "parent_id IS NULL" in sql:
                 return TreeResult([(10,)])
             if "FROM bw_node WHERE parent_id" in sql:
                 return TreeResult([(10,)])
