@@ -9,6 +9,8 @@ class Result:
         self.rows = rows
     def fetchall(self):
         return self.rows
+    def fetchone(self):
+        return self.rows[0] if self.rows else None
 
 
 class Conn:
@@ -75,8 +77,8 @@ def internet_payload(**changes):
 
 def test_internet_rule_create_writes_native_columns_and_sequence():
     conn = MutationConn([
-        Result([(5, "Internet")]), Result([]), Result([]),
-        Result([(31,)]), Result([]), Result([]), Result([]), Result([]),
+        Result([(5, "Internet")]), Result([]), Result([(31,)]),
+        Result([]), Result([]), Result([]), Result([]),
     ])
     rule_id = PostgresInternetChargeRuleRepository(conn).create("Broadband", internet_payload())
     assert rule_id == 31
@@ -102,7 +104,7 @@ def test_internet_rule_rejects_wrong_charge_type():
 
 def test_internet_rule_detects_native_overlap_for_same_ras_port_day_time():
     conn = MutationConn([
-        Result([(5, "Internet")]), Result([]),
+        Result([(5, "Internet")]),
         Result([(17, time(9), time(17), None)]),
         Result([("_ALL_",)]), Result([(0,)]),
     ])
@@ -110,3 +112,15 @@ def test_internet_rule_detects_native_overlap_for_same_ras_port_day_time():
         PostgresInternetChargeRuleRepository(conn).create(
             "Broadband", internet_payload(start_time="10:00", end_time="12:00", days=("Monday",))
         )
+
+
+def test_internet_rule_delete_removes_children_before_rule_row():
+    conn = MutationConn([
+        Result([(5, "Internet")]), Result([(31,)]),
+        Result([]), Result([]), Result([]),
+    ])
+    PostgresInternetChargeRuleRepository(conn).delete("Broadband", 31)
+    statements = [sql for sql, _ in conn.calls]
+    rule_delete = next(i for i, sql in enumerate(statements) if "DELETE FROM internet_charge_rules" in sql)
+    assert statements.index("DELETE FROM charge_rule_ports WHERE charge_rule_id=%s") < rule_delete
+    assert statements.index("DELETE FROM charge_rule_day_of_weeks WHERE charge_rule_id=%s") < rule_delete
