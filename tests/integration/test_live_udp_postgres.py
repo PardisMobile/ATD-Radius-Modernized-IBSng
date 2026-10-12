@@ -524,3 +524,20 @@ def test_postgres_ias_event_list_and_delete_round_trip(live_db):
 
     with psycopg.connect(live_db) as conn:
         assert conn.execute("SELECT count(*) FROM ias_event WHERE event_id=501").fetchone()[0] == 0
+
+
+def test_postgres_ias_user_info_projection_round_trip(live_db):
+    from atd_radius.infrastructure.ias_user_info import PostgresIASUserInfoRepository
+
+    with psycopg.connect(live_db) as conn:
+        conn.execute(
+            "UPDATE users SET credit=12.50 WHERE user_id=1"
+        )
+        conn.commit()
+
+    with psycopg.connect(live_db) as conn:
+        users = PostgresIASUserInfoRepository(conn).get_many([1])
+        assert len(users) == 1
+        assert users[0].user_id == 1
+        assert users[0].credit == Decimal("12.50")
+        assert users[0].normal_username == "live-user"
