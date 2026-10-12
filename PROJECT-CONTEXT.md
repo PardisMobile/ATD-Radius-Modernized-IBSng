@@ -380,7 +380,7 @@ This section is the authoritative handoff/status index for the current ATD proje
 
 ### Phase 4
 - [ ] Complete REST resources.
-- [ ] XML-RPC compatibility adapter.
+- [~] XML-RPC compatibility adapter: transport exists for the three registered IAS methods, with GOD-only authorization and bounded request streaming; full source-semantic parity remains.
 - [ ] API authentication/RBAC/audit.
 
 ### Phase 5
@@ -1400,3 +1400,10 @@ Implemented:
 - Added `tests/infrastructure/test_user_attribute_mutations.py` and `tests/api/test_user_attribute_mutations_api.py`.
 
 Latest code/test commit: `60237946c885c8f541480f9b2428f253950f7772`. Full CI passed on Python 3.11 and 3.12 (**649 passed, 2 warnings** per matrix job); Python-only workflow passed **647 passed, 2 skipped, 2 warnings** (the two live UDP/PostgreSQL tests are not configured in that workflow). Runs: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38063523662 and https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38063523665. This code/test increment is CI-verified; later documentation commits may still be running their own CI. Documentation was reconciled in the following commits. This slice does **not** claim full attribute parity: credentials, caller IDs, IP allocation, charges, expiration, owner/group reassignment, VoIP, RADIUS attributes, and other specialized handlers remain blocked until their source validation and post-update contracts are implemented. User deletion, group reassignment, and safe online-session handling remain open. Native administrator deletion and permission editing are already implemented; do not redo them.
+
+
+### XML-RPC request-boundary checkpoint — 2026-10-12
+- The registered IAS XML-RPC endpoint now applies its 1 MiB limit while consuming the ASGI stream and rejects a larger declared Content-Length before reading.
+- Regression tests cover streamed and declared oversize payloads.
+- Code/test commit: 2b6849b10613ba24354c3296b9c6ed5f17b012f6; Python-only workflow passed. Full matrix status was still running when this checkpoint was written.
+- This does not close XML-RPC/IAS parity: only the three methods actually registered by A1.24 are exposed; exact legacy transport/error semantics and end-to-end fixtures remain.

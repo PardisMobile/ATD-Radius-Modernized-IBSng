@@ -342,3 +342,8 @@ Added native IAS event list/delete API with GOD-only authorization, using A1.24 
 ## IAS permission source correction — 2026-10-12
 
 Direct inspection of the complete A1.24 `core/admin/perms/` directory found no `HANDLE_IAS_EVENTS.py` permission class. Although `IASHandler` calls `canDo("HANDLE IAS EVENTS")`, the permission loader rejects unregistered permission names; `Admin.canDo` bypasses permission checks only for GOD. Therefore the registered native IAS methods are effectively GOD-only in A1.24. The REST IAS event/user-info routes now enforce GOD rather than inventing a grantable `HANDLE IAS EVENTS` permission. The old permission-catalog entry is corrected accordingly.
+
+
+## XML-RPC request-boundary hardening — 2026-10-12
+
+The /xmlrpc IAS compatibility endpoint now reads request bodies incrementally and enforces the 1 MiB limit during streaming, with an early Content-Length rejection when declared. This avoids buffering arbitrarily large request bodies before applying the existing transport limit. Regression tests cover streamed oversize bodies and declared oversize bodies. Code/test commit: 2b6849b10613ba24354c3296b9c6ed5f17b012f6. Python-only CI passed on that commit; full Python 3.11/3.12 + PostgreSQL CI was still running at the time of this documentation update. This is transport hardening only; full XML-RPC/IAS semantic parity remains open.
