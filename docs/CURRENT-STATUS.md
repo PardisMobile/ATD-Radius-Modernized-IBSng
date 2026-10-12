@@ -3,7 +3,7 @@
 Updated: 2026-10-12  
 Repository: `PardisMobile/ATD-Radius-Modernized-IBSng`  
 Branch: `main`  
-Latest verified code/test commit: `98e43155ad63b211c4fd289d9d7a0fd999a40401` (VoIP accounting settlement wired into Accounting Start/Interim/Stop; full CI run `38284989251`: Python 3.11 and 3.12 each 801 passed, 2 warnings; Ruff, compilation, PHP syntax and PostgreSQL integration passed). Python-only run `38284989298`: 793 passed, 8 skipped, 2 warnings. This is a documentation follow-up to the verified code checkpoint; check Actions for the exact current docs HEAD before treating the documentation-only run as green.
+Latest verified code/test commit: `5429fde6d17249568277c143c21e98732f1a427e` (bandwidth interface/tree/node read API; full CI run `38285636476`: Python 3.11 and 3.12 each 804 passed, 2 warnings; Ruff, compilation, PHP syntax and PostgreSQL integration passed). Python-only run `38285636565`: 796 passed, 8 skipped, 2 warnings. Check Actions separately for the latest documentation-only HEAD.
 
 ## Authority and validation
 
@@ -371,3 +371,12 @@ Code/test checkpoint `98e43155ad63b211c4fd289d9d7a0fd999a40401` passed full CI o
 Added A1.24-shaped VoIP settlement to the live Accounting-Request lifecycle: user-type routing selects normal versus VoIP charging; VoIP rules are selected with called-number tariff-prefix applicability; free seconds are consumed from the initial prefix; rule changes accrue the outgoing tariff without rounding; final settlement applies the active prefix's minimum-chargeable-duration/round-to formula and updates user credit. Interim accounting attributes are merged so a called number acquired after Start becomes available to the charging selector.
 
 This is a verified runtime settlement increment, **not complete VoIP billing parity**. Still open: time-driven rule-transition/credit-exhaustion scheduling, source-specific RAS kill and prefix/min-duration attributes, missed-call semantics, authoritative provider call start/end times, restart-safe call state, complete credit/audit transaction parity, and full end-to-end RAS tests. UI and installer remain last.
+
+
+## Verified bandwidth-manager read API increment — 2026-10-12
+
+Code/test checkpoint `5429fde6d17249568277c143c21e98732f1a427e` passed full CI on Python 3.11 and 3.12: **804 passed, 2 warnings per job**, including Ruff, compilation, PHP syntax and PostgreSQL integration (CI run `38285636476`). Python-only CI passed **796 passed, 8 skipped, 2 warnings** (run `38285636565`).
+
+Added source-backed reads for the native bandwidth interface catalog, interface tree, node details and existing leaf catalog/detail. The tree reproduces A1.24's recursive node/leaf structure, uses native `bw_interface`, `bw_node`, and `bw_leaf` tables, preserves leaf names and hierarchy order, returns 404 for missing interfaces/nodes or interfaces without a root, and detects corrupted parent cycles instead of recursing indefinitely.
+
+This is read-only groundwork for the deferred UI. Interface/node/leaf/service mutations, validation parity, live traffic-control (tc) effects and reload/rollback behavior remain pending; no bandwidth shaping is claimed complete.
