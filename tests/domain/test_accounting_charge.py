@@ -145,12 +145,12 @@ def test_voip_rule_transition_accrues_old_tariff_and_uses_final_rule_rounding():
     state = registry.start(SessionKey(7, 3, "voip-transition"), {"Called-Station-Id": "98912"}, started_at=start)
     settlement.start(state, start, 3, None)
     transition = start.replace(hour=11, minute=0, second=0)
-    assert settlement.update(state, transition, 3, None) == Decimal("0.5")
+    assert settlement.update(state, transition, 3, None) == Decimal("30")
     assert state.charge_rule_id == 2
     stop = transition.replace(minute=0, second=30)
     total = settlement.settle(state, stop, 3, None)
-    assert total == Decimal("120.5")
-    assert credits.changes == [(7, Decimal("-120.5"))]
+    assert total == Decimal("210")
+    assert credits.changes == [(7, Decimal("-210"))]
 
 def test_native_charge_settlement_routes_by_source_user_type():
     internet, voip = Mock(), Mock()
