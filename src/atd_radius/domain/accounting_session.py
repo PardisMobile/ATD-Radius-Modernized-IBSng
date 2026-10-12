@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from decimal import Decimal
 from typing import Protocol
 from .accounting_lifecycle import AccountingEvent, AccountingStatus
-from .accounting_charge import InternetChargeSettlement
 from .radius_runtime import SessionKey, SessionRegistry, SessionState
 
 class AccountingPersistence(Protocol):

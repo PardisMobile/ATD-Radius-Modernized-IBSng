@@ -4,6 +4,7 @@ from decimal import Decimal
 from atd_radius.domain.accounting_charge import InternetChargeSettlement, VoipChargeSettlement, UserChargeSettlement
 from atd_radius.domain.billing_rules import ALL, InternetChargeRule, VoipChargeRule
 from atd_radius.domain.radius_runtime import SessionKey, SessionRegistry
+from atd_radius.domain.voip_tariff import VoipPrefix, VoipTariff
 
 class Rules:
     def __init__(self, rule): self.rule=rule
@@ -97,8 +98,6 @@ def test_zero_credit_settlement_is_still_committed_as_zero():
     assert used==Decimal("0")
     assert credits.changes==[(7,Decimal("0"))]
 
-
-from atd_radius.domain.voip_tariff import VoipPrefix, VoipTariff
 
 class VoipRules:
     def __init__(self, rules): self.rules = rules
