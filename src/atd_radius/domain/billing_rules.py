@@ -58,6 +58,9 @@ class InternetChargeRule(ChargeRule):
     cpk: Decimal = Decimal("0")
     assumed_kps: int = 0
     bandwidth_limit_kbytes: int = -1
+    charge_id: int = 0
+    bw_transmit_leaf_id: int | None = None
+    bw_receive_leaf_id: int | None = None
 
     def __post_init__(self) -> None:
         ChargeRule.__post_init__(self)

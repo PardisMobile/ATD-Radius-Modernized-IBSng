@@ -14,7 +14,7 @@ class Result:
 class Conn:
     def execute(self, sql, params=()):
         if "FROM internet_charge_rules" in sql:
-            return Result([(7, time(0, 0), time(23, 59, 59), 10, Decimal("60"), Decimal("1"), 128, 4096)])
+            return Result([(7, time(0, 0), time(23, 59, 59), 10, Decimal("60"), Decimal("1"), 128, 4096, None, None, 5)])
         if "FROM charge_rule_day_of_weeks" in sql:
             return Result([(0,), (1,)])
         if "FROM charge_rule_ports" in sql:
@@ -33,3 +33,6 @@ def test_repository_maps_native_internet_charge_rule_tables():
     assert rule.cpk == Decimal("1")
     assert rule.assumed_kps == 128
     assert rule.bandwidth_limit_kbytes == 4096
+    assert rule.charge_id == 5
+    assert rule.bw_transmit_leaf_id is None
+    assert rule.bw_receive_leaf_id is None
