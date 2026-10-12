@@ -10,11 +10,11 @@ def principal(perms):
     return AdminPrincipal(7, "operator", None, AdminPermissionSet(perms))
 
 
-def test_ias_events_require_native_handle_ias_events_permission():
-    require = require_admin_permission("HANDLE IAS EVENTS")
-    assert require(principal({"HANDLE IAS EVENTS": ""})).username == "operator"
+def test_ias_events_are_god_only_when_source_permission_is_unregistered():
+    require = require_admin_permission("GOD")
+    assert require(principal({"GOD": ""})).username == "operator"
     with pytest.raises(HTTPException) as denied:
-        require(principal({"ACCESS ALL CHARGES": ""}))
+        require(principal({"HANDLE IAS EVENTS": "", "ACCESS ALL CHARGES": ""}))
     assert denied.value.status_code == 403
 
 

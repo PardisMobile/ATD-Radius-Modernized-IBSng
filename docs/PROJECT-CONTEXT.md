@@ -354,3 +354,8 @@ Code checkpoint `35f23bea970f519f3779a7a5afd548951c94a18f` passed full CI:
 - Python-only workflow passed: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38190051470
 
 Added native IAS event list/delete API guarded by `HANDLE IAS EVENTS`, using A1.24 event-type IDs, `event_id > from_event_id`, ordered pagination, and parameterized deletes. The API caps pagination at 3000 rows and rejects the legacy `from == to` edge because A1.24's DB helper accidentally omits LIMIT in that case. PostgreSQL integration verifies IAS event read/delete. Still pending in IAS: `getIASUserInfo`, `lockUser`, `lockAdmin`, and the native XML-RPC handler compatibility layer.
+
+
+## IAS permission source correction — 2026-10-12
+
+Direct inspection of the complete A1.24 `core/admin/perms/` directory found no `HANDLE_IAS_EVENTS.py` permission class. Although `IASHandler` calls `canDo("HANDLE IAS EVENTS")`, the permission loader rejects unregistered permission names; `Admin.canDo` bypasses permission checks only for GOD. Therefore the registered native IAS methods are effectively GOD-only in A1.24. The REST IAS event/user-info routes now enforce GOD rather than inventing a grantable `HANDLE IAS EVENTS` permission. The old permission-catalog entry is corrected accordingly.

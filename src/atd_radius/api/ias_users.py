@@ -24,7 +24,7 @@ class IASUserInfoView(BaseModel):
 @router.get("", response_model=list[IASUserInfoView])
 def get_ias_user_info(
     user_ids: list[int] = Query(...),
-    admin: AdminPrincipal = Depends(require_admin_permission("HANDLE IAS EVENTS")),
+    admin: AdminPrincipal = Depends(require_admin_permission("GOD")),
 ) -> list[IASUserInfoView]:
     try:
         with connection() as conn:

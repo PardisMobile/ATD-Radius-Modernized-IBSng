@@ -48,7 +48,7 @@ def list_ias_events(
     from_event_id: int = Query(...),
     from_offset: int = Query(0, alias="from", ge=0),
     to_offset: int = Query(100, alias="to", ge=0, le=50 * 1024 * 1024),
-    admin: AdminPrincipal = Depends(require_admin_permission("HANDLE IAS EVENTS")),
+    admin: AdminPrincipal = Depends(require_admin_permission("GOD")),
 ) -> list[IASEventView]:
     try:
         with connection() as conn:
@@ -63,7 +63,7 @@ def list_ias_events(
 @router.delete("", status_code=204)
 def delete_ias_events(
     payload: DeleteIASEventsPayload = Body(...),
-    admin: AdminPrincipal = Depends(require_admin_permission("HANDLE IAS EVENTS")),
+    admin: AdminPrincipal = Depends(require_admin_permission("GOD")),
 ) -> None:
     with connection() as conn:
         repo = PostgresIASEventRepository(conn)

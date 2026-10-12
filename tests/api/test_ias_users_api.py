@@ -12,11 +12,11 @@ def principal(perms):
     return AdminPrincipal(7, "operator", None, AdminPermissionSet(perms))
 
 
-def test_ias_user_info_requires_handle_ias_events():
-    require = require_admin_permission("HANDLE IAS EVENTS")
-    assert require(principal({"HANDLE IAS EVENTS": ""})).username == "operator"
+def test_ias_user_info_is_god_only_when_source_permission_is_unregistered():
+    require = require_admin_permission("GOD")
+    assert require(principal({"GOD": ""})).username == "operator"
     with pytest.raises(HTTPException) as denied:
-        require(principal({}))
+        require(principal({"HANDLE IAS EVENTS": ""}))
     assert denied.value.status_code == 403
 
 
@@ -43,5 +43,5 @@ def test_ias_user_info_maps_invalid_ids_to_422(monkeypatch):
     monkeypatch.setattr(api, "connection", fake_connection)
     monkeypatch.setattr(api, "PostgresIASUserInfoRepository", Repository)
     with pytest.raises(HTTPException) as error:
-        api.get_ias_user_info([0], principal({"HANDLE IAS EVENTS": ""}))
+        api.get_ias_user_info([0], principal({"GOD": ""}))
     assert error.value.status_code == 422

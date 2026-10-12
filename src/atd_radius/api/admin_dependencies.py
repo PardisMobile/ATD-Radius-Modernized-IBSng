@@ -110,7 +110,6 @@ _TARIFF_PERMISSIONS = AdminPermissionEvaluator(
         PermissionSpec("GOD", PermissionKind.NO_VALUE),
         PermissionSpec("ACCESS ALL CHARGES", PermissionKind.NO_VALUE),
         PermissionSpec("CHARGE ACCESS", PermissionKind.MULTI_VALUE),
-        PermissionSpec("HANDLE IAS EVENTS", PermissionKind.NO_VALUE),
         PermissionSpec(
             "CHANGE CHARGE",
             PermissionKind.NO_VALUE,
@@ -223,7 +222,7 @@ def require_admin_permission(permission_name: str):
             evaluator = _USER_PERMISSIONS
         elif permission_name in {"SEE CONNECTION LOGS", "SEE CREDIT CHANGES"}:
             evaluator = _REPORT_PERMISSIONS
-        elif permission_name in {"ACCESS ALL CHARGES", "CHARGE ACCESS", "CHANGE CHARGE", "SEE VOIP TARIFF", "CHANGE VOIP TARIFF", "CHANGE BANDWIDTH MANAGER", "HANDLE IAS EVENTS"}:
+        elif permission_name in {"ACCESS ALL CHARGES", "CHARGE ACCESS", "CHANGE CHARGE", "SEE VOIP TARIFF", "CHANGE VOIP TARIFF", "CHANGE BANDWIDTH MANAGER"}:
             evaluator = _TARIFF_PERMISSIONS
         elif permission_name in {
             "ADD NEW ADMIN", "SEE ADMIN INFO", "SEE ADMIN PERMISSIONS", "CHANGE ADMIN PERMISSIONS",

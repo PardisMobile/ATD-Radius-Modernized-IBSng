@@ -201,4 +201,9 @@ Added native charge catalog CRUD and user `normal_charge`/`voip_charge` assignme
 
 ## Verified IAS event management — 2026-10-12
 
-Added REST endpoints for IAS event listing and deletion under `HANDLE IAS EVENTS`, with native event-type mapping, bounded pagination, operational audit on deletion, and PostgreSQL integration coverage. Full CI on `35f23bea970f519f3779a7a5afd548951c94a18f` passed 778 tests on Python 3.11 and 3.12. Remaining IAS/XML-RPC work includes user-info lookup, lock-user/lock-admin workflows, and protocol compatibility.
+Added REST endpoints for IAS event listing and deletion with GOD-only access, matching the source's unregistered `HANDLE IAS EVENTS` permission, with native event-type mapping, bounded pagination, operational audit on deletion, and PostgreSQL integration coverage. Full CI on `35f23bea970f519f3779a7a5afd548951c94a18f` passed 778 tests on Python 3.11 and 3.12. Remaining IAS/XML-RPC work includes user-info lookup, lock-user/lock-admin workflows, and protocol compatibility.
+
+
+## IAS permission source correction — 2026-10-12
+
+Direct inspection of the complete A1.24 `core/admin/perms/` directory found no `HANDLE_IAS_EVENTS.py` permission class. Although `IASHandler` calls `canDo("HANDLE IAS EVENTS")`, the permission loader rejects unregistered permission names; `Admin.canDo` bypasses permission checks only for GOD. Therefore the registered native IAS methods are effectively GOD-only in A1.24. The REST IAS event/user-info routes now enforce GOD rather than inventing a grantable `HANDLE IAS EVENTS` permission. The old permission-catalog entry is corrected accordingly.
