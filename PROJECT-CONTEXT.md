@@ -1417,3 +1417,8 @@ Direct A1.24 source review confirmed that `ChargeHandler.listCharges` filters by
 ### Charge visibility route-level regression tests — 2026-10-12
 
 Added direct route-level tests for charge catalog list/detail and Internet/VoIP rule listing. The tests verify public and explicitly granted charge visibility, filtering of ungranted hidden charges, and 403 on a direct hidden-charge detail request. These strengthen the existing `canUseCharge` unit coverage without broadening the parity claim.
+
+
+## Charge visibility regression verification — 2026-10-12
+
+Route-level regression tests now exercise charge catalog list/detail and Internet/VoIP charge-rule lists with public, explicitly granted and restricted charges. Code/test commit `28c70624ee362305a313cb9d55518b03a3759389` passed full CI: Python 3.11 and 3.12 each **797 passed, 2 warnings**; Ruff, compilation, PHP syntax and PostgreSQL integration passed (CI run `38230282116`). Python-only workflow passed (run `38230282098`). The behavior remains a focused authorization-parity correction, not full charge/billing completion.

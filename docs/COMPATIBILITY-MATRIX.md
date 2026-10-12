@@ -64,3 +64,8 @@ The request-body limit is now enforced incrementally and before streaming when C
 ## Charge visibility parity correction — 2026-10-12
 
 Charge catalog and Internet/VoIP rule-list reads now use A1.24 `Admin.canUseCharge` semantics rather than requiring `ACCESS ALL CHARGES` for every GET. Visible-to-all charges, GOD/ACCESS ALL CHARGES, and exact `CHARGE ACCESS` values are handled through the shared native policy helper. Inaccessible explicit IDs return 403; missing IDs return 404. Code/test commit `7a2d5d15d55b1a74409933851f6eb0c90185b4c3` passed full CI with 795 tests on each Python version, 2 warnings each, including PostgreSQL integration; Python-only CI passed with 787 passed and 8 skipped.
+
+
+## Charge visibility regression verification — 2026-10-12
+
+Route-level regression tests now exercise charge catalog list/detail and Internet/VoIP charge-rule lists with public, explicitly granted and restricted charges. Code/test commit `28c70624ee362305a313cb9d55518b03a3759389` passed full CI: Python 3.11 and 3.12 each **797 passed, 2 warnings**; Ruff, compilation, PHP syntax and PostgreSQL integration passed (CI run `38230282116`). Python-only workflow passed (run `38230282098`). The behavior remains a focused authorization-parity correction, not full charge/billing completion.
