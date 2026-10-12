@@ -59,3 +59,8 @@ No subsystem is marked complete until its source inventory, ATD implementation, 
 ## XML-RPC bounded transport verification — 2026-10-12
 
 The request-body limit is now enforced incrementally and before streaming when Content-Length already exceeds 1 MiB. Code/test commit 2b6849b10613ba24354c3296b9c6ed5f17b012f6 passed full CI: 791 tests on Python 3.11 and 3.12, 2 warnings each, including PostgreSQL integration, Ruff, compilation and PHP syntax. Python-only CI passed as well. This verifies transport hardening, not complete XML-RPC/IAS semantic parity.
+
+
+## Charge visibility parity correction — 2026-10-12
+
+Charge catalog and Internet/VoIP rule-list reads now use A1.24 `Admin.canUseCharge` semantics rather than requiring `ACCESS ALL CHARGES` for every GET. Visible-to-all charges, GOD/ACCESS ALL CHARGES, and exact `CHARGE ACCESS` values are handled through the shared native policy helper. Inaccessible explicit IDs return 403; missing IDs return 404. Code/test commit `7a2d5d15d55b1a74409933851f6eb0c90185b4c3` passed full CI with 795 tests on each Python version, 2 warnings each, including PostgreSQL integration; Python-only CI passed with 787 passed and 8 skipped.
