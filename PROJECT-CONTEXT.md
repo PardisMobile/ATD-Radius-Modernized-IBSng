@@ -765,7 +765,7 @@ These are the active work areas. Implement them in batches, using the canonical 
 #### API / product
 - [ ] Full CRUD for remaining native A1.24 resources.
 - [ ] Permissions/RBAC/audit.
-- [ ] XML-RPC compatibility.
+- [~] XML-RPC compatibility: transport exists for the three registered IAS methods; full A1.24 semantic parity remains open.
 - [ ] Remaining REST resource workflows and mutation coverage.
 - [ ] Group workflows, RAS/IP-pool/online/logs/usage/charge/report workflows.
 - [ ] ADMIN and user-portal workflows.
