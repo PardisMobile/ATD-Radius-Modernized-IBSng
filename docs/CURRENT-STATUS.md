@@ -246,3 +246,10 @@ Source-backed work in this increment:
 - Corrected VoIP prefix API ordering to match A1.24's `prefix_name` ascending order.
 
 Still open before UI/installer: VoIP call/RAS lifecycle and charge settlement parity; Fast Dial runtime wiring; periodic bandwidth snapshot parity; authoritative login-in-progress/session state and safe destructive operations; remaining billing administration and rule mutation; XML-RPC/IAS; full database restore/import parity; provider-backed Disconnect/CoA; remaining reports and user/admin workflows. Do not claim backend complete yet. UI and installer remain final-stage workstreams after these backend gates are addressed.
+
+
+## Native VoIP charge-rule management API — 2026-10-12
+
+Added source-backed endpoints for listing, creating, updating and deleting VoIP charge rules. Persistence uses the A1.24 inherited `voip_charge_rules` table plus `charge_rule_day_of_weeks` and `charge_rule_ports`, the native `charge_rules_id_seq`, and tariff/charge name lookup. Mutations are transaction-scoped and operationally audited. Validation covers source day names, time windows, VoIP charge type, tariff existence, RAS-specific port requirements and overlap checks. The overlap implementation intentionally preserves the legacy A1.24 behavior of comparing equal RAS IDs and literal port intersections rather than silently broadening wildcard conflict semantics.
+
+This is management/persistence parity only. The source's `charge_main.getLoader().loadCharge()` runtime reload behavior and live VoIP call charging, prefix changes during a call, free seconds, missed-call handling, rounding and credit settlement are still not implemented end-to-end. UI and installer remain final-stage work.

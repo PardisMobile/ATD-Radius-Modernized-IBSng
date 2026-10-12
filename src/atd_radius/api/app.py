@@ -12,6 +12,7 @@ from atd_radius.api.groups import router as groups_router
 from atd_radius.api.ras import router as ras_router
 from atd_radius.api.users import router as users_router
 from atd_radius.api.voip_tariffs import router as voip_tariffs_router
+from atd_radius.api.voip_charge_rules import router as voip_charge_rules_router
 
 app = FastAPI(title=settings.app_name, version=__version__)
 
@@ -51,6 +52,7 @@ app.include_router(users_router, prefix=settings.api_prefix)
 app.include_router(groups_router, prefix=settings.api_prefix)
 app.include_router(ras_router, prefix=settings.api_prefix)
 app.include_router(voip_tariffs_router, prefix=settings.api_prefix)
+app.include_router(voip_charge_rules_router, prefix=settings.api_prefix)
 
 
 @app.get("/health")
