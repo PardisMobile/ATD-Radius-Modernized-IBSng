@@ -1,4 +1,4 @@
-# CURRENT VERIFIED CHECKPOINT — 2026-10-10
+# CURRENT VERIFIED CHECKPOINT — 2026-10-12
 
 **Read this block first in a new chat.** Repository: `PardisMobile/ATD-Radius-Modernized-IBSng`, branch `main`. Canonical behavior source: `Source of Truth/IBSng-A1.24.tar.bz2`, SHA-256 `c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839614bb9349d18a`. Master ledger: `docs/CURRENT-STATUS.md`.
 
@@ -1422,3 +1422,12 @@ Added direct route-level tests for charge catalog list/detail and Internet/VoIP 
 ## Charge visibility regression verification — 2026-10-12
 
 Route-level regression tests now exercise charge catalog list/detail and Internet/VoIP charge-rule lists with public, explicitly granted and restricted charges. Code/test commit `28c70624ee362305a313cb9d55518b03a3759389` passed full CI: Python 3.11 and 3.12 each **797 passed, 2 warnings**; Ruff, compilation, PHP syntax and PostgreSQL integration passed (CI run `38230282116`). Python-only workflow passed (run `38230282098`). The behavior remains a focused authorization-parity correction, not full charge/billing completion.
+
+
+## Verified VoIP accounting settlement increment — 2026-10-12
+
+Code/test checkpoint `98e43155ad63b211c4fd289d9d7a0fd999a40401` passed full CI on Python 3.11 and 3.12: **801 passed, 2 warnings per job**, including Ruff, Python compilation, PHP syntax and PostgreSQL integration (CI run `38284989251`). Python-only CI passed **793 passed, 8 skipped, 2 warnings** (run `38284989298`).
+
+Added A1.24-shaped VoIP settlement to the live Accounting-Request lifecycle: user-type routing selects normal versus VoIP charging; VoIP rules are selected with called-number tariff-prefix applicability; free seconds are consumed from the initial prefix; rule changes accrue the outgoing tariff without rounding; final settlement applies the active prefix's minimum-chargeable-duration/round-to formula and updates user credit. Interim accounting attributes are merged so a called number acquired after Start becomes available to the charging selector.
+
+This is a verified runtime settlement increment, **not complete VoIP billing parity**. Still open: time-driven rule-transition/credit-exhaustion scheduling, source-specific RAS kill and prefix/min-duration attributes, missed-call semantics, authoritative provider call start/end times, restart-safe call state, complete credit/audit transaction parity, and full end-to-end RAS tests. UI and installer remain last.

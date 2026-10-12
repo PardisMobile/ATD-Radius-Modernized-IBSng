@@ -27,7 +27,7 @@ This is the master parity ledger. A feature is not considered migrated merely be
 | Accounting | radius_server/* + accounting plugins | Accounting engine | Start/Stop/Alive + native connection-log + no_connection_log + Charge/Credit runtime + live UDP wiring implemented / live integration parity pending |
 | Duplicate requests | IBSng RADIUS request handling | Request deduplication/idempotency | Implemented boundary / full parity pending |
 | Disconnect | RADIUS/RAS behavior | RADIUS CoA/Disconnect adapter | RADIUS control packet boundary and session matching implemented; provider side effects and admin HTTP action remain gated/unmounted / full RAS interoperability pending |
-| Charging | charge plugins/core | Billing/charge engine | Charge catalog CRUD, user normal/VoIP charge assignment, Internet/VoIP rule CRUD, VoIP tariff/prefix CRUD and read-only bandwidth leaf catalog implemented; bandwidth hierarchy writes/shaping, production VoIP/RAS settlement and full billing parity pending |
+| Charging | charge plugins/core | Billing/charge engine | Charge catalog/assignment and Internet/VoIP rule/tariff CRUD implemented; VoIP settlement now wired into accounting Start/Interim/Stop with called-number prefix matching, initial free seconds, rule-transition accrual and final rounding. Time-driven rule/credit events, RAS prefix/min-duration effects, missed-call parity, bandwidth hierarchy writes/shaping and full billing parity remain pending |
 | Credit | credit plugins/core | Credit ledger/policy | Foundation |
 | Reports | interface/admin/report/* | Report subsystem | Not started |
 | Graphs | interface/admin/graph/* | Metrics/graphs | Not started |
@@ -69,3 +69,12 @@ Charge catalog and Internet/VoIP rule-list reads now use A1.24 `Admin.canUseChar
 ## Charge visibility regression verification — 2026-10-12
 
 Route-level regression tests now exercise charge catalog list/detail and Internet/VoIP charge-rule lists with public, explicitly granted and restricted charges. Code/test commit `28c70624ee362305a313cb9d55518b03a3759389` passed full CI: Python 3.11 and 3.12 each **797 passed, 2 warnings**; Ruff, compilation, PHP syntax and PostgreSQL integration passed (CI run `38230282116`). Python-only workflow passed (run `38230282098`). The behavior remains a focused authorization-parity correction, not full charge/billing completion.
+
+
+## Verified VoIP accounting settlement increment — 2026-10-12
+
+Code/test checkpoint `98e43155ad63b211c4fd289d9d7a0fd999a40401` passed full CI on Python 3.11 and 3.12: **801 passed, 2 warnings per job**, including Ruff, Python compilation, PHP syntax and PostgreSQL integration (CI run `38284989251`). Python-only CI passed **793 passed, 8 skipped, 2 warnings** (run `38284989298`).
+
+Added A1.24-shaped VoIP settlement to the live Accounting-Request lifecycle: user-type routing selects normal versus VoIP charging; VoIP rules are selected with called-number tariff-prefix applicability; free seconds are consumed from the initial prefix; rule changes accrue the outgoing tariff without rounding; final settlement applies the active prefix's minimum-chargeable-duration/round-to formula and updates user credit. Interim accounting attributes are merged so a called number acquired after Start becomes available to the charging selector.
+
+This is a verified runtime settlement increment, **not complete VoIP billing parity**. Still open: time-driven rule-transition/credit-exhaustion scheduling, source-specific RAS kill and prefix/min-duration attributes, missed-call semantics, authoritative provider call start/end times, restart-safe call state, complete credit/audit transaction parity, and full end-to-end RAS tests. UI and installer remain last.
