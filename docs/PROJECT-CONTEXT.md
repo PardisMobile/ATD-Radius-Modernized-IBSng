@@ -2,7 +2,7 @@
 
 ## Latest verified checkpoint — 2026-10-12
 
-Code/test commit `5429fde6d17249568277c143c21e98732f1a427e` passed full CI: Python 3.11 and 3.12 each **804 passed, 2 warnings** (run `38285636476`); Python-only CI: **796 passed, 8 skipped, 2 warnings** (run `38285636565`). Native bandwidth interface/tree/node read APIs are now implemented; mutations and live tc shaping remain open. VoIP timer-driven rule transitions, RAS prefix/min-duration effects and full billing parity also remain open. See `docs/A1.24-VOIP-CHARGING-AUDIT.md` and `docs/A1.24-BANDWIDTH-MANAGER-AUDIT.md`.
+Code/test commit `865932176d49e231e59a4b53594d3d990cee4724` passed full CI: Python 3.11/3.12 each **806 passed, 2 warnings** (run `38286353453`); Python-only CI: **798 passed, 8 skipped, 2 warnings** (run `38286353345`). Native VoIP `min_duration`/`prefix_name` metadata and late Called-Station-Id free-time accounting are implemented. Bandwidth mutations/live tc and complete VoIP timer/RAS parity remain open. See both A1.24 audit docs.
 
 ## Identity
 ATD Radius Modernized IBSng is a clean-room modernization project whose behavioral reference is the uploaded IBSng A1.24 source archive. The old Go-based ATD repository is not part of this repository and must not be copied here.
@@ -401,3 +401,12 @@ Code/test checkpoint `5429fde6d17249568277c143c21e98732f1a427e` passed full CI o
 Added source-backed reads for the native bandwidth interface catalog, interface tree, node details and existing leaf catalog/detail. The tree reproduces A1.24's recursive node/leaf structure, uses native `bw_interface`, `bw_node`, and `bw_leaf` tables, preserves leaf names and hierarchy order, returns 404 for missing interfaces/nodes or interfaces without a root, and detects corrupted parent cycles instead of recursing indefinitely.
 
 This is read-only groundwork for the deferred UI. Interface/node/leaf/service mutations, validation parity, live traffic-control (tc) effects and reload/rollback behavior remain pending; no bandwidth shaping is claimed complete.
+
+
+## Verified VoIP prefix metadata checkpoint — 2026-10-12
+
+Code/test commit `865932176d49e231e59a4b53594d3d990cee4724` passed full CI run `38286353453`: Python 3.11 and 3.12 each **806 passed, 2 warnings**, including Ruff, compilation, PHP syntax and PostgreSQL integration. Python-only CI run `38286353345` passed: **798 passed, 8 skipped, 2 warnings**.
+
+On first matching VoIP prefix, settlement now persists native `min_duration` and `prefix_name` into session attributes, as A1.24's VoIP charge-rule start path does. If Called-Station-Id arrives after Accounting-Start, free seconds are reduced by elapsed time from the original session start instead of restarting the free allowance. Two regression tests cover initial metadata and delayed called-number acquisition.
+
+This does not complete VoIP call-time sourcing, missed-call treatment, scheduled rule/credit boundaries, RAS effects or restart-safe billing state.

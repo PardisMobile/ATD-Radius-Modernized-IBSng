@@ -2,7 +2,7 @@
 
 **Read this block first in a new chat.** Repository: `PardisMobile/ATD-Radius-Modernized-IBSng`, branch `main`. Canonical behavior source: `Source of Truth/IBSng-A1.24.tar.bz2`, SHA-256 `c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839614bb9349d18a`. Master ledger: `docs/CURRENT-STATUS.md`.
 
-- Latest verified code/test commit: `5429fde6d17249568277c143c21e98732f1a427e`. It adds source-backed bandwidth interface/tree/node reads on top of the VoIP accounting settlement increment. Full CI passed on Python 3.11 and 3.12: **804 passed, 2 warnings** per matrix job (run `38285636476`); Python-only CI passed **796 passed, 8 skipped, 2 warnings** (run `38285636565`). Bandwidth writes/live tc shaping and VoIP timer/RAS parity remain open. See `docs/A1.24-BANDWIDTH-MANAGER-AUDIT.md` and `docs/A1.24-VOIP-CHARGING-AUDIT.md`.
+- Latest verified code/test commit: `865932176d49e231e59a4b53594d3d990cee4724`. It adds A1.24 VoIP prefix metadata and preserves the original free-time origin when Called-Station-Id arrives late. Full CI passed on Python 3.11/3.12: **806 passed, 2 warnings** per matrix job (run `38286353453`); Python-only CI passed **798 passed, 8 skipped, 2 warnings** (run `38286353345`). Bandwidth writes/live tc and complete VoIP timer/RAS parity remain open.
 - Admin permission catalog/editing, admin create/update/password/deposit/lock/unlock and native admin deletion are implemented as described in `docs/CURRENT-STATUS.md`. The current source-traced user-attribute increment intentionally rejects unsupported specialized attributes rather than bypassing their A1.24 handlers.
 - New source audit: `docs/A1.24-USER-DELETION-AUDIT.md`. A1.24 user deletion has significant preconditions and side effects: offline-user guard, blacklist coordination, non-negative credit refund to admin deposit, DEL_USER ledger, optional connection/audit-log removal, IAS event, subtype/related table cleanup, user-pool broadcast and post-commit mailbox deletion. ATD user deletion is **not implemented** until authoritative online-session resolution, table/FK parity and atomic transaction/side-effect handling are established.
 - The source-audit and status ledgers are updated for this increment. Always inspect actual `main` HEAD and CI before claiming the newest docs-only commit is green.
@@ -1440,3 +1440,12 @@ Code/test checkpoint `5429fde6d17249568277c143c21e98732f1a427e` passed full CI o
 Added source-backed reads for the native bandwidth interface catalog, interface tree, node details and existing leaf catalog/detail. The tree reproduces A1.24's recursive node/leaf structure, uses native `bw_interface`, `bw_node`, and `bw_leaf` tables, preserves leaf names and hierarchy order, returns 404 for missing interfaces/nodes or interfaces without a root, and detects corrupted parent cycles instead of recursing indefinitely.
 
 This is read-only groundwork for the deferred UI. Interface/node/leaf/service mutations, validation parity, live traffic-control (tc) effects and reload/rollback behavior remain pending; no bandwidth shaping is claimed complete.
+
+
+## Verified VoIP prefix metadata checkpoint — 2026-10-12
+
+Code/test commit `865932176d49e231e59a4b53594d3d990cee4724` passed full CI run `38286353453`: Python 3.11 and 3.12 each **806 passed, 2 warnings**, including Ruff, compilation, PHP syntax and PostgreSQL integration. Python-only CI run `38286353345` passed: **798 passed, 8 skipped, 2 warnings**.
+
+On first matching VoIP prefix, settlement now persists native `min_duration` and `prefix_name` into session attributes, as A1.24's VoIP charge-rule start path does. If Called-Station-Id arrives after Accounting-Start, free seconds are reduced by elapsed time from the original session start instead of restarting the free allowance. Two regression tests cover initial metadata and delayed called-number acquisition.
+
+This does not complete VoIP call-time sourcing, missed-call treatment, scheduled rule/credit boundaries, RAS effects or restart-safe billing state.
