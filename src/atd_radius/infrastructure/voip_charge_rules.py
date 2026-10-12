@@ -65,6 +65,7 @@ class PostgresVoipChargeRuleRepository:
         charge_id = self._require_voip_charge(charge_name)
         tariff_id = self._require_tariff(payload.tariff_name)
         normalized = self._validate(payload)
+        self._require_ras(payload.ras_id)
         self._check_conflict(charge_id, normalized, payload.ras_id)
         rule_id = int(self.conn.execute(
             "SELECT nextval('charge_rules_id_seq')"
@@ -89,6 +90,7 @@ class PostgresVoipChargeRuleRepository:
             raise VoipRuleNotFound(str(rule_id))
         tariff_id = self._require_tariff(payload.tariff_name)
         normalized = self._validate(payload)
+        self._require_ras(payload.ras_id)
         self._check_conflict(charge_id, normalized, payload.ras_id, ignore_rule_id=rule_id)
         self.conn.execute(
             """UPDATE voip_charge_rules
@@ -125,6 +127,15 @@ class PostgresVoipChargeRuleRepository:
         if str(rows[0][1]) != "VoIP":
             raise ChargeTypeError(charge_name)
         return int(rows[0][0])
+
+    def _require_ras(self, ras_id: int | None) -> None:
+        if ras_id is None:
+            return
+        rows = self.conn.execute(
+            "SELECT ras_id FROM ras WHERE ras_id = %s", (ras_id,)
+        ).fetchall()
+        if not rows:
+            raise VoipRuleInputError(f"RAS ID does not exist: {ras_id}")
 
     def _require_tariff(self, tariff_name: str) -> int:
         rows = self.conn.execute(

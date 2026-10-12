@@ -1,8 +1,6 @@
 """Source-backed administration endpoints for native VoIP charge rules."""
 from __future__ import annotations
 
-from datetime import time
-
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
