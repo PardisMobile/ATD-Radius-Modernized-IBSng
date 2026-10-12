@@ -84,3 +84,52 @@ def test_empty_port_list_is_not_a_wildcard_in_a124():
             ras_id=10,
             port="ppp0",
         )
+
+
+from atd_radius.domain.billing_rules import VoipChargeRule, select_effective_voip_rule
+from atd_radius.domain.voip_tariff import VoipPrefix, VoipTariff
+
+
+def voip_rule(rule_id, tariff_id, *, ras_id=None, ports=frozenset({ALL})):
+    return VoipChargeRule(
+        rule_id=rule_id, days=frozenset({0}), start_second=0, end_second=86399,
+        ras_id=ras_id, ports=ports, charge_id=4, tariff_id=tariff_id,
+    )
+
+
+def tariff(tariff_id, codes):
+    return VoipTariff(
+        tariff_id, f"tariff-{tariff_id}", "",
+        tuple(
+            VoipPrefix(i + 1, code, code, Decimal("1"), 0, 0, 0, 0)
+            for i, code in enumerate(codes)
+        ),
+    )
+
+
+def test_voip_rule_selection_requires_tariff_prefix_for_nonempty_called_number():
+    when = datetime(2026, 10, 5, 12, 0, 0)
+    rules = [voip_rule(1, 10, ras_id=10, ports=frozenset({"ppp0"})),
+             voip_rule(2, 11, ras_id=10, ports=frozenset({"ppp0"}))]
+    selected = select_effective_voip_rule(
+        rules, when, 10, "ppp0", "9891212",
+        {10: tariff(10, ["1", "44"]), 11: tariff(11, ["98", "989"])},
+    )
+    assert selected.rule_id == 2
+
+
+def test_voip_rule_selection_rejects_when_no_tariff_matches_called_number():
+    when = datetime(2026, 10, 5, 12, 0, 0)
+    with pytest.raises(BillingError, match="no applicable VoIP"):
+        select_effective_voip_rule(
+            [voip_rule(1, 10)], when, 10, "ppp0", "9891212",
+            {10: tariff(10, ["44", "1"])},
+        )
+
+
+def test_voip_rule_selection_allows_empty_called_number_before_ras_acquires_it():
+    when = datetime(2026, 10, 5, 12, 0, 0)
+    selected = select_effective_voip_rule(
+        [voip_rule(1, 999)], when, 10, "ppp0", "", {},
+    )
+    assert selected.rule_id == 1

@@ -4,7 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
-from typing import Iterable
+from typing import Iterable, Mapping
 
 from .billing import BillingError, BillingUsage
 
@@ -103,3 +103,37 @@ class VoipChargeRule(ChargeRule):
             raise BillingError("VoIP charge and tariff IDs must be positive")
         if self.time_limit is not None and self.time_limit < 0:
             raise BillingError("time limit cannot be negative")
+
+
+def select_effective_voip_rule(
+    rules: Iterable[VoipChargeRule],
+    when: datetime,
+    ras_id: int | None,
+    port: str | None,
+    called_number: str,
+    tariffs: Mapping[int, object],
+) -> VoipChargeRule:
+    """Select an A1.24 VoIP rule, including called-number prefix applicability.
+
+    A1.24 VoipChargeRule.anytimeAppliable rejects a rule when a non-empty
+    called number has no prefix in that rule's tariff. An empty called number
+    is treated as not acquired yet and does not block rule applicability.
+    """
+    candidates: list[VoipChargeRule] = []
+    for rule in rules:
+        if not rule.applies_to(when, ras_id, port):
+            continue
+        if called_number:
+            tariff = tariffs.get(rule.tariff_id)
+            if tariff is None:
+                raise BillingError(f"VoIP tariff {rule.tariff_id} is missing")
+            if tariff.find_prefix(called_number) is None:
+                continue
+        candidates.append(rule)
+    if not candidates:
+        raise BillingError("no applicable VoIP charge rule")
+    selected = candidates[0]
+    for rule in candidates[1:]:
+        if rule.priority > selected.priority:
+            selected = rule
+    return selected
