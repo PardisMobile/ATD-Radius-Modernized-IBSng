@@ -937,7 +937,7 @@ def assign_user_charge(
         if not _charge_attribute_access(admin, target.owner_id, attribute_name):
             raise HTTPException(status_code=403, detail="Administrator permission denied")
         charge_rows = conn.execute(
-            "SELECT charge_id, name, charge_type, visible_to_all FROM charges WHERE name=%s",
+            "SELECT charge_id, name, charge_type, visible_to_all FROM charges WHERE name=%s FOR SHARE",
             (payload.charge_name,),
         ).fetchall()
         if not charge_rows:
@@ -980,13 +980,14 @@ def delete_user_charge_assignment(
             raise HTTPException(status_code=404, detail="User component not found")
         if not _charge_attribute_access(admin, target.owner_id, attribute_name):
             raise HTTPException(status_code=403, detail="Administrator permission denied")
+        previous = repo.get(target)
         assignment = repo.delete(target, admin_id=admin.admin_id)
         OperationalAuditRepository(conn).append(
             actor_admin_id=admin.admin_id, actor_username=admin.username,
             action="user.charge.delete", outcome="success",
             target_type="user", target_id=str(target.user_id),
             remote_addr=admin.remote_addr,
-            details={"attribute_name": attribute_name, "previous_charge_name": assignment.charge_name},
+            details={"attribute_name": attribute_name, "previous_charge_name": previous.charge_name},
         )
         conn.commit()
     return _charge_assignment_view(assignment)
