@@ -96,3 +96,66 @@ def test_zero_credit_settlement_is_still_committed_as_zero():
     used=settlement.settle(state,start.replace(minute=1),3,None)
     assert used==Decimal("0")
     assert credits.changes==[(7,Decimal("0"))]
+
+
+from atd_radius.domain.voip_tariff import VoipPrefix, VoipTariff
+
+class VoipRules:
+    def __init__(self, rules): self.rules = rules
+    def list(self, charge_id=None): return [r for r in self.rules if charge_id is None or r.charge_id == charge_id]
+
+class VoipPolicies:
+    def policy_attributes(self, user_id): return [("voip_charge", "12")]
+
+class Tariffs:
+    def __init__(self, tariffs): self.tariffs = tariffs
+    def get(self, tariff_id): return self.tariffs.get(tariff_id)
+
+class UserKinds:
+    def __init__(self, normal): self.normal = normal
+    def is_normal_user(self, user_id): return self.normal
+
+def _voip_rule(rule_id, tariff_id, start, end):
+    return VoipChargeRule(rule_id, frozenset({0}), start, end, ports=frozenset({ALL}), charge_id=12, tariff_id=tariff_id)
+
+def _voip_tariff(tariff_id, cpm, *, free=0, round_to=0, minimum=0):
+    prefix = VoipPrefix(tariff_id, "98", "Iran", Decimal(cpm), free, 0, round_to, minimum)
+    return VoipTariff(tariff_id, f"tariff-{tariff_id}", "", (prefix,))
+
+def test_voip_charge_settlement_applies_call_free_seconds_and_rounding():
+    rule = _voip_rule(1, 5, 0, 86399)
+    credits = Credits()
+    settlement = VoipChargeSettlement(VoipRules([rule]), VoipPolicies(), Tariffs({5: _voip_tariff(5, "60", free=10, round_to=30)}), credits)
+    registry = SessionRegistry()
+    start = datetime(2026, 1, 5, 10, 0, tzinfo=timezone.utc)
+    state = registry.start(SessionKey(7, 3, "voip-free"), {"Called-Station-Id": "98912"}, started_at=start)
+    settlement.start(state, start, 3, None)
+    total = settlement.settle(state, start.replace(second=20), 3, None)
+    assert total == Decimal("20")
+    assert credits.changes == [(7, Decimal("-20"))]
+
+def test_voip_rule_transition_accrues_old_tariff_and_uses_final_rule_rounding():
+    first = _voip_rule(1, 5, 0, 39600)
+    second = _voip_rule(2, 6, 39600, 86399)
+    credits = Credits()
+    tariffs = Tariffs({5: _voip_tariff(5, "60"), 6: _voip_tariff(6, "120", round_to=60)})
+    settlement = VoipChargeSettlement(VoipRules([first, second]), VoipPolicies(), tariffs, credits)
+    registry = SessionRegistry()
+    start = datetime(2026, 1, 5, 10, 59, 30, tzinfo=timezone.utc)
+    state = registry.start(SessionKey(7, 3, "voip-transition"), {"Called-Station-Id": "98912"}, started_at=start)
+    settlement.start(state, start, 3, None)
+    transition = start.replace(hour=11, minute=0, second=0)
+    assert settlement.update(state, transition, 3, None) == Decimal("0.5")
+    assert state.charge_rule_id == 2
+    stop = transition.replace(minute=0, second=30)
+    total = settlement.settle(state, stop, 3, None)
+    assert total == Decimal("120.5")
+    assert credits.changes == [(7, Decimal("-120.5"))]
+
+def test_native_charge_settlement_routes_by_source_user_type():
+    internet, voip = Mock(), Mock()
+    router = UserChargeSettlement(UserKinds(normal=False), internet, voip)
+    state = SessionRegistry().start(SessionKey(7, 3, "route"))
+    router.start(state, datetime(2026, 1, 5, tzinfo=timezone.utc), 3, None)
+    voip.start.assert_called_once()
+    internet.start.assert_not_called()

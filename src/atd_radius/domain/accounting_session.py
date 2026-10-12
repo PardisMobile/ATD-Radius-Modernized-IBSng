@@ -20,8 +20,13 @@ class AccountingSessionResult:
     connection_log_id:int|None=None
     credit_used:str|None=None
 
+class ChargeSettlement(Protocol):
+    def start(self, state: SessionState, when, ras_id: int, port: str | None) -> None: ...
+    def update(self, state: SessionState, when, ras_id: int, port: str | None): ...
+    def settle(self, state: SessionState, when, ras_id: int, port: str | None): ...
+
 class AccountingSessionService:
-    def __init__(self,registry:SessionRegistry,persistence:AccountingPersistence|None=None,charge:InternetChargeSettlement|None=None):
+    def __init__(self,registry:SessionRegistry,persistence:AccountingPersistence|None=None,charge:ChargeSettlement|None=None):
         self.registry=registry; self.persistence=persistence; self.charge=charge
 
     def apply(self,event,user_id,ras_id)->AccountingSessionResult:
