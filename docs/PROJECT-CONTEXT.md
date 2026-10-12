@@ -2,7 +2,7 @@
 
 ## Latest verified checkpoint — 2026-10-12
 
-Code/test commit `865932176d49e231e59a4b53594d3d990cee4724` passed full CI: Python 3.11/3.12 each **806 passed, 2 warnings** (run `38286353453`); Python-only CI: **798 passed, 8 skipped, 2 warnings** (run `38286353345`). Native VoIP `min_duration`/`prefix_name` metadata and late Called-Station-Id free-time accounting are implemented. Bandwidth mutations/live tc and complete VoIP timer/RAS parity remain open. See both A1.24 audit docs.
+Code/test commit `111f8adc590f755ae62f974a7b46c2fa288e38b7` passed full CI: Python 3.11/3.12 each **810 passed, 2 warnings** (run `38289856978`); Python-only CI: **802 passed, 8 skipped, 2 warnings** (run `38289856903`). VoIP prefix metadata, delayed Called-Station-Id free-time handling, missed-call threshold, and RAS-time non-lazy interval settlement are implemented. Bandwidth mutations/live tc and VoIP timer/RAS kill parity remain open. See both A1.24 audit docs.
 
 ## Identity
 ATD Radius Modernized IBSng is a clean-room modernization project whose behavioral reference is the uploaded IBSng A1.24 source archive. The old Go-based ATD repository is not part of this repository and must not be copied here.
@@ -432,3 +432,14 @@ Code/test commit `37c6d26ae3e964687962ce91ce443e394c1a70a9` passed full CI run `
 When RAS epoch timestamps are available, the VoIP settlement now prefers them for call-start free-second initialization and for deciding whether a call is shorter than `min_duration`; malformed/missing values fall back safely to the observed accounting timestamps. A regression test verifies that an observed 30-second accounting interval is still treated as a missed call when authoritative RAS connect/disconnect times indicate a 7-second call.
 
 Boundary: this increment does **not** yet recompute all billing from RAS call times across historical rule transitions or implement the native asynchronous `checkLimits` scheduler/provider kill path. Those require a restart-safe call event model and provider-backed lifecycle tests. VoIP billing parity remains incomplete; UI and installer remain deferred.
+
+
+## Verified non-lazy VoIP settlement from RAS call times — 2026-10-12
+
+Direct source trace against the canonical A1.24 archive: `IBSng/core/charge/voip_charge.py::calcInstanceCreditUsageFromStart` recalculates a non-lazy call from RAS connect time, starts billing after the first prefix's free seconds, walks the effective rule intervals, sums each interval's prefix CPM, and applies final-prefix minimum-chargeable-duration/rounding to the whole call. `IBSng/core/user/voip_user.py::logout` supplies RAS connect/disconnect timestamps before committing usage.
+
+Code/test commit `111f8adc590f755ae62f974a7b46c2fa288e38b7` passed full CI run `38289856978`: Python 3.11 and 3.12 each **810 passed, 2 warnings**, including Ruff, compilation, PHP syntax and PostgreSQL integration. Python-only run `38289856903` passed **802 passed, 8 skipped, 2 warnings**.
+
+When both RAS timestamps and the called number are available, ATD now recalculates the entire call across effective rule interval ends rather than relying on Accounting packet timing; free seconds are applied once at call start. A regression test spans a 11:00 rule boundary and proves 10 seconds at CPM 60 plus 10 seconds at CPM 120 yields 30 credit units even when Accounting-Stop arrives later. RAS times are converted using the host's local timezone for rule/day selection, matching the legacy epoch/time-of-day model.
+
+Remaining limits: this is source-shaped non-lazy settlement, not full VoIP parity. Exact handling of overlapping rule start boundaries, asynchronous `checkLimits` credit/free-seconds scheduling and RAS kill actions, restart-safe state, and provider-backed end-to-end call fixtures remain open. UI and installer remain deferred.
