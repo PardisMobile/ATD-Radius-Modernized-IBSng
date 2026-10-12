@@ -152,9 +152,18 @@ class VoipChargeSettlement:
         state.charge_rule_output_octets = state.output_octets
         state.voip_current_prefix = prefix
         if prefix is not None and state.voip_call_started_at is None:
+            # A1.24 VoipChargeRule.start initializes free seconds and publishes
+            # prefix metadata only for the first prefix of the call. If the
+            # called number arrives after Accounting-Start, consume elapsed
+            # time against that original call start rather than resetting it.
             state.voip_call_started_at = state.started_at or when
             elapsed_before_prefix = max(0, int((when - state.voip_call_started_at).total_seconds()))
             state.voip_free_seconds_remaining = max(0, prefix.free_seconds - elapsed_before_prefix)
+            state.attributes = {
+                **state.attributes,
+                "min_duration": str(prefix.min_duration),
+                "prefix_name": prefix.name,
+            }
 
     @staticmethod
     def _accrue_current(state: SessionState, when: datetime) -> Decimal:

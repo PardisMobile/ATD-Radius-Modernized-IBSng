@@ -117,8 +117,8 @@ class UserKinds:
 def _voip_rule(rule_id, tariff_id, start, end):
     return VoipChargeRule(rule_id, frozenset({0}), start, end, ports=frozenset({ALL}), charge_id=12, tariff_id=tariff_id)
 
-def _voip_tariff(tariff_id, cpm, *, free=0, round_to=0, minimum=0):
-    prefix = VoipPrefix(tariff_id, "98", "Iran", Decimal(cpm), free, 0, round_to, minimum)
+def _voip_tariff(tariff_id, cpm, *, free=0, round_to=0, minimum=0, min_duration=0):
+    prefix = VoipPrefix(tariff_id, "98", "Iran", Decimal(cpm), free, min_duration, round_to, minimum)
     return VoipTariff(tariff_id, f"tariff-{tariff_id}", "", (prefix,))
 
 def test_voip_charge_settlement_applies_call_free_seconds_and_rounding():
@@ -158,3 +158,31 @@ def test_native_charge_settlement_routes_by_source_user_type():
     router.start(state, datetime(2026, 1, 5, tzinfo=timezone.utc), 3, None)
     voip.start.assert_called_once()
     internet.start.assert_not_called()
+
+
+def test_voip_initial_prefix_publishes_native_min_duration_and_prefix_name():
+    rule = _voip_rule(1, 5, 0, 86399)
+    tariff = _voip_tariff(5, "60", free=15, min_duration=8)
+    registry = SessionRegistry()
+    start = datetime(2026, 1, 5, 10, 0, tzinfo=timezone.utc)
+    state = registry.start(SessionKey(7, 3, "voip-metadata"), {"Called-Station-Id": "98912"}, started_at=start)
+    settlement = VoipChargeSettlement(VoipRules([rule]), VoipPolicies(), Tariffs({5: tariff}), Credits())
+    settlement.start(state, start, 3, None)
+    assert state.attributes["min_duration"] == "8"
+    assert state.attributes["prefix_name"] == "Iran"
+    assert state.voip_free_seconds_remaining == 15
+
+
+def test_voip_free_seconds_are_consumed_before_called_number_arrives():
+    rule = _voip_rule(1, 5, 0, 86399)
+    tariff = _voip_tariff(5, "60", free=15, min_duration=8)
+    registry = SessionRegistry()
+    start = datetime(2026, 1, 5, 10, 0, tzinfo=timezone.utc)
+    state = registry.start(SessionKey(7, 3, "voip-late-called"), {}, started_at=start)
+    settlement = VoipChargeSettlement(VoipRules([rule]), VoipPolicies(), Tariffs({5: tariff}), Credits())
+    settlement.start(state, start, 3, None)
+    when = start.replace(second=10)
+    state.attributes = {**state.attributes, "Called-Station-Id": "98912"}
+    settlement.update(state, when, 3, None)
+    assert state.voip_free_seconds_remaining == 5
+    assert state.attributes["min_duration"] == "8"
