@@ -124,6 +124,11 @@ _TARIFF_PERMISSIONS = AdminPermissionEvaluator(
             PermissionKind.NO_VALUE,
             dependencies=("CHANGE CHARGE",),
         ),
+        PermissionSpec(
+            "CHANGE BANDWIDTH MANAGER",
+            PermissionKind.NO_VALUE,
+            dependencies=("CHANGE CHARGE",),
+        ),
     ]
 )
 
