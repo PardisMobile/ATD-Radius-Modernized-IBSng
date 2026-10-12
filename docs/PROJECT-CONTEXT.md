@@ -314,3 +314,16 @@ Code checkpoint `1e66ad4e9f0b418f46da2568915879ceb8ea292f` passed full CI:
 Backend work now includes native VoIP tariff/prefix CRUD, VoIP charge-rule CRUD, Internet charge-rule CRUD, transactional operational audit, RAS/port validation, and real PostgreSQL create/update/delete round trips. Internet rule persistence includes native bandwidth leaf IDs and validates paired leaf names, CPM/CPK, positive assumed KPS, and non-negative bandwidth limit. VoIP rule selection now checks called-number prefixes as A1.24 does. Empty submitted port lists persist the native SQL NULL row and are not treated as wildcard; only literal port match or `_ALL_` applies.
 
 Remaining before UI/installer: runtime reload of charge definitions, Internet bandwidth shaping side effects, production VoIP call lifecycle and credit settlement, VoIP rule transitions/free seconds/missed calls/rounding, periodic bandwidth snapshot parity, authoritative login-in-progress/session state, safe provider-backed Disconnect/CoA, XML-RPC/IAS, and full restore/import/report/workspace parity. Do not unfreeze validated PAP/CHAP/MS-CHAP/MPPE/MultiLogin/accounting persistence behavior without direct source evidence.
+
+
+## Verified charge administration + bandwidth leaf catalog — 2026-10-12
+
+Code checkpoint `32422e4922a8895e72edcddd4b8b9f85005fe3b9` passed full CI:
+- Python 3.11: **752 passed, 2 warnings**
+- Python 3.12: **752 passed, 2 warnings**
+- Ruff, Python compilation, PHP syntax and PostgreSQL integration all passed: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38189408404
+- Python-only: **748 passed, 4 skipped, 2 warnings**: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38189408419
+
+Additional backend work: read-only `GET /api/v1/bandwidth-manager/leaves` and leaf-by-name API now map the native `bw_leaf` fields needed by Internet charge rules. Access uses the A1.24 `CHANGE BANDWIDTH MANAGER → CHANGE CHARGE → ACCESS ALL CHARGES` permission chain. The API is intentionally read-only until bandwidth hierarchy mutations can include native validation and safe loader/tree reload side effects.
+
+Still unfinished before UI/installer: write-side bandwidth manager (interfaces/nodes/leaves/services and loader effects), applying/removing Internet bandwidth limits through real RAS/provider operations, charge loader reload after rule mutations, full VoIP call lifecycle/settlement, periodic bandwidth snapshot parity, authoritative login-in-progress/session state, provider-backed Disconnect/CoA, XML-RPC/IAS and complete import/report/workspace parity.
