@@ -172,7 +172,7 @@ def test_concurrent_duplicate_accounting_starts_create_one_session_and_log():
 
 def test_interim_updates_merge_new_called_station_id_without_dropping_session_context():
     service = AccountingSessionService(SessionRegistry())
-    started = service.apply(event(AccountingStatus.START, "called-number", attributes={"NAS-Port": "4", "Called-Station-Id": ""}), 7, 3)
+    service.apply(event(AccountingStatus.START, "called-number", attributes={"NAS-Port": "4", "Called-Station-Id": ""}), 7, 3)
     updated = service.apply(event(AccountingStatus.INTERIM, "called-number", attributes={"Called-Station-Id": "9891212"}), 7, 3)
     assert updated.state.attributes["NAS-Port"] == "4"
     assert updated.state.attributes["Called-Station-Id"] == "9891212"
