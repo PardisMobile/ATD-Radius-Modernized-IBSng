@@ -159,7 +159,7 @@ class PostgresVoipChargeRuleRepository:
             raise VoipTariffNotFound(tariff_name)
         return int(rows[0][0])
 
-    def _validate(self, payload: VoipChargeRuleInput) -> tuple[str, str, frozenset[int], tuple[str, ...]]:
+    def _validate(self, payload: VoipChargeRuleInput) -> tuple[str, str, frozenset[int], tuple[str | None, ...]]:
         start, end = self._parse_time(payload.start_time), self._parse_time(payload.end_time)
         if start >= end:
             raise VoipRuleInputError("end time must be later than start time")
@@ -200,7 +200,7 @@ class PostgresVoipChargeRuleRepository:
         return f"{hour:02d}:{minute:02d}:{second:02d}"
 
     def _check_conflict(
-        self, charge_id: int, normalized: tuple[str, str, frozenset[int], tuple[str, ...]],
+        self, charge_id: int, normalized: tuple[str, str, frozenset[int], tuple[str | None, ...]],
         ras_id: int | None, *, ignore_rule_id: int | None = None,
     ) -> None:
         start, end, days, ports = normalized
