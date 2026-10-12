@@ -35,8 +35,24 @@ def test_payload_preserves_native_day_names_and_wildcard_port():
     assert converted.ports == ("_ALL_",)
 
 
-def test_rule_list_uses_source_charge_visibility_scope():
-    import inspect
-    source = inspect.getsource(api.list_voip_charge_rules)
-    assert "accessible_charge_ids" in source
-    assert "require_admin_session" in source
+def test_voip_rule_list_filters_rules_by_accessible_charge(monkeypatch):
+    from contextlib import contextmanager
+    from types import SimpleNamespace
+    @contextmanager
+    def fake_connection():
+        class Result:
+            def fetchall(self): return []
+        class Conn:
+            def execute(self, *args, **kwargs): return Result()
+        yield Conn()
+    monkeypatch.setattr(api, "connection", fake_connection)
+    charges = [
+        SimpleNamespace(charge_id=1, name="Public", visible_to_all=True),
+        SimpleNamespace(charge_id=2, name="Allowed", visible_to_all=False),
+        SimpleNamespace(charge_id=3, name="Hidden", visible_to_all=False),
+    ]
+    monkeypatch.setattr(api.PostgresChargeRepository, "list", lambda self: charges)
+    monkeypatch.setattr(api.PostgresVoipChargeRuleRepository, "list", lambda self, charge_id=None: [SimpleNamespace(charge_id=charge_id, rule_id=charge_id * 10, tariff_id=1)])
+    monkeypatch.setattr(api, "_view", lambda rule, tariff_name: (rule.charge_id, rule.rule_id))
+    result = api.list_voip_charge_rules(admin=principal({"CHARGE ACCESS": "Allowed"}))
+    assert result == [(1, 10), (2, 20)]

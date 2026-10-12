@@ -54,8 +54,24 @@ def test_internet_rule_errors_map_to_native_api_statuses():
     assert api._mutation_error(InternetRuleInputError("bad input")).status_code == 422
 
 
-def test_rule_list_uses_source_charge_visibility_scope():
-    import inspect
-    source = inspect.getsource(api.list_internet_charge_rules)
-    assert "accessible_charge_ids" in source
-    assert "require_admin_session" in source
+def test_internet_rule_list_filters_rules_by_accessible_charge(monkeypatch):
+    from contextlib import contextmanager
+    from types import SimpleNamespace
+    @contextmanager
+    def fake_connection():
+        class Result:
+            def fetchall(self): return []
+        class Conn:
+            def execute(self, *args, **kwargs): return Result()
+        yield Conn()
+    monkeypatch.setattr(api, "connection", fake_connection)
+    charges = [
+        SimpleNamespace(charge_id=1, name="Public", visible_to_all=True),
+        SimpleNamespace(charge_id=2, name="Allowed", visible_to_all=False),
+        SimpleNamespace(charge_id=3, name="Hidden", visible_to_all=False),
+    ]
+    monkeypatch.setattr(api.PostgresChargeRepository, "list", lambda self: charges)
+    monkeypatch.setattr(api.PostgresInternetChargeRuleRepository, "list", lambda self, charge_id=None: [SimpleNamespace(charge_id=charge_id, rule_id=charge_id * 10)])
+    monkeypatch.setattr(api, "_view", lambda conn, rule: (rule.charge_id, rule.rule_id))
+    result = api.list_internet_charge_rules(admin=principal({"CHARGE ACCESS": "Allowed"}))
+    assert result == [(1, 10), (2, 20)]

@@ -70,3 +70,32 @@ def test_accessible_charge_ids_filters_and_enforces_requested_scope():
     with pytest.raises(HTTPException) as denied:
         accessible_charge_ids([public, allowed, hidden], admin, 3)
     assert denied.value.status_code == 403
+
+
+def test_charge_list_filters_visible_and_explicitly_granted_charges(monkeypatch):
+    from contextlib import contextmanager
+    @contextmanager
+    def fake_connection():
+        yield object()
+    monkeypatch.setattr(api, "connection", fake_connection)
+    charges = [
+        SimpleNamespace(charge_id=1, name="Public", comment="", charge_type="Internet", admin_id=7, visible_to_all=True),
+        SimpleNamespace(charge_id=2, name="Allowed", comment="", charge_type="Internet", admin_id=7, visible_to_all=False),
+        SimpleNamespace(charge_id=3, name="Hidden", comment="", charge_type="VoIP", admin_id=7, visible_to_all=False),
+    ]
+    monkeypatch.setattr(api.PostgresChargeRepository, "list", lambda self: charges)
+    result = api.list_charges(admin=principal({"CHARGE ACCESS": "Allowed"}))
+    assert [item.charge_name for item in result] == ["Public", "Allowed"]
+
+
+def test_charge_detail_denies_non_visible_ungranted_charge(monkeypatch):
+    from contextlib import contextmanager
+    @contextmanager
+    def fake_connection():
+        yield object()
+    monkeypatch.setattr(api, "connection", fake_connection)
+    hidden = SimpleNamespace(charge_id=3, name="Hidden", comment="", charge_type="VoIP", admin_id=7, visible_to_all=False)
+    monkeypatch.setattr(api.PostgresChargeRepository, "get_by_name", lambda self, name: hidden)
+    with pytest.raises(HTTPException) as denied:
+        api.get_charge("Hidden", admin=principal({"CHARGE ACCESS": "Allowed"}))
+    assert denied.value.status_code == 403
