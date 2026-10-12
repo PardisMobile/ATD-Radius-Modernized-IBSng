@@ -30,3 +30,8 @@ Domain semantics: implemented.
 Database mapping: pending exact A1.24 column-by-column import implementation.
 
 Behavioral verification against a real A1.24 dataset: pending.
+
+
+## Charge assignment workflow — 2026-10-12
+
+The user API now has specialized `normal_charge` and `voip_charge` assignment/get/delete routes; these remain excluded from the generic attribute mutation path. The adapter stores the native charge ID in `user_attrs`, checks the corresponding `Internet` or `VoIP` charge type and user component, enforces the native charge-usage gate (`visible_to_all`, GOD, `ACCESS ALL CHARGES`, or exact `CHARGE ACCESS` value), and writes native user audit entries using charge names. PostgreSQL integration tests cover assignment, readback and deletion for both components. Existing-session live charge updates remain a separate runtime parity concern.

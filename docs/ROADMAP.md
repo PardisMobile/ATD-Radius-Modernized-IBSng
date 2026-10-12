@@ -192,3 +192,8 @@ The code checkpoint `1e66ad4e9f0b418f46da2568915879ceb8ea292f` passed full CI on
 ## Verified bandwidth leaf catalog increment — 2026-10-12
 
 Added read-only native bandwidth leaf listing and lookup by name, guarded by the source permission dependency chain `CHANGE BANDWIDTH MANAGER → CHANGE CHARGE → ACCESS ALL CHARGES`. The code checkpoint `32422e4922a8895e72edcddd4b8b9f85005fe3b9` passed full CI: 752 tests on both Python 3.11 and 3.12, including PostgreSQL integration. Keep write-side bandwidth hierarchy and provider side effects as backend work; UI and installer remain last.
+
+
+## Verified charge assignment workflow — 2026-10-12
+
+Added native charge catalog CRUD and user `normal_charge`/`voip_charge` assignment endpoints with A1.24 type checks, `canUseCharge` permission/visibility semantics, native audit, and PostgreSQL round-trip tests. Full CI for `09044676484684c9400025abe3b7364ed924f33e` passed **771 tests** on Python 3.11 and 3.12. Bandwidth hierarchy writes/shaping and production VoIP runtime/settlement remain backend tasks; UI and installer remain last.

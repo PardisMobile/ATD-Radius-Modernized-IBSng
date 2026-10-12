@@ -34,7 +34,7 @@ Value types:
 | CHANGE USERS OWNER | No value | — | Implemented for source-backed owner reassignment API; other owner-dependent workflows remain separate |
 | CHANGE VOIP TARIFF | No value | CHANGE CHARGE | Not implemented |
 | CHANGE VOIP USER ATTRIBUTES | All/Restricted | CHANGE USER ATTRIBUTES | Partial: caller-ID and fast-dial management APIs; complete VoIP credentials/tariffs/runtime handlers remain open |
-| CHARGE ACCESS | Multi-value | — | Not implemented |
+| CHARGE ACCESS | Multi-value | — | Implemented in source-backed evaluator and user charge assignment authorization; value matches exact charge name |
 | CLEAR USER | All/Restricted | SEE ONLINE USERS | Not implemented |
 | DELETE ADMIN | No value | SEE ADMIN INFO | Implemented for native admin deletion with full A1.24 side effects, system-account protection, IAS type-6 event and same-transaction operational audit |
 | DELETE REPORTS | No value | — | Not implemented |

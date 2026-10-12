@@ -327,3 +327,19 @@ Code checkpoint `32422e4922a8895e72edcddd4b8b9f85005fe3b9` passed full CI:
 Additional backend work: read-only `GET /api/v1/bandwidth-manager/leaves` and leaf-by-name API now map the native `bw_leaf` fields needed by Internet charge rules. Access uses the A1.24 `CHANGE BANDWIDTH MANAGER → CHANGE CHARGE → ACCESS ALL CHARGES` permission chain. The API is intentionally read-only until bandwidth hierarchy mutations can include native validation and safe loader/tree reload side effects.
 
 Still unfinished before UI/installer: write-side bandwidth manager (interfaces/nodes/leaves/services and loader effects), applying/removing Internet bandwidth limits through real RAS/provider operations, charge loader reload after rule mutations, full VoIP call lifecycle/settlement, periodic bandwidth snapshot parity, authoritative login-in-progress/session state, provider-backed Disconnect/CoA, XML-RPC/IAS and complete import/report/workspace parity.
+
+
+## Verified charge catalog + user charge assignment — 2026-10-12
+
+Code checkpoint `09044676484684c9400025abe3b7364ed924f33e` passed full CI:
+- Python 3.11: **771 passed, 2 warnings**
+- Python 3.12: **771 passed, 2 warnings**
+- Ruff, Python compilation, PHP syntax and PostgreSQL integration passed: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38189815507
+- Python-only: **765 passed, 6 skipped, 2 warnings**: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38189815435
+
+New source-backed functionality:
+- Charge catalog list/get/create/update/delete with native `charges_id_seq`, `Internet`/`VoIP` type checks, name validation, audit, and delete guards for user/group assignments; deletion removes associated native rule child rows.
+- User `normal_charge` and `voip_charge` assignment/get/delete endpoints store native charge IDs in `user_attrs`, validate the corresponding component and charge type, enforce user-change permissions and A1.24 `canUseCharge` rules (visible-to-all, GOD, ACCESS ALL CHARGES, or CHARGE ACCESS), and preserve native user audit names.
+- Integration tests cover real PostgreSQL charge catalog mutation/deletion guard and normal/VoIP user charge assignment round trips.
+
+Still open before UI/installer: bandwidth hierarchy writes and runtime shaping, charge loader/RAS reload effects, complete VoIP call lifecycle/settlement, periodic bandwidth snapshot parity, authoritative login-in-progress/session state, provider-backed Disconnect/CoA, XML-RPC/IAS, and complete import/report/workspace parity. This checkpoint does not certify all backend parity.
