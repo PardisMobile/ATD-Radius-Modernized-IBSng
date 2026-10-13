@@ -23,12 +23,26 @@ class NativeAccountingPersistence:
             details.setdefault("Framed-IP-Address", event.remote_ip)
         return details
 
+    @staticmethod
+    def _ras_time(attributes: dict[str, str], name: str) -> datetime | None:
+        """Convert A1.24's provider-normalized epoch timestamp to local DB time."""
+        value = attributes.get(name)
+        if value in (None, ""):
+            return None
+        try:
+            return datetime.fromtimestamp(float(value))
+        except (TypeError, ValueError, OverflowError, OSError):
+            return None
+
     def start(self, event, user_id: int, ras_id: int) -> int:
+        # VoipUser.logToConnectionLog stores getCallStartTime(), which prefers
+        # the RAS connect_time normalized by VoipRAS.setH323TimeInAttrs.
+        login_time = self._ras_time(event.attributes, "connect_time") or self.clock()
         record = ConnectionLog(
             connection_log_id=0,
             user_id=user_id,
             credit_used=None,
-            login_time=self.clock(),
+            login_time=login_time,
             logout_time=None,
             successful=True,
             service=1,
@@ -44,4 +58,15 @@ class NativeAccountingPersistence:
     def stop(self, connection_log_id: int, event, credit_used=None) -> None:
         for name, value in self._details(event).items():
             self.repository.upsert_detail(connection_log_id, name, value)
-        self.repository.close(connection_log_id, event.observed_at if credit_used is not None else self.clock(), str(credit_used) if credit_used is not None else None, True)
+        # VoipUser.logout sets call_end_time from RAS disconnect_time before
+        # writing the native connection log. Keep that timestamp even when no
+        # charging policy produced a credit_used value.
+        logout_time = self._ras_time(event.attributes, "disconnect_time")
+        if logout_time is None:
+            logout_time = event.observed_at if credit_used is not None else self.clock()
+        self.repository.close(
+            connection_log_id,
+            logout_time,
+            str(credit_used) if credit_used is not None else None,
+            True,
+        )

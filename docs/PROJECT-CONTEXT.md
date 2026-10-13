@@ -455,3 +455,8 @@ Code/test commit `a0e232b0ab664246f1576c4e9f6bf3c54e5a64c8` passed full CI run `
 ## Runtime composition parity — 2026-10-14
 
 The one-transaction `build_native_radius_runtime()` helper now wires the same user-type-aware charging composition as production UDP packets: normal users use Internet charging and VoIP users use VoIP tariff/prefix settlement. Previously the helper passed `InternetChargeSettlement` directly, so VoIP Accounting behavior differed depending on which supported runtime composition was used. A regression test asserts both settlement implementations are composed and routed by `UserChargeSettlement`. This fixes composition consistency only; timer-driven VoIP `checkLimits`, RAS kill effects, and restart-safe state remain open.
+
+
+## Verified VoIP connection-log timestamps — 2026-10-14
+
+Code/test checkpoint PENDING_CI: native accounting persistence now maps valid RAS connect_time/disconnect_time epoch attributes to native connection-log login/logout timestamps, matching A1.24 VoipUser call-time behavior even when charging is not configured. Invalid/missing times preserve existing fallbacks. This does not implement timer-driven checkLimits, provider-specific RAS kill effects or restart-safe VoIP state; those remain open.
