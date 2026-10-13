@@ -337,7 +337,13 @@ def build_native_radius_runtime(
         state.pools.reload()
 
     persistence = NativeAccountingPersistence(ConnectionLogRepository(conn))
-    charge = InternetChargeSettlement(PostgresInternetChargeRuleRepository(conn), users, UserCreditRepository(conn))
+    credits = UserCreditRepository(conn)
+    internet_charge = InternetChargeSettlement(PostgresInternetChargeRuleRepository(conn), users, credits)
+    voip_charge = VoipChargeSettlement(
+        PostgresVoipChargeRuleRepository(conn), users,
+        PostgresVoipTariffRepository(conn), credits,
+    )
+    charge = UserChargeSettlement(users, internet_charge, voip_charge)
     accounting = AccountingSessionService(state.sessions, persistence, charge)
     dispatcher = build_radius_dispatcher(
         users,

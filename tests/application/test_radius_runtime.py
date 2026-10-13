@@ -178,6 +178,12 @@ def test_build_native_radius_runtime_composes_native_accounting_and_ip_pool_runt
     assert handler.accounting_sessions.persistence is not None
     assert handler.ip_pool_sessions is not None
     assert handler.dispatcher.access_context.ras is not None
+    from atd_radius.domain.accounting_charge import UserChargeSettlement, InternetChargeSettlement, VoipChargeSettlement
+    charge = handler.accounting_sessions.charge
+    assert isinstance(charge, UserChargeSettlement)
+    assert isinstance(charge.internet, InternetChargeSettlement)
+    assert isinstance(charge.voip, VoipChargeSettlement)
+    assert charge.users is users
 
 
 def test_native_radius_packet_handler_reuses_runtime_state_across_transactions():
