@@ -146,6 +146,58 @@ class VoipChargeSettlement:
             self.credits.change(state.key.user_id, -total)
         return total
 
+    def next_limit_event_seconds(
+        self, state: SessionState, when: datetime, ras_id: int, port: str | None,
+        available_credit: Decimal,
+    ) -> Decimal | None:
+        """Return the next A1.24 VoIP limit boundary for one active call.
+
+        Computes the next event used by VoipCharge.checkLimits: rule end, start
+        of a more-applicable rule, end of initial free seconds, or credit
+        exhaustion. Runtime timer/provider kill integration remains separate.
+        """
+        if state.charge_id is None:
+            return None
+        if available_credit <= 0:
+            return Decimal("0")
+
+        rules = self.rules.list(state.charge_id)
+        called_number = _called_number(state.attributes)
+        tariffs = self._tariffs_for(rules)
+        try:
+            rule = select_effective_voip_rule(rules, when, ras_id, port, called_number, tariffs)
+        except BillingError:
+            return Decimal("0")
+
+        prefix = tariffs[rule.tariff_id].find_prefix(called_number) if called_number else None
+        if prefix is None:
+            return None
+
+        seconds_today = when.hour * 3600 + when.minute * 60 + when.second
+        events = [Decimal(max(1, rule.end_second - seconds_today + 1))]
+        if rule.priority < 3:
+            for candidate in rules:
+                if candidate.priority <= rule.priority or when.weekday() not in candidate.days:
+                    continue
+                if candidate.start_second <= seconds_today:
+                    continue
+                if candidate.ras_id is not None and candidate.ras_id != ras_id:
+                    continue
+                if port not in candidate.ports and "_ALL_" not in candidate.ports:
+                    continue
+                if called_number and tariffs[candidate.tariff_id].find_prefix(called_number) is None:
+                    continue
+                events.append(Decimal(candidate.start_second - seconds_today))
+
+        free_seconds = max(0, int(state.voip_free_seconds_remaining))
+        if free_seconds:
+            events.append(Decimal(free_seconds))
+        else:
+            rate_per_second = prefix.cpm / Decimal(60)
+            if rate_per_second > 0:
+                events.append(available_credit / rate_per_second)
+        return min(max(Decimal(1), min(events)), Decimal(7 * 24 * 3600))
+
     def _calculate_from_call_times(
         self, state: SessionState, start: datetime, end: datetime, ras_id: int, port: str | None
     ) -> Decimal:

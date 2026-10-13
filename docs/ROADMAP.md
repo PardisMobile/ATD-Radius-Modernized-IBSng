@@ -299,3 +299,8 @@ The one-transaction `build_native_radius_runtime()` helper now wires the same us
 ## Verified VoIP connection-log timestamps — 2026-10-14
 
 Verified code/test checkpoint `be3ba58e27eab49e92f1e47eef4b2f523c619588`: native accounting persistence maps valid RAS connect_time/disconnect_time epoch attributes to native connection-log login/logout timestamps, matching A1.24 VoipUser call-time behavior even when charging is not configured. Invalid/missing times preserve existing fallbacks. Full CI passed: Python 3.11 and 3.12 each **814 passed, 2 warnings**, including PostgreSQL integration, Ruff, compilation and PHP syntax (run [38473850387](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38473850387)). Python-only CI passed **806 passed, 8 skipped, 2 warnings** (run [38473850375](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38473850375)); skipped tests require live UDP/PostgreSQL integration not configured in that workflow. Timer-driven `checkLimits`, provider-specific RAS kill effects and restart-safe VoIP state remain open.
+
+
+## Source-backed VoIP limit planner increment
+
+Added a tested `next_limit_event_seconds` decision primitive for A1.24 `VoipCharge.checkLimits` boundaries (rule end, more-applicable rule, initial free seconds and credit exhaustion). Three regression tests were added. It does not claim timer lifecycle, multilogin aggregation or provider termination parity; those remain open.

@@ -319,3 +319,43 @@ def test_voip_ras_recalculation_uses_first_prefix_min_duration_after_rule_transi
     assert state.attributes["prefix_name"] == "Iran"
     assert state.voip_missed_call is False
     assert credits.changes == [(7, Decimal("-30"))]
+
+
+def test_voip_limit_planner_uses_rule_end_as_next_event():
+    rule = _voip_rule(1, 5, 0, 39600)
+    settlement = VoipChargeSettlement(
+        VoipRules([rule]), VoipPolicies(), Tariffs({5: _voip_tariff(5, "60")}), Credits()
+    )
+    start = datetime(2026, 1, 5, 10, 59, 30, tzinfo=timezone.utc)
+    state = SessionRegistry().start(
+        SessionKey(7, 3, "limit-rule-end"), {"Called-Station-Id": "98912"}, started_at=start
+    )
+    settlement.start(state, start, 3, None)
+    assert settlement.next_limit_event_seconds(state, start, 3, None, Decimal("100")) == Decimal("31")
+
+
+def test_voip_limit_planner_prioritizes_remaining_initial_free_seconds():
+    rule = _voip_rule(1, 5, 0, 86399)
+    settlement = VoipChargeSettlement(
+        VoipRules([rule]), VoipPolicies(), Tariffs({5: _voip_tariff(5, "60", free=20)}), Credits()
+    )
+    start = datetime(2026, 1, 5, 10, 0, tzinfo=timezone.utc)
+    state = SessionRegistry().start(
+        SessionKey(7, 3, "limit-free-seconds"), {"Called-Station-Id": "98912"}, started_at=start
+    )
+    settlement.start(state, start, 3, None)
+    assert state.voip_free_seconds_remaining == 20
+    assert settlement.next_limit_event_seconds(state, start, 3, None, Decimal("100")) == Decimal("20")
+
+
+def test_voip_limit_planner_calculates_credit_exhaustion_deadline():
+    rule = _voip_rule(1, 5, 0, 86399)
+    settlement = VoipChargeSettlement(
+        VoipRules([rule]), VoipPolicies(), Tariffs({5: _voip_tariff(5, "60")}), Credits()
+    )
+    start = datetime(2026, 1, 5, 10, 0, tzinfo=timezone.utc)
+    state = SessionRegistry().start(
+        SessionKey(7, 3, "limit-credit"), {"Called-Station-Id": "98912"}, started_at=start
+    )
+    settlement.start(state, start, 3, None)
+    assert settlement.next_limit_event_seconds(state, start, 3, None, Decimal("5")) == Decimal("5")
