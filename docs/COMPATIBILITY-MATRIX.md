@@ -151,3 +151,8 @@ Verified code/test checkpoint `be3ba58e27eab49e92f1e47eef4b2f523c619588`: native
 ## Source-backed VoIP limit planner increment
 
 Added a tested `next_limit_event_seconds` decision primitive for A1.24 `VoipCharge.checkLimits` boundaries (rule end, more-applicable rule, initial free seconds and credit exhaustion). Three regression tests were added. It does not claim timer lifecycle, multilogin aggregation or provider termination parity; those remain open.
+
+
+## Multi-instance VoIP limit planning increment — 2026-10-14
+
+Added `next_limit_event_seconds_for_sessions`, which aggregates CPM across active calls before computing credit exhaustion, while preserving the earliest per-call rule/free-seconds boundary. A regression test covers two simultaneous CPM-60 calls against 10 units of credit. Production timer scheduling, per-instance kill reasons, RAS provider termination and restart recovery remain open.

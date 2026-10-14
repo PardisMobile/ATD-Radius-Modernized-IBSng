@@ -149,6 +149,7 @@ class VoipChargeSettlement:
     def next_limit_event_seconds(
         self, state: SessionState, when: datetime, ras_id: int, port: str | None,
         available_credit: Decimal,
+        *, _include_credit_deadline: bool = True,
     ) -> Decimal | None:
         """Return the next A1.24 VoIP limit boundary for one active call.
 
@@ -192,10 +193,52 @@ class VoipChargeSettlement:
         free_seconds = max(0, int(state.voip_free_seconds_remaining))
         if free_seconds:
             events.append(Decimal(free_seconds))
-        else:
+        elif _include_credit_deadline:
             rate_per_second = prefix.cpm / Decimal(60)
             if rate_per_second > 0:
                 events.append(available_credit / rate_per_second)
+        return min(max(Decimal(1), min(events)), Decimal(7 * 24 * 3600))
+
+    def next_limit_event_seconds_for_sessions(
+        self, states, when: datetime, ras_id: int, port: str | None, available_credit: Decimal,
+    ) -> Decimal | None:
+        """Plan the next limit boundary across concurrent calls for one user.
+
+        A1.24 sums CPM across all billable instances before calculating credit
+        exhaustion. Free-second calls still contribute their free-seconds event,
+        but do not contribute to the current per-second debit rate.
+        """
+        if available_credit <= 0:
+            return Decimal("0")
+        events: list[Decimal] = []
+        aggregate_rate = Decimal("0")
+        for state in states:
+            if state.charge_id is None:
+                continue
+            event = self.next_limit_event_seconds(
+                state, when, ras_id, port, available_credit, _include_credit_deadline=False
+            )
+            if event is not None:
+                if event <= 0:
+                    return Decimal("0")
+                events.append(event)
+            called_number = _called_number(state.attributes)
+            if not called_number:
+                continue
+            rules = self.rules.list(state.charge_id)
+            tariffs = self._tariffs_for(rules)
+            try:
+                rule = select_effective_voip_rule(rules, when, ras_id, port, called_number, tariffs)
+            except BillingError:
+                return Decimal("0")
+            prefix = tariffs[rule.tariff_id].find_prefix(called_number)
+            if prefix is not None and state.voip_free_seconds_remaining <= 0:
+                aggregate_rate += prefix.cpm / Decimal(60)
+
+        if not events:
+            return None
+        if aggregate_rate > 0:
+            events.append(available_credit / aggregate_rate)
         return min(max(Decimal(1), min(events)), Decimal(7 * 24 * 3600))
 
     def _calculate_from_call_times(

@@ -359,3 +359,21 @@ def test_voip_limit_planner_calculates_credit_exhaustion_deadline():
     )
     settlement.start(state, start, 3, None)
     assert settlement.next_limit_event_seconds(state, start, 3, None, Decimal("5")) == Decimal("5")
+
+
+def test_voip_limit_planner_aggregates_credit_rate_across_concurrent_calls():
+    rule = _voip_rule(1, 5, 0, 86399)
+    settlement = VoipChargeSettlement(
+        VoipRules([rule]), VoipPolicies(), Tariffs({5: _voip_tariff(5, "60")}), Credits()
+    )
+    start = datetime(2026, 1, 5, 10, 0, tzinfo=timezone.utc)
+    registry = SessionRegistry()
+    first = registry.start(SessionKey(7, 3, "limit-multi-a"), {"Called-Station-Id": "98912"}, started_at=start)
+    second = registry.start(SessionKey(7, 3, "limit-multi-b"), {"Called-Station-Id": "98912"}, started_at=start)
+    settlement.start(first, start, 3, None)
+    settlement.start(second, start, 3, None)
+
+    # Each call consumes one credit unit/second; A1.24 combines both rates.
+    assert settlement.next_limit_event_seconds_for_sessions(
+        [first, second], start, 3, None, Decimal("10")
+    ) == Decimal("5")
