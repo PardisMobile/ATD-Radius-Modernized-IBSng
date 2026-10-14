@@ -377,3 +377,24 @@ def test_voip_limit_planner_aggregates_credit_rate_across_concurrent_calls():
     assert settlement.next_limit_event_seconds_for_sessions(
         [first, second], start, 3, None, Decimal("10")
     ) == Decimal("5")
+
+
+def test_voip_limit_planner_detects_future_more_applicable_rule():
+    general = VoipChargeRule(
+        1, frozenset({0}), 0, 86399, ports=frozenset({ALL}), charge_id=12, tariff_id=5
+    )
+    ras_specific = VoipChargeRule(
+        2, frozenset({0}), 39600, 43200, ras_id=3, ports=frozenset({ALL}), charge_id=12, tariff_id=5
+    )
+    settlement = VoipChargeSettlement(
+        VoipRules([general, ras_specific]), VoipPolicies(),
+        Tariffs({5: _voip_tariff(5, "60")}), Credits()
+    )
+    start = datetime(2026, 1, 5, 10, 59, 30, tzinfo=timezone.utc)
+    state = SessionRegistry().start(
+        SessionKey(7, 3, "limit-more-specific"), {"Called-Station-Id": "98912"}, started_at=start
+    )
+    settlement.start(state, start, 3, None)
+
+    assert state.charge_rule_id == general.rule_id
+    assert settlement.next_limit_event_seconds(state, start, 3, None, Decimal("100")) == Decimal("30")

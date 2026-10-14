@@ -156,3 +156,6 @@ Added a tested `next_limit_event_seconds` decision primitive for A1.24 `VoipChar
 ## Multi-instance VoIP limit planning increment — 2026-10-14
 
 Added `next_limit_event_seconds_for_sessions`, which aggregates CPM across active calls before computing credit exhaustion, while preserving the earliest per-call rule/free-seconds boundary. A regression test covers two simultaneous CPM-60 calls against 10 units of credit. Production timer scheduling, per-instance kill reasons, RAS provider termination and restart recovery remain open.
+
+
+The multi-instance limit-planning increment passed full CI run [38523932585](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38523932585): Python 3.11 and 3.12 each **818 passed, 2 warnings**; Python-only run [38523932468](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38523932468) passed **810 passed, 8 skipped, 2 warnings**.
