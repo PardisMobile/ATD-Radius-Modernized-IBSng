@@ -1,8 +1,9 @@
 """A1.24 source-traced Internet charge settlement state."""
 from __future__ import annotations
 from datetime import datetime, time, timedelta
+from dataclasses import dataclass
 from decimal import Decimal
-from typing import Protocol
+from typing import Callable, Protocol
 from .billing import BillingError, BillingUsage
 from .billing_rules import InternetChargeRule, VoipChargeRule, select_effective_rule, select_effective_voip_rule
 from .radius_runtime import SessionState
@@ -83,6 +84,13 @@ class VoipChargeRuleSource(Protocol):
 
 class VoipTariffSource(Protocol):
     def get(self, tariff_id: int): ...
+
+@dataclass(frozen=True, slots=True)
+class VoipLimitPlan:
+    """Source-shaped limit decision; provider side effects remain a separate step."""
+
+    remaining_seconds: Decimal | None
+    kill_reasons: tuple[tuple[str, str], ...] = ()
 
 class VoipChargeSettlement:
     """A1.24 VoIP call usage settlement across effective-rule transitions.
@@ -200,13 +208,14 @@ class VoipChargeSettlement:
         return min(max(Decimal(1), min(events)), Decimal(7 * 24 * 3600))
 
     def next_limit_event_seconds_for_sessions(
-        self, states, when: datetime, ras_id: int, port: str | None, available_credit: Decimal,
+        self, states, when: datetime, available_credit: Decimal,
+        context_resolver: Callable[[SessionState], tuple[int, str | None]],
     ) -> Decimal | None:
-        """Plan the next limit boundary across concurrent calls for one user.
+        """Plan the next event across concurrent calls, each with its own RAS/port.
 
-        A1.24 sums CPM across all billable instances before calculating credit
-        exhaustion. Free-second calls still contribute their free-seconds event,
-        but do not contribute to the current per-second debit rate.
+        A1.24 sums CPM across all playing instances. The context resolver must
+        provide the source RAS ID and configured port name for each call; a
+        single shared RAS/port would be incorrect for multi-RAS users.
         """
         if available_credit <= 0:
             return Decimal("0")
@@ -215,6 +224,7 @@ class VoipChargeSettlement:
         for state in states:
             if state.charge_id is None:
                 continue
+            ras_id, port = context_resolver(state)
             event = self.next_limit_event_seconds(
                 state, when, ras_id, port, available_credit, _include_credit_deadline=False
             )
@@ -240,6 +250,43 @@ class VoipChargeSettlement:
         if aggregate_rate > 0:
             events.append(available_credit / aggregate_rate)
         return min(max(Decimal(1), min(events)), Decimal(7 * 24 * 3600))
+
+    def plan_limits(
+        self, states, when: datetime, available_credit: Decimal,
+        context_resolver: Callable[[SessionState], tuple[int, str | None]],
+    ) -> VoipLimitPlan:
+        """Return source-shaped immediate kill reasons plus the next time boundary.
+
+        This mirrors the decision output of checkLimits for credit exhaustion and
+        missing effective rules. It does not execute RAS/provider termination or
+        install a recurring timer.
+        """
+        active = [state for state in states if state.charge_id is not None and not state.stopped]
+        if available_credit <= 0:
+            return VoipLimitPlan(Decimal("0"), tuple(
+                (state.key.unique_id, "credit_finished") for state in active
+            ))
+
+        eligible = []
+        kills: list[tuple[str, str]] = []
+        for state in active:
+            ras_id, port = context_resolver(state)
+            rules = self.rules.list(state.charge_id)
+            called_number = _called_number(state.attributes)
+            tariffs = self._tariffs_for(rules)
+            try:
+                select_effective_voip_rule(rules, when, ras_id, port, called_number, tariffs)
+            except BillingError:
+                kills.append((state.key.unique_id, "no_effective_rule"))
+            else:
+                eligible.append(state)
+
+        if not eligible:
+            return VoipLimitPlan(Decimal("0"), tuple(kills))
+        remaining = self.next_limit_event_seconds_for_sessions(
+            eligible, when, available_credit, context_resolver
+        )
+        return VoipLimitPlan(remaining, tuple(kills))
 
     def _calculate_from_call_times(
         self, state: SessionState, start: datetime, end: datetime, ras_id: int, port: str | None

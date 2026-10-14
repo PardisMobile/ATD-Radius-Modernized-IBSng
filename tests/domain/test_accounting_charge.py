@@ -375,7 +375,7 @@ def test_voip_limit_planner_aggregates_credit_rate_across_concurrent_calls():
 
     # Each call consumes one credit unit/second; A1.24 combines both rates.
     assert settlement.next_limit_event_seconds_for_sessions(
-        [first, second], start, 3, None, Decimal("10")
+        [first, second], start, Decimal("10"), lambda state: (state.key.ras_id, None)
     ) == Decimal("5")
 
 
@@ -398,3 +398,39 @@ def test_voip_limit_planner_detects_future_more_applicable_rule():
 
     assert state.charge_rule_id == general.rule_id
     assert settlement.next_limit_event_seconds(state, start, 3, None, Decimal("100")) == Decimal("30")
+
+
+def test_voip_limit_plan_marks_all_charged_calls_when_credit_is_finished():
+    rule = _voip_rule(1, 5, 0, 86399)
+    settlement = VoipChargeSettlement(
+        VoipRules([rule]), VoipPolicies(), Tariffs({5: _voip_tariff(5, "60")}), Credits()
+    )
+    start = datetime(2026, 1, 5, 10, 0, tzinfo=timezone.utc)
+    registry = SessionRegistry()
+    first = registry.start(SessionKey(7, 3, "limit-kill-a"), {"Called-Station-Id": "98912"}, started_at=start)
+    second = registry.start(SessionKey(7, 4, "limit-kill-b"), {"Called-Station-Id": "98912"}, started_at=start)
+    first.charge_id = second.charge_id = 12
+
+    plan = settlement.plan_limits([first, second], start, Decimal("0"), lambda state: (state.key.ras_id, None))
+
+    assert plan.remaining_seconds == Decimal("0")
+    assert plan.kill_reasons == (("limit-kill-a", "credit_finished"), ("limit-kill-b", "credit_finished"))
+
+
+def test_voip_limit_plan_only_marks_call_without_effective_rule_for_kill():
+    ras_rule = VoipChargeRule(
+        1, frozenset({0}), 0, 86399, ras_id=3, ports=frozenset({ALL}), charge_id=12, tariff_id=5
+    )
+    settlement = VoipChargeSettlement(
+        VoipRules([ras_rule]), VoipPolicies(), Tariffs({5: _voip_tariff(5, "60")}), Credits()
+    )
+    start = datetime(2026, 1, 5, 10, 0, tzinfo=timezone.utc)
+    registry = SessionRegistry()
+    good = registry.start(SessionKey(7, 3, "limit-has-rule"), {"Called-Station-Id": "98912"}, started_at=start)
+    bad = registry.start(SessionKey(7, 4, "limit-no-rule"), {"Called-Station-Id": "98912"}, started_at=start)
+    good.charge_id = bad.charge_id = 12
+
+    plan = settlement.plan_limits([good, bad], start, Decimal("100"), lambda state: (state.key.ras_id, None))
+
+    assert plan.kill_reasons == (("limit-no-rule", "no_effective_rule"),)
+    assert plan.remaining_seconds is not None and plan.remaining_seconds > 0
