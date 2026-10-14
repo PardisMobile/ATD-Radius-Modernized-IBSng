@@ -1,4 +1,4 @@
-# CURRENT VERIFIED CHECKPOINT — 2026-10-12
+# CURRENT VERIFIED CHECKPOINT — 2026-10-14
 
 **Read this block first in a new chat.** Repository: `PardisMobile/ATD-Radius-Modernized-IBSng`, branch `main`. Canonical behavior source: `Source of Truth/IBSng-A1.24.tar.bz2`, SHA-256 `c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839614bb9349d18a`. Master ledger: `docs/CURRENT-STATUS.md`.
 
@@ -1506,4 +1506,4 @@ Added a tested `next_limit_event_seconds` decision primitive for A1.24 `VoipChar
 Added `next_limit_event_seconds_for_sessions`, which aggregates CPM across active calls before computing credit exhaustion, while preserving the earliest per-call rule/free-seconds boundary. A regression test covers two simultaneous CPM-60 calls against 10 units of credit. Production timer scheduling, per-instance kill reasons, RAS provider termination and restart recovery remain open.
 
 
-The multi-instance limit-planning increment passed full CI run [38523932585](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38523932585): Python 3.11 and 3.12 each **818 passed, 2 warnings**; Python-only run [38523932468](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38523932468) passed **810 passed, 8 skipped, 2 warnings**.
+The multi-instance limit-planning increment and future more-applicable-rule boundary test passed full CI run [38524146446](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38524146446): Python 3.11 and 3.12 each **819 passed, 2 warnings**; Ruff, compilation, PHP syntax and PostgreSQL integration passed. Python-only run [38524145969](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38524145969) passed **811 passed, 8 skipped, 2 warnings**.
