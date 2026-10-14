@@ -2,7 +2,7 @@
 
 ## Latest verified checkpoint — 2026-10-14
 
-Code/test commit `a0e232b0ab664246f1576c4e9f6bf3c54e5a64c8` passed full CI: Python 3.11/3.12 each **811 passed, 2 warnings** (run `38290092747`); Python-only CI: **803 passed, 8 skipped, 2 warnings** (run `38290092706`). VoIP prefix metadata, delayed Called-Station-Id free-time handling, missed-call threshold, RAS-time non-lazy interval settlement, and first-prefix metadata after late Accounting-Start are covered. Bandwidth mutations/live tc and VoIP timer/RAS kill parity remain open. See both A1.24 audit docs.
+Latest verified code/test commit `43325d2c1cb71815c3bd85854e512c41eacdf3c0` adds structured VoIP limit decisions, concurrent-call credit-rate aggregation and per-session RAS/port context. Full CI: Python 3.11/3.12 each **821 passed, 2 warnings** (run `38524638385`); Python-only CI: **813 passed, 8 skipped, 2 warnings** (run `38524638404`). Earlier VoIP prefix metadata, delayed Called-Station-Id free-time handling, missed-call threshold and RAS-time non-lazy settlement remain covered. Production timer execution, actual provider kill actions and restart-safe session truth remain open.
 
 ## Identity
 ATD Radius Modernized IBSng is a clean-room modernization project whose behavioral reference is the uploaded IBSng A1.24 source archive. The old Go-based ATD repository is not part of this repository and must not be copied here.
@@ -478,3 +478,6 @@ The multi-instance limit-planning increment and future more-applicable-rule boun
 ## VoIP limit-plan decision increment — 2026-10-14
 
 Added a per-session RAS/port context resolver for multi-call planning and `VoipLimitPlan` structured decisions for immediate credit-finished/no-effective-rule outcomes. Regression tests cover all charged calls when credit is exhausted and selective no-rule kill decisions. This is not provider execution or a production timer loop.
+
+
+Latest VoIP limit-plan decision increment `43325d2c1cb71815c3bd85854e512c41eacdf3c0` passed full CI run [38524638385](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38524638385): Python 3.11 and 3.12 each **821 passed, 2 warnings**; Ruff, compilation, PHP syntax and PostgreSQL integration passed. Python-only run [38524638404](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38524638404) passed **813 passed, 8 skipped, 2 warnings**.

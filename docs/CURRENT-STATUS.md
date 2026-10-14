@@ -3,7 +3,7 @@
 Updated: 2026-10-12  
 Repository: `PardisMobile/ATD-Radius-Modernized-IBSng`  
 Branch: `main`  
-Latest verified code/test commit: `e1be046f27ea46696672d7d6b6f8b7995fe84d15` (VoIP multi-instance limit planning and future more-applicable-rule boundary). Full CI run `38524146446`: Python 3.11/3.12 each 819 passed, 2 warnings; Ruff, compilation, PHP syntax and PostgreSQL integration passed. Python-only run `38524145969`: 811 passed, 8 skipped, 2 warnings.
+Latest verified code/test commit: `43325d2c1cb71815c3bd85854e512c41eacdf3c0` (VoIP limit-plan decisions with per-session RAS/port context). Full CI run `38524638385`: Python 3.11/3.12 each 821 passed, 2 warnings; Ruff, compilation, PHP syntax and PostgreSQL integration passed. Python-only run `38524638404`: 813 passed, 8 skipped, 2 warnings.
 
 ## Authority and validation
 
@@ -457,3 +457,6 @@ The multi-instance limit-planning increment and future more-applicable-rule boun
 ## VoIP limit-plan decision increment — 2026-10-14
 
 Added a per-session RAS/port context resolver for multi-call planning and `VoipLimitPlan` structured decisions for immediate credit-finished/no-effective-rule outcomes. Regression tests cover all charged calls when credit is exhausted and selective no-rule kill decisions. This is not provider execution or a production timer loop.
+
+
+Latest VoIP limit-plan decision increment `43325d2c1cb71815c3bd85854e512c41eacdf3c0` passed full CI run [38524638385](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38524638385): Python 3.11 and 3.12 each **821 passed, 2 warnings**; Ruff, compilation, PHP syntax and PostgreSQL integration passed. Python-only run [38524638404](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38524638404) passed **813 passed, 8 skipped, 2 warnings**.
