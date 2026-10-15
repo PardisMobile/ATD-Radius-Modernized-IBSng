@@ -12,10 +12,11 @@ from atd_radius.infrastructure.ras_termination import (
 
 
 class FakeSocket:
-    def __init__(self, secret, response_code=RadiusCode.DISCONNECT_ACK, source_override=None):
+    def __init__(self, secret, response_code=RadiusCode.DISCONNECT_ACK, source_override=None, zero_response_authenticator=False):
         self.secret = secret
         self.response_code = response_code
         self.source_override = source_override
+        self.zero_response_authenticator = zero_response_authenticator
         self.target = None
         self.timeout = None
         self.request = None
@@ -40,6 +41,8 @@ class FakeSocket:
             self.request.authenticator,
         )
         self.response = encode_response(response, self.request, self.secret)
+        if self.zero_response_authenticator:
+            self.response = self.response[:4] + bytes(16) + self.response[20:]
 
     def recvfrom(self, _maximum):
         return self.response, self.source_override or self.target
@@ -148,4 +151,25 @@ def test_termination_requires_user_name():
     with pytest.raises(RASTerminationError, match="User-Name"):
         SourceRASDisconnectClient(socket_factory=lambda *_args: None).terminate(
             make_ras("ChilliSpot"), make_session(attrs={}), "credit_finished"
+        )
+
+
+def test_mvts_zero_filled_response_authenticator_matches_a124_exception():
+    holder = {}
+    def socket_factory(*_args):
+        holder["socket"] = FakeSocket("shared-secret", zero_response_authenticator=True)
+        return holder["socket"]
+
+    SourceRASDisconnectClient(socket_factory=socket_factory).terminate(
+        make_ras("MVTS"), make_session(), "credit_finished"
+    )
+
+
+def test_chillispot_still_requires_valid_response_authenticator():
+    def socket_factory(*_args):
+        return FakeSocket("shared-secret", zero_response_authenticator=True)
+
+    with pytest.raises(RASTerminationError, match="authenticator is invalid"):
+        SourceRASDisconnectClient(socket_factory=socket_factory).terminate(
+            make_ras("ChilliSpot"), make_session(), "credit_finished"
         )
