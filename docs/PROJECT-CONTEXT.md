@@ -488,3 +488,10 @@ Latest VoIP limit-plan decision increment `43325d2c1cb71815c3bd85854e512c41eacdf
 New application primitives: `VoipLimitScheduler` provides thread-safe per-key scheduling/cancellation; `VoipLimitCheckLoop` rechecks a user's current limit plan, forwards each per-session kill reason to an injected provider action, schedules the next boundary, and retries transient failures. Unit tests cover timer lifecycle and enforcement orchestration.
 
 This is not production parity yet: `NativeRadiusPacketHandler` does not instantiate the loop; no transaction-scoped planner/provider executor is wired, and timer/session state is not persisted for restart recovery. Source-specific A1.24 RAS actions must be implemented before production activation.
+
+
+## Latest source-backed VoIP enforcement increment — 2026-10-15
+
+Added a thread-safe timer engine and per-user limit-check orchestration plus source-specific ChilliSpot/MVTS Disconnect-Request clients. The client preserves each provider's A1.24 endpoint/attribute behavior and the MVTS response-authenticator exception. Regression tests cover timer lifecycle, reason forwarding, retry, endpoint validation, ACK/NAK and provider differences.
+
+Still incomplete: the production runtime does not yet wire the loop to a fresh-transaction planner/provider adapter; the other A1.24 termination providers (SNMP/RSH/launcher/Asterisk/GnuGk/SER and related telephony behavior) are not implemented; timer/session recovery across restart is not durable. Do not mark VoIP charging or RAS termination parity complete.

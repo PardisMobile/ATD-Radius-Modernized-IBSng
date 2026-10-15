@@ -470,3 +470,10 @@ New code slice: `src/atd_radius/application/voip_limit_scheduler.py` adds a thre
 ## VoIP limit-check orchestration — 2026-10-15
 
 Added `VoipLimitCheckLoop` on top of the one-shot scheduler. It invokes a supplied per-user limit planner, forwards each session's exact kill reason to a supplied termination adapter, reschedules at the next planned boundary, and retries transient planning/provider failures. Regression tests are present. This remains an injectable orchestration layer, not yet wired into `NativeRadiusPacketHandler`; no production provider termination or restart-safe timer recovery is claimed. CI status must be read from the workflow runs for the resulting commits.
+
+
+## Source-specific RAS termination adapters — 2026-10-15
+
+Added `SourceRASDisconnectClient` for the exact A1.24 ChilliSpot and MVTS RFC 5176 paths. ChilliSpot uses its configured disconnect IP/port and User-Name; MVTS uses the RAS IP/authentication port with User-Name and H323-conf-id. Responses are checked for expected endpoint, identifier and code; MVTS preserves A1.24's explicit exception for zero-filled response authenticators, while ChilliSpot retains RFC response-authenticator verification. Unsupported providers fail closed. Unit tests cover ACK/NAK, endpoint spoofing, source attributes and the MVTS exception.
+
+The client is **not yet wired** into `VoipLimitCheckLoop` or `NativeRadiusPacketHandler`; all other A1.24 provider-specific SNMP/RSH/launcher/telephony actions remain unimplemented. Production timer integration and restart-safe state are still open.

@@ -172,3 +172,8 @@ Latest VoIP limit-plan decision increment `43325d2c1cb71815c3bd85854e512c41eacdf
 ## VoIP time-driven enforcement status — 2026-10-15
 
 The domain planner now has an application-level scheduler and per-user limit-loop orchestration primitive, with tests for timer lifecycle, next-boundary rechecks and per-session kill-reason forwarding. Status remains **partial** until the production RADIUS runtime supplies fresh-transaction planning, source-specific provider actions, durable/recoverable session state and end-to-end RAS parity tests. The existence of these primitives is not evidence that A1.24 `VoipCharge.checkLimits` is fully implemented.
+
+
+## RAS termination implementation status — 2026-10-15
+
+Source-specific ChilliSpot and MVTS Disconnect-Request adapters are implemented and unit-tested, including A1.24's MVTS zero-filled response-authenticator exception. The timer engine and limit-loop orchestration are present but not wired into production. All other provider termination mechanisms and restart-safe enforcement remain **partial/not implemented**; provider profile metadata alone does not count as termination parity.

@@ -325,3 +325,8 @@ Latest VoIP limit-plan decision increment `43325d2c1cb71815c3bd85854e512c41eacdf
 ## VoIP timer-engine checkpoint — 2026-10-15
 
 Added tested scheduler and limit-loop application primitives. The scheduler supports per-key cancellation/replacement, bounded delays, callback error reporting, next-boundary rescheduling, and retry after provider action failures. This is a foundation only: the production RADIUS runtime is not yet wired to a transaction-scoped limit planner or source-specific RAS kill adapters, and restart recovery remains open. Do not mark the VoIP phase complete.
+
+
+## VoIP limit enforcement and RAS actions — 2026-10-15
+
+The scheduler and per-user orchestration now exist, and source-traced Disconnect-Request adapters cover ChilliSpot and MVTS with provider-specific response validation. This remains a partial foundation. The production runtime must still supply transaction-scoped planning and wire these adapters into lifecycle events. Implement remaining source-defined SNMP/RSH/launcher/telephony actions and durable session/timer recovery before claiming `VoipCharge.checkLimits` parity.
