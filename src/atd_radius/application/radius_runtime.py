@@ -3,10 +3,13 @@ from __future__ import annotations
 
 from typing import Callable, Protocol
 from dataclasses import replace
+from datetime import datetime, timezone
+import logging
 
 from atd_radius.domain.aaa import PluginPipeline, PluginSpec
 from atd_radius.domain.accounting_session import AccountingSessionService
-from atd_radius.domain.accounting_charge import InternetChargeSettlement, VoipChargeSettlement, UserChargeSettlement
+from atd_radius.domain.accounting_lifecycle import event_from_attributes
+from atd_radius.domain.accounting_charge import InternetChargeSettlement, VoipChargeSettlement, UserChargeSettlement, VoipLimitPlan
 from atd_radius.domain.radius import RadiusCode, RadiusPacket
 from atd_radius.domain.radius_dispatch import DispatchResult, RadiusDispatcher
 from atd_radius.domain.session_policy import ActiveSessionView
@@ -15,7 +18,7 @@ from atd_radius.domain.user_policies import AuthenticationPolicy, LockPolicy, Mu
 from atd_radius.domain.ras import RASRuntimeRegistry
 from atd_radius.domain.ip_pool import IPPoolRuntimeRegistry
 from atd_radius.domain.ip_pool_policy import IPPoolAllocationPolicy
-from atd_radius.domain.radius_runtime import SessionRegistry
+from atd_radius.domain.radius_runtime import SessionKey, SessionRegistry
 from atd_radius.domain.ras_provider import provider_session_id, provider_service_for_ras
 from atd_radius.domain.user_policies import ras_allows_multi_login
 from atd_radius.infrastructure.accounting_persistence import NativeAccountingPersistence
@@ -28,6 +31,9 @@ from atd_radius.infrastructure.credit_repository import UserCreditRepository
 from atd_radius.infrastructure.ip_pool_repository import PostgresIPPoolRepository
 from atd_radius.infrastructure.ras import RASRepository
 from atd_radius.infrastructure import UserRepository
+from atd_radius.application.voip_limit_scheduler import VoipLimitScheduler
+from atd_radius.application.voip_limit_loop import VoipLimitCheckLoop
+from atd_radius.infrastructure.ras_termination import SourceRASDisconnectClient, RASTerminationError, UnsupportedRASTermination
 
 
 class UserSource(Protocol):
@@ -191,6 +197,112 @@ class NativeRadiusPacketHandler:
     ) -> None:
         self.state = state
         self.connection_factory = connection_factory
+        self._logger = logging.getLogger(__name__)
+        self._ras_terminator = SourceRASDisconnectClient()
+        scheduler = VoipLimitScheduler(on_error=self._scheduler_error)
+        self.voip_limit_loop = VoipLimitCheckLoop(
+            scheduler,
+            self._check_voip_limits,
+            self._terminate_voip_session,
+            on_error=self._limit_error,
+        )
+        self.voip_limit_loop.start()
+
+    def _scheduler_error(self, key, exc: Exception) -> None:
+        self._logger.error("VoIP timer callback failed for %r: %s", key, exc)
+
+    def _limit_error(self, user_id: int, exc: Exception) -> None:
+        self._logger.error("VoIP limit enforcement failed for user %s: %s", user_id, exc)
+
+    def close(self) -> None:
+        """Stop the timer worker during normal process shutdown."""
+        self.voip_limit_loop.close()
+
+    def _refresh_voip_limit_schedule(self, user_id: int) -> None:
+        ras_registry = self.state.ras
+        if ras_registry is None:
+            self.voip_limit_loop.cancel(user_id)
+            return
+        with self.state.sessions.synchronized():
+            active = self.state.sessions.active_for_user(user_id)
+            has_voip_charge = any(
+                state.charge_id is not None
+                and (ras := ras_registry.get(state.key.ras_id)) is not None
+                and provider_service_for_ras(ras.ras_type) == "voip"
+                for state in active
+            )
+        if has_voip_charge:
+            # Re-evaluate after accounting mutations rather than retaining a
+            # deadline calculated from a stale credit/rule snapshot.
+            self.voip_limit_loop.schedule(user_id, 1)
+        else:
+            self.voip_limit_loop.cancel(user_id)
+
+    def _check_voip_limits(self, user_id: int) -> VoipLimitPlan:
+        with self.connection_factory() as conn:
+            ras_registry = build_ras_runtime(RASRepository(conn), self.state.type_defaults)
+            users = UserRepository(conn)
+            credits = UserCreditRepository(conn)
+            available_credit = credits.get(user_id)
+            if available_credit is None:
+                return VoipLimitPlan(None)
+            settlement = VoipChargeSettlement(
+                PostgresVoipChargeRuleRepository(conn),
+                users,
+                PostgresVoipTariffRepository(conn),
+                credits,
+            )
+            with self.state.sessions.synchronized():
+                active = tuple(
+                    state
+                    for state in self.state.sessions.active_for_user(user_id)
+                    if state.charge_id is not None
+                    and (ras := ras_registry.get(state.key.ras_id)) is not None
+                    and provider_service_for_ras(ras.ras_type) == "voip"
+                )
+                if not active:
+                    return VoipLimitPlan(None)
+                when = datetime.now(timezone.utc)
+                return settlement.plan_limits(
+                    active,
+                    when,
+                    available_credit,
+                    lambda state: (
+                        state.key.ras_id,
+                        state.attributes.get("NAS-Port") or state.attributes.get("NAS-Port-Id"),
+                    ),
+                )
+
+    def _terminate_voip_session(self, session_key: SessionKey, reason: str) -> None:
+        with self.state.sessions.synchronized():
+            state = self.state.sessions.get(session_key)
+            if state is None or state.stopped:
+                return
+            # Successful provider requests stay marked until Accounting-Stop;
+            # this prevents duplicate Disconnect-Requests on repeated Interim.
+            if getattr(state, "termination_requested_reason", None):
+                return
+            state.termination_requested_reason = reason
+            state.termination_requested_at = datetime.now(timezone.utc)
+            snapshot = replace(state, attributes=dict(state.attributes))
+        try:
+            with self.connection_factory() as conn:
+                ras_registry = build_ras_runtime(RASRepository(conn), self.state.type_defaults)
+                ras = ras_registry.get(session_key.ras_id)
+                if ras is None:
+                    raise RASTerminationError("session RAS is missing or inactive")
+                if provider_service_for_ras(ras.ras_type) != "voip":
+                    raise UnsupportedRASTermination(
+                        f"RAS {ras.ras_id} is not configured as a VoIP provider"
+                    )
+                self._ras_terminator.terminate(ras, snapshot, reason)
+        except Exception:
+            with self.state.sessions.synchronized():
+                current = self.state.sessions.get(session_key)
+                if current is state and not current.stopped:
+                    current.termination_requested_reason = None
+                    current.termination_requested_at = None
+            raise
 
     def __call__(self, packet: RadiusPacket, peer: tuple[str, int]) -> RadiusPacket:
         with self.connection_factory() as conn:
@@ -230,7 +342,16 @@ class NativeRadiusPacketHandler:
                 ip_pool_sessions=IPPoolSessionManager(pools, ras),
                 bandwidth_snapshots=PostgresBandwidthSnapshotRepository(conn),
             )
-            return handler(packet, peer)
+            response = handler(packet, peer)
+            if packet.code is RadiusCode.ACCOUNTING_REQUEST:
+                try:
+                    event = event_from_attributes(packet.attributes)
+                except (TypeError, ValueError):
+                    return response
+                user_id = identities.user_id(event.username)
+                if user_id is not None:
+                    self._refresh_voip_limit_schedule(user_id)
+            return response
 
 
 class PostgresRadiusSecretResolver:
