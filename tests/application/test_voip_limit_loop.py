@@ -16,7 +16,7 @@ def test_limit_loop_executes_per_session_kill_reason_and_stops_without_next_even
     def check(user_id):
         calls.append(user_id)
         checked.set()
-        return VoipLimitPlan(0, (("call-42", "credit_finished"),))
+        return VoipLimitPlan(0, ((SessionKey(7, 3, "call-42"), "credit_finished"),))
 
     loop = VoipLimitCheckLoop(VoipLimitScheduler(), check, lambda session, reason: kills.append((session, reason)))
     loop.schedule(7)
@@ -62,7 +62,7 @@ def test_limit_loop_retries_provider_kill_failure_after_rechecking_plan():
 
     def check(user_id):
         checks.append(user_id)
-        return VoipLimitPlan(0, (("call-99", "no_effective_rule"),))
+        return VoipLimitPlan(0, ((SessionKey(9, 3, "call-99"), "no_effective_rule"),))
 
     def terminate(session, reason):
         attempts.append((session, reason))
