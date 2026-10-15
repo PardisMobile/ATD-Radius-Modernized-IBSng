@@ -59,7 +59,7 @@ class SourceRASDisconnectClient:
             raise RASTerminationError("session is missing the source-required User-Name")
 
         provider = ras.ras_type.strip().lower().replace("-", "_").replace(" ", "_")
-        if provider in {"chillispot", "chilli spot"}:
+        if provider in {"chillispot", "chilli spot", "chilli_spot"}:
             host = str(attrs.get("chilli_spot_disconnect_ip", "192.168.1.65")).strip()
             try:
                 port = int(attrs.get("chilli_spot_disconnect_port", 3799))
@@ -111,6 +111,7 @@ class SourceRASDisconnectClient:
         )
 
         try:
+            expected_host = socket.gethostbyname(target.host)
             with self._socket_factory(socket.AF_INET, socket.SOCK_DGRAM) as client:
                 client.settimeout(target.timeout)
                 client.sendto(wire, (target.host, target.port))
@@ -120,7 +121,7 @@ class SourceRASDisconnectClient:
                 f"{ras.ras_type} did not answer the Disconnect-Request"
             ) from exc
 
-        if source[0] != target.host or source[1] != target.port:
+        if source[0] != expected_host or source[1] != target.port:
             raise RASTerminationError("Disconnect-Request response came from an unexpected endpoint")
         if not verify_control_response(response_wire, request, ras.radius_secret):
             raise RASTerminationError("Disconnect-Request response authenticator is invalid")
