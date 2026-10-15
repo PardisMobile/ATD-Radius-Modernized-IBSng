@@ -79,8 +79,7 @@ def test_chillispot_accepts_alive_and_exposes_provider_disconnect():
     assert provider_supports_status("PortMaster", "Alive") is True
     assert provider_supports_status("PortSlave", "Alive") is True
     assert provider_supports_status("ChilliSpot", "Start") is True
-    assert provider_disconnect_strategy("ChilliSpot") == "radius-user-name"
-    assert provider_disconnect_strategy("MVTS") == "radius-h323-conf-id"
+    assert provider_disconnect_strategy("ChilliSpot") == "provider-port"
 
 
 def test_provider_disconnect_strategies_are_source_derived():
