@@ -480,3 +480,10 @@ The client is **not yet wired** into `VoipLimitCheckLoop` or `NativeRadiusPacket
 
 
 VoIP planner safety follow-up: `VoipLimitPlan.kill_reasons` now carries the full `SessionKey(user_id, ras_id, unique_id)`, not just a provider session string, preventing ambiguous cross-RAS termination when IDs collide. `VoipLimitCheckLoop` forwards that full key. Unsupported provider adapters are treated as a capability gap rather than retried every second. Latest CI for the current commit is pending; do not call this slice green until the actual workflow result is successful.
+
+
+## Production VoIP limit-loop wiring — 2026-10-15 (CI pending)
+
+`NativeRadiusPacketHandler` now starts and owns `VoipLimitCheckLoop`, refreshes per-user schedules after Accounting packets, opens fresh database transactions for each check, reads native credit/rules/tariffs, and plans only sessions tagged `charge_kind="voip"` by the native user-type router. Per-session decisions use the full `SessionKey`; a successful termination request is marked in process to avoid duplicate requests until Accounting-Stop, and failed requests clear the marker for retry. The loop is closed during normal shutdown.
+
+The actual VoIP runtime termination client currently supports MVTS; other VoIP providers fail closed because their A1.24 H.323/SIP/telephony or SNMP/RSH/launcher side effects are not yet implemented end-to-end. ChilliSpot's source-specific RFC 5176 adapter exists, but ChilliSpot is an Internet provider and is not treated as a VoIP session. In-memory session/timer state is still not restart-safe. Do not mark full `checkLimits` or RAS parity complete. CI for the latest commit must be verified before marking this increment green.

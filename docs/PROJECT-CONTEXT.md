@@ -498,3 +498,8 @@ Still incomplete: the production runtime does not yet wire the loop to a fresh-t
 
 
 VoIP limit-decision safety: each kill decision now retains the complete `SessionKey`, so downstream termination can target the exact user/RAS/session tuple. Unsupported provider implementations fail closed and are not retried in a one-second loop. Production integration and restart-safe persistence remain pending.
+
+
+## Latest runtime integration checkpoint — 2026-10-15
+
+The production `NativeRadiusPacketHandler` now schedules VoIP checks after Accounting events, creates fresh DB transactions for scheduled checks, computes plans from native credit/rule/tariff repositories, and dispatches per-session termination to the source-backed provider client. Sessions carry native `charge_kind` and full `SessionKey` termination identity. MVTS is the only VoIP provider currently connected to a real termination client; all other VoIP provider effects and restart-safe persistence remain incomplete. CI is pending for this checkpoint.

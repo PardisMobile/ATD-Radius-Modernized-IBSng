@@ -180,3 +180,8 @@ Source-specific ChilliSpot and MVTS Disconnect-Request adapters are implemented 
 
 
 VoIP kill decisions now preserve full `SessionKey` identity rather than only the provider's session string. This is required to distinguish sessions across users/RASes. Unsupported provider actions fail closed and do not enter an aggressive retry loop. Full runtime wiring and restart-safe enforcement remain partial.
+
+
+## VoIP enforcement implementation status — 2026-10-15
+
+The recurring loop is now wired to the native RADIUS Accounting runtime and recomputes limit plans in fresh DB transactions. Native user-type routing labels each session's charge kind; termination targets a full `SessionKey`. The real VoIP provider termination path currently covers MVTS only. Other VoIP provider kill actions, durable restart recovery and end-to-end RAS interoperability remain **partial/not implemented**. CI for the current integration is pending.

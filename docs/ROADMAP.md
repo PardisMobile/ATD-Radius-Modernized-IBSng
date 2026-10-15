@@ -333,3 +333,8 @@ The scheduler and per-user orchestration now exist, and source-traced Disconnect
 
 
 Safety increment — full session identity: VoIP kill decisions and the orchestration callback now carry `SessionKey` (user ID, RAS ID, provider ID), avoiding ambiguous matches across RASes. Unsupported termination strategies are reported as a capability gap instead of being hot-retried. Production runtime wiring and restart recovery are still required.
+
+
+## Production VoIP limit-loop wiring — 2026-10-15
+
+The production packet handler now owns the recurring scheduler and triggers rechecks after Accounting updates, using fresh database transactions and native credit/tariff/rule repositories. Session charging kind comes from the native user subtype, not a guessed RAS label. MVTS has a source-specific outbound Disconnect-Request path; the other VoIP providers' concrete kill effects, durable session/timer recovery and end-to-end provider parity remain required before phase completion. CI is pending.
