@@ -167,3 +167,8 @@ Added a per-session RAS/port context resolver for multi-call planning and `VoipL
 
 
 Latest VoIP limit-plan decision increment `43325d2c1cb71815c3bd85854e512c41eacdf3c0` passed full CI run [38524638385](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38524638385): Python 3.11 and 3.12 each **821 passed, 2 warnings**; Ruff, compilation, PHP syntax and PostgreSQL integration passed. Python-only run [38524638404](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38524638404) passed **813 passed, 8 skipped, 2 warnings**.
+
+
+## VoIP time-driven enforcement status — 2026-10-15
+
+The domain planner now has an application-level scheduler and per-user limit-loop orchestration primitive, with tests for timer lifecycle, next-boundary rechecks and per-session kill-reason forwarding. Status remains **partial** until the production RADIUS runtime supplies fresh-transaction planning, source-specific provider actions, durable/recoverable session state and end-to-end RAS parity tests. The existence of these primitives is not evidence that A1.24 `VoipCharge.checkLimits` is fully implemented.

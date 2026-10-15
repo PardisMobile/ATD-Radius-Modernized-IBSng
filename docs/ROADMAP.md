@@ -320,3 +320,8 @@ Added a per-session RAS/port context resolver for multi-call planning and `VoipL
 
 
 Latest VoIP limit-plan decision increment `43325d2c1cb71815c3bd85854e512c41eacdf3c0` passed full CI run [38524638385](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38524638385): Python 3.11 and 3.12 each **821 passed, 2 warnings**; Ruff, compilation, PHP syntax and PostgreSQL integration passed. Python-only run [38524638404](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38524638404) passed **813 passed, 8 skipped, 2 warnings**.
+
+
+## VoIP timer-engine checkpoint — 2026-10-15
+
+Added tested scheduler and limit-loop application primitives. The scheduler supports per-key cancellation/replacement, bounded delays, callback error reporting, next-boundary rescheduling, and retry after provider action failures. This is a foundation only: the production RADIUS runtime is not yet wired to a transaction-scoped limit planner or source-specific RAS kill adapters, and restart recovery remains open. Do not mark the VoIP phase complete.
