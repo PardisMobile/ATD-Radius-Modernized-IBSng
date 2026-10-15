@@ -123,12 +123,23 @@ class SourceRASDisconnectClient:
 
         if source[0] != expected_host or source[1] != target.port:
             raise RASTerminationError("Disconnect-Request response came from an unexpected endpoint")
-        if not verify_control_response(response_wire, request, ras.radius_secret):
-            raise RASTerminationError("Disconnect-Request response authenticator is invalid")
         try:
             response = decode(response_wire, ras.radius_secret)
         except RadiusCodecError as exc:
             raise RASTerminationError("Disconnect-Request response is malformed") from exc
+
+        # A1.24 explicitly disables reply-authenticator verification for MVTS:
+        # its implementation notes that MVTS zero-fills the authenticator.
+        # Keep endpoint, identifier and response-code checks, but do not apply
+        # the normal RFC response-authenticator check to this provider.
+        if response.identifier != request.identifier:
+            raise RASTerminationError("Disconnect-Request response identifier does not match")
+        if ras.ras_type.strip().lower() != "mvts" and not verify_control_response(
+            response_wire, request, ras.radius_secret
+        ):
+            raise RASTerminationError("Disconnect-Request response authenticator is invalid")
+        if response.code not in {RadiusCode.DISCONNECT_ACK, RadiusCode.DISCONNECT_NAK}:
+            raise RASTerminationError("Disconnect-Request received an unexpected response code")
         if response.code is not RadiusCode.DISCONNECT_ACK:
             cause = response.attributes.get("Error-Cause", "unspecified")
             raise RASTerminationError(f"{ras.ras_type} rejected Disconnect-Request (Error-Cause {cause})")
