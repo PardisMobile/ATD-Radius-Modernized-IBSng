@@ -158,6 +158,17 @@ def test_native_charge_settlement_routes_by_source_user_type():
     router.start(state, datetime(2026, 1, 5, tzinfo=timezone.utc), 3, None)
     voip.start.assert_called_once()
     internet.start.assert_not_called()
+    assert state.charge_kind == "voip"
+
+
+def test_native_charge_settlement_marks_normal_sessions_as_internet_charged():
+    internet, voip = Mock(), Mock()
+    router = UserChargeSettlement(UserKinds(normal=True), internet, voip)
+    state = SessionRegistry().start(SessionKey(7, 3, "route-normal"))
+    router.start(state, datetime(2026, 1, 5, tzinfo=timezone.utc), 3, None)
+    internet.start.assert_called_once()
+    voip.start.assert_not_called()
+    assert state.charge_kind == "internet"
 
 
 def test_voip_initial_prefix_publishes_native_min_duration_and_prefix_name():
