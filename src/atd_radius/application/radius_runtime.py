@@ -227,8 +227,8 @@ class NativeRadiusPacketHandler:
             active = self.state.sessions.active_for_user(user_id)
             has_voip_charge = any(
                 state.charge_id is not None
-                and (ras := ras_registry.get(state.key.ras_id)) is not None
-                and provider_service_for_ras(ras.ras_type) == "voip"
+                and state.charge_kind == "voip"
+                and ras_registry.get(state.key.ras_id) is not None
                 for state in active
             )
         if has_voip_charge:
@@ -257,8 +257,8 @@ class NativeRadiusPacketHandler:
                     state
                     for state in self.state.sessions.active_for_user(user_id)
                     if state.charge_id is not None
-                    and (ras := ras_registry.get(state.key.ras_id)) is not None
-                    and provider_service_for_ras(ras.ras_type) == "voip"
+                    and state.charge_kind == "voip"
+                    and ras_registry.get(state.key.ras_id) is not None
                 )
                 if not active:
                     return VoipLimitPlan(None)
@@ -291,10 +291,6 @@ class NativeRadiusPacketHandler:
                 ras = ras_registry.get(session_key.ras_id)
                 if ras is None:
                     raise RASTerminationError("session RAS is missing or inactive")
-                if provider_service_for_ras(ras.ras_type) != "voip":
-                    raise UnsupportedRASTermination(
-                        f"RAS {ras.ras_id} is not configured as a VoIP provider"
-                    )
                 self._ras_terminator.terminate(ras, snapshot, reason)
         except Exception:
             with self.state.sessions.synchronized():
