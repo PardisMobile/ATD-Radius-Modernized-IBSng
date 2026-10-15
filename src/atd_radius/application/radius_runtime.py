@@ -33,7 +33,7 @@ from atd_radius.infrastructure.ras import RASRepository
 from atd_radius.infrastructure import UserRepository
 from atd_radius.application.voip_limit_scheduler import VoipLimitScheduler
 from atd_radius.application.voip_limit_loop import VoipLimitCheckLoop
-from atd_radius.infrastructure.ras_termination import SourceRASDisconnectClient, RASTerminationError, UnsupportedRASTermination
+from atd_radius.infrastructure.ras_termination import SourceRASDisconnectClient, RASTerminationError
 
 
 class UserSource(Protocol):
