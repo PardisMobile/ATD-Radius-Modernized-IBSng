@@ -6,7 +6,7 @@ from decimal import Decimal
 from typing import Callable, Protocol
 from .billing import BillingError, BillingUsage
 from .billing_rules import InternetChargeRule, VoipChargeRule, select_effective_rule, select_effective_voip_rule
-from .radius_runtime import SessionState
+from .radius_runtime import SessionKey, SessionState
 
 class ChargeRuleSource(Protocol):
     def list(self, charge_id: int | None = None) -> list[InternetChargeRule]: ...
@@ -90,7 +90,7 @@ class VoipLimitPlan:
     """Source-shaped limit decision; provider side effects remain a separate step."""
 
     remaining_seconds: Decimal | None
-    kill_reasons: tuple[tuple[str, str], ...] = ()
+    kill_reasons: tuple[tuple[SessionKey, str], ...] = ()
 
 class VoipChargeSettlement:
     """A1.24 VoIP call usage settlement across effective-rule transitions.
@@ -264,7 +264,7 @@ class VoipChargeSettlement:
         active = [state for state in states if state.charge_id is not None and not state.stopped]
         if available_credit <= 0:
             return VoipLimitPlan(Decimal("0"), tuple(
-                (state.key.unique_id, "credit_finished") for state in active
+                (state.key, "credit_finished") for state in active
             ))
 
         eligible = []
@@ -277,7 +277,7 @@ class VoipChargeSettlement:
             try:
                 select_effective_voip_rule(rules, when, ras_id, port, called_number, tariffs)
             except BillingError:
-                kills.append((state.key.unique_id, "no_effective_rule"))
+                kills.append((state.key, "no_effective_rule"))
             else:
                 eligible.append(state)
 
