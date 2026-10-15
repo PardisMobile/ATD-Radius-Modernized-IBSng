@@ -449,7 +449,9 @@ class UserChargeSettlement:
         self.users, self.internet, self.voip = users, internet, voip
 
     def _for(self, state):
-        return self.internet if self.users.is_normal_user(state.key.user_id) else self.voip
+        is_normal = self.users.is_normal_user(state.key.user_id)
+        state.charge_kind = "internet" if is_normal else "voip"
+        return self.internet if is_normal else self.voip
 
     def start(self, state, when, ras_id, port):
         return self._for(state).start(state, when, ras_id, port)
