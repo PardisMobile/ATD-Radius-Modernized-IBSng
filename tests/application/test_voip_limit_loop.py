@@ -5,6 +5,7 @@ import pytest
 from atd_radius.application.voip_limit_loop import VoipLimitCheckLoop
 from atd_radius.application.voip_limit_scheduler import VoipLimitScheduler
 from atd_radius.domain.accounting_charge import VoipLimitPlan
+from atd_radius.domain.radius_runtime import SessionKey
 
 
 def test_limit_loop_executes_per_session_kill_reason_and_stops_without_next_event():
@@ -28,7 +29,7 @@ def test_limit_loop_executes_per_session_kill_reason_and_stops_without_next_even
         while not kills and time.monotonic() < deadline:
             time.sleep(0.01)
         assert calls == [7]
-        assert kills == [("call-42", "credit_finished")]
+        assert kills == [(SessionKey(7, 3, "call-42"), "credit_finished")]
     finally:
         loop.close()
 
@@ -75,8 +76,8 @@ def test_limit_loop_retries_provider_kill_failure_after_rechecking_plan():
     try:
         assert second_attempt.wait(4)
         assert attempts == [
-            ("call-99", "no_effective_rule"),
-            ("call-99", "no_effective_rule"),
+            (SessionKey(9, 3, "call-99"), "no_effective_rule"),
+            (SessionKey(9, 3, "call-99"), "no_effective_rule"),
         ]
         assert len(checks) >= 2
     finally:
