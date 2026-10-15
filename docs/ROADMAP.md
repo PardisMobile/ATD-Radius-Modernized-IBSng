@@ -338,3 +338,7 @@ Safety increment — full session identity: VoIP kill decisions and the orchestr
 ## Production VoIP limit-loop wiring — 2026-10-15
 
 The production packet handler now owns the recurring scheduler and triggers rechecks after Accounting updates, using fresh database transactions and native credit/tariff/rule repositories. Session charging kind comes from the native user subtype, not a guessed RAS label. MVTS has a source-specific outbound Disconnect-Request path; the other VoIP providers' concrete kill effects, durable session/timer recovery and end-to-end provider parity remain required before phase completion. CI is pending.
+
+## MVTS source-identity correction — 2026-10-15
+
+A source re-check of `IBSng/core/ras/rases/mvts.py::killUser` found that A1.24 builds Disconnect-Request `User-Name` from the user's `voip_username` attribute, not necessarily the inbound RADIUS `User-Name`/normal IBSng login. The production VoIP termination path now resolves `voip_users.voip_username` through the native user repository in the same fresh transaction and uses it for MVTS; a missing VoIP credential fails closed as a permanent configuration gap instead of sending a disconnect for the wrong identity. Regression coverage verifies the provider sees the source-required username. This is a targeted parity correction, not full provider or restart-recovery completion.

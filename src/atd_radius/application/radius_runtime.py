@@ -291,6 +291,18 @@ class NativeRadiusPacketHandler:
                 ras = ras_registry.get(session_key.ras_id)
                 if ras is None:
                     raise PermanentRASTerminationError("session RAS is missing or inactive")
+                if ras.ras_type.strip().lower() == "mvts":
+                    # A1.24 MVTS.killUser uses user_obj.getUserAttrs()["voip_username"],
+                    # not the RADIUS User-Name (which may be the IBSng login).
+                    credentials = UserRepository(conn).voip_credentials(session_key.user_id)
+                    if credentials is None or not credentials[0].strip():
+                        raise PermanentRASTerminationError(
+                            "MVTS session user has no configured voip_username"
+                        )
+                    snapshot = replace(
+                        snapshot,
+                        attributes={**snapshot.attributes, "User-Name": credentials[0]},
+                    )
                 self._ras_terminator.terminate(ras, snapshot, reason)
         except Exception:
             with self.state.sessions.synchronized():

@@ -363,12 +363,19 @@ def test_native_packet_handler_uses_source_ras_terminator_for_exact_session(monk
     terminate = Mock()
     handler._ras_terminator.terminate = terminate
     monkeypatch.setattr(radius_runtime, "build_ras_runtime", lambda *_args: Registry())
+    class Users:
+        def __init__(self, _conn): pass
+        def voip_credentials(self, user_id):
+            assert user_id == 7
+            return ("sip-alice", "secret")
+    monkeypatch.setattr(radius_runtime, "UserRepository", Users)
     try:
         handler._terminate_voip_session(key, "credit_finished")
         assert session.termination_requested_reason == "credit_finished"
         terminate.assert_called_once()
         args = terminate.call_args.args
         assert args[1].key == key
+        assert args[1].attributes["User-Name"] == "sip-alice"
         assert args[2] == "credit_finished"
     finally:
         handler.close()
@@ -394,6 +401,10 @@ def test_failed_provider_termination_clears_pending_marker_for_retry(monkeypatch
     handler = NativeRadiusPacketHandler(state, lambda: Connection())
     handler._ras_terminator.terminate = Mock(side_effect=TimeoutError("timeout"))
     monkeypatch.setattr(radius_runtime, "build_ras_runtime", lambda *_args: Registry())
+    class Users:
+        def __init__(self, _conn): pass
+        def voip_credentials(self, _user_id): return ("sip-alice", "secret")
+    monkeypatch.setattr(radius_runtime, "UserRepository", Users)
     try:
         import pytest
         with pytest.raises(TimeoutError):

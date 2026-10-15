@@ -503,3 +503,7 @@ VoIP limit-decision safety: each kill decision now retains the complete `Session
 ## Latest runtime integration checkpoint — 2026-10-15
 
 The production `NativeRadiusPacketHandler` now schedules VoIP checks after Accounting events, creates fresh DB transactions for scheduled checks, computes plans from native credit/rule/tariff repositories, and dispatches per-session termination to the source-backed provider client. Sessions carry native `charge_kind` and full `SessionKey` termination identity. MVTS is the only VoIP provider currently connected to a real termination client; all other VoIP provider effects and restart-safe persistence remain incomplete. CI is pending for this checkpoint.
+
+## MVTS source-identity correction — 2026-10-15
+
+A source re-check of `IBSng/core/ras/rases/mvts.py::killUser` found that A1.24 builds Disconnect-Request `User-Name` from the user's `voip_username` attribute, not necessarily the inbound RADIUS `User-Name`/normal IBSng login. The production VoIP termination path now resolves `voip_users.voip_username` through the native user repository in the same fresh transaction and uses it for MVTS; a missing VoIP credential fails closed as a permanent configuration gap instead of sending a disconnect for the wrong identity. Regression coverage verifies the provider sees the source-required username. This is a targeted parity correction, not full provider or restart-recovery completion.

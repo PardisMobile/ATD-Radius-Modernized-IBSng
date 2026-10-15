@@ -185,3 +185,7 @@ VoIP kill decisions now preserve full `SessionKey` identity rather than only the
 ## VoIP enforcement implementation status — 2026-10-15
 
 The recurring loop is now wired to the native RADIUS Accounting runtime and recomputes limit plans in fresh DB transactions. Native user-type routing labels each session's charge kind; termination targets a full `SessionKey`. The real VoIP provider termination path currently covers MVTS only. Other VoIP provider kill actions, durable restart recovery and end-to-end RAS interoperability remain **partial/not implemented**. CI for the current integration is pending.
+
+## MVTS source-identity correction — 2026-10-15
+
+A source re-check of `IBSng/core/ras/rases/mvts.py::killUser` found that A1.24 builds Disconnect-Request `User-Name` from the user's `voip_username` attribute, not necessarily the inbound RADIUS `User-Name`/normal IBSng login. The production VoIP termination path now resolves `voip_users.voip_username` through the native user repository in the same fresh transaction and uses it for MVTS; a missing VoIP credential fails closed as a permanent configuration gap instead of sending a disconnect for the wrong identity. Regression coverage verifies the provider sees the source-required username. This is a targeted parity correction, not full provider or restart-recovery completion.
