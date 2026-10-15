@@ -65,7 +65,6 @@ def test_replacing_key_does_not_allow_old_callback_to_reschedule():
 
 
 def test_callback_error_is_reported_and_not_silently_rescheduled():
-    scheduler = VoipLimitScheduler()
     fired = Event()
     errors = []
 
