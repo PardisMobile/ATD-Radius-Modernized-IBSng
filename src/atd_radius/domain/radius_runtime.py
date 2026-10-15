@@ -71,6 +71,7 @@ class SessionState:
     output_octets:int=0
     started_at:datetime|None=None
     charge_id:int|None=None
+    charge_kind: str | None = None
     charge_rule_id:int|None=None
     charge_rule_started_at:datetime|None=None
     charge_rule_input_octets:int=0
