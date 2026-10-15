@@ -6,6 +6,7 @@ from atd_radius.application.voip_limit_loop import VoipLimitCheckLoop
 from atd_radius.application.voip_limit_scheduler import VoipLimitScheduler
 from atd_radius.domain.accounting_charge import VoipLimitPlan
 from atd_radius.domain.radius_runtime import SessionKey
+from atd_radius.infrastructure.ras_termination import UnsupportedRASTermination
 
 
 def test_limit_loop_executes_per_session_kill_reason_and_stops_without_next_event():
@@ -89,3 +90,26 @@ def test_limit_loop_rejects_invalid_user_id():
     with pytest.raises(ValueError):
         loop.schedule(0)
     loop.close()
+
+
+def test_unsupported_provider_is_reported_without_a_hot_retry_loop():
+    reported = Event()
+    calls = []
+
+    def terminate(session_key, reason):
+        calls.append((session_key, reason))
+        raise UnsupportedRASTermination("provider adapter not implemented")
+
+    loop = VoipLimitCheckLoop(
+        VoipLimitScheduler(),
+        lambda _user: VoipLimitPlan(0, ((SessionKey(10, 4, "call-x"), "credit_finished"),)),
+        terminate,
+        on_error=lambda _user, _exc: reported.set(),
+    )
+    loop.schedule(10)
+    loop.start()
+    try:
+        assert reported.wait(2)
+        assert calls == [(SessionKey(10, 4, "call-x"), "credit_finished")]
+    finally:
+        loop.close()
