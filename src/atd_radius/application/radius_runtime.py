@@ -33,7 +33,7 @@ from atd_radius.infrastructure.ras import RASRepository
 from atd_radius.infrastructure import UserRepository
 from atd_radius.application.voip_limit_scheduler import VoipLimitScheduler
 from atd_radius.application.voip_limit_loop import VoipLimitCheckLoop
-from atd_radius.infrastructure.ras_termination import SourceRASDisconnectClient, RASTerminationError
+from atd_radius.infrastructure.ras_termination import SourceRASDisconnectClient, RASTerminationError, PermanentRASTerminationError
 
 
 class UserSource(Protocol):
@@ -290,7 +290,7 @@ class NativeRadiusPacketHandler:
                 ras_registry = build_ras_runtime(RASRepository(conn), self.state.type_defaults)
                 ras = ras_registry.get(session_key.ras_id)
                 if ras is None:
-                    raise RASTerminationError("session RAS is missing or inactive")
+                    raise PermanentRASTerminationError("session RAS is missing or inactive")
                 self._ras_terminator.terminate(ras, snapshot, reason)
         except Exception:
             with self.state.sessions.synchronized():
