@@ -81,6 +81,8 @@ class SessionState:
     voip_current_prefix: object | None = None
     voip_missed_call: bool = False
     ras_multi_login_allowed: bool | None = None
+    termination_requested_reason: str | None = None
+    termination_requested_at: datetime | None = None
 
 class SessionRegistry:
     def __init__(self):
