@@ -13,6 +13,7 @@ from threading import RLock
 from atd_radius.application.voip_limit_scheduler import VoipLimitScheduler
 from atd_radius.domain.accounting_charge import VoipLimitPlan
 from atd_radius.domain.radius_runtime import SessionKey
+from atd_radius.infrastructure.ras_termination import UnsupportedRASTermination
 
 
 class VoipLimitCheckLoop:
@@ -88,6 +89,10 @@ class VoipLimitCheckLoop:
         for session_key, reason in plan.kill_reasons:
             try:
                 self.terminate_session(session_key, reason)
+            except UnsupportedRASTermination as exc:
+                # Unsupported providers are a capability gap, not a transient
+                # outage. Report once and wait for another accounting/policy event.
+                self._report_error(user_id, exc)
             except Exception as exc:
                 failed_terminations = True
                 self._report_error(user_id, exc)
