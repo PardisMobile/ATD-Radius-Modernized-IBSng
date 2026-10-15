@@ -59,6 +59,15 @@ class VoipLimitCheckLoop:
     def close(self) -> None:
         self.scheduler.close()
 
+    def _report_error(self, user_id: int, exc: Exception) -> None:
+        if self.on_error is None:
+            return
+        try:
+            self.on_error(user_id, exc)
+        except Exception:
+            # Observability failures must not disable the enforcement loop.
+            pass
+
     def _tick(self, user_id: int) -> int | float | Decimal | None:
         try:
             plan = self.check_limits(user_id)
@@ -66,8 +75,7 @@ class VoipLimitCheckLoop:
             with self._lock:
                 failures = self._failures.get(user_id, 0) + 1
                 self._failures[user_id] = failures
-            if self.on_error is not None:
-                self.on_error(user_id, exc)
+            self._report_error(user_id, exc)
             # Retry transient database/provider-state failures with bounded
             # backoff; a successful check resets this counter below.
             return min(2 ** min(failures, 6), 60)
@@ -81,8 +89,7 @@ class VoipLimitCheckLoop:
                 self.terminate_session(unique_id, reason)
             except Exception as exc:
                 failed_terminations = True
-                if self.on_error is not None:
-                    self.on_error(user_id, exc)
+                self._report_error(user_id, exc)
 
         if failed_terminations:
             # Re-read the active sessions and retry failed provider actions;
