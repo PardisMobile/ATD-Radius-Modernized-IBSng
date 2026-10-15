@@ -460,3 +460,8 @@ Added a per-session RAS/port context resolver for multi-call planning and `VoipL
 
 
 Latest VoIP limit-plan decision increment `43325d2c1cb71815c3bd85854e512c41eacdf3c0` passed full CI run [38524638385](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38524638385): Python 3.11 and 3.12 each **821 passed, 2 warnings**; Ruff, compilation, PHP syntax and PostgreSQL integration passed. Python-only run [38524638404](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38524638404) passed **813 passed, 8 skipped, 2 warnings**.
+
+
+## VoIP timer-engine foundation — 2026-10-15
+
+New code slice: `src/atd_radius/application/voip_limit_scheduler.py` adds a thread-safe single-worker timer engine with key-scoped replacement/cancellation, bounded delays and explicit callback error handling; `tests/application/test_voip_limit_scheduler.py` covers its lifecycle races. This is not yet production-integrated. `VoipCharge.checkLimits` scheduling, live provider termination, and restart-safe billing/session recovery remain incomplete. CI for the new slice must be checked before recording it as verified.
