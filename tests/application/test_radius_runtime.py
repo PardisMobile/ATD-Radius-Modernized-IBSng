@@ -340,3 +340,65 @@ def test_native_packet_handler_does_not_repeat_a_successfully_requested_terminat
         assert session.termination_requested_reason == "credit_finished"
     finally:
         handler.close()
+
+
+def test_native_packet_handler_uses_source_ras_terminator_for_exact_session(monkeypatch):
+    from atd_radius.application import radius_runtime
+    from atd_radius.application.radius_runtime import NativeRadiusPacketHandler, NativeRadiusRuntimeState
+    from atd_radius.domain.radius_runtime import SessionKey
+    from atd_radius.domain.ras import RAS
+
+    class Connection:
+        def __enter__(self): return self
+        def __exit__(self, *_args): return False
+
+    class Registry:
+        def get(self, ras_id):
+            return RAS(ras_id, "192.0.2.3", "mvts", "MVTS", "secret") if ras_id == 3 else None
+
+    state = NativeRadiusRuntimeState()
+    key = SessionKey(7, 3, "conf-7")
+    session = state.sessions.start(key, {"User-Name": "alice"})
+    handler = NativeRadiusPacketHandler(state, lambda: Connection())
+    terminate = Mock()
+    handler._ras_terminator.terminate = terminate
+    monkeypatch.setattr(radius_runtime, "build_ras_runtime", lambda *_args: Registry())
+    try:
+        handler._terminate_voip_session(key, "credit_finished")
+        assert session.termination_requested_reason == "credit_finished"
+        terminate.assert_called_once()
+        args = terminate.call_args.args
+        assert args[1].key == key
+        assert args[2] == "credit_finished"
+    finally:
+        handler.close()
+
+
+def test_failed_provider_termination_clears_pending_marker_for_retry(monkeypatch):
+    from atd_radius.application import radius_runtime
+    from atd_radius.application.radius_runtime import NativeRadiusPacketHandler, NativeRadiusRuntimeState
+    from atd_radius.domain.radius_runtime import SessionKey
+    from atd_radius.domain.ras import RAS
+
+    class Connection:
+        def __enter__(self): return self
+        def __exit__(self, *_args): return False
+
+    class Registry:
+        def get(self, ras_id):
+            return RAS(ras_id, "192.0.2.3", "mvts", "MVTS", "secret") if ras_id == 3 else None
+
+    state = NativeRadiusRuntimeState()
+    key = SessionKey(7, 3, "conf-8")
+    session = state.sessions.start(key, {"User-Name": "alice"})
+    handler = NativeRadiusPacketHandler(state, lambda: Connection())
+    handler._ras_terminator.terminate = Mock(side_effect=TimeoutError("timeout"))
+    monkeypatch.setattr(radius_runtime, "build_ras_runtime", lambda *_args: Registry())
+    try:
+        import pytest
+        with pytest.raises(TimeoutError):
+            handler._terminate_voip_session(key, "credit_finished")
+        assert session.termination_requested_reason is None
+        assert session.termination_requested_at is None
+    finally:
+        handler.close()
