@@ -314,6 +314,7 @@ def test_native_packet_handler_does_not_schedule_internet_only_sessions():
     state.ras.get.return_value = RAS(3, "192.0.2.3", "router", "MikroTik", "secret")
     session = state.sessions.start(SessionKey(7, 3, "port-7"), {"User-Name": "alice"})
     session.charge_id = 12
+    session.charge_kind = "internet"
     handler = NativeRadiusPacketHandler(state, Mock())
     try:
         handler._refresh_voip_limit_schedule(7)
