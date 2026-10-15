@@ -13,7 +13,7 @@ from threading import RLock
 from atd_radius.application.voip_limit_scheduler import VoipLimitScheduler
 from atd_radius.domain.accounting_charge import VoipLimitPlan
 from atd_radius.domain.radius_runtime import SessionKey
-from atd_radius.infrastructure.ras_termination import UnsupportedRASTermination
+from atd_radius.infrastructure.ras_termination import PermanentRASTerminationError
 
 
 class VoipLimitCheckLoop:
@@ -40,6 +40,7 @@ class VoipLimitCheckLoop:
         self.on_error = on_error
         self._lock = RLock()
         self._failures: dict[int, int] = {}
+        self._termination_failures: dict[tuple[int, SessionKey], int] = {}
 
     @staticmethod
     def _key(user_id: int) -> tuple[str, int]:
@@ -56,6 +57,9 @@ class VoipLimitCheckLoop:
     def cancel(self, user_id: int) -> bool:
         with self._lock:
             self._failures.pop(user_id, None)
+            for key in tuple(self._termination_failures):
+                if key[0] == user_id:
+                    self._termination_failures.pop(key, None)
         return self.scheduler.cancel(self._key(user_id))
 
     def close(self) -> None:
@@ -85,22 +89,30 @@ class VoipLimitCheckLoop:
         with self._lock:
             self._failures.pop(user_id, None)
 
-        failed_terminations = False
+        retry_delay = 0
         for session_key, reason in plan.kill_reasons:
+            failure_key = (user_id, session_key)
             try:
                 self.terminate_session(session_key, reason)
-            except UnsupportedRASTermination as exc:
-                # Unsupported providers are a capability gap, not a transient
-                # outage. Report once and wait for another accounting/policy event.
+                with self._lock:
+                    self._termination_failures.pop(failure_key, None)
+            except PermanentRASTerminationError as exc:
+                # Unsupported/configuration-blocked providers are not retried
+                # on a one-second loop. A later accounting/policy event can retry.
+                with self._lock:
+                    self._termination_failures.pop(failure_key, None)
                 self._report_error(user_id, exc)
             except Exception as exc:
-                failed_terminations = True
+                with self._lock:
+                    failures = self._termination_failures.get(failure_key, 0) + 1
+                    self._termination_failures[failure_key] = failures
+                retry_delay = max(retry_delay, min(2 ** min(failures, 6), 60))
                 self._report_error(user_id, exc)
 
-        if failed_terminations:
-            # Re-read the active sessions and retry failed provider actions;
-            # termination adapters must be idempotent for a session/reason pair.
-            return 1
+        if retry_delay:
+            # Re-read the active sessions and retry transient provider failures
+            # with bounded backoff; adapters should be idempotent per session.
+            return retry_delay
         if plan.remaining_seconds is None or plan.remaining_seconds <= 0:
             return None
         return plan.remaining_seconds
