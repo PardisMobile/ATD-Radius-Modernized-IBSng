@@ -296,6 +296,7 @@ def test_native_packet_handler_schedules_only_users_with_active_voip_charge_sess
     state.ras.get.return_value = RAS(3, "192.0.2.3", "mvts", "MVTS", "secret")
     session = state.sessions.start(SessionKey(7, 3, "conf-7"), {"User-Name": "alice"})
     session.charge_id = 12
+    session.charge_kind = "voip"
     handler = NativeRadiusPacketHandler(state, Mock())
     try:
         handler._refresh_voip_limit_schedule(7)
