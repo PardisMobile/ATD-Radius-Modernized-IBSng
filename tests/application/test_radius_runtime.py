@@ -284,3 +284,57 @@ def test_accounting_identity_resolution_and_apply_share_registry_lock():
     assert response.code is RadiusCode.ACCOUNTING_RESPONSE
     assert sessions.applied == (event, 7, 3)
     assert guard["entered"] is False
+
+
+def test_native_packet_handler_schedules_only_users_with_active_voip_charge_sessions():
+    from atd_radius.application.radius_runtime import NativeRadiusPacketHandler, NativeRadiusRuntimeState
+    from atd_radius.domain.radius_runtime import SessionKey
+    from atd_radius.domain.ras import RAS
+
+    state = NativeRadiusRuntimeState()
+    state.ras = Mock()
+    state.ras.get.return_value = RAS(3, "192.0.2.3", "mvts", "MVTS", "secret")
+    session = state.sessions.start(SessionKey(7, 3, "conf-7"), {"User-Name": "alice"})
+    session.charge_id = 12
+    handler = NativeRadiusPacketHandler(state, Mock())
+    try:
+        handler._refresh_voip_limit_schedule(7)
+        assert ("voip-user", 7) in handler.voip_limit_loop.scheduler.pending_keys()
+    finally:
+        handler.close()
+
+
+def test_native_packet_handler_does_not_schedule_internet_only_sessions():
+    from atd_radius.application.radius_runtime import NativeRadiusPacketHandler, NativeRadiusRuntimeState
+    from atd_radius.domain.radius_runtime import SessionKey
+    from atd_radius.domain.ras import RAS
+
+    state = NativeRadiusRuntimeState()
+    state.ras = Mock()
+    state.ras.get.return_value = RAS(3, "192.0.2.3", "router", "MikroTik", "secret")
+    session = state.sessions.start(SessionKey(7, 3, "port-7"), {"User-Name": "alice"})
+    session.charge_id = 12
+    handler = NativeRadiusPacketHandler(state, Mock())
+    try:
+        handler._refresh_voip_limit_schedule(7)
+        assert handler.voip_limit_loop.scheduler.pending_keys() == ()
+    finally:
+        handler.close()
+
+
+def test_native_packet_handler_does_not_repeat_a_successfully_requested_termination():
+    from datetime import datetime, timezone
+    from atd_radius.application.radius_runtime import NativeRadiusPacketHandler, NativeRadiusRuntimeState
+    from atd_radius.domain.radius_runtime import SessionKey
+
+    state = NativeRadiusRuntimeState()
+    key = SessionKey(7, 3, "conf-7")
+    session = state.sessions.start(key, {"User-Name": "alice"})
+    session.termination_requested_reason = "credit_finished"
+    session.termination_requested_at = datetime.now(timezone.utc)
+    handler = NativeRadiusPacketHandler(state, Mock())
+    try:
+        handler._terminate_voip_session(key, "credit_finished")
+        assert session.termination_requested_reason == "credit_finished"
+    finally:
+        handler.close()
