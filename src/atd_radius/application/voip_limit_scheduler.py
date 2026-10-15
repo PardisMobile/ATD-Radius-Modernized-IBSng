@@ -10,7 +10,7 @@ from __future__ import annotations
 from collections.abc import Callable, Hashable
 from dataclasses import dataclass
 from decimal import Decimal
-from threading import Condition, Thread
+from threading import Condition, Thread, current_thread
 from time import monotonic
 from typing import TypeAlias
 
@@ -96,7 +96,7 @@ class VoipLimitScheduler:
             self._pending.clear()
             self._condition.notify_all()
             thread = self._thread
-        if wait and thread is not None and thread is not __import__("threading").current_thread():
+        if wait and thread is not None and thread is not current_thread():
             thread.join()
 
     def pending_keys(self) -> tuple[Hashable, ...]:
