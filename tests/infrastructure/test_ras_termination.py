@@ -1,5 +1,3 @@
-from ipaddress import ip_address
-
 import pytest
 
 from atd_radius.domain.radius import RadiusCode, RadiusPacket
@@ -61,7 +59,7 @@ def make_ras(kind, *, ip="192.0.2.10", attributes=None):
 def make_session(unique_id="call-1", attrs=None):
     return SessionState(
         SessionKey(7, 3, unique_id),
-        attributes=attrs or {"User-Name": "alice"},
+        attributes=attrs if attrs is not None else {"User-Name": "alice"},
         started=True,
     )
 
