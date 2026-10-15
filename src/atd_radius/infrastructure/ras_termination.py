@@ -21,7 +21,11 @@ class RASTerminationError(RuntimeError):
     """A configured provider did not confirm the requested session termination."""
 
 
-class UnsupportedRASTermination(RASTerminationError):
+class PermanentRASTerminationError(RASTerminationError):
+    """The provider action cannot succeed without changing session/configuration."""
+
+
+class UnsupportedRASTermination(PermanentRASTerminationError):
     """The A1.24 provider has no implemented termination adapter in ATD yet."""
 
 
@@ -56,7 +60,7 @@ class SourceRASDisconnectClient:
         attrs = ras.all_attributes()
         username = str(session.attributes.get("User-Name", "")).strip()
         if not username:
-            raise RASTerminationError("session is missing the source-required User-Name")
+            raise PermanentRASTerminationError("session is missing the source-required User-Name")
 
         provider = ras.ras_type.strip().lower().replace("-", "_").replace(" ", "_")
         if provider in {"chillispot", "chilli spot", "chilli_spot"}:
@@ -65,7 +69,7 @@ class SourceRASDisconnectClient:
                 port = int(attrs.get("chilli_spot_disconnect_port", 3799))
                 timeout = float(attrs.get("chilli_spot_radius_timeout", 5))
             except (TypeError, ValueError) as exc:
-                raise RASTerminationError("invalid ChilliSpot disconnect endpoint configuration") from exc
+                raise PermanentRASTerminationError("invalid ChilliSpot disconnect endpoint configuration") from exc
             if not host or not 1 <= port <= 65535 or timeout <= 0:
                 raise RASTerminationError("invalid ChilliSpot disconnect endpoint configuration")
             return _Target(host, port, timeout, {"User-Name": username})
@@ -75,7 +79,7 @@ class SourceRASDisconnectClient:
                 port = int(attrs.get("mvts_radius_auth_port", 1812))
                 timeout = float(attrs.get("mvts_radius_timeout", 5))
             except (TypeError, ValueError) as exc:
-                raise RASTerminationError("invalid MVTS disconnect endpoint configuration") from exc
+                raise PermanentRASTerminationError("invalid MVTS disconnect endpoint configuration") from exc
             if not 1 <= port <= 65535 or timeout <= 0:
                 raise RASTerminationError("invalid MVTS disconnect endpoint configuration")
             return _Target(
