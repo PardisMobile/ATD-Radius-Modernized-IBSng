@@ -177,3 +177,6 @@ The domain planner now has an application-level scheduler and per-user limit-loo
 ## RAS termination implementation status — 2026-10-15
 
 Source-specific ChilliSpot and MVTS Disconnect-Request adapters are implemented and unit-tested, including A1.24's MVTS zero-filled response-authenticator exception. The timer engine and limit-loop orchestration are present but not wired into production. All other provider termination mechanisms and restart-safe enforcement remain **partial/not implemented**; provider profile metadata alone does not count as termination parity.
+
+
+VoIP kill decisions now preserve full `SessionKey` identity rather than only the provider's session string. This is required to distinguish sessions across users/RASes. Unsupported provider actions fail closed and do not enter an aggressive retry loop. Full runtime wiring and restart-safe enforcement remain partial.

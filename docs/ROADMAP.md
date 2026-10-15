@@ -330,3 +330,6 @@ Added tested scheduler and limit-loop application primitives. The scheduler supp
 ## VoIP limit enforcement and RAS actions — 2026-10-15
 
 The scheduler and per-user orchestration now exist, and source-traced Disconnect-Request adapters cover ChilliSpot and MVTS with provider-specific response validation. This remains a partial foundation. The production runtime must still supply transaction-scoped planning and wire these adapters into lifecycle events. Implement remaining source-defined SNMP/RSH/launcher/telephony actions and durable session/timer recovery before claiming `VoipCharge.checkLimits` parity.
+
+
+Safety increment — full session identity: VoIP kill decisions and the orchestration callback now carry `SessionKey` (user ID, RAS ID, provider ID), avoiding ambiguous matches across RASes. Unsupported termination strategies are reported as a capability gap instead of being hot-retried. Production runtime wiring and restart recovery are still required.

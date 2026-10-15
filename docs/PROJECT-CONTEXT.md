@@ -495,3 +495,6 @@ This is not production parity yet: `NativeRadiusPacketHandler` does not instanti
 Added a thread-safe timer engine and per-user limit-check orchestration plus source-specific ChilliSpot/MVTS Disconnect-Request clients. The client preserves each provider's A1.24 endpoint/attribute behavior and the MVTS response-authenticator exception. Regression tests cover timer lifecycle, reason forwarding, retry, endpoint validation, ACK/NAK and provider differences.
 
 Still incomplete: the production runtime does not yet wire the loop to a fresh-transaction planner/provider adapter; the other A1.24 termination providers (SNMP/RSH/launcher/Asterisk/GnuGk/SER and related telephony behavior) are not implemented; timer/session recovery across restart is not durable. Do not mark VoIP charging or RAS termination parity complete.
+
+
+VoIP limit-decision safety: each kill decision now retains the complete `SessionKey`, so downstream termination can target the exact user/RAS/session tuple. Unsupported provider implementations fail closed and are not retried in a one-second loop. Production integration and restart-safe persistence remain pending.
