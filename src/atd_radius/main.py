@@ -24,6 +24,7 @@ def _start_radius_servers() -> list[RadiusUDPServer]:
     # API and UDP packet handlers must share this exact in-process session owner.
     app.state.radius_runtime_state = state
     handler = NativeRadiusPacketHandler(state, connection)
+    app.state.radius_packet_handler = handler
     secrets = PostgresRadiusSecretResolver(connection)
     servers = [
         RadiusUDPServer(handler, secrets, settings.radius_auth_host, settings.radius_auth_port),
@@ -41,3 +42,6 @@ if __name__ == "__main__":
     finally:
         for server in radius_servers:
             server.close()
+        packet_handler = getattr(app.state, "radius_packet_handler", None)
+        if packet_handler is not None:
+            packet_handler.close()
