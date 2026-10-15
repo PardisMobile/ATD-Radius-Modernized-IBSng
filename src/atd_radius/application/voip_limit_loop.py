@@ -12,6 +12,7 @@ from threading import RLock
 
 from atd_radius.application.voip_limit_scheduler import VoipLimitScheduler
 from atd_radius.domain.accounting_charge import VoipLimitPlan
+from atd_radius.domain.radius_runtime import SessionKey
 
 
 class VoipLimitCheckLoop:
@@ -28,7 +29,7 @@ class VoipLimitCheckLoop:
         self,
         scheduler: VoipLimitScheduler,
         check_limits: Callable[[int], VoipLimitPlan],
-        terminate_session: Callable[[str, str], None],
+        terminate_session: Callable[[SessionKey, str], None],
         *,
         on_error: Callable[[int, Exception], None] | None = None,
     ) -> None:
@@ -84,9 +85,9 @@ class VoipLimitCheckLoop:
             self._failures.pop(user_id, None)
 
         failed_terminations = False
-        for unique_id, reason in plan.kill_reasons:
+        for session_key, reason in plan.kill_reasons:
             try:
-                self.terminate_session(unique_id, reason)
+                self.terminate_session(session_key, reason)
             except Exception as exc:
                 failed_terminations = True
                 self._report_error(user_id, exc)
