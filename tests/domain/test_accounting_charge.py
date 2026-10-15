@@ -414,7 +414,7 @@ def test_voip_limit_plan_marks_all_charged_calls_when_credit_is_finished():
     plan = settlement.plan_limits([first, second], start, Decimal("0"), lambda state: (state.key.ras_id, None))
 
     assert plan.remaining_seconds == Decimal("0")
-    assert plan.kill_reasons == (("limit-kill-a", "credit_finished"), ("limit-kill-b", "credit_finished"))
+    assert plan.kill_reasons == ((first.key, "credit_finished"), (second.key, "credit_finished"))
 
 
 def test_voip_limit_plan_only_marks_call_without_effective_rule_for_kill():
@@ -432,5 +432,5 @@ def test_voip_limit_plan_only_marks_call_without_effective_rule_for_kill():
 
     plan = settlement.plan_limits([good, bad], start, Decimal("100"), lambda state: (state.key.ras_id, None))
 
-    assert plan.kill_reasons == (("limit-no-rule", "no_effective_rule"),)
+    assert plan.kill_reasons == ((bad.key, "no_effective_rule"),)
     assert plan.remaining_seconds is not None and plan.remaining_seconds > 0
