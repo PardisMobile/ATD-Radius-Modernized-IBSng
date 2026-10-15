@@ -465,3 +465,8 @@ Latest VoIP limit-plan decision increment `43325d2c1cb71815c3bd85854e512c41eacdf
 ## VoIP timer-engine foundation — 2026-10-15
 
 New code slice: `src/atd_radius/application/voip_limit_scheduler.py` adds a thread-safe single-worker timer engine with key-scoped replacement/cancellation, bounded delays and explicit callback error handling; `tests/application/test_voip_limit_scheduler.py` covers its lifecycle races. This is not yet production-integrated. `VoipCharge.checkLimits` scheduling, live provider termination, and restart-safe billing/session recovery remain incomplete. CI for the new slice must be checked before recording it as verified.
+
+
+## VoIP limit-check orchestration — 2026-10-15
+
+Added `VoipLimitCheckLoop` on top of the one-shot scheduler. It invokes a supplied per-user limit planner, forwards each session's exact kill reason to a supplied termination adapter, reschedules at the next planned boundary, and retries transient planning/provider failures. Regression tests are present. This remains an injectable orchestration layer, not yet wired into `NativeRadiusPacketHandler`; no production provider termination or restart-safe timer recovery is claimed. CI status must be read from the workflow runs for the resulting commits.
