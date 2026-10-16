@@ -255,6 +255,34 @@ _ID_ATTRIBUTES = {
 }
 
 
+def provider_accounting_username(
+    ras_type: str | None,
+    service: str,
+    username: str,
+    ras_attributes: Mapping[str, object] | None = None,
+) -> str:
+    """Resolve the source username used by a provider's Accounting action.
+
+    Cisco VoIP concatenates voip_username and voip_password into RADIUS
+    User-Name. A1.24 splits at cisco_voip_username_length (default 8) before
+    resolving the native VoIP user; Internet and other providers use User-Name
+    unchanged.
+    """
+    if normalize_ras_type(ras_type) != "cisco" or service != "voip":
+        return username
+    attributes = ras_attributes or {}
+    raw_length = attributes.get("cisco_voip_username_length", 8)
+    if isinstance(raw_length, (list, tuple)):
+        raw_length = raw_length[0] if raw_length else 8
+    try:
+        length = int(raw_length)
+    except (TypeError, ValueError):
+        length = 8
+    if length <= 0:
+        length = 8
+    return username[:length]
+
+
 def provider_accounting_should_apply(
     ras_type: str | None,
     service: str,

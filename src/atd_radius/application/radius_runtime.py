@@ -23,6 +23,7 @@ from atd_radius.domain.ras_provider import (
     provider_accounting_should_apply,
     provider_session_id,
     provider_service_for_accounting,
+    provider_accounting_username,
  )
 from atd_radius.domain.user_policies import ras_allows_multi_login
 from atd_radius.infrastructure.accounting_persistence import NativeAccountingPersistence
@@ -182,36 +183,42 @@ class RadiusRuntimeHandler:
                 result: DispatchResult = self.dispatcher.accounting(packet)
                 event = result.accounting
                 if event is not None:
-                    user_id = self.identities.user_id(event.username)
                     ras_id = self.identities.ras_id(peer[0])
+                    ras_record = (
+                        self.identities.ras.get(ras_id)
+                        if ras_id is not None and getattr(self.identities, "ras", None) is not None
+                        else None
+                    )
+                    if ras_record is not None:
+                        ras_attributes = ras_record.all_attributes()
+                        service = provider_service_for_accounting(
+                            ras_record.ras_type, event.attributes
+                        )
+                        # Reject source-inapplicable Cisco call legs before user
+                        # lookup or any charging/session side effect.
+                        if not provider_accounting_should_apply(
+                            ras_record.ras_type, service, event.status.value,
+                            event.attributes,
+                        ):
+                            return result.response
+                        session_id = provider_session_id(
+                            ras_record.ras_type, event.attributes, service
+                        )
+                        username = provider_accounting_username(
+                            ras_record.ras_type, service, event.username, ras_attributes
+                        )
+                        ras_allowed = ras_allows_multi_login(
+                            ras_record.ras_type, ras_attributes, service
+                        )
+                        event = replace(
+                            event,
+                            username=username,
+                            session_id=session_id or event.session_id,
+                            ras_multi_login_allowed=ras_allowed,
+                            service=service,
+                        )
+                    user_id = self.identities.user_id(event.username)
                     if user_id is not None and ras_id is not None:
-                        ras_record = self.identities.ras.get(ras_id)
-                        if ras_record is not None:
-                            service = provider_service_for_accounting(ras_record.ras_type, event.attributes)
-                            # Session identity can depend on service family (notably
-                            # Cisco Internet port identity versus VoIP H.323 call ID).
-                            # Use the same service-aware resolver for live packets as
-                            # restart recovery does.
-                            session_id = provider_session_id(
-                                ras_record.ras_type, event.attributes, service
-                            )
-                            if session_id is not None:
-                                event = replace(event, session_id=session_id)
-                            # Cisco's VoIP branch has extra source-defined
-                            # call-leg guards beyond identifying the service family.
-                            if not provider_accounting_should_apply(
-                                ras_record.ras_type, service, event.status.value,
-                                event.attributes,
-                            ):
-                                return result.response
-                            ras_allowed = ras_allows_multi_login(
-                                ras_record.ras_type, ras_record.all_attributes(), service
-                            )
-                            event = replace(
-                                event,
-                                ras_multi_login_allowed=ras_allowed,
-                                service=service,
-                            )
                         accounting_result = self.accounting_sessions.apply(event, user_id, ras_id)
                         # A1.24 BWSnapShotOnlinesLoopClient only records normal
                         # users with the effective save_bw_usage marker. RADIUS

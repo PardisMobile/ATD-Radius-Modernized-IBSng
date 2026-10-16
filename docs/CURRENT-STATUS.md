@@ -565,3 +565,8 @@ Added source-derived action gating for Cisco VoIP Accounting: Start/Stop require
 ## Cisco wire-value and Internet port identity parity — 2026-10-17
 
 The provider identity resolver now decodes Cisco-style H.323 name=value values before using conference IDs and call-leg fields. Cisco Internet session identity now prefers Cisco-NAS-Port and falls back to the source-defined NAS-Port-Type + NAS-Port combination, rather than incorrectly preferring bare NAS-Port. Focused regression tests cover Async-port extraction, concatenated port identity and H.323 wire-form values.
+
+
+## Cisco VoIP accounting username resolution — 2026-10-17
+
+The Accounting runtime now resolves Cisco RAS and service context before user identity lookup. For Cisco VoIP Start/Stop legs accepted by the source call-leg guard, it splits the concatenated User-Name using cisco_voip_username_length (default 8) before resolving the native VoIP user. This fixes the namespace mismatch where A1.24's Cisco packet contains username+password but native voip_users are keyed by voip_username. Internet and other RAS paths remain unchanged.

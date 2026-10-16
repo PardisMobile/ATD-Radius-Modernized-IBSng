@@ -114,6 +114,55 @@ def test_runtime_tags_accounting_event_with_source_ras_service_family():
     assert applied_event.service == "voip"
     assert applied_event.ras_multi_login_allowed is True
 
+def test_runtime_resolves_cisco_voip_accounting_user_before_identity_lookup():
+    from atd_radius.application.radius_runtime import RadiusRuntimeHandler
+    from atd_radius.domain.accounting_lifecycle import AccountingEvent, AccountingStatus
+    from atd_radius.domain.radius_dispatch import DispatchResult
+    from atd_radius.domain.radius_runtime import SessionRegistry
+
+    dispatcher = Mock()
+    event = AccountingEvent(
+        AccountingStatus.START, "voipuserSecret", "acct-1",
+        attributes={
+            "H323-Conf-ID": "H323-conf-id=call-1",
+            "H323-call-type": "H323-call-type=VoIP",
+            "H323-call-origin": "H323-call-origin=originate",
+        },
+    )
+    dispatcher.accounting.return_value = DispatchResult(
+        RadiusPacket(RadiusCode.ACCOUNTING_RESPONSE, 12, {}, b"0123456789abcdef"), event
+    )
+    sessions = Mock()
+    sessions.registry = SessionRegistry()
+    identities = Mock()
+    identities.ras_id.return_value = 3
+    identities.user_id.return_value = 7
+    ras = Mock()
+    ras.ras_type = "Cisco"
+    ras.all_attributes.return_value = {"cisco_voip_username_length": "8"}
+    identities.ras.get.return_value = ras
+
+    handler = RadiusRuntimeHandler(dispatcher, sessions, identities)
+    packet = RadiusPacket(
+        RadiusCode.ACCOUNTING_REQUEST, 12,
+        {
+            "Acct-Status-Type": "Start",
+            "User-Name": "voipuserSecret",
+            "H323-Conf-ID": "H323-conf-id=call-1",
+            "H323-call-type": "H323-call-type=VoIP",
+            "H323-call-origin": "H323-call-origin=originate",
+        },
+        b"0123456789abcdef",
+    )
+    handler(packet, ("192.0.2.1", 1812))
+
+    identities.user_id.assert_called_once_with("voipuser")
+    applied_event = sessions.apply.call_args.args[0]
+    assert applied_event.username == "voipuser"
+    assert applied_event.session_id == "call-1"
+    assert applied_event.service == "voip"
+
+
 def test_runtime_resolves_cisco_voip_session_identity_with_service_context():
     from atd_radius.application.radius_runtime import RadiusRuntimeHandler
     from atd_radius.domain.radius_dispatch import RadiusDispatcher

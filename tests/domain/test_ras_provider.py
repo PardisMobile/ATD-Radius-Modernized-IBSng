@@ -224,3 +224,15 @@ def test_cisco_call_leg_guard_decodes_source_wire_values():
             "H323-call-origin": ["H323-call-origin=answer"],
         },
     )
+
+
+def test_cisco_voip_accounting_username_uses_configured_prefix_length():
+    from atd_radius.domain.ras_provider import provider_accounting_username
+
+    assert provider_accounting_username(
+        "Cisco", "voip", "voipuserSecret", {"cisco_voip_username_length": "8"}
+    ) == "voipuser"
+    assert provider_accounting_username(
+        "Cisco", "internet", "voipuserSecret", {"cisco_voip_username_length": 8}
+    ) == "voipuserSecret"
+    assert provider_accounting_username("MVTS", "voip", "alice") == "alice"
