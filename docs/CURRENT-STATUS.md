@@ -550,3 +550,8 @@ A direct trace of `IBSng/core/ras/rases/cisco.py::__isInternetPacket` and `handl
 
 
 Restart recovery now applies the same Cisco Accounting packet discriminator as the live path when selecting the provider session key. A recovered Cisco VoIP connection log containing both H.323 call ID and NAS-Port is restored under the H.323 call identity, avoiding a mismatch between live and post-restart session keys.
+
+
+## Accounting packet scalar normalization — 2026-10-17
+
+The Accounting event parser now normalizes scalar attributes whether the decoder supplies a direct value or an A1.24-style one-element attribute list. This prevents values such as `['PPP']`, `['NAS-Port']`, or `['H323-Conf-ID']` from leaking into service selection, session identity and persisted native details. Regression coverage exercises status, username, session ID, framed IP, service discriminator, NAS port and counters in list-shaped decoder input. Multi-valued vendor-attribute semantics and complete decoder parity remain separate work.

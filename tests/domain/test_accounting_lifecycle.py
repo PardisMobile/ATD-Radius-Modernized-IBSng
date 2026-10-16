@@ -36,3 +36,26 @@ def test_event_from_attributes_combines_octets_and_gigawords():
     })
     assert event.input_octets == 2 * (2 ** 32) + 10
     assert event.output_octets == 3 * (2 ** 32) + 20
+
+
+
+def test_event_from_attributes_normalizes_decoder_list_values_for_identity_and_service():
+    event = event_from_attributes({
+        "Acct-Status-Type": ["Start"],
+        "User-Name": ["alice"],
+        "Acct-Session-Id": ["acct-1", "ignored-secondary-value"],
+        "Framed-IP-Address": ["192.0.2.20"],
+        "Framed-Protocol": ["PPP"],
+        "NAS-Port": ["17"],
+        "Acct-Input-Octets": ["12"],
+        "Acct-Output-Octets": ["34"],
+    })
+
+    assert event.status is AccountingStatus.START
+    assert event.username == "alice"
+    assert event.session_id == "acct-1"
+    assert event.remote_ip == "192.0.2.20"
+    assert event.attributes["Framed-Protocol"] == "PPP"
+    assert event.attributes["NAS-Port"] == "17"
+    assert event.input_octets == 12
+    assert event.output_octets == 34

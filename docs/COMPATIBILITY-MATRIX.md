@@ -219,3 +219,8 @@ Service selection for Cisco Accounting now follows the A1.24 packet discriminato
 
 
 Restart recovery uses the same service-aware provider identity resolver as live Accounting, including Cisco's source-defined H.323 identity for VoIP rows. Regression coverage verifies Cisco VoIP recovery when the record also contains a NAS-Port value.
+
+
+## Accounting decoder-shape normalization — 2026-10-17
+
+Accounting scalar extraction now accepts both scalar and list/tuple decoder representations and consistently consumes the first value, as source call sites do for single-value RADIUS fields. Tests cover identity, Cisco service selection fields, IP and octet counters. This is scalar-shape compatibility only; full multi-valued vendor attribute handling remains open.
