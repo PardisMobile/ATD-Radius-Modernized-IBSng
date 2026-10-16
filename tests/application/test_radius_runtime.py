@@ -612,7 +612,7 @@ def test_recovery_restores_open_connection_log_session_and_pool_lease():
 
     handler._recover_open_sessions(conn, charge, ras_registry, pools)
 
-    restored = state.sessions.get(SessionKey(7, 3, "sid-101"))
+    restored = state.sessions.get(SessionKey(7, 3, "4"))
     assert restored is not None
     assert restored.started and not restored.stopped
     assert restored.input_octets == 120 and restored.output_octets == 240
@@ -647,3 +647,39 @@ def test_recovery_is_one_shot_and_does_not_overwrite_live_sessions():
     assert state.sessions.get(SessionKey(7, 3, "already-live")) is not None
     assert state.sessions_recovered is True
     charge.start.assert_not_called()
+
+
+
+def test_recovery_uses_provider_defined_voip_call_identity():
+    from datetime import datetime
+    from unittest.mock import Mock
+    from atd_radius.application.radius_runtime import NativeRadiusPacketHandler, NativeRadiusRuntimeState
+    from atd_radius.domain.radius_runtime import SessionKey
+
+    now = datetime(2026, 10, 17, 10, 0, 0)
+    conn = Mock()
+    conn.execute.return_value.fetchall.return_value = [
+        (202, 8, None, now, None, True, 2, 4, "Acct-Session-Id", "acct-202"),
+        (202, 8, None, now, None, True, 2, 4, "H323-conf-id", "call-202"),
+        (202, 8, None, now, None, True, 2, 4, "User-Name", "voip-login"),
+    ]
+    ras = Mock()
+    ras.ras_type = "MVTS"
+    ras.ippool_ids = ()
+    ras.all_attributes.return_value = {}
+    ras_registry = Mock()
+    ras_registry.get.return_value = ras
+    pools = Mock()
+    state = NativeRadiusRuntimeState()
+    handler = NativeRadiusPacketHandler.__new__(NativeRadiusPacketHandler)
+    handler.state = state
+    handler._logger = Mock()
+    charge = Mock()
+
+    handler._recover_open_sessions(conn, charge, ras_registry, pools)
+
+    restored = state.sessions.get(SessionKey(8, 4, "call-202"))
+    assert restored is not None
+    assert restored.attributes["Acct-Session-Id"] == "acct-202"
+    assert restored.attributes["H323-conf-id"] == "call-202"
+    charge.start.assert_called_once()
