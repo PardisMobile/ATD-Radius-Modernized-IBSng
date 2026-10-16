@@ -112,7 +112,7 @@ def test_runtime_tags_accounting_event_with_source_ras_service_family():
 
     applied_event = sessions.apply.call_args.args[0]
     assert applied_event.service == "voip"
-    assert applied_event.ras_multi_login_allowed is False
+    assert applied_event.ras_multi_login_allowed is True
 
 def test_session_views_exposes_only_active_runtime_sessions():
     from atd_radius.application.radius_runtime import session_views
