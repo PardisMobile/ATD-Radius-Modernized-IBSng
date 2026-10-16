@@ -507,3 +507,13 @@ Production VoIP limit planning now evaluates effective rules using the server's 
 ## Inbound Disconnect-Request settlement — 2026-10-17
 
 The inbound RFC 5176 Disconnect-Request path now transitions matched sessions through the ordinary accounting lifecycle after the request is accepted: it settles any configured charge, closes the associated native connection_log record, records the last known counters, strips internal runtime-only attributes from persisted event details, and releases any claimed native IP-pool lease. Selection and transition are held under the session registry lock to avoid interleaving Accounting packets. Regression coverage was added in tests/application/test_radius_runtime.py. CI for the new commits is running; this change is not marked verified until the latest run finishes. This does not implement durable session recovery or expand the outbound VoIP provider termination adapters.
+
+
+
+## Native RADIUS restart recovery — 2026-10-17
+
+A cohesive recovery path now queries successful `connection_log` rows with no logout time and restores eligible sessions into the in-memory `SessionRegistry` on the first production packet-handler transaction. Recovery restores the native log ID, Acct-Session-Id, last persisted input/output counters, original login timestamp, current RAS MultiLogin capability, and any persisted framed-IP lease; it uses the existing A1.24 tables and adds no parallel session schema. The registry restore operation refuses to overwrite a session already present in memory, and recovery is one-shot per runtime state.
+
+Important boundary: A1.24 `connection_log` does not persist the in-memory charge-rule transition accumulator. The implementation therefore reinitializes the current charge baseline at recovery time rather than fabricating historical accrued transitions. Usage during process downtime and exact historical billing across rule changes still require a durable, source-compatible accounting checkpoint design; restart recovery is a major resilience step, not a claim of full billing parity. Records missing user/RAS/session identity or referencing an unavailable RAS are logged and skipped. Regression coverage exercises query grouping, recovered session identity/counters/log linkage, IP lease reclaim, and one-shot recovery.
+
+The preceding Disconnect-Request regression test had an assertion-type mismatch (the settlement service passes `Decimal` to the persistence contract); that test now asserts the numeric value instead of a string. CI must be checked against the newest commit before treating this batch as green.
