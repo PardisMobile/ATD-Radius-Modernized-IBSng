@@ -579,9 +579,9 @@ def test_disconnect_request_settles_charge_and_closes_native_log():
 
 def test_recovery_restores_open_connection_log_session_and_pool_lease():
     from datetime import datetime
-    from decimal import Decimal
     from unittest.mock import Mock
     from atd_radius.application.radius_runtime import NativeRadiusPacketHandler, NativeRadiusRuntimeState
+    from atd_radius.domain.radius_runtime import SessionKey
 
     now = datetime(2026, 10, 17, 10, 0, 0)
     conn = Mock()
@@ -612,9 +612,7 @@ def test_recovery_restores_open_connection_log_session_and_pool_lease():
 
     handler._recover_open_sessions(conn, charge, ras_registry, pools)
 
-    restored = state.sessions.get(__import__(
-        "atd_radius.domain.radius_runtime", fromlist=["SessionKey"]
-    ).SessionKey(7, 3, "sid-101"))
+    restored = state.sessions.get(SessionKey(7, 3, "sid-101"))
     assert restored is not None
     assert restored.started and not restored.stopped
     assert restored.input_octets == 120 and restored.output_octets == 240
@@ -627,7 +625,6 @@ def test_recovery_restores_open_connection_log_session_and_pool_lease():
 
 
 def test_recovery_is_one_shot_and_does_not_overwrite_live_sessions():
-    from datetime import datetime
     from unittest.mock import Mock
     from atd_radius.application.radius_runtime import NativeRadiusPacketHandler, NativeRadiusRuntimeState
     from atd_radius.domain.radius_runtime import SessionKey
