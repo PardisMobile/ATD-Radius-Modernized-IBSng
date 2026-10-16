@@ -27,6 +27,14 @@ class IPPoolAllocationPolicy:
                 address = self.registry.allocate(pool_id)
             except IPPoolFullError:
                 continue
+            ras_id = request.attributes.get("__ras_id")
+            if ras_id not in (None, ""):
+                # Keep the allocation held until Accounting-Start adopts it,
+                # or release it if the NAS never starts accounting.
+                self.registry.mark_pending(
+                    int(ras_id), pool_id, address,
+                    str(request.attributes.get("User-Name", request.username)),
+                )
             return AAAResult(
                 AAAAction.ACCEPT,
                 {"Framed-IP-Address": address, "Framed-IP-Netmask": "255.255.255.255"},
