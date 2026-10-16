@@ -17,6 +17,21 @@ def test_native_identity_resolver_maps_user_and_ras():
     assert resolver.ras_id("192.0.2.1") == 3
 
 
+def test_native_identity_resolver_prefers_accounting_namespace_and_fails_closed():
+    users = Mock()
+    users.accounting_user_id.return_value = None
+    users.get_authentication_record.return_value = (99, "secret", False)
+    ras = Mock()
+
+    resolver = NativeAccountingIdentityResolver(users, ras)
+
+    # Ambiguous/missing Accounting identity must not fall back to the normal
+    # authentication namespace, or accounting could be charged to the wrong user.
+    assert resolver.user_id("shared-name") is None
+    users.accounting_user_id.assert_called_once_with("shared-name")
+    users.get_authentication_record.assert_not_called()
+
+
 def test_build_radius_dispatcher_uses_native_access_context():
     users = Mock()
     users.get_authentication_record.return_value = (7, "secret", False)
