@@ -38,3 +38,30 @@ def test_close_updates_native_connection_log():
     sql, params = conn.execute.call_args.args
     assert "UPDATE connection_log" in sql
     assert params == (datetime(2026, 10, 6, 11, 0), "20.00", True, 42)
+
+
+
+def test_list_open_reconstructs_native_connection_logs_and_details():
+    conn = Mock()
+    conn.execute.return_value.fetchall.return_value = [
+        (42, 7, None, datetime(2026, 10, 17, 9, 0), None, True, 1, 3, "Acct-Session-Id", "sid-42"),
+        (42, 7, None, datetime(2026, 10, 17, 9, 0), None, True, 1, 3, "Acct-Input-Octets", "123"),
+        (43, 8, None, datetime(2026, 10, 17, 9, 5), None, True, 1, 4, None, None),
+    ]
+    repository = ConnectionLogRepository(conn)
+
+    records = repository.list_open()
+
+    assert len(records) == 2
+    assert records[0].connection_log_id == 42
+    assert records[0].user_id == 7
+    assert records[0].ras_id == 3
+    assert records[0].details == {
+        "Acct-Session-Id": "sid-42",
+        "Acct-Input-Octets": "123",
+    }
+    assert records[1].connection_log_id == 43
+    assert records[1].details == {}
+    sql = conn.execute.call_args.args[0]
+    assert "l.logout_time IS NULL" in sql
+    assert "connection_log_details" in sql
