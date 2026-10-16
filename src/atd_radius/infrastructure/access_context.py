@@ -126,6 +126,7 @@ class NativeAccessContext:
                 )
                 if ip_assignment is not None:
                     attrs["__ras_ip_assignment"] = "1" if ip_assignment else "0"
+                attrs["__ras_id"] = str(ras_record.ras_id)
                 if ras_record.ippool_ids and ip_assignment is not False:
                     attrs["__ras_ippool_ids"] = ",".join(str(pool_id) for pool_id in ras_record.ippool_ids)
         return attrs
