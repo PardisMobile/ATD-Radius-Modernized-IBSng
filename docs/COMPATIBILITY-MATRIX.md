@@ -189,3 +189,9 @@ The recurring loop is now wired to the native RADIUS Accounting runtime and reco
 ## MVTS source-identity correction — 2026-10-15
 
 A source re-check of `IBSng/core/ras/rases/mvts.py::killUser` found that A1.24 builds Disconnect-Request `User-Name` from the user's `voip_username` attribute, not necessarily the inbound RADIUS `User-Name`/normal IBSng login. The production VoIP termination path now resolves `voip_users.voip_username` through the native user repository in the same fresh transaction and uses it for MVTS; a missing VoIP credential fails closed as a permanent configuration gap instead of sending a disconnect for the wrong identity. Regression coverage verifies the provider sees the source-required username. This is a targeted parity correction, not full provider or restart-recovery completion.
+
+
+
+## Provider-specific active-session identity recovery — 2026-10-17
+
+Restart recovery now resolves the session registry key through the same `provider_session_id()` function used by live Accounting, including the source-defined RAS identity (`NAS-Port`, `H323-conf-id`, `call_id`, and provider-specific variants) before the standard `Acct-Session-Id` fallback. This prevents recovered MikroTik/Cisco/VoIP sessions from being keyed under an Accounting identifier when A1.24 indexes the online instance by a different provider identity. Regression tests cover the provider-specific identity precedence for a port-based Internet RAS and an MVTS VoIP call. This advances restart recovery; durable charging accumulators and downtime accounting remain open.
