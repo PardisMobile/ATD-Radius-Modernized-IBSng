@@ -382,10 +382,19 @@ class NativeRadiusPacketHandler:
                 )
                 continue
             details = dict(record.details)
-            session_id = details.get("Acct-Session-Id", "").strip()
+            # A1.24 does not use Acct-Session-Id as the online-instance
+            # identity for every RAS. Restore using the same provider-specific
+            # key used by live Accounting (port, h323_conf_id, call_id, etc.).
+            # Only providers with no source-defined key fall back to the
+            # standard Acct-Session-Id.
+            session_id = provider_session_id(
+                ras.ras_type,
+                details,
+                provider_service_for_ras(ras.ras_type),
+            )
             if not session_id:
                 self._logger.warning(
-                    "Skipping open connection_log %s without Acct-Session-Id",
+                    "Skipping open connection_log %s without a source-resolvable session identity",
                     record.connection_log_id,
                 )
                 continue
