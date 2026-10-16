@@ -58,7 +58,10 @@ def test_provider_session_identity_uses_source_defined_keys():
     assert provider_session_id("Total Control", {"USR-Interface-Index": "9", "Acct-Session-Id": "abc"}) == "9"
     assert provider_session_id("SER", {"Call-ID": "sip-123", "Acct-Session-Id": "abc"}) == "sip-123"
     assert provider_session_id("Cisco VPDN", {"Acct-Session-Id": "abc"}) == "abc"
-    assert provider_session_id("Cisco", {"NAS-Port": "17", "Acct-Session-Id": "abc"}) == "17"
+    assert provider_session_id(
+        "Cisco",
+        {"NAS-Port-Type": "Async", "NAS-Port": "17", "Acct-Session-Id": "abc"},
+    ) == "Async17"
     assert provider_session_id("Cisco", {"H323-Conf-ID": "h323-1", "NAS-Port": "17"}, service="voip") == "h323-1"
 
 
