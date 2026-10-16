@@ -555,3 +555,8 @@ Restart recovery now applies the same Cisco Accounting packet discriminator as t
 ## Accounting packet scalar normalization — 2026-10-17
 
 The Accounting event parser now normalizes scalar attributes whether the decoder supplies a direct value or an A1.24-style one-element attribute list. This prevents values such as `['PPP']`, `['NAS-Port']`, or `['H323-Conf-ID']` from leaking into service selection, session identity and persisted native details. Regression coverage exercises status, username, session ID, framed IP, service discriminator, NAS port and counters in list-shaped decoder input. Multi-valued vendor-attribute semantics and complete decoder parity remain separate work.
+
+
+## Cisco VoIP call-leg gating — 2026-10-17
+
+Added source-derived action gating for Cisco VoIP Accounting: Start/Stop require the VoIP/originate call leg; VoIP Alive no longer triggers normal charge/session lifecycle. The legacy `Telephony/answer` Stop path remains fail-closed until the pre-auth H.323 ID list is implemented. This narrows incorrect charge mutations but is not complete Cisco RAS parity.

@@ -155,6 +155,50 @@ def test_runtime_resolves_cisco_voip_session_identity_with_service_context():
     assert applied_event.attributes["NAS-Port"] == "17"
     assert applied_event.ras_multi_login_allowed is False
 
+def test_runtime_skips_cisco_voip_alive_from_charge_lifecycle():
+    from atd_radius.application.radius_runtime import RadiusRuntimeHandler
+    from atd_radius.domain.accounting_lifecycle import AccountingEvent, AccountingStatus
+    from atd_radius.domain.radius_dispatch import DispatchResult
+    from atd_radius.domain.radius_runtime import SessionRegistry
+
+    dispatcher = Mock()
+    event = AccountingEvent(
+        AccountingStatus.ALIVE,
+        "alice",
+        "acct-1",
+        attributes={
+            "H323-Conf-ID": "call-1",
+            "H323-call-type": "VoIP",
+            "H323-call-origin": "originate",
+        },
+    )
+    dispatcher.accounting.return_value = DispatchResult(
+        RadiusPacket(RadiusCode.ACCOUNTING_RESPONSE, 12, {}, b"0123456789abcdef"), event
+    )
+    sessions = Mock()
+    sessions.registry = SessionRegistry()
+    identities = Mock()
+    identities.user_id.return_value = 7
+    identities.ras_id.return_value = 3
+    ras = Mock()
+    ras.ras_type = "Cisco"
+    ras.all_attributes.return_value = {}
+    identities.ras.get.return_value = ras
+
+    handler = RadiusRuntimeHandler(dispatcher, sessions, identities)
+    response = handler(
+        RadiusPacket(
+            RadiusCode.ACCOUNTING_REQUEST, 12,
+            {"Acct-Status-Type": "Alive", "User-Name": "alice"},
+            b"0123456789abcdef",
+        ),
+        ("192.0.2.1", 1812),
+    )
+
+    assert response.code is RadiusCode.ACCOUNTING_RESPONSE
+    sessions.apply.assert_not_called()
+
+
 def test_session_views_exposes_only_active_runtime_sessions():
     from atd_radius.application.radius_runtime import session_views
     from atd_radius.domain.radius_runtime import SessionKey, SessionRegistry

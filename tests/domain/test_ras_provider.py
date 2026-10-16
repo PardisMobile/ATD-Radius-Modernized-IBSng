@@ -146,3 +146,32 @@ def test_cisco_accounting_service_uses_source_framed_protocol_discriminator():
     assert provider_service_for_accounting("Cisco", {"Framed-Protocol": ["PPP"]}) == "internet"
     assert provider_service_for_accounting("Cisco", {"H323-Conf-ID": "call-42"}) == "voip"
     assert provider_service_for_accounting("MVTS", {"Framed-Protocol": "PPP"}) == "voip"
+
+
+
+def test_cisco_voip_accounting_action_guards_follow_a124_call_leg_rules():
+    from atd_radius.domain.ras_provider import provider_accounting_should_apply
+
+    assert provider_accounting_should_apply(
+        "Cisco", "voip", "Start",
+        {"H323-call-type": "VoIP", "H323-call-origin": "originate"},
+    )
+    assert provider_accounting_should_apply(
+        "Cisco", "voip", "Stop",
+        {"H323-call-type": "VoIP", "H323-call-origin": "originate"},
+    )
+    assert not provider_accounting_should_apply(
+        "Cisco", "voip", "Start",
+        {"H323-call-type": "Telephony", "H323-call-origin": "answer"},
+    )
+    assert not provider_accounting_should_apply(
+        "Cisco", "voip", "Stop",
+        {"H323-call-type": "Telephony", "H323-call-origin": "answer", "H323-Conf-ID": "call"},
+    )
+    assert not provider_accounting_should_apply(
+        "Cisco", "voip", "Alive",
+        {"H323-call-type": "VoIP", "H323-call-origin": "originate"},
+    )
+    assert provider_accounting_should_apply(
+        "Cisco", "internet", "Start", {"Framed-Protocol": "PPP"}
+    )

@@ -255,6 +255,38 @@ _ID_ATTRIBUTES = {
 }
 
 
+def provider_accounting_should_apply(
+    ras_type: str | None,
+    service: str,
+    status: str,
+    attributes: Mapping[str, object],
+) -> bool:
+    """Apply only Cisco Accounting branches that A1.24 dispatches to user actions.
+
+    Cisco's VoIP branch requires a VoIP/originate leg for Start and Stop.
+    Telephony/answer Stop additionally requires membership in Cisco's
+    pre-auth H.323 ID list; ATD does not yet model that list, so it fails closed.
+    Cisco VoIP Alive only refreshes the RAS's in-memory online tracker in A1.24
+    and must not trigger a charge-lifecycle update here.
+    """
+    if normalize_ras_type(ras_type) != "cisco" or service != "voip":
+        return True
+
+    def first(name: str) -> str:
+        value = attributes.get(name, "")
+        if isinstance(value, (list, tuple)):
+            value = value[0] if value else ""
+        return str(value or "")
+
+    call_type = first("H323-call-type")
+    call_origin = first("H323-call-origin")
+    if status in {"Start", "Stop"}:
+        return call_type == "VoIP" and call_origin == "originate"
+    if status == "Alive":
+        return False
+    return False
+
+
 def provider_session_id(ras_type: str | None, attributes: Mapping[str, object], service: str = "internet") -> str | None:
     """Return the A1.24 provider online identity when the source defines one.
 

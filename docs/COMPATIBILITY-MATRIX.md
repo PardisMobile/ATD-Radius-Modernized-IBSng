@@ -224,3 +224,6 @@ Restart recovery uses the same service-aware provider identity resolver as live 
 ## Accounting decoder-shape normalization — 2026-10-17
 
 Accounting scalar extraction now accepts both scalar and list/tuple decoder representations and consistently consumes the first value, as source call sites do for single-value RADIUS fields. Tests cover identity, Cisco service selection fields, IP and octet counters. This is scalar-shape compatibility only; full multi-valued vendor attribute handling remains open.
+
+
+Cisco VoIP accounting now applies source-derived call-type/origin guards for Start/Stop and suppresses VoIP Alive from the charge lifecycle. The special pre-authenticated Telephony/answer Stop path remains intentionally unsupported until its H.323 authorization-ID state is implemented.
