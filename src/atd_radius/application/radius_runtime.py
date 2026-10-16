@@ -8,7 +8,7 @@ import logging
 
 from atd_radius.domain.aaa import PluginPipeline, PluginSpec
 from atd_radius.domain.accounting_session import AccountingSessionService
-from atd_radius.domain.accounting_lifecycle import event_from_attributes
+from atd_radius.domain.accounting_lifecycle import AccountingEvent, AccountingStatus, event_from_attributes
 from atd_radius.domain.accounting_charge import InternetChargeSettlement, VoipChargeSettlement, UserChargeSettlement, VoipLimitPlan
 from atd_radius.domain.radius import RadiusCode, RadiusPacket
 from atd_radius.domain.radius_dispatch import DispatchResult, RadiusDispatcher
@@ -114,11 +114,47 @@ class RadiusRuntimeHandler:
     def __call__(self, packet: RadiusPacket, peer: tuple[str, int]) -> RadiusPacket:
         if packet.code in (RadiusCode.DISCONNECT_REQUEST, RadiusCode.COA_REQUEST):
             registry = self.accounting_sessions.registry
-            matches = registry.matching(packet.attributes) if packet.code is RadiusCode.DISCONNECT_REQUEST else ()
-            response = self.dispatcher.control(packet)
-            if response.code is RadiusCode.DISCONNECT_ACK and self.ip_pool_sessions:
-                self.ip_pool_sessions.release_states(matches)
-            return response
+            # Keep selection, state transition, settlement and IP release atomic
+            # relative to concurrent Accounting packets. The control adapter
+            # marks matches stopped; reopen each under this lock so the normal
+            # accounting lifecycle performs charge settlement and closes the
+            # native connection_log before the session is finally stopped.
+            with registry.synchronized():
+                matches = (
+                    registry.matching(packet.attributes)
+                    if packet.code is RadiusCode.DISCONNECT_REQUEST
+                    else ()
+                )
+                response = self.dispatcher.control(packet)
+                if response.code is RadiusCode.DISCONNECT_ACK:
+                    for state in matches:
+                        if state.stopped:
+                            state.stopped = False
+                        attrs = {
+                            str(name): str(value)
+                            for name, value in state.attributes.items()
+                            if not str(name).startswith("__")
+                        }
+                        attrs.update({
+                            str(name): str(value)
+                            for name, value in packet.attributes.items()
+                        })
+                        event = AccountingEvent(
+                            status=AccountingStatus.STOP,
+                            username=attrs.get("User-Name", ""),
+                            session_id=state.key.unique_id,
+                            input_octets=state.input_octets,
+                            output_octets=state.output_octets,
+                            terminate_cause="Admin-Reset",
+                            attributes=attrs,
+                            observed_at=datetime.now(timezone.utc),
+                        )
+                        self.accounting_sessions.apply(
+                            event, state.key.user_id, state.key.ras_id
+                        )
+                    if self.ip_pool_sessions:
+                        self.ip_pool_sessions.release_states(matches)
+                return response
         if packet.code is RadiusCode.ACCOUNTING_REQUEST:
             with self.accounting_sessions.registry.synchronized():
                 result: DispatchResult = self.dispatcher.accounting(packet)
