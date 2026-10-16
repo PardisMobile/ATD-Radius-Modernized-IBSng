@@ -116,25 +116,12 @@ def test_runtime_tags_accounting_event_with_source_ras_service_family():
 
 def test_runtime_resolves_cisco_voip_session_identity_with_service_context():
     from atd_radius.application.radius_runtime import RadiusRuntimeHandler
-    from atd_radius.domain.accounting_lifecycle import AccountingEvent, AccountingStatus
-    from atd_radius.domain.radius_dispatch import DispatchResult
+    from atd_radius.domain.radius_dispatch import RadiusDispatcher
     from atd_radius.domain.radius_runtime import SessionRegistry
 
-    dispatcher = Mock()
-    event = AccountingEvent(
-        AccountingStatus.START,
-        "alice",
-        "acct-fallback",
-        attributes={
-            "H323-Conf-ID": "h323-call-42",
-            "NAS-Port": "17",
-            "H323-call-type": "VoIP",
-            "H323-call-origin": "originate",
-        },
-    )
-    dispatcher.accounting.return_value = DispatchResult(
-        RadiusPacket(RadiusCode.ACCOUNTING_RESPONSE, 11, {}, b"0123456789abcdef"), event
-    )
+    # Use the real Accounting dispatcher here: this exercises list-shaped
+    # decoded attributes all the way through normalization and provider routing.
+    dispatcher = RadiusDispatcher(Mock())
     sessions = Mock()
     sessions.registry = SessionRegistry()
     identities = Mock()
@@ -149,23 +136,24 @@ def test_runtime_resolves_cisco_voip_session_identity_with_service_context():
     packet = RadiusPacket(
         RadiusCode.ACCOUNTING_REQUEST, 11,
         {
-            "Acct-Status-Type": "Start",
-            "User-Name": "alice",
-            "Acct-Session-Id": "acct-fallback",
-            "H323-Conf-ID": "h323-call-42",
-            "NAS-Port": "17",
-            "H323-call-type": "VoIP",
-            "H323-call-origin": "originate",
+            "Acct-Status-Type": ["Start"],
+            "User-Name": ["alice"],
+            "Acct-Session-Id": ["acct-fallback"],
+            "H323-Conf-ID": ["h323-call-42"],
+            "NAS-Port": ["17"],
+            "H323-call-type": ["VoIP"],
+            "H323-call-origin": ["originate"],
         },
         b"0123456789abcdef",
     )
-    handler(packet, ("192.0.2.1", 1812))
+    response = handler(packet, ("192.0.2.1", 1812))
 
+    assert response.code is RadiusCode.ACCOUNTING_RESPONSE
     applied_event = sessions.apply.call_args.args[0]
     assert applied_event.service == "voip"
     assert applied_event.session_id == "h323-call-42"
+    assert applied_event.attributes["NAS-Port"] == "17"
     assert applied_event.ras_multi_login_allowed is False
-
 
 def test_session_views_exposes_only_active_runtime_sessions():
     from atd_radius.application.radius_runtime import session_views
