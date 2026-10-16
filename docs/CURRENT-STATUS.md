@@ -499,3 +499,7 @@ The native accounting identity resolver now checks both A1.24 namespaces: `norma
 ## Accounting identity CI follow-up — 2026-10-17
 
 The first CI run after the accounting namespace change caught one stale unit-test fixture: a generic Mock dynamically exposed `accounting_user_id`, so the resolver correctly selected it instead of the legacy fallback the test intended to exercise. The fixture now explicitly sets that optional method to None; production code was not weakened to accommodate the mock. Fix commit: `c2cbb216a22502c7d415552bc9b18db220dcd2ad`. The fix needs a fresh full CI run before this checkpoint can be marked green.
+
+## VoIP limit-rule clock parity correction — 2026-10-17
+
+Production VoIP limit planning now evaluates effective rules using the server's local timezone (datetime.now().astimezone()), matching A1.24's local time.time() / secondsFromMorning rule-window semantics. Passing an explicitly UTC timestamp could select a different day/time rule when the host timezone is not UTC, affecting the next limit deadline or causing an incorrect no-effective-rule termination. Regression test added at commit 0dabee3f0d925ed51620f3a981ddc98602c102e9; GitHub Actions Python workflow is queued at time of this note. This is a targeted timezone-parity correction, not completion of VoIP parity. Durable session/timer recovery and provider-specific termination paths remain open.
