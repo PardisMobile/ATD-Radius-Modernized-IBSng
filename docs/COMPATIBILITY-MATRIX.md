@@ -195,3 +195,9 @@ A source re-check of `IBSng/core/ras/rases/mvts.py::killUser` found that A1.24 b
 ## Provider-specific active-session identity recovery — 2026-10-17
 
 Restart recovery now resolves the session registry key through the same `provider_session_id()` function used by live Accounting, including the source-defined RAS identity (`NAS-Port`, `H323-conf-id`, `call_id`, and provider-specific variants) before the standard `Acct-Session-Id` fallback. This prevents recovered MikroTik/Cisco/VoIP sessions from being keyed under an Accounting identifier when A1.24 indexes the online instance by a different provider identity. Regression tests cover the provider-specific identity precedence for a port-based Internet RAS and an MVTS VoIP call. This advances restart recovery; durable charging accumulators and downtime accounting remain open.
+
+
+
+## Access-Accept IP lease lifecycle — 2026-10-17
+
+Native IP-pool allocation now marks addresses allocated by the production Access-Request policy as pending reservations tied to the source RAS identity and username. A matching Accounting-Start adopts the reservation into the live session; an explicit later policy rejection releases a still-pending allocation; and unadopted reservations expire after a bounded five-minute grace period. Expiration runs on incoming RADIUS traffic and before subsequent allocations, preventing abandoned Access-Accept allocations from consuming pool capacity indefinitely. Ownership mismatch does not silently transfer a pending address to another username. Regression tests cover adoption, expiry, release ordering, ownership mismatch and production context wiring. Full live-NAS interoperability and race behavior under high concurrency remain open.
