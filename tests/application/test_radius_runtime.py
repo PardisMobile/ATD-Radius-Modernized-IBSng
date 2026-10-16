@@ -571,6 +571,82 @@ def test_disconnect_request_settles_charge_and_closes_native_log():
     assert log_id == 101
     assert event.status.value == "Stop"
     assert event.input_octets == 120 and event.output_octets == 240
-    assert credit_used == "1.25"
+    assert credit_used == Decimal("1.25")
     assert "__connection_log_id" not in event.attributes
 
+
+
+
+def test_recovery_restores_open_connection_log_session_and_pool_lease():
+    from datetime import datetime
+    from decimal import Decimal
+    from unittest.mock import Mock
+    from atd_radius.application.radius_runtime import NativeRadiusPacketHandler, NativeRadiusRuntimeState
+
+    now = datetime(2026, 10, 17, 10, 0, 0)
+    conn = Mock()
+    conn.execute.return_value.fetchall.return_value = [
+        (101, 7, None, now, None, True, 1, 3, "Acct-Session-Id", "sid-101"),
+        (101, 7, None, now, None, True, 1, 3, "Acct-Input-Octets", "120"),
+        (101, 7, None, now, None, True, 1, 3, "Acct-Output-Octets", "240"),
+        (101, 7, None, now, None, True, 1, 3, "User-Name", "alice"),
+        (101, 7, None, now, None, True, 1, 3, "Framed-IP-Address", "192.0.2.20"),
+        (101, 7, None, now, None, True, 1, 3, "NAS-Port", "4"),
+    ]
+    ras = Mock()
+    ras.ras_type = "Mikrotik"
+    ras.ippool_ids = (9,)
+    ras.all_attributes.return_value = {}
+    ras_registry = Mock()
+    ras_registry.get.return_value = ras
+    pools = Mock()
+    pools.find_pool.return_value = 9
+
+    state = NativeRadiusRuntimeState()
+    state.ras = ras_registry
+    handler = NativeRadiusPacketHandler.__new__(NativeRadiusPacketHandler)
+    handler.state = state
+    handler._logger = Mock()
+    charge = Mock()
+    charge.start.side_effect = lambda session, *_: setattr(session, "charge_id", 12)
+
+    handler._recover_open_sessions(conn, charge, ras_registry, pools)
+
+    restored = state.sessions.get(__import__(
+        "atd_radius.domain.radius_runtime", fromlist=["SessionKey"]
+    ).SessionKey(7, 3, "sid-101"))
+    assert restored is not None
+    assert restored.started and not restored.stopped
+    assert restored.input_octets == 120 and restored.output_octets == 240
+    assert restored.started_at == now
+    assert restored.attributes["__connection_log_id"] == "101"
+    assert restored.charge_id == 12
+    charge.start.assert_called_once()
+    pools.ensure_claimed.assert_called_once_with(9, "192.0.2.20")
+    assert state.sessions_recovered is True
+
+
+def test_recovery_is_one_shot_and_does_not_overwrite_live_sessions():
+    from datetime import datetime
+    from unittest.mock import Mock
+    from atd_radius.application.radius_runtime import NativeRadiusPacketHandler, NativeRadiusRuntimeState
+    from atd_radius.domain.radius_runtime import SessionKey
+
+    conn = Mock()
+    conn.execute.return_value.fetchall.return_value = []
+    state = NativeRadiusRuntimeState()
+    state.sessions.start(SessionKey(7, 3, "already-live"))
+    handler = NativeRadiusPacketHandler.__new__(NativeRadiusPacketHandler)
+    handler.state = state
+    handler._logger = Mock()
+    ras_registry = Mock()
+    pools = Mock()
+    charge = Mock()
+
+    handler._recover_open_sessions(conn, charge, ras_registry, pools)
+    handler._recover_open_sessions(conn, charge, ras_registry, pools)
+
+    conn.execute.assert_called_once()
+    assert state.sessions.get(SessionKey(7, 3, "already-live")) is not None
+    assert state.sessions_recovered is True
+    charge.start.assert_not_called()
