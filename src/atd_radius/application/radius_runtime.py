@@ -380,8 +380,8 @@ class NativeRadiusPacketHandler:
                     current.termination_requested_at = None
             raise
 
-    def _recover_open_sessions(self, conn, charge, ras_registry, pools) -> None:
-        """Rehydrate open native connection_log rows once after process startup.
+    def _recover_open_sessions(self, conn, charge, ras_registry, pools) -> set[int]:
+        """Rehydrate open rows and return users needing restored VoIP timers.
 
         This deliberately uses the existing A1.24 connection_log/details tables.
         Charging baselines are restarted at recovery time because the legacy
@@ -390,9 +390,10 @@ class NativeRadiusPacketHandler:
         and MultiLogin views.
         """
         if self.state.sessions_recovered:
-            return
+            return set()
         repository = ConnectionLogRepository(conn)
         recovered = 0
+        recovered_voip_users: set[int] = set()
         now = datetime.now().astimezone()
         for record in repository.list_open():
             if record.user_id is None or record.ras_id is None:
@@ -457,6 +458,8 @@ class NativeRadiusPacketHandler:
             # Historical accrued rule transitions cannot be reconstructed from
             # connection_log alone, so we never fabricate an old accumulator.
             charge.start(state, now, record.ras_id, port)
+            if state.charge_kind == "voip" and state.charge_id is not None:
+                recovered_voip_users.add(record.user_id)
             ip = attrs.get("Framed-IP-Address")
             if ip:
                 pool_id = pools.find_pool(ras.ippool_ids, ip)
@@ -465,6 +468,7 @@ class NativeRadiusPacketHandler:
             recovered += 1
         self.state.sessions_recovered = True
         self._logger.info("Recovered %s open native RADIUS sessions", recovered)
+        return recovered_voip_users
 
     def __call__(self, packet: RadiusPacket, peer: tuple[str, int]) -> RadiusPacket:
         with self.connection_factory() as conn:
@@ -489,7 +493,9 @@ class NativeRadiusPacketHandler:
                 PostgresVoipTariffRepository(conn), credits,
             )
             charge = UserChargeSettlement(users, internet_charge, voip_charge)
-            self._recover_open_sessions(conn, charge, ras, pools)
+            recovered_voip_users = self._recover_open_sessions(conn, charge, ras, pools)
+            for recovered_user_id in recovered_voip_users:
+                self._refresh_voip_limit_schedule(recovered_user_id)
             accounting = AccountingSessionService(self.state.sessions, persistence, charge)
             dispatcher = build_radius_dispatcher(
                 users,
