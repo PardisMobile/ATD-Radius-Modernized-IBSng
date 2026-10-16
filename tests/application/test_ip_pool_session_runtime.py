@@ -52,7 +52,7 @@ def test_accounting_start_adopts_access_allocated_ip_and_stop_releases_it():
     pools.allocate(1)
     manager = IPPoolSessionManager(pools, ras)
 
-    start = SimpleNamespace(remote_ip="192.0.2.10")
+    start = SimpleNamespace(remote_ip="192.0.2.10", username="alice")
     manager.accounting_start(start, 7)
     assert pools.get(1).used_ips == ("192.0.2.10",)
 
