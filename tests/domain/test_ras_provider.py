@@ -11,6 +11,7 @@ from atd_radius.domain.ras_provider import (
     RASProviderRegistry,
     PROVIDER_REGISTRY,
     provider_packet_context,
+    provider_service_for_accounting,
 )
 
 
@@ -139,3 +140,9 @@ def test_provider_packet_context_rejects_unverified_status_without_side_effect()
     )
     assert ctx is not None
     assert ctx.accounting_supported is False
+
+def test_cisco_accounting_service_uses_source_framed_protocol_discriminator():
+    assert provider_service_for_accounting("Cisco", {"Framed-Protocol": "PPP"}) == "internet"
+    assert provider_service_for_accounting("Cisco", {"Framed-Protocol": ["PPP"]}) == "internet"
+    assert provider_service_for_accounting("Cisco", {"H323-Conf-ID": "call-42"}) == "voip"
+    assert provider_service_for_accounting("MVTS", {"Framed-Protocol": "PPP"}) == "voip"

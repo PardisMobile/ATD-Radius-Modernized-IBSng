@@ -19,7 +19,7 @@ from atd_radius.domain.ras import RASRuntimeRegistry
 from atd_radius.domain.ip_pool import IPPoolRuntimeRegistry
 from atd_radius.domain.ip_pool_policy import IPPoolAllocationPolicy
 from atd_radius.domain.radius_runtime import SessionKey, SessionRegistry, SessionState
-from atd_radius.domain.ras_provider import provider_session_id, provider_service_for_ras
+from atd_radius.domain.ras_provider import provider_session_id, provider_service_for_ras, provider_service_for_accounting
 from atd_radius.domain.user_policies import ras_allows_multi_login
 from atd_radius.infrastructure.accounting_persistence import NativeAccountingPersistence
 from atd_radius.infrastructure.connection_log_repository import ConnectionLogRepository
@@ -183,7 +183,7 @@ class RadiusRuntimeHandler:
                     if user_id is not None and ras_id is not None:
                         ras_record = self.identities.ras.get(ras_id)
                         if ras_record is not None:
-                            service = provider_service_for_ras(ras_record.ras_type)
+                            service = provider_service_for_accounting(ras_record.ras_type, event.attributes)
                             # Session identity can depend on service family (notably
                             # Cisco Internet port identity versus VoIP H.323 call ID).
                             # Use the same service-aware resolver for live packets as

@@ -211,3 +211,8 @@ Accounting events now retain the resolved RAS service family through the applica
 ## Service-aware provider identity consistency — 2026-10-17
 
 The live Accounting path now supplies the resolved service family to provider identity resolution, as restart recovery already does. This preserves Cisco's source-defined distinction between Internet port identity and VoIP H.323 call identity. A runtime regression test covers Cisco VoIP identity precedence. Provider transport and full Cisco RAS interoperability remain open.
+
+
+## Cisco dual-service Accounting routing — 2026-10-17
+
+Service selection for Cisco Accounting now follows the A1.24 packet discriminator (`Framed-Protocol == PPP` → Internet; otherwise VoIP branch) instead of incorrectly treating all Cisco packets as Internet because of the RAS type alone. The resolved service is then passed into provider identity selection, so Cisco VoIP uses the H.323 call identity. Tests cover the source discriminator and runtime session identity. Full Cisco accounting, call-type/origin filtering and RAS interoperability remain open.

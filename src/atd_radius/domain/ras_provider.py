@@ -148,6 +148,23 @@ def provider_service_for_ras(ras_type: str | None) -> str:
         return "voip"
     return "internet"
 
+def provider_service_for_accounting(
+    ras_type: str | None, attributes: Mapping[str, object]
+) -> str:
+    """Resolve the service branch using the provider's A1.24 packet discriminator.
+
+    Cisco implements both Internet and VoIP RAS paths. Its source checks
+    Framed-Protocol == PPP to select Internet; all other Accounting packets
+    enter the VoIP branch, where call-type/origin validation is performed.
+    Other provider families retain their source-derived default service.
+    """
+    if normalize_ras_type(ras_type) == "cisco":
+        protocol = attributes.get("Framed-Protocol")
+        if isinstance(protocol, (list, tuple)):
+            protocol = protocol[0] if protocol else ""
+        return "internet" if str(protocol or "") == "PPP" else "voip"
+    return provider_service_for_ras(ras_type)
+
 
 def provider_profile(ras_type: str | None) -> RASProviderProfile | None:
     key = normalize_ras_type(ras_type)

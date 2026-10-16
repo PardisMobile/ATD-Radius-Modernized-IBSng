@@ -144,6 +144,8 @@ def test_runtime_resolves_cisco_voip_session_identity_with_service_context():
             "Acct-Session-Id": "acct-fallback",
             "H323-Conf-ID": "h323-call-42",
             "NAS-Port": "17",
+            "H323-call-type": "VoIP",
+            "H323-call-origin": "originate",
         },
         b"0123456789abcdef",
     )
