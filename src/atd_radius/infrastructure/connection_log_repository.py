@@ -83,6 +83,59 @@ class ConnectionLogRepository:
             (logout_time, credit_used, successful, connection_log_id),
         )
 
+    def list_open(self) -> list[ConnectionLog]:
+        """Load successful sessions whose native connection_log has no logout time.
+
+        The detail rows are part of the A1.24 persistence contract; keeping this
+        query here lets process-restart recovery reuse the native schema without
+        adding a parallel session table or migration.
+        """
+        rows = self.conn.execute(
+            """
+            SELECT l.connection_log_id, l.user_id, l.credit_used::text,
+                   l.login_time, l.logout_time, l.successful, l.service, l.ras_id,
+                   d.name, d.value
+            FROM connection_log l
+            LEFT JOIN connection_log_details d
+              ON d.connection_log_id = l.connection_log_id
+            WHERE l.logout_time IS NULL AND l.successful IS TRUE
+            ORDER BY l.connection_log_id, d.name
+            """
+        ).fetchall()
+        records: dict[int, ConnectionLog] = {}
+        details: dict[int, dict[str, str]] = {}
+        for row in rows:
+            log_id = int(row[0])
+            if log_id not in records:
+                records[log_id] = ConnectionLog(
+                    connection_log_id=log_id,
+                    user_id=int(row[1]) if row[1] is not None else None,
+                    credit_used=str(row[2]) if row[2] is not None else None,
+                    login_time=row[3],
+                    logout_time=row[4],
+                    successful=bool(row[5]),
+                    service=int(row[6]),
+                    ras_id=int(row[7]) if row[7] is not None else None,
+                    details={},
+                )
+                details[log_id] = {}
+            if row[8] is not None:
+                details[log_id][str(row[8])] = str(row[9])
+        return [
+            ConnectionLog(
+                connection_log_id=record.connection_log_id,
+                user_id=record.user_id,
+                credit_used=record.credit_used,
+                login_time=record.login_time,
+                logout_time=record.logout_time,
+                successful=record.successful,
+                service=record.service,
+                ras_id=record.ras_id,
+                details=details[record.connection_log_id],
+            )
+            for record in records.values()
+        ]
+
     def get(self, connection_log_id: int) -> ConnectionLog | None:
         row = self.conn.execute(
             """
