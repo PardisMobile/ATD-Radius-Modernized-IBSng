@@ -507,3 +507,70 @@ def test_voip_limit_planner_uses_source_local_clock(monkeypatch):
     finally:
         handler.close()
 
+def test_disconnect_request_settles_charge_and_closes_native_log():
+    from decimal import Decimal
+    from unittest.mock import Mock
+    from atd_radius.application.radius_runtime import RadiusRuntimeHandler
+    from atd_radius.domain.aaa import PluginPipeline
+    from atd_radius.domain.accounting_session import AccountingSessionService
+    from atd_radius.domain.radius import RadiusCode, RadiusPacket
+    from atd_radius.domain.radius_dispatch import RadiusDispatcher
+    from atd_radius.domain.radius_runtime import SessionKey, SessionRegistry
+
+    class Persistence:
+        def __init__(self):
+            self.closed = []
+
+        def start(self, *_args): return 101
+        def update(self, *_args): pass
+        def stop(self, connection_log_id, event, credit_used=None):
+            self.closed.append((connection_log_id, event, credit_used))
+
+    class Charge:
+        def __init__(self): self.settled = []
+        def start(self, *_args): pass
+        def update(self, *_args): return None
+        def settle(self, state, when, ras_id, port):
+            self.settled.append((state.key, ras_id, port))
+            return Decimal("1.25")
+
+    registry = SessionRegistry()
+    key = SessionKey(7, 3, "sid-7")
+    state = registry.start(
+        key,
+        {
+            "User-Name": "alice",
+            "Acct-Session-Id": "sid-7",
+            "NAS-Port": "4",
+            "__connection_log_id": "101",
+        },
+        input_octets=120,
+        output_octets=240,
+    )
+    persistence = Persistence()
+    charge = Charge()
+    sessions = AccountingSessionService(registry, persistence, charge)
+    dispatcher = RadiusDispatcher(PluginPipeline([]))
+    handler = RadiusRuntimeHandler(dispatcher, sessions, Mock())
+
+    response = handler(
+        RadiusPacket(
+            RadiusCode.DISCONNECT_REQUEST,
+            22,
+            {"Acct-Session-Id": "sid-7"},
+            bytes(16),
+        ),
+        ("192.0.2.1", 1812),
+    )
+
+    assert response.code is RadiusCode.DISCONNECT_ACK
+    assert state.stopped is True
+    assert charge.settled == [(key, 3, "4")]
+    assert len(persistence.closed) == 1
+    log_id, event, credit_used = persistence.closed[0]
+    assert log_id == 101
+    assert event.status.value == "Stop"
+    assert event.input_octets == 120 and event.output_octets == 240
+    assert credit_used == "1.25"
+    assert "__connection_log_id" not in event.attributes
+
