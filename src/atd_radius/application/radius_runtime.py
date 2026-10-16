@@ -128,6 +128,8 @@ class RadiusRuntimeHandler:
             self.dispatcher.session_control = RegistrySessionControl(accounting_sessions.registry)
 
     def __call__(self, packet: RadiusPacket, peer: tuple[str, int]) -> RadiusPacket:
+        if self.ip_pool_sessions:
+            self.ip_pool_sessions.expire_pending()
         if packet.code in (RadiusCode.DISCONNECT_REQUEST, RadiusCode.COA_REQUEST):
             registry = self.accounting_sessions.registry
             # Keep selection, state transition, settlement and IP release atomic
@@ -221,8 +223,6 @@ class RadiusRuntimeHandler:
                             elif event.status.value == "Stop":
                                 self.ip_pool_sessions.accounting_stop(event, ras_id)
                 return result.response
-        if self.ip_pool_sessions:
-            self.ip_pool_sessions.expire_pending()
         response = self.dispatcher.access(packet, source_ip=peer[0])
         if self.ip_pool_sessions and response.code is RadiusCode.ACCESS_REJECT:
             # A later policy may reject after an IP allocation policy ran.
