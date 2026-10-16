@@ -560,3 +560,8 @@ The Accounting event parser now normalizes scalar attributes whether the decoder
 ## Cisco VoIP call-leg gating — 2026-10-17
 
 Added source-derived action gating for Cisco VoIP Accounting: Start/Stop require the VoIP/originate call leg; VoIP Alive no longer triggers normal charge/session lifecycle. The legacy `Telephony/answer` Stop path remains fail-closed until the pre-auth H.323 ID list is implemented. This narrows incorrect charge mutations but is not complete Cisco RAS parity.
+
+
+## Cisco wire-value and Internet port identity parity — 2026-10-17
+
+The provider identity resolver now decodes Cisco-style H.323 name=value values before using conference IDs and call-leg fields. Cisco Internet session identity now prefers Cisco-NAS-Port and falls back to the source-defined NAS-Port-Type + NAS-Port combination, rather than incorrectly preferring bare NAS-Port. Focused regression tests cover Async-port extraction, concatenated port identity and H.323 wire-form values.

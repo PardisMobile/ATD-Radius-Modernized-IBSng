@@ -287,31 +287,68 @@ def provider_accounting_should_apply(
     return False
 
 
+def _first_scalar(attributes: Mapping[str, object], name: str) -> str | None:
+    raw = attributes.get(name)
+    if isinstance(raw, (list, tuple)):
+        raw = raw[0] if raw else None
+    if raw in (None, ""):
+        return None
+    return str(raw)
+
+
+def _h323_value(attributes: Mapping[str, object], names: tuple[str, ...]) -> str | None:
+    """Decode the legacy Cisco H.323 wire form Attribute-Name=value.
+
+    A1.24's VoIPRas.getH323AttrValue strips the fixed attribute-name prefix
+    from Cisco-style values before using them as IDs or call-leg discriminators.
+    """
+    for name in names:
+        value = _first_scalar(attributes, name)
+        if value is None:
+            continue
+        prefix = name + "="
+        if value[:len(prefix)].lower() == prefix.lower():
+            value = value[len(prefix):]
+        return value or None
+    return None
+
+
 def provider_session_id(ras_type: str | None, attributes: Mapping[str, object], service: str = "internet") -> str | None:
     """Return the A1.24 provider online identity when the source defines one.
 
-    Falls back to the standard Acct-Session-Id only when the provider has no
-    source-defined identity attribute available.
+    Cisco Internet IDs use Cisco-NAS-Port or NAS-Port-Type + NAS-Port;
+    Cisco VoIP IDs use the decoded H.323 conference ID. Standard
+    Acct-Session-Id is only a safe fallback when the source key is absent.
     """
     profile = provider_profile(ras_type)
     if profile is None:
-        raw = attributes.get("Acct-Session-Id")
-        return str(raw) if raw not in (None, "") else None
+        return _first_scalar(attributes, "Acct-Session-Id")
     if profile.name == "cisco" and service == "voip":
-        for name in _ID_ATTRIBUTES["h323_conf_id"]:
-            raw = attributes.get(name)
-            if raw not in (None, ""):
-                return str(raw)
+        value = _h323_value(attributes, _ID_ATTRIBUTES["h323_conf_id"])
+        if value is not None:
+            return value
+    if profile.name == "cisco" and service != "voip":
+        port = _first_scalar(attributes, "Cisco-NAS-Port")
+        if port:
+            if port.startswith("Async"):
+                import re
+                match = re.match(r"(Async[0-9/]+)", port)
+                if match:
+                    port = match.group(1)
+            return port
+        port_type = _first_scalar(attributes, "NAS-Port-Type")
+        port_number = _first_scalar(attributes, "NAS-Port")
+        if port_type is not None and port_number is not None:
+            return port_type + port_number
     if profile.name == "bsae":
-        raw = attributes.get("User-Name")
-        if raw not in (None, ""):
-            return str(raw)
+        raw = _first_scalar(attributes, "User-Name")
+        if raw is not None:
+            return raw
     for name in _ID_ATTRIBUTES.get(profile.unique_id or "", ()):
-        raw = attributes.get(name)
-        if raw not in (None, ""):
-            return str(raw)
-    raw = attributes.get("Acct-Session-Id")
-    return str(raw) if raw not in (None, "") else None
+        raw = _h323_value(attributes, (name,)) if "h323" in name.lower() else _first_scalar(attributes, name)
+        if raw is not None:
+            return raw
+    return _first_scalar(attributes, "Acct-Session-Id")
 
 
 def provider_ip_assignment_for_attributes(ras_type: str | None, attributes: Mapping[str, object]) -> bool | None:

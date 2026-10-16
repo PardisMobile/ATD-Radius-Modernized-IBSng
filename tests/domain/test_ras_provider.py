@@ -175,3 +175,29 @@ def test_cisco_voip_accounting_action_guards_follow_a124_call_leg_rules():
     assert provider_accounting_should_apply(
         "Cisco", "internet", "Start", {"Framed-Protocol": "PPP"}
     )
+
+
+
+def test_cisco_internet_identity_matches_source_port_resolution():
+    assert provider_session_id(
+        "Cisco", {"Cisco-NAS-Port": ["Async0/1 extra"], "Acct-Session-Id": ["acct-1"]}
+    ) == "Async0/1"
+    assert provider_session_id(
+        "Cisco", {"NAS-Port-Type": ["Async"], "NAS-Port": ["3"], "Acct-Session-Id": ["acct-2"]}
+    ) == "Async3"
+
+
+def test_cisco_h323_wire_values_are_decoded_before_identity_and_leg_checks():
+    from atd_radius.domain.ras_provider import provider_accounting_should_apply
+
+    assert provider_session_id(
+        "Cisco", {"H323-Conf-ID": ["H323-conf-id=call-42"]}, service="voip"
+    ) == "call-42"
+    attrs = {
+        "H323-call-type": ["H323-call-type=VoIP"],
+        "H323-call-origin": ["H323-call-origin=originate"],
+    }
+    # The source VoIPRas.getH323AttrValue strips the name prefix before
+    # Cisco's Start/Stop call-leg comparisons.
+    assert provider_accounting_should_apply("Cisco", "voip", "Start", attrs)
+    assert provider_accounting_should_apply("Cisco", "voip", "Stop", attrs)

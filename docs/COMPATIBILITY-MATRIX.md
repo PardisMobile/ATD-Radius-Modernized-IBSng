@@ -227,3 +227,6 @@ Accounting scalar extraction now accepts both scalar and list/tuple decoder repr
 
 
 Cisco VoIP accounting now applies source-derived call-type/origin guards for Start/Stop and suppresses VoIP Alive from the charge lifecycle. The special pre-authenticated Telephony/answer Stop path remains intentionally unsupported until its H.323 authorization-ID state is implemented.
+
+
+Cisco identity handling follows the native A1.24 packet representation: Internet uses Cisco-NAS-Port or NAS-Port-Type plus NAS-Port; VoIP H.323 IDs and call-leg discriminators strip the legacy name=value prefix. This correction is scoped to identity/discriminator normalization and does not claim full Cisco RAS parity.
