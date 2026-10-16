@@ -262,7 +262,11 @@ class NativeRadiusPacketHandler:
                 )
                 if not active:
                     return VoipLimitPlan(None)
-                when = datetime.now(timezone.utc)
+                # A1.24 evaluates charge-rule day/time intervals in the
+                # server's local timezone (time.time()/secondsFromMorning), not UTC.
+                # Passing UTC here can select a different tariff window and
+                # terminate or bill calls against the wrong rule near boundaries.
+                when = datetime.now().astimezone()
                 return settlement.plan_limits(
                     active,
                     when,
