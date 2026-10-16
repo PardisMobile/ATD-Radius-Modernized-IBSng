@@ -30,3 +30,73 @@ def test_reply_uses_host_only_netmask():
     pool.set_in_reply(reply)
     assert reply["Framed-IP-Address"]=="10.20.30.1"
     assert reply["Framed-IP-Netmask"]=="255.255.255.255"
+
+
+
+def test_pending_runtime_lease_is_adopted_by_matching_accounting_start():
+    from types import SimpleNamespace
+    from atd_radius.domain.ip_pool import IPPoolRuntimeRegistry
+
+    class Repository:
+        def list(self):
+            return [SimpleNamespace(pool_id=1, name="pool-a", comment=None)]
+        def get(self, pool_id):
+            return SimpleNamespace(pool_id=1, name="pool-a", comment=None) if pool_id == 1 else None
+        def list_addresses(self, pool_id):
+            return ("192.0.2.20",)
+
+    registry = IPPoolRuntimeRegistry(Repository())
+    registry.reload()
+    ip = registry.allocate(1)
+    registry.mark_pending(3, 1, ip, "alice", ttl_seconds=30)
+
+    assert registry.consume_pending(3, ip, "alice") is True
+    assert (3, ip) not in registry.pending_leases()
+    assert ip in registry.get(1).used_ips
+
+
+def test_pending_runtime_lease_expires_and_returns_address_to_pool():
+    from types import SimpleNamespace
+    from atd_radius.domain.ip_pool import IPPoolRuntimeRegistry
+
+    class Repository:
+        def list(self):
+            return [SimpleNamespace(pool_id=1, name="pool-a", comment=None)]
+        def get(self, pool_id):
+            return SimpleNamespace(pool_id=1, name="pool-a", comment=None) if pool_id == 1 else None
+        def list_addresses(self, pool_id):
+            return ("192.0.2.20", "192.0.2.21")
+
+    registry = IPPoolRuntimeRegistry(Repository())
+    registry.reload()
+    ip = registry.allocate(1)
+    registry.mark_pending(3, 1, ip, "alice", ttl_seconds=30)
+    deadline = registry.pending_leases()[(3, ip)][2]
+
+    assert registry.expire_pending(deadline) == 1
+    assert ip not in registry.get(1).used_ips
+    assert registry.allocate(1) == ip
+
+
+def test_pending_runtime_lease_cannot_be_adopted_by_another_username():
+    from types import SimpleNamespace
+    from atd_radius.domain.ip_pool import IPPoolRuntimeRegistry
+
+    class Repository:
+        def list(self):
+            return [SimpleNamespace(pool_id=1, name="pool-a", comment=None)]
+        def get(self, pool_id):
+            return SimpleNamespace(pool_id=1, name="pool-a", comment=None) if pool_id == 1 else None
+        def list_addresses(self, pool_id):
+            return ("192.0.2.20",)
+
+    registry = IPPoolRuntimeRegistry(Repository())
+    registry.reload()
+    ip = registry.allocate(1)
+    registry.mark_pending(3, 1, ip, "alice", ttl_seconds=30)
+
+    assert registry.consume_pending(3, ip, "bob") is False
+    assert (3, ip) in registry.pending_leases()
+    assert ip in registry.get(1).used_ips
+    assert registry.release_pending(3, ip) is True
+    assert ip not in registry.get(1).used_ips
