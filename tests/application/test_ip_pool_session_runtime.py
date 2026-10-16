@@ -78,3 +78,39 @@ def test_control_release_uses_session_ras_and_framed_ip():
 
     manager.release_states(Registry().matching({"Acct-Session-Id": "sid"}))
     assert pools.get(1).used_ips == ()
+
+
+
+def test_access_reject_releases_only_the_pending_pool_reservation():
+    from unittest.mock import Mock
+    from atd_radius.application.radius_runtime import RadiusRuntimeHandler
+    from atd_radius.domain.accounting_session import AccountingSessionService
+    from atd_radius.domain.radius import RadiusCode, RadiusPacket
+
+    pools, ras = runtime()
+    pools.allocate(1)
+    pools.mark_pending(7, 1, "192.0.2.10", "alice", ttl_seconds=30)
+    dispatcher = Mock()
+    dispatcher.access.return_value = RadiusPacket(
+        RadiusCode.ACCESS_REJECT,
+        9,
+        {"Framed-IP-Address": "192.0.2.10"},
+        b"0123456789abcdef",
+    )
+    sessions = AccountingSessionService(Mock())
+    identities = Mock()
+    identities.ras = ras
+    identities.ras.get_by_ip.return_value = ras.get_by_ip("192.0.2.1")
+    handler = RadiusRuntimeHandler(
+        dispatcher, sessions, identities,
+        ip_pool_sessions=IPPoolSessionManager(pools, ras),
+    )
+
+    response = handler(
+        RadiusPacket(RadiusCode.ACCESS_REQUEST, 9, {"User-Name": "alice"}),
+        ("192.0.2.1", 1812),
+    )
+
+    assert response.code is RadiusCode.ACCESS_REJECT
+    assert (7, "192.0.2.10") not in pools.pending_leases()
+    assert "192.0.2.10" not in pools.get(1).used_ips
