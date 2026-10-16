@@ -183,10 +183,16 @@ class RadiusRuntimeHandler:
                     if user_id is not None and ras_id is not None:
                         ras_record = self.identities.ras.get(ras_id)
                         if ras_record is not None:
-                            session_id = provider_session_id(ras_record.ras_type, event.attributes)
+                            service = provider_service_for_ras(ras_record.ras_type)
+                            # Session identity can depend on service family (notably
+                            # Cisco Internet port identity versus VoIP H.323 call ID).
+                            # Use the same service-aware resolver for live packets as
+                            # restart recovery does.
+                            session_id = provider_session_id(
+                                ras_record.ras_type, event.attributes, service
+                            )
                             if session_id is not None:
                                 event = replace(event, session_id=session_id)
-                            service = provider_service_for_ras(ras_record.ras_type)
                             ras_allowed = ras_allows_multi_login(
                                 ras_record.ras_type, ras_record.all_attributes(), service
                             )

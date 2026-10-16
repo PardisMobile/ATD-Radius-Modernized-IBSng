@@ -206,3 +206,8 @@ Native IP-pool allocation now marks addresses allocated by the production Access
 ## Native connection_log service classification — 2026-10-17
 
 Accounting events now retain the resolved RAS service family through the application boundary, and `NativeAccountingPersistence` maps Internet to native service ID 1 and VoIP to native service ID 2. This corrects the prior behavior where every new native connection log was written with service=1. Tests cover MVTS runtime classification and VoIP persistence. Full live RAS/accounting parity remains open.
+
+
+## Service-aware provider identity consistency — 2026-10-17
+
+The live Accounting path now supplies the resolved service family to provider identity resolution, as restart recovery already does. This preserves Cisco's source-defined distinction between Internet port identity and VoIP H.323 call identity. A runtime regression test covers Cisco VoIP identity precedence. Provider transport and full Cisco RAS interoperability remain open.

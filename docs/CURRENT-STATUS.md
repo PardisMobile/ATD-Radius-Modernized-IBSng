@@ -537,3 +537,8 @@ On first recovery of native open `connection_log` rows, the runtime now collects
 ## Native connection_log service classification — 2026-10-17
 
 The Accounting runtime now carries the source-derived service family from the resolved RAS into the persistence event. Native `connection_log.service` is written as 1 for Internet and 2 for VoIP instead of hard-coding Internet for every Accounting-Start. Regression coverage checks both the runtime MVTS service classification and the persisted VoIP service ID. This fixes service classification only; it does not close the remaining restart-safe charge accumulator or full provider accounting parity gaps.
+
+
+## Service-aware provider session identity — 2026-10-17
+
+Live Accounting now passes the resolved RAS service family into `provider_session_id()`, matching the restart-recovery path. This matters for provider profiles whose online identity differs by service: Cisco Internet uses its port identity, while Cisco VoIP uses the H.323 call ID when present. A runtime regression test verifies that a Cisco VoIP Accounting-Start is keyed by `H323-Conf-ID` rather than incorrectly falling back to `NAS-Port` or `Acct-Session-Id`. This is an identity-resolution fix only; it does not claim full Cisco RAS interoperability.
