@@ -201,3 +201,8 @@ Restart recovery now resolves the session registry key through the same `provide
 ## Access-Accept IP lease lifecycle — 2026-10-17
 
 Native IP-pool allocation now marks addresses allocated by the production Access-Request policy as pending reservations tied to the source RAS identity and username. A matching Accounting-Start adopts the reservation into the live session; an explicit later policy rejection releases a still-pending allocation; and unadopted reservations expire after a bounded five-minute grace period. Expiration runs on incoming RADIUS traffic and before subsequent allocations, preventing abandoned Access-Accept allocations from consuming pool capacity indefinitely. Ownership mismatch does not silently transfer a pending address to another username. Regression tests cover adoption, expiry, release ordering, ownership mismatch and production context wiring. Full live-NAS interoperability and race behavior under high concurrency remain open.
+
+
+## Native connection_log service classification — 2026-10-17
+
+Accounting events now retain the resolved RAS service family through the application boundary, and `NativeAccountingPersistence` maps Internet to native service ID 1 and VoIP to native service ID 2. This corrects the prior behavior where every new native connection log was written with service=1. Tests cover MVTS runtime classification and VoIP persistence. Full live RAS/accounting parity remains open.

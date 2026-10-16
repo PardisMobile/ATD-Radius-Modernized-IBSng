@@ -45,7 +45,8 @@ class NativeAccountingPersistence:
             login_time=login_time,
             logout_time=None,
             successful=True,
-            service=1,
+            # A1.24 connection_log uses service=1 for Internet and service=2 for VoIP.
+            service=2 if getattr(event, "service", "internet") == "voip" else 1,
             ras_id=ras_id,
             details=self._details(event),
         )

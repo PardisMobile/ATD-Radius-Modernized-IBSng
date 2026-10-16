@@ -532,3 +532,8 @@ Do not mark the current batch verified until the latest CI run finishes. Python-
 ## Restart recovery — VoIP timer re-arming
 
 On first recovery of native open `connection_log` rows, the runtime now collects users whose restored sessions resolve to an active VoIP charge and re-arms the process-local limit scheduler for those users. This closes the gap where recovered calls could remain open without any timer-driven limit check until another Accounting packet arrived. Regression coverage verifies the recovery result for an MVTS call using its source-defined H323-conf-id. This does not make the timer/session state durable: it rebuilds timers from native open rows at startup, and historical charge-transition accumulators still cannot be reconstructed from the A1.24 schema.
+
+
+## Native connection_log service classification — 2026-10-17
+
+The Accounting runtime now carries the source-derived service family from the resolved RAS into the persistence event. Native `connection_log.service` is written as 1 for Internet and 2 for VoIP instead of hard-coding Internet for every Accounting-Start. Regression coverage checks both the runtime MVTS service classification and the persisted VoIP service ID. This fixes service classification only; it does not close the remaining restart-safe charge accumulator or full provider accounting parity gaps.

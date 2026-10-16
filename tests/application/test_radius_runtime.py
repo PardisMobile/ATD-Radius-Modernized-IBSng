@@ -79,6 +79,41 @@ def test_runtime_handler_applies_accounting_session():
     sessions.apply.assert_called_once_with(event, 7, 3)
 
 
+
+
+def test_runtime_tags_accounting_event_with_source_ras_service_family():
+    from atd_radius.application.radius_runtime import RadiusRuntimeHandler
+    from atd_radius.domain.accounting_lifecycle import AccountingEvent, AccountingStatus
+    from atd_radius.domain.radius_dispatch import DispatchResult
+    from atd_radius.domain.radius_runtime import SessionRegistry
+
+    dispatcher = Mock()
+    event = AccountingEvent(AccountingStatus.START, "voip-alice", "call-1")
+    dispatcher.accounting.return_value = DispatchResult(
+        RadiusPacket(RadiusCode.ACCOUNTING_RESPONSE, 10, {}, b"0123456789abcdef"), event
+    )
+    sessions = Mock()
+    sessions.registry = SessionRegistry()
+    identities = Mock()
+    identities.user_id.return_value = 7
+    identities.ras_id.return_value = 3
+    ras = Mock()
+    ras.ras_type = "MVTS"
+    ras.all_attributes.return_value = {}
+    identities.ras.get.return_value = ras
+
+    handler = RadiusRuntimeHandler(dispatcher, sessions, identities)
+    packet = RadiusPacket(
+        RadiusCode.ACCOUNTING_REQUEST, 10,
+        {"Acct-Status-Type": "Start", "User-Name": "voip-alice", "Acct-Session-Id": "call-1"},
+        b"0123456789abcdef",
+    )
+    handler(packet, ("192.0.2.1", 1812))
+
+    applied_event = sessions.apply.call_args.args[0]
+    assert applied_event.service == "voip"
+    assert applied_event.ras_multi_login_allowed is False
+
 def test_session_views_exposes_only_active_runtime_sessions():
     from atd_radius.application.radius_runtime import session_views
     from atd_radius.domain.radius_runtime import SessionKey, SessionRegistry

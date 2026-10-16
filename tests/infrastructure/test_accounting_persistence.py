@@ -59,11 +59,13 @@ def test_voip_start_persists_authoritative_ras_connect_time():
         "voip-alice",
         "voip-sid",
         attributes={"connect_time": str(connect_time)},
+        service="voip",
     )
 
     persistence.start(event, 11, 3)
 
     record = repository.create.call_args.args[0]
+    assert record.service == 2
     assert record.login_time == datetime(2026, 10, 5, 22, 15, 30)
     assert record.login_time != clock()
 

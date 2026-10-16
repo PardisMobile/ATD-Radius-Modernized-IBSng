@@ -193,6 +193,7 @@ class RadiusRuntimeHandler:
                             event = replace(
                                 event,
                                 ras_multi_login_allowed=ras_allowed,
+                                service=service,
                             )
                         accounting_result = self.accounting_sessions.apply(event, user_id, ras_id)
                         # A1.24 BWSnapShotOnlinesLoopClient only records normal

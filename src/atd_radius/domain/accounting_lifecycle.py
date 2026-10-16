@@ -26,6 +26,8 @@ class AccountingEvent:
     observed_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     # Internal source-derived policy context; deliberately not a RADIUS attribute.
     ras_multi_login_allowed: bool | None = None
+    # Internal service family used to preserve the native connection_log service ID.
+    service: str = "internet"
 
 @dataclass(slots=True)
 class SessionUsage:
