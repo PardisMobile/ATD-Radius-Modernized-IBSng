@@ -402,6 +402,12 @@ class NativeAccountingIdentityResolver:
         self.ras = ras
 
     def user_id(self, username: str) -> int | None:
+        # A1.24 keeps normal and VoIP usernames in separate namespaces.
+        # Accounting can arrive under either identity; Access authentication
+        # continues to use get_authentication_record in its own boundary.
+        accounting_lookup = getattr(self.users, "accounting_user_id", None)
+        if callable(accounting_lookup):
+            return accounting_lookup(username)
         record = self.users.get_authentication_record(username)
         return int(record[0]) if record else None
 
