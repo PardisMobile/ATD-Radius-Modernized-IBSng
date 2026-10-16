@@ -445,3 +445,64 @@ def test_accounting_identity_resolver_uses_native_voip_username_lookup():
 
     resolver = NativeAccountingIdentityResolver(Users(), Mock())
     assert resolver.user_id("sip-alice") == 17
+
+def test_voip_limit_planner_uses_source_local_clock(monkeypatch):
+    from datetime import datetime, timezone, timedelta
+    from atd_radius.application import radius_runtime
+    from atd_radius.application.radius_runtime import NativeRadiusPacketHandler, NativeRadiusRuntimeState
+    from atd_radius.domain.accounting_charge import VoipLimitPlan
+    from atd_radius.domain.radius_runtime import SessionKey
+    from atd_radius.domain.ras import RAS
+
+    observed = {}
+
+    class FixedDateTime:
+        @classmethod
+        def now(cls, tz=None):
+            # A1.24 uses local wall-clock time for charge-rule intervals.
+            assert tz is None
+            return datetime(2026, 10, 17, 12, 0, tzinfo=timezone(timedelta(hours=5, minutes=30)))
+
+    class Connection:
+        def __enter__(self): return self
+        def __exit__(self, *_args): return False
+
+    class Registry:
+        def get(self, ras_id):
+            return RAS(ras_id, "192.0.2.3", "mvts", "MVTS", "secret")
+
+    class Users:
+        def __init__(self, _conn): pass
+
+    class Credits:
+        def __init__(self, _conn): pass
+        def get(self, _user_id): return 10
+
+    class FakeSettlement:
+        def __init__(self, *_args): pass
+        def plan_limits(self, _states, when, _credit, _context):
+            observed["when"] = when
+            return VoipLimitPlan(None)
+
+    state = NativeRadiusRuntimeState()
+    state.ras = Registry()
+    session = state.sessions.start(SessionKey(7, 3, "call-1"), {"User-Name": "sip-alice"})
+    session.charge_id = 2
+    session.charge_kind = "voip"
+    handler = NativeRadiusPacketHandler(state, lambda: Connection())
+    monkeypatch.setattr(radius_runtime, "datetime", FixedDateTime)
+    monkeypatch.setattr(radius_runtime, "build_ras_runtime", lambda *_args: Registry())
+    monkeypatch.setattr(radius_runtime, "RASRepository", lambda _conn: object())
+    monkeypatch.setattr(radius_runtime, "UserRepository", Users)
+    monkeypatch.setattr(radius_runtime, "UserCreditRepository", Credits)
+    monkeypatch.setattr(radius_runtime, "PostgresVoipChargeRuleRepository", lambda _conn: object())
+    monkeypatch.setattr(radius_runtime, "PostgresVoipTariffRepository", lambda _conn: object())
+    monkeypatch.setattr(radius_runtime, "VoipChargeSettlement", FakeSettlement)
+    try:
+        handler._check_voip_limits(7)
+        assert observed["when"].hour == 6
+        assert observed["when"].minute == 30
+        assert observed["when"].utcoffset() == timedelta(0)
+    finally:
+        handler.close()
+
