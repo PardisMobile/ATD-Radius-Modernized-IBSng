@@ -75,7 +75,8 @@ def test_pending_runtime_lease_expires_and_returns_address_to_pool():
 
     assert registry.expire_pending(deadline) == 1
     assert ip not in registry.get(1).used_ips
-    assert registry.allocate(1) == ip
+    # A1.24 returns released addresses at the tail of the free queue.
+    assert registry.allocate(1) == "192.0.2.21"
 
 
 def test_pending_runtime_lease_cannot_be_adopted_by_another_username():
