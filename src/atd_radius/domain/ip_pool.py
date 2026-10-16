@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass,field
 import ipaddress
 from typing import Iterable
+from time import monotonic
 
 class IPPoolError(ValueError): pass
 
@@ -133,6 +134,7 @@ class IPPoolRuntimeRegistry:
         self.repository = repository
         import threading
         self._pools = {}
+        self._pending_leases: dict[tuple[int, str], tuple[int, str, float]] = {}
         self._lock = threading.RLock()
 
     def reload(self, pool_id: int | None = None):
@@ -174,13 +176,77 @@ class IPPoolRuntimeRegistry:
         return next((pool for pool in self._pools.values() if pool.name == name), None)
 
     def allocate(self, pool_id: int) -> str:
-        return self._require(pool_id).allocate()
+        with self._lock:
+            self.expire_pending()
+            return self._require(pool_id).allocate()
 
     def claim(self, pool_id: int, ip: str) -> None:
         self._require(pool_id).claim(ip)
 
     def release(self, pool_id: int, ip: str) -> None:
-        self._require(pool_id).release(ip)
+        with self._lock:
+            self._pending_leases.pop((pool_id, ip), None)
+            self._require(pool_id).release(ip)
+
+    def mark_pending(
+        self, ras_id: int, pool_id: int, ip: str, username: str, ttl_seconds: float = 300
+    ) -> None:
+        """Mark an Access-Accept allocation as awaiting its Accounting-Start.
+
+        A pending lease is still held in the normal pool used-set. If the NAS
+        never starts accounting, it is released after a bounded grace period.
+        """
+        if ras_id < 1 or ttl_seconds <= 0 or not username:
+            raise ValueError("pending IP lease requires RAS, username, and positive TTL")
+        with self._lock:
+            pool = self._require(pool_id)
+            if ip not in pool.used_ips:
+                raise IPPoolIPNotInUseError(f"IP address {ip} has no allocated lease")
+            self._pending_leases[(ras_id, ip)] = (
+                pool_id, username, monotonic() + ttl_seconds
+            )
+
+    def consume_pending(self, ras_id: int, ip: str, username: str) -> bool | None:
+        """Consume a matching reservation; False means another login owns it."""
+        with self._lock:
+            self.expire_pending()
+            pending = self._pending_leases.get((ras_id, ip))
+            if pending is None:
+                return None
+            pool_id, owner, _deadline = pending
+            if owner != username:
+                return False
+            del self._pending_leases[(ras_id, ip)]
+            return True
+
+    def release_pending(self, ras_id: int, ip: str) -> bool:
+        with self._lock:
+            pending = self._pending_leases.pop((ras_id, ip), None)
+            if pending is None:
+                return False
+            pool_id, _owner, _deadline = pending
+            pool = self._pools.get(pool_id)
+            if pool is not None and ip in pool.used_ips:
+                pool.release(ip)
+            return True
+
+    def expire_pending(self, now: float | None = None) -> int:
+        with self._lock:
+            current = monotonic() if now is None else now
+            expired = [
+                key for key, (_pool_id, _owner, deadline) in self._pending_leases.items()
+                if current >= deadline
+            ]
+            for key in expired:
+                pool_id, _owner, _deadline = self._pending_leases.pop(key)
+                pool = self._pools.get(pool_id)
+                if pool is not None and key[1] in pool.used_ips:
+                    pool.release(key[1])
+            return len(expired)
+
+    def pending_leases(self) -> dict[tuple[int, str], tuple[int, str, float]]:
+        with self._lock:
+            return dict(self._pending_leases)
 
     def find_pool(self, pool_ids, ip: str) -> int | None:
         for pool_id in pool_ids:
