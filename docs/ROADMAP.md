@@ -346,3 +346,8 @@ A source re-check of `IBSng/core/ras/rases/mvts.py::killUser` found that A1.24 b
 ## Accounting identity namespace parity — 2026-10-17
 
 The native accounting identity resolver now checks both A1.24 namespaces: `normal_users.normal_username` and `voip_users.voip_username`. This is separate from Access-Request authentication. Only a unique user ID is accepted; missing or cross-user ambiguous names fail closed so usage is not charged to an arbitrary account. Regression tests cover VoIP-only names, missing identities, collisions, and runtime delegation. CI for commit `8168619ba1334a8e4819977d1eae92abb7d18084` is running. Durable session/timer recovery and the remaining provider-specific termination paths remain incomplete.
+
+
+## Cisco Accounting service/identity parity checkpoint — 2026-10-17
+
+Added a source audit at `docs/A1.24-CISCO-ACCOUNTING-AUDIT.md` tracing `CiscoRas.__isInternetPacket`, the Internet port identity, VoIP H.323 identity and source-specific Start/Stop/Alive branches. ATD now has service-aware Cisco routing and matching identity during live accounting and recovery, plus scalar normalization for list-shaped decoded values. This is **not full Cisco RAS parity**: call-type/origin gating, the pre-auth H.323 list and Cisco VoIP Alive side-effect semantics remain open. The integrated dispatcher regression is pending CI.

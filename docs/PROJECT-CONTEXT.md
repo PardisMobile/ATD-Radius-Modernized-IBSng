@@ -507,3 +507,8 @@ The production `NativeRadiusPacketHandler` now schedules VoIP checks after Accou
 ## MVTS source-identity correction — 2026-10-15
 
 A source re-check of `IBSng/core/ras/rases/mvts.py::killUser` found that A1.24 builds Disconnect-Request `User-Name` from the user's `voip_username` attribute, not necessarily the inbound RADIUS `User-Name`/normal IBSng login. The production VoIP termination path now resolves `voip_users.voip_username` through the native user repository in the same fresh transaction and uses it for MVTS; a missing VoIP credential fails closed as a permanent configuration gap instead of sending a disconnect for the wrong identity. Regression coverage verifies the provider sees the source-required username. This is a targeted parity correction, not full provider or restart-recovery completion.
+
+
+## Cisco Accounting source checkpoint — 2026-10-17
+
+Directly inspected `IBSng/core/ras/rases/cisco.py` in the canonical archive and recorded the exact source branches in `docs/A1.24-CISCO-ACCOUNTING-AUDIT.md`. ATD now distinguishes Cisco Internet from VoIP using `Framed-Protocol == PPP`, chooses the H.323 call identity for VoIP in both live Accounting and restart recovery, and normalizes list-shaped scalar fields. Remaining source behavior—VoIP call-type/origin admission, the pre-auth H.323 ID state, and VoIP Alive's RAS-only side effect—must be implemented before Cisco accounting can be called source-equivalent.
