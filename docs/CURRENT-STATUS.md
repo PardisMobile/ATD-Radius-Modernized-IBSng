@@ -527,3 +527,8 @@ Restart recovery now uses `provider_session_id()` rather than assuming every pro
 Access-Accept IP allocations now carry a process-local pending reservation keyed by RAS and IP with the expected username. Matching Accounting-Start adopts the reservation; a later reject releases a pending allocation; and unadopted reservations are expired after five minutes as RADIUS traffic continues. The implementation uses the existing pool's free/used queue semantics and adds no schema/table. Tests cover pending adoption, expiry, username mismatch and production Access-Request context. This remains partial until live NAS integration, concurrency stress and crash behavior are tested.
 
 Do not mark the current batch verified until the latest CI run finishes. Python-only runs in the preceding intermediate commits exposed fixture/expectation issues, which were corrected in subsequent commits; full CI also intermittently failed during GitHub Actions container initialization.
+
+
+## Restart recovery — VoIP timer re-arming
+
+On first recovery of native open `connection_log` rows, the runtime now collects users whose restored sessions resolve to an active VoIP charge and re-arms the process-local limit scheduler for those users. This closes the gap where recovered calls could remain open without any timer-driven limit check until another Accounting packet arrived. Regression coverage verifies the recovery result for an MVTS call using its source-defined H323-conf-id. This does not make the timer/session state durable: it rebuilds timers from native open rows at startup, and historical charge-transition accumulators still cannot be reconstructed from the A1.24 schema.
