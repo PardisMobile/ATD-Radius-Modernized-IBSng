@@ -188,6 +188,24 @@ class UserRepository:
         ).fetchone()
         return (str(row[0]), str(row[1])) if row else None
 
+    def accounting_user_id(self, username: str) -> int | None:
+        """Resolve an accounting name across native normal and VoIP user tables.
+
+        Only a unique IBSng user ID is safe to charge. Missing or ambiguous
+        identities fail closed rather than charging an arbitrary account.
+        """
+        rows = self.conn.execute(
+            """
+            SELECT user_id FROM normal_users WHERE normal_username=%s
+            UNION
+            SELECT user_id FROM voip_users WHERE voip_username=%s
+            LIMIT 2
+            """,
+            (username, username),
+        ).fetchall()
+        user_ids = {int(row[0]) for row in rows}
+        return next(iter(user_ids)) if len(user_ids) == 1 else None
+
     def caller_ids(self, user_id: int) -> list[str]:
         rows = self.conn.execute(
             "SELECT caller_id FROM caller_id_users WHERE user_id=%s ORDER BY caller_id",
