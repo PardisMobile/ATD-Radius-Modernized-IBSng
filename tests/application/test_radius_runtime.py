@@ -121,7 +121,17 @@ def test_runtime_resolves_cisco_voip_session_identity_with_service_context():
     from atd_radius.domain.radius_runtime import SessionRegistry
 
     dispatcher = Mock()
-    event = AccountingEvent(AccountingStatus.START, "alice", "acct-fallback")
+    event = AccountingEvent(
+        AccountingStatus.START,
+        "alice",
+        "acct-fallback",
+        attributes={
+            "H323-Conf-ID": "h323-call-42",
+            "NAS-Port": "17",
+            "H323-call-type": "VoIP",
+            "H323-call-origin": "originate",
+        },
+    )
     dispatcher.accounting.return_value = DispatchResult(
         RadiusPacket(RadiusCode.ACCOUNTING_RESPONSE, 11, {}, b"0123456789abcdef"), event
     )
