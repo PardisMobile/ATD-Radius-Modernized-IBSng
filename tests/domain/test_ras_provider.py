@@ -201,3 +201,23 @@ def test_cisco_h323_wire_values_are_decoded_before_identity_and_leg_checks():
     # Cisco's Start/Stop call-leg comparisons.
     assert provider_accounting_should_apply("Cisco", "voip", "Start", attrs)
     assert provider_accounting_should_apply("Cisco", "voip", "Stop", attrs)
+
+
+
+def test_cisco_call_leg_guard_decodes_source_wire_values():
+    from atd_radius.domain.ras_provider import provider_accounting_should_apply
+
+    assert provider_accounting_should_apply(
+        "Cisco", "voip", "Start",
+        {
+            "H323-call-type": ["H323-call-type=VoIP"],
+            "H323-call-origin": ["H323-call-origin=originate"],
+        },
+    )
+    assert not provider_accounting_should_apply(
+        "Cisco", "voip", "Start",
+        {
+            "H323-call-type": ["H323-call-type=Telephony"],
+            "H323-call-origin": ["H323-call-origin=answer"],
+        },
+    )

@@ -272,14 +272,8 @@ def provider_accounting_should_apply(
     if normalize_ras_type(ras_type) != "cisco" or service != "voip":
         return True
 
-    def first(name: str) -> str:
-        value = attributes.get(name, "")
-        if isinstance(value, (list, tuple)):
-            value = value[0] if value else ""
-        return str(value or "")
-
-    call_type = first("H323-call-type")
-    call_origin = first("H323-call-origin")
+    call_type = _h323_value(attributes, ("H323-call-type",)) or ""
+    call_origin = _h323_value(attributes, ("H323-call-origin",)) or ""
     if status in {"Start", "Stop"}:
         return call_type == "VoIP" and call_origin == "originate"
     if status == "Alive":
