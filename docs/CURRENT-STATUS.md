@@ -517,3 +517,13 @@ A cohesive recovery path now queries successful `connection_log` rows with no lo
 Important boundary: A1.24 `connection_log` does not persist the in-memory charge-rule transition accumulator. The implementation therefore reinitializes the current charge baseline at recovery time rather than fabricating historical accrued transitions. Usage during process downtime and exact historical billing across rule changes still require a durable, source-compatible accounting checkpoint design; restart recovery is a major resilience step, not a claim of full billing parity. Records missing user/RAS/session identity or referencing an unavailable RAS are logged and skipped. Regression coverage exercises query grouping, recovered session identity/counters/log linkage, IP lease reclaim, and one-shot recovery.
 
 The preceding Disconnect-Request regression test had an assertion-type mismatch (the settlement service passes `Decimal` to the persistence contract); that test now asserts the numeric value instead of a string. CI must be checked against the newest commit before treating this batch as green.
+
+
+
+## 2026-10-17 continuation: recovery identity and pending IP lease lifecycle
+
+Restart recovery now uses `provider_session_id()` rather than assuming every provider's session key is `Acct-Session-Id`. A regression exposed a wire-name alias gap for `H323-conf-id`; the provider identity table now recognizes the canonical decoded attribute spelling, allowing MVTS call recovery to use the actual H.323 call ID.
+
+Access-Accept IP allocations now carry a process-local pending reservation keyed by RAS and IP with the expected username. Matching Accounting-Start adopts the reservation; a later reject releases a pending allocation; and unadopted reservations are expired after five minutes as RADIUS traffic continues. The implementation uses the existing pool's free/used queue semantics and adds no schema/table. Tests cover pending adoption, expiry, username mismatch and production Access-Request context. This remains partial until live NAS integration, concurrency stress and crash behavior are tested.
+
+Do not mark the current batch verified until the latest CI run finishes. Python-only runs in the preceding intermediate commits exposed fixture/expectation issues, which were corrected in subsequent commits; full CI also intermittently failed during GitHub Actions container initialization.
