@@ -495,3 +495,7 @@ A source re-check of `IBSng/core/ras/rases/mvts.py::killUser` found that A1.24 b
 ## Accounting identity namespace parity — 2026-10-17
 
 The native accounting identity resolver now checks both A1.24 namespaces: `normal_users.normal_username` and `voip_users.voip_username`. This is separate from Access-Request authentication. Only a unique user ID is accepted; missing or cross-user ambiguous names fail closed so usage is not charged to an arbitrary account. Regression tests cover VoIP-only names, missing identities, collisions, and runtime delegation. CI for commit `8168619ba1334a8e4819977d1eae92abb7d18084` is running. Durable session/timer recovery and the remaining provider-specific termination paths remain incomplete.
+
+## Accounting identity CI follow-up — 2026-10-17
+
+The first CI run after the accounting namespace change caught one stale unit-test fixture: a generic Mock dynamically exposed `accounting_user_id`, so the resolver correctly selected it instead of the legacy fallback the test intended to exercise. The fixture now explicitly sets that optional method to None; production code was not weakened to accommodate the mock. Fix commit: `c2cbb216a22502c7d415552bc9b18db220dcd2ad`. The fix needs a fresh full CI run before this checkpoint can be marked green.
