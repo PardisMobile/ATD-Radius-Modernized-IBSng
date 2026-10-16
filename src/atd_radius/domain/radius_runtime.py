@@ -102,6 +102,14 @@ class SessionRegistry:
         )
         self._sessions[key]=state; return state
     @_registry_locked
+    def restore(self, state: SessionState) -> bool:
+        """Restore a persisted active session without overwriting live state."""
+        if state.key in self._sessions:
+            return False
+        self._sessions[state.key] = state
+        return True
+
+    @_registry_locked
     def get(self,key): return self._sessions.get(key)
     @_registry_locked
     def update(self,key,input_octets,output_octets):
