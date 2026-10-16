@@ -413,3 +413,19 @@ def test_failed_provider_termination_clears_pending_marker_for_retry(monkeypatch
         assert session.termination_requested_at is None
     finally:
         handler.close()
+
+
+
+def test_accounting_identity_resolver_uses_native_voip_username_lookup():
+    from atd_radius.application.radius_runtime import NativeAccountingIdentityResolver
+
+    class Users:
+        def accounting_user_id(self, username):
+            assert username == "sip-alice"
+            return 17
+
+        def get_authentication_record(self, _username):
+            raise AssertionError("normal-only lookup must not shadow VoIP identity")
+
+    resolver = NativeAccountingIdentityResolver(Users(), Mock())
+    assert resolver.user_id("sip-alice") == 17
