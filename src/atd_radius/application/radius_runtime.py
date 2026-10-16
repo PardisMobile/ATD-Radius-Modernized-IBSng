@@ -55,6 +55,9 @@ class IPPoolSessionManager:
         self.pools = pools
         self.ras = ras
 
+    def expire_pending(self) -> int:
+        return self.pools.expire_pending()
+
     def accounting_start(self, event, ras_id: int) -> None:
         ip = event.remote_ip
         if not ip:
@@ -63,7 +66,19 @@ class IPPoolSessionManager:
         if ras_record is None:
             return
         pool_id = self.pools.find_pool(ras_record.ippool_ids, ip)
-        if pool_id is not None:
+        if pool_id is None:
+            return
+        reservation = self.pools.consume_pending(ras_id, ip, event.username)
+        if reservation is False:
+            # Do not adopt an address reserved for a different login. The
+            # pending lease will expire normally and the mismatch is visible
+            # in logs rather than silently transferring ownership.
+            logging.getLogger(__name__).warning(
+                "Ignoring Accounting-Start for IP %s on RAS %s: pending lease belongs to another username",
+                ip, ras_id,
+            )
+            return
+        if reservation is None:
             self.pools.ensure_claimed(pool_id, ip)
 
     def accounting_stop(self, event, ras_id: int) -> None:
@@ -72,6 +87,7 @@ class IPPoolSessionManager:
     def release_ip(self, ras_id: int, ip: str | None) -> None:
         if not ip:
             return
+        self.pools.release_pending(ras_id, ip)
         ras_record = self.ras.get(ras_id)
         if ras_record is None:
             return
@@ -205,7 +221,18 @@ class RadiusRuntimeHandler:
                             elif event.status.value == "Stop":
                                 self.ip_pool_sessions.accounting_stop(event, ras_id)
                 return result.response
-        return self.dispatcher.access(packet, source_ip=peer[0])
+        if self.ip_pool_sessions:
+            self.ip_pool_sessions.expire_pending()
+        response = self.dispatcher.access(packet, source_ip=peer[0])
+        if self.ip_pool_sessions and response.code is RadiusCode.ACCESS_REJECT:
+            # A later policy may reject after an IP allocation policy ran.
+            # Release only an explicitly pending allocation; never release an
+            # already adopted active-session lease through this path.
+            ras_record = self.identities.ras.get_by_ip(peer[0])
+            ip = response.attributes.get("Framed-IP-Address")
+            if ras_record is not None and ip:
+                self.ip_pool_sessions.pools.release_pending(ras_record.ras_id, str(ip))
+        return response
 
 
 class NativeRadiusRuntimeState:
