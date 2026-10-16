@@ -422,11 +422,8 @@ class NativeRadiusPacketHandler:
             # key used by live Accounting (port, h323_conf_id, call_id, etc.).
             # Only providers with no source-defined key fall back to the
             # standard Acct-Session-Id.
-            session_id = provider_session_id(
-                ras.ras_type,
-                details,
-                provider_service_for_ras(ras.ras_type),
-            )
+            service = provider_service_for_accounting(ras.ras_type, details)
+            session_id = provider_session_id(ras.ras_type, details, service)
             if not session_id:
                 self._logger.warning(
                     "Skipping open connection_log %s without a source-resolvable session identity",
@@ -454,8 +451,7 @@ class NativeRadiusPacketHandler:
                 output_octets=output_octets,
                 started_at=record.login_time,
                 ras_multi_login_allowed=ras_allows_multi_login(
-                    ras.ras_type, ras.all_attributes(),
-                    provider_service_for_ras(ras.ras_type),
+                    ras.ras_type, ras.all_attributes(), service,
                 ),
             )
             if not self.state.sessions.restore(state):

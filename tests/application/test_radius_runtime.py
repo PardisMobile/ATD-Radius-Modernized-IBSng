@@ -779,6 +779,41 @@ def test_recovery_uses_provider_defined_voip_call_identity():
 
 
 
+def test_recovery_uses_cisco_voip_packet_discriminator_for_session_identity():
+    from datetime import datetime
+    from unittest.mock import Mock
+    from atd_radius.application.radius_runtime import NativeRadiusPacketHandler, NativeRadiusRuntimeState
+    from atd_radius.domain.radius_runtime import SessionKey
+
+    now = datetime(2026, 10, 17, 10, 0, 0)
+    conn = Mock()
+    conn.execute.return_value.fetchall.return_value = [
+        (203, 8, None, now, None, True, 2, 4, "Acct-Session-Id", "acct-203"),
+        (203, 8, None, now, None, True, 2, 4, "H323-Conf-ID", "cisco-call-203"),
+        (203, 8, None, now, None, True, 2, 4, "NAS-Port", "17"),
+        (203, 8, None, now, None, True, 2, 4, "User-Name", "voip-login"),
+    ]
+    ras = Mock()
+    ras.ras_type = "Cisco"
+    ras.ippool_ids = ()
+    ras.all_attributes.return_value = {}
+    ras_registry = Mock()
+    ras_registry.get.return_value = ras
+    pools = Mock()
+    state = NativeRadiusRuntimeState()
+    handler = NativeRadiusPacketHandler.__new__(NativeRadiusPacketHandler)
+    handler.state = state
+    handler._logger = Mock()
+    charge = Mock()
+
+    handler._recover_open_sessions(conn, charge, ras_registry, pools)
+
+    restored = state.sessions.get(SessionKey(8, 4, "cisco-call-203"))
+    assert restored is not None
+    assert restored.attributes["NAS-Port"] == "17"
+    charge.start.assert_called_once()
+
+
 def test_production_access_context_marks_allocated_address_as_pending():
     from atd_radius.domain.ip_pool import IPPoolRuntimeRegistry
     from atd_radius.domain.ras import RAS

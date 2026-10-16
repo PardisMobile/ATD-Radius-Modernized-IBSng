@@ -547,3 +547,6 @@ Live Accounting now passes the resolved RAS service family into `provider_sessio
 ## Cisco dual-service Accounting dispatch — 2026-10-17
 
 A direct trace of `IBSng/core/ras/rases/cisco.py::__isInternetPacket` and `handleRadAcctPacket` showed Cisco is a dual-service RAS: A1.24 selects Internet only when `Framed-Protocol == PPP`; otherwise the packet enters the VoIP branch, where H.323 call-type/origin checks apply. Added a dedicated accounting service resolver for Cisco and used it before resolving provider session identity. Regression coverage checks both PPP/Internet and H.323/VoIP classification, including the VoIP call-ID key. This is the source-defined packet dispatch boundary, not complete Cisco accounting/termination parity.
+
+
+Restart recovery now applies the same Cisco Accounting packet discriminator as the live path when selecting the provider session key. A recovered Cisco VoIP connection log containing both H.323 call ID and NAS-Port is restored under the H.323 call identity, avoiding a mismatch between live and post-restart session keys.

@@ -216,3 +216,6 @@ The live Accounting path now supplies the resolved service family to provider id
 ## Cisco dual-service Accounting routing — 2026-10-17
 
 Service selection for Cisco Accounting now follows the A1.24 packet discriminator (`Framed-Protocol == PPP` → Internet; otherwise VoIP branch) instead of incorrectly treating all Cisco packets as Internet because of the RAS type alone. The resolved service is then passed into provider identity selection, so Cisco VoIP uses the H.323 call identity. Tests cover the source discriminator and runtime session identity. Full Cisco accounting, call-type/origin filtering and RAS interoperability remain open.
+
+
+Restart recovery uses the same service-aware provider identity resolver as live Accounting, including Cisco's source-defined H.323 identity for VoIP rows. Regression coverage verifies Cisco VoIP recovery when the record also contains a NAS-Port value.
