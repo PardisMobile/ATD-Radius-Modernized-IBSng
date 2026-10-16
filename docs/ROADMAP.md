@@ -342,3 +342,7 @@ The production packet handler now owns the recurring scheduler and triggers rech
 ## MVTS source-identity correction — 2026-10-15
 
 A source re-check of `IBSng/core/ras/rases/mvts.py::killUser` found that A1.24 builds Disconnect-Request `User-Name` from the user's `voip_username` attribute, not necessarily the inbound RADIUS `User-Name`/normal IBSng login. The production VoIP termination path now resolves `voip_users.voip_username` through the native user repository in the same fresh transaction and uses it for MVTS; a missing VoIP credential fails closed as a permanent configuration gap instead of sending a disconnect for the wrong identity. Regression coverage verifies the provider sees the source-required username. This is a targeted parity correction, not full provider or restart-recovery completion.
+
+## Accounting identity namespace parity — 2026-10-17
+
+The native accounting identity resolver now checks both A1.24 namespaces: `normal_users.normal_username` and `voip_users.voip_username`. This is separate from Access-Request authentication. Only a unique user ID is accepted; missing or cross-user ambiguous names fail closed so usage is not charged to an arbitrary account. Regression tests cover VoIP-only names, missing identities, collisions, and runtime delegation. CI for commit `8168619ba1334a8e4819977d1eae92abb7d18084` is running. Durable session/timer recovery and the remaining provider-specific termination paths remain incomplete.
