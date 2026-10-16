@@ -18,7 +18,7 @@ from atd_radius.domain.user_policies import AuthenticationPolicy, LockPolicy, Mu
 from atd_radius.domain.ras import RASRuntimeRegistry
 from atd_radius.domain.ip_pool import IPPoolRuntimeRegistry
 from atd_radius.domain.ip_pool_policy import IPPoolAllocationPolicy
-from atd_radius.domain.radius_runtime import SessionKey, SessionRegistry
+from atd_radius.domain.radius_runtime import SessionKey, SessionRegistry, SessionState
 from atd_radius.domain.ras_provider import provider_session_id, provider_service_for_ras
 from atd_radius.domain.user_policies import ras_allows_multi_login
 from atd_radius.infrastructure.accounting_persistence import NativeAccountingPersistence
@@ -216,6 +216,7 @@ class NativeRadiusRuntimeState:
         self.ras: RASRuntimeRegistry | None = None
         self.pools: IPPoolRuntimeRegistry | None = None
         self.type_defaults = type_defaults
+        self.sessions_recovered = False
 
     def initialize(self, ras_repository, pool_repository) -> None:
         self.ras = build_ras_runtime(ras_repository, self.type_defaults)
@@ -352,6 +353,83 @@ class NativeRadiusPacketHandler:
                     current.termination_requested_at = None
             raise
 
+    def _recover_open_sessions(self, conn, charge, ras_registry, pools) -> None:
+        """Rehydrate open native connection_log rows once after process startup.
+
+        This deliberately uses the existing A1.24 connection_log/details tables.
+        Charging baselines are restarted at recovery time because the legacy
+        schema does not persist the in-memory rule-transition accumulator; prior
+        counters and the original login timestamp are retained for accounting
+        and MultiLogin views.
+        """
+        if self.state.sessions_recovered:
+            return
+        repository = ConnectionLogRepository(conn)
+        recovered = 0
+        now = datetime.now().astimezone()
+        for record in repository.list_open():
+            if record.user_id is None or record.ras_id is None:
+                self._logger.warning(
+                    "Skipping open connection_log %s without user/RAS identity",
+                    record.connection_log_id,
+                )
+                continue
+            ras = ras_registry.get(record.ras_id)
+            if ras is None:
+                self._logger.warning(
+                    "Skipping open connection_log %s because RAS %s is unavailable",
+                    record.connection_log_id, record.ras_id,
+                )
+                continue
+            details = dict(record.details)
+            session_id = details.get("Acct-Session-Id", "").strip()
+            if not session_id:
+                self._logger.warning(
+                    "Skipping open connection_log %s without Acct-Session-Id",
+                    record.connection_log_id,
+                )
+                continue
+            try:
+                input_octets = max(0, int(details.get("Acct-Input-Octets", "0") or "0"))
+                output_octets = max(0, int(details.get("Acct-Output-Octets", "0") or "0"))
+            except (TypeError, ValueError):
+                self._logger.warning(
+                    "Skipping open connection_log %s with invalid octet counters",
+                    record.connection_log_id,
+                )
+                continue
+            key = SessionKey(record.user_id, record.ras_id, session_id)
+            attrs = {str(name): str(value) for name, value in details.items()}
+            attrs["__connection_log_id"] = str(record.connection_log_id)
+            state = SessionState(
+                key=key,
+                attributes=attrs,
+                started=True,
+                stopped=False,
+                input_octets=input_octets,
+                output_octets=output_octets,
+                started_at=record.login_time,
+                ras_multi_login_allowed=ras_allows_multi_login(
+                    ras.ras_type, ras.all_attributes(),
+                    provider_service_for_ras(ras.ras_type),
+                ),
+            )
+            if not self.state.sessions.restore(state):
+                continue
+            port = attrs.get("NAS-Port") or attrs.get("NAS-Port-Id")
+            # Rebuild the current charge/rule baseline from native policy tables.
+            # Historical accrued rule transitions cannot be reconstructed from
+            # connection_log alone, so we never fabricate an old accumulator.
+            charge.start(state, now, record.ras_id, port)
+            ip = attrs.get("Framed-IP-Address")
+            if ip:
+                pool_id = pools.find_pool(ras.ippool_ids, ip)
+                if pool_id is not None:
+                    pools.ensure_claimed(pool_id, ip)
+            recovered += 1
+        self.state.sessions_recovered = True
+        self._logger.info("Recovered %s open native RADIUS sessions", recovered)
+
     def __call__(self, packet: RadiusPacket, peer: tuple[str, int]) -> RadiusPacket:
         with self.connection_factory() as conn:
             if self.state.ras is None or self.state.pools is None:
@@ -375,6 +453,7 @@ class NativeRadiusPacketHandler:
                 PostgresVoipTariffRepository(conn), credits,
             )
             charge = UserChargeSettlement(users, internet_charge, voip_charge)
+            self._recover_open_sessions(conn, charge, ras, pools)
             accounting = AccountingSessionService(self.state.sessions, persistence, charge)
             dispatcher = build_radius_dispatcher(
                 users,
