@@ -675,9 +675,14 @@ def test_recovery_uses_provider_defined_voip_call_identity():
     handler.state = state
     handler._logger = Mock()
     charge = Mock()
+    charge.start.side_effect = lambda session, *_: (
+        setattr(session, "charge_id", 12),
+        setattr(session, "charge_kind", "voip"),
+    )
 
-    handler._recover_open_sessions(conn, charge, ras_registry, pools)
+    recovered_voip_users = handler._recover_open_sessions(conn, charge, ras_registry, pools)
 
+    assert recovered_voip_users == {8}
     restored = state.sessions.get(SessionKey(8, 4, "call-202"))
     assert restored is not None
     assert restored.attributes["Acct-Session-Id"] == "acct-202"
