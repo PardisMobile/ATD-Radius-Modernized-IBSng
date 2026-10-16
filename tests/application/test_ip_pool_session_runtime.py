@@ -50,10 +50,12 @@ def runtime():
 def test_accounting_start_adopts_access_allocated_ip_and_stop_releases_it():
     pools, ras = runtime()
     pools.allocate(1)
+    pools.mark_pending(7, 1, "192.0.2.10", "alice", ttl_seconds=30)
     manager = IPPoolSessionManager(pools, ras)
 
     start = SimpleNamespace(remote_ip="192.0.2.10", username="alice")
     manager.accounting_start(start, 7)
+    assert (7, "192.0.2.10") not in pools.pending_leases()
     assert pools.get(1).used_ips == ("192.0.2.10",)
 
     stop = SimpleNamespace(remote_ip="192.0.2.10")
