@@ -683,3 +683,44 @@ def test_recovery_uses_provider_defined_voip_call_identity():
     assert restored.attributes["Acct-Session-Id"] == "acct-202"
     assert restored.attributes["H323-conf-id"] == "call-202"
     charge.start.assert_called_once()
+
+
+
+def test_production_access_context_marks_allocated_address_as_pending():
+    from atd_radius.domain.ip_pool import IPPoolRuntimeRegistry
+    from atd_radius.domain.ras import RAS
+    from atd_radius.infrastructure.ip_pool_repository import IPPoolRecord
+
+    class PoolRepo:
+        def list(self):
+            return [IPPoolRecord(1, "pool-a", None)]
+        def get(self, pool_id):
+            return IPPoolRecord(1, "pool-a", None) if pool_id == 1 else None
+        def list_addresses(self, pool_id):
+            return ("192.0.2.20",)
+
+    users = Mock()
+    users.get_authentication_record.return_value = (7, "secret", False)
+    users.attributes.return_value = []
+    ras = Mock()
+    ras.get_by_ip.return_value = RAS(
+        3, "192.0.2.1", "router", "Mikrotik", "secret", ippool_ids=(1,)
+    )
+    ras.attributes.return_value = []
+    pools = IPPoolRuntimeRegistry(PoolRepo())
+    pools.reload()
+    dispatcher = build_radius_dispatcher(users, ras=ras, ip_pools=pools)
+
+    response = dispatcher.access(
+        RadiusPacket(
+            RadiusCode.ACCESS_REQUEST,
+            6,
+            {"User-Name": "alice", "User-Password": "secret"},
+            b"0123456789abcdef",
+        ),
+        source_ip="192.0.2.1",
+    )
+
+    assert response.code is RadiusCode.ACCESS_ACCEPT
+    assert pools.pending_leases()[(3, "192.0.2.20")][1] == "alice"
+    assert pools.get(1).used_ips == ("192.0.2.20",)
