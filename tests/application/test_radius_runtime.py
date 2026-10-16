@@ -6,6 +6,7 @@ from atd_radius.domain.radius import RadiusCode, RadiusPacket
 
 def test_native_identity_resolver_maps_user_and_ras():
     users = Mock()
+    users.accounting_user_id = None  # Exercise the legacy-repository fallback.
     users.get_authentication_record.return_value = (7, "secret", False)
     ras = Mock()
     ras.get_by_ip.return_value = Mock(ras_id=3)
