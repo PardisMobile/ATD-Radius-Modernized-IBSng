@@ -99,7 +99,6 @@ def test_access_reject_releases_only_the_pending_pool_reservation():
     )
     sessions = AccountingSessionService(Mock())
     identities = Mock()
-    identities.ras = ras
     identities.ras.get_by_ip.return_value = ras.get_by_ip("192.0.2.1")
     handler = RadiusRuntimeHandler(
         dispatcher, sessions, identities,
