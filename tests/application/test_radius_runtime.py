@@ -455,6 +455,9 @@ def test_voip_limit_planner_uses_source_local_clock(monkeypatch):
     from atd_radius.domain.ras import RAS
 
     observed = {}
+    expected_local = datetime(
+        2026, 10, 17, 12, 0, tzinfo=timezone(timedelta(hours=5, minutes=30))
+    ).astimezone()
 
     class FixedDateTime:
         @classmethod
@@ -500,9 +503,7 @@ def test_voip_limit_planner_uses_source_local_clock(monkeypatch):
     monkeypatch.setattr(radius_runtime, "VoipChargeSettlement", FakeSettlement)
     try:
         handler._check_voip_limits(7)
-        assert observed["when"].hour == 6
-        assert observed["when"].minute == 30
-        assert observed["when"].utcoffset() == timedelta(0)
+        assert observed["when"] == expected_local
     finally:
         handler.close()
 
