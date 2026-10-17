@@ -952,7 +952,7 @@ def test_runtime_tracks_successful_cisco_voip_authorization_and_consumes_on_star
     ras = Mock()
     ras.ras_id = 3
     ras.ras_type = "Cisco"
-    ras.all_attributes.return_value = {"cisco_voip_username_length": 8}
+    ras.all_attributes.return_value = {"cisco_voip_username_length": 5}
     identities.ras.get_by_ip.return_value = ras
     identities.ras.get.return_value = ras
     identities.ras_id.return_value = 3
