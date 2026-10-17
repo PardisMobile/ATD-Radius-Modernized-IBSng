@@ -121,6 +121,7 @@ class RadiusRuntimeHandler:
         ip_pool_sessions: IPPoolSessionManager | None = None,
         bandwidth_snapshots: PostgresBandwidthSnapshotRepository | None = None,
         cisco_voip_auth_h323_ids: dict[int, set[str]] | None = None,
+        cisco_online_status: dict[int, dict[str, dict[str, object]]] | None = None,
     ) -> None:
         self.dispatcher = dispatcher
         self.accounting_sessions = (
@@ -136,8 +137,48 @@ class RadiusRuntimeHandler:
         self.cisco_voip_auth_h323_ids = (
             cisco_voip_auth_h323_ids if cisco_voip_auth_h323_ids is not None else {}
         )
+        self.cisco_online_status = cisco_online_status if cisco_online_status is not None else {}
         if self.dispatcher.session_control is None:
             self.dispatcher.session_control = RegistrySessionControl(accounting_sessions.registry)
+
+    def _record_cisco_online_status(
+        self, ras_id: int, service: str, event: AccountingEvent,
+        session_id: str | None, username: str,
+    ) -> None:
+        """Mirror CiscoRas's process-local online tracker without billing Alive packets."""
+        if not session_id:
+            return
+        sessions = self.cisco_online_status.setdefault(ras_id, {})
+        now = event.observed_at.timestamp()
+        if service == "internet":
+            if event.status is AccountingStatus.START:
+                sessions[session_id] = {
+                    "username": username, "last_update": now,
+                    "in_bytes": 0, "out_bytes": 0,
+                }
+            elif event.status in (AccountingStatus.STOP, AccountingStatus.ALIVE):
+                current = sessions.get(session_id)
+                if current is None or current.get("username") != username:
+                    return
+                current["last_update"] = now
+                if "Acct-Output-Octets" in event.attributes:
+                    current["in_bytes"] = event.attributes["Acct-Output-Octets"]
+                if "Acct-Input-Octets" in event.attributes:
+                    current["out_bytes"] = event.attributes["Acct-Input-Octets"]
+            return
+        call_leg_is_voip_originate = provider_accounting_should_apply(
+            "Cisco", "voip", "Start", event.attributes
+        )
+        if not call_leg_is_voip_originate:
+            return
+        if event.status is AccountingStatus.START:
+            sessions[session_id] = {"username": username, "last_update": now}
+        elif event.status is AccountingStatus.ALIVE:
+            current = sessions.get(session_id)
+            if current is not None:
+                current["last_update"] = now
+        elif event.status is AccountingStatus.STOP:
+            sessions.pop(session_id, None)
 
     def __call__(self, packet: RadiusPacket, peer: tuple[str, int]) -> RadiusPacket:
         if self.ip_pool_sessions:
@@ -204,26 +245,41 @@ class RadiusRuntimeHandler:
                         # Reject source-inapplicable Cisco call legs before user
                         # lookup or any charging/session side effect.
                         auth_ids = self.cisco_voip_auth_h323_ids.get(ras_id, set())
-                        if not provider_accounting_should_apply(
-                            ras_record.ras_type, service, event.status.value,
-                            event.attributes, auth_ids,
-                        ):
-                            return result.response
                         session_id = provider_session_id(
                             ras_record.ras_type, event.attributes, service
                         )
-                        if (
-                            normalize_ras_type(ras_record.ras_type) == "cisco"
-                            and service == "voip"
-                            and event.status is AccountingStatus.START
-                            and session_id is not None
-                        ):
-                            # CiscoRas.__voipAcctStart consumes this ID from the
-                            # authorization-without-accounting list before VOIP_UPDATE.
-                            auth_ids.discard(session_id)
                         username = provider_accounting_username(
                             ras_record.ras_type, service, event.username, ras_attributes
                         )
+                        should_apply = provider_accounting_should_apply(
+                            ras_record.ras_type, service, event.status.value,
+                            event.attributes, auth_ids,
+                        )
+                        if normalize_ras_type(ras_record.ras_type) == "cisco":
+                            if event.status is AccountingStatus.ALIVE:
+                                # The source updates only Cisco's online tracker for
+                                # Alive; no native charge/session update is dispatched.
+                                if (
+                                    service == "internet"
+                                    or provider_accounting_should_apply(
+                                        "Cisco", "voip", "Start", event.attributes
+                                    )
+                                ):
+                                    self._record_cisco_online_status(
+                                        ras_id, service, event, session_id, username
+                                    )
+                                return result.response
+                            if not should_apply:
+                                return result.response
+                            self._record_cisco_online_status(
+                                ras_id, service, event, session_id, username
+                            )
+                            if service == "voip" and event.status is AccountingStatus.START and session_id:
+                                # CiscoRas.__voipAcctStart consumes this ID from the
+                                # authorization-without-accounting list before VOIP_UPDATE.
+                                auth_ids.discard(session_id)
+                        elif not should_apply:
+                            return result.response
                         ras_allowed = ras_allows_multi_login(
                             ras_record.ras_type, ras_attributes, service
                         )
@@ -299,6 +355,7 @@ class NativeRadiusRuntimeState:
         self.type_defaults = type_defaults
         self.sessions_recovered = False
         self.cisco_voip_auth_h323_ids: dict[int, set[str]] = {}
+        self.cisco_online_status: dict[int, dict[str, dict[str, object]]] = {}
 
     def initialize(self, ras_repository, pool_repository) -> None:
         self.ras = build_ras_runtime(ras_repository, self.type_defaults)
@@ -562,6 +619,7 @@ class NativeRadiusPacketHandler:
                 ip_pool_sessions=IPPoolSessionManager(pools, ras),
                 bandwidth_snapshots=PostgresBandwidthSnapshotRepository(conn),
                 cisco_voip_auth_h323_ids=self.state.cisco_voip_auth_h323_ids,
+                cisco_online_status=self.state.cisco_online_status,
             )
             response = handler(packet, peer)
             if packet.code is RadiusCode.ACCOUNTING_REQUEST:

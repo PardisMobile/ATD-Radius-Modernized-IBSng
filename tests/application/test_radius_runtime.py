@@ -1000,3 +1000,55 @@ def test_runtime_tracks_successful_cisco_voip_authorization_and_consumes_on_star
     )
     identities.user_id.assert_called_with("alice")
     sessions.apply.assert_called_once()
+
+
+
+def test_cisco_voip_alive_updates_only_provider_online_tracker():
+    from datetime import datetime, timezone
+    from atd_radius.application.radius_runtime import RadiusRuntimeHandler
+    from atd_radius.domain.accounting_lifecycle import AccountingEvent, AccountingStatus
+    from atd_radius.domain.radius_dispatch import DispatchResult
+    from atd_radius.domain.radius_runtime import SessionRegistry
+
+    dispatcher = Mock()
+    event = AccountingEvent(
+        AccountingStatus.ALIVE, "aliceSecret", "acct-1",
+        observed_at=datetime(2026, 10, 17, 10, 0, tzinfo=timezone.utc),
+        attributes={
+            "H323-conf-id": "H323-conf-id=call-1",
+            "H323-call-type": "H323-call-type=VoIP",
+            "H323-call-origin": "H323-call-origin=originate",
+        },
+    )
+    dispatcher.accounting.return_value = DispatchResult(
+        RadiusPacket(RadiusCode.ACCOUNTING_RESPONSE, 3, {}, b"0123456789abcdef"), event
+    )
+    sessions = Mock()
+    sessions.registry = SessionRegistry()
+    identities = Mock()
+    identities.ras_id.return_value = 4
+    identities.user_id.return_value = 7
+    ras = Mock()
+    ras.ras_type = "Cisco"
+    ras.all_attributes.return_value = {"cisco_voip_username_length": 8}
+    identities.ras.get.return_value = ras
+    online = {4: {"call-1": {"username": "alice", "last_update": 1.0}}}
+    handler = RadiusRuntimeHandler(
+        dispatcher, sessions, identities, cisco_online_status=online
+    )
+    handler(
+        RadiusPacket(
+            RadiusCode.ACCOUNTING_REQUEST, 3,
+            {
+                "Acct-Status-Type": "Alive",
+                "User-Name": "aliceSecret",
+                "H323-conf-id": "H323-conf-id=call-1",
+                "H323-call-type": "H323-call-type=VoIP",
+                "H323-call-origin": "H323-call-origin=originate",
+            },
+            b"0123456789abcdef",
+        ),
+        ("192.0.2.1", 1812),
+    )
+    sessions.apply.assert_not_called()
+    assert online[4]["call-1"]["last_update"] == event.observed_at.timestamp()

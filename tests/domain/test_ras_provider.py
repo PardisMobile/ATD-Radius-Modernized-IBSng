@@ -254,3 +254,19 @@ def test_cisco_telephony_answer_stop_requires_successful_pre_auth_membership():
     assert not provider_accounting_should_apply(
         "Cisco", "voip", "Stop", attrs, {"different-call"}
     )
+
+
+
+def test_cisco_alive_never_enters_normal_accounting_lifecycle():
+    from atd_radius.domain.ras_provider import provider_accounting_should_apply
+
+    assert not provider_accounting_should_apply(
+        "Cisco", "internet", "Alive", {"Framed-Protocol": "PPP"}
+    )
+    assert not provider_accounting_should_apply(
+        "Cisco", "voip", "Alive",
+        {
+            "H323-call-type": "H323-call-type=VoIP",
+            "H323-call-origin": "H323-call-origin=originate",
+        },
+    )

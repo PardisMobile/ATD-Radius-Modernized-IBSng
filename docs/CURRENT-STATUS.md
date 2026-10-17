@@ -575,3 +575,8 @@ The Accounting runtime now resolves Cisco RAS and service context before user id
 ## Cisco pre-authorization state parity — 2026-10-17
 
 The runtime now tracks successful Cisco VoIP authorization conference IDs in process-local state. This enables the source-specific Telephony/answer Stop branch only for previously authorized calls, and a normal VoIP/originate Start consumes the corresponding ID. This closes the previous fail-closed gap without broadening acceptance to arbitrary answer-leg packets.
+
+
+## Cisco Alive handling parity — 2026-10-17
+
+Cisco Internet and VoIP Alive packets no longer enter the normal AccountingSessionService lifecycle. They update only the provider's process-local online tracker according to the source's username/port or H.323 call-leg checks. Start/Stop remain on the charge/session path where A1.24 dispatches user actions.

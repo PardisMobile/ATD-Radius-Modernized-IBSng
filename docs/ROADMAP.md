@@ -363,3 +363,6 @@ Validation for code checkpoint `23858795ed6f70a19bb2bfc66c790c7d66e81b92`: Pytho
 ## Cisco Telephony/answer Accounting-Stop branch
 
 The Cisco VoIP pre-auth H.323 ID list from A1.24 is now modeled as process-local runtime state: successful Authorization records the ID, VoIP/originate Start consumes it, and Telephony/answer Stop requires membership. It intentionally resets on process restart to match the source's in-memory list. Python and full CI validation for this increment must be checked before marking complete.
+
+
+Cisco Accounting Alive packets are now provider-tracker-only, not normal charge/session updates. The runtime keeps Cisco port/H.323 online metadata in memory, with username checks for Internet tracker updates and valid VoIP/originate gating. Validate with the current Python and full CI workflows before considering this checkpoint verified.

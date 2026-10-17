@@ -298,8 +298,14 @@ def provider_accounting_should_apply(
     Cisco VoIP Alive only refreshes the RAS's in-memory online tracker in A1.24
     and must not trigger a charge-lifecycle update here.
     """
-    if normalize_ras_type(ras_type) != "cisco" or service != "voip":
+    if normalize_ras_type(ras_type) != "cisco":
         return True
+    # CiscoRas handles Alive packets only in its own online tracker; they do
+    # not invoke INTERNET_UPDATE / VOIP_UPDATE user accounting actions.
+    if status == "Alive":
+        return False
+    if service != "voip":
+        return status in {"Start", "Stop"}
 
     call_type = _h323_value(attributes, ("H323-call-type",)) or ""
     call_origin = _h323_value(attributes, ("H323-call-origin",)) or ""
@@ -312,8 +318,6 @@ def provider_accounting_should_apply(
     ):
         conf_id = _h323_value(attributes, _ID_ATTRIBUTES["h323_conf_id"])
         return conf_id is not None and conf_id in authorized_h323_ids
-    if status == "Alive":
-        return False
     return False
 
 
