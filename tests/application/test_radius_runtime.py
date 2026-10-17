@@ -954,6 +954,7 @@ def test_runtime_tracks_successful_cisco_voip_authorization_and_consumes_on_star
     ras.ras_type = "Cisco"
     ras.all_attributes.return_value = {"cisco_voip_username_length": 8}
     identities.ras.get_by_ip.return_value = ras
+    identities.ras.get.return_value = ras
     identities.ras_id.return_value = 3
     identities.user_id.return_value = 7
     auth_ids = {}
@@ -1000,6 +1001,37 @@ def test_runtime_tracks_successful_cisco_voip_authorization_and_consumes_on_star
     )
     identities.user_id.assert_called_with("alice")
     sessions.apply.assert_called_once()
+
+    # A real VoIP/originate Start consumes the pre-auth ID, exactly as
+    # CiscoRas.__voipAcctStart does before dispatching VOIP_UPDATE.
+    start_event = AccountingEvent(
+        AccountingStatus.START, "aliceSecret", "acct-start",
+        attributes={
+            "H323-conf-id": "H323-conf-id=auth-call-1",
+            "H323-call-type": "H323-call-type=VoIP",
+            "H323-call-origin": "H323-call-origin=originate",
+        },
+    )
+    dispatcher.accounting.return_value = DispatchResult(
+        RadiusPacket(RadiusCode.ACCOUNTING_RESPONSE, 4, {}, b"0123456789abcdef"),
+        start_event,
+    )
+    handler(
+        RadiusPacket(
+            RadiusCode.ACCOUNTING_REQUEST, 4,
+            {
+                "Acct-Status-Type": "Start",
+                "User-Name": "aliceSecret",
+                "H323-conf-id": "H323-conf-id=auth-call-1",
+                "H323-call-type": "H323-call-type=VoIP",
+                "H323-call-origin": "H323-call-origin=originate",
+            },
+            b"0123456789abcdef",
+        ),
+        ("192.0.2.1", 1812),
+    )
+    assert auth_ids == {3: set()}
+    assert identities.user_id.call_args_list[-1].args == ("alice",)
 
 
 
