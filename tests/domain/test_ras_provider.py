@@ -236,3 +236,21 @@ def test_cisco_voip_accounting_username_uses_configured_prefix_length():
         "Cisco", "internet", "voipuserSecret", {"cisco_voip_username_length": 8}
     ) == "voipuserSecret"
     assert provider_accounting_username("MVTS", "voip", "alice") == "alice"
+
+
+
+def test_cisco_telephony_answer_stop_requires_successful_pre_auth_membership():
+    from atd_radius.domain.ras_provider import provider_accounting_should_apply
+
+    attrs = {
+        "H323-call-type": ["H323-call-type=Telephony"],
+        "H323-call-origin": ["H323-call-origin=answer"],
+        "H323-conf-id": ["H323-conf-id=auth-call-1"],
+    }
+    assert not provider_accounting_should_apply("Cisco", "voip", "Stop", attrs)
+    assert provider_accounting_should_apply(
+        "Cisco", "voip", "Stop", attrs, {"auth-call-1"}
+    )
+    assert not provider_accounting_should_apply(
+        "Cisco", "voip", "Stop", attrs, {"different-call"}
+    )

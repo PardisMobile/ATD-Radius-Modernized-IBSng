@@ -358,3 +358,8 @@ Added a source audit at `docs/A1.24-CISCO-ACCOUNTING-AUDIT.md` tracing `CiscoRas
 The live Accounting path and restart recovery now share Cisco's A1.24 service discriminator and H.323 call identity. Cisco VoIP Start/Stop are gated on `H323-call-type == VoIP` and `H323-call-origin == originate`; VoIP Alive is not routed through charge/session settlement. The `Telephony/answer` Stop branch remains unsupported until the pre-auth H.323 ID list is modeled. Scalar list-shaped Accounting attributes are normalized before provider selection and persistence.
 
 Validation for code checkpoint `23858795ed6f70a19bb2bfc66c790c7d66e81b92`: Python-only CI passed **863 passed, 8 skipped, 2 warnings** (run [38982271980](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38982271980)). Full CI run [38982272049](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38982272049) had Python 3.11 fail during container initialization; Python 3.12 was still running at this checkpoint. This is not marked full-CI verified until the remaining matrix result is known. Cisco device interoperability and the explicit pre-auth H.323 state remain open.
+
+
+## Cisco Telephony/answer Accounting-Stop branch
+
+The Cisco VoIP pre-auth H.323 ID list from A1.24 is now modeled as process-local runtime state: successful Authorization records the ID, VoIP/originate Start consumes it, and Telephony/answer Stop requires membership. It intentionally resets on process restart to match the source's in-memory list. Python and full CI validation for this increment must be checked before marking complete.

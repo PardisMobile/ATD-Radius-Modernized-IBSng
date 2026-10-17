@@ -288,12 +288,13 @@ def provider_accounting_should_apply(
     service: str,
     status: str,
     attributes: Mapping[str, object],
+    authorized_h323_ids=(),
 ) -> bool:
     """Apply only Cisco Accounting branches that A1.24 dispatches to user actions.
 
-    Cisco's VoIP branch requires a VoIP/originate leg for Start and Stop.
-    Telephony/answer Stop additionally requires membership in Cisco's
-    pre-auth H.323 ID list; ATD does not yet model that list, so it fails closed.
+    Cisco's VoIP branch requires a VoIP/originate leg for normal Start/Stop.
+    Telephony/answer Stop is allowed only for a conference ID recorded after
+    successful authorization, matching CiscoRas.voip_auth_h323ids in A1.24.
     Cisco VoIP Alive only refreshes the RAS's in-memory online tracker in A1.24
     and must not trigger a charge-lifecycle update here.
     """
@@ -302,8 +303,15 @@ def provider_accounting_should_apply(
 
     call_type = _h323_value(attributes, ("H323-call-type",)) or ""
     call_origin = _h323_value(attributes, ("H323-call-origin",)) or ""
-    if status in {"Start", "Stop"}:
-        return call_type == "VoIP" and call_origin == "originate"
+    if status in {"Start", "Stop"} and call_type == "VoIP" and call_origin == "originate":
+        return True
+    if (
+        status == "Stop"
+        and call_type == "Telephony"
+        and call_origin == "answer"
+    ):
+        conf_id = _h323_value(attributes, _ID_ATTRIBUTES["h323_conf_id"])
+        return conf_id is not None and conf_id in authorized_h323_ids
     if status == "Alive":
         return False
     return False

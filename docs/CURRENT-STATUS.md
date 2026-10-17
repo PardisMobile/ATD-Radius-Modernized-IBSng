@@ -570,3 +570,8 @@ The provider identity resolver now decodes Cisco-style H.323 name=value values b
 ## Cisco VoIP accounting username resolution — 2026-10-17
 
 The Accounting runtime now resolves Cisco RAS and service context before user identity lookup. For Cisco VoIP Start/Stop legs accepted by the source call-leg guard, it splits the concatenated User-Name using cisco_voip_username_length (default 8) before resolving the native VoIP user. This fixes the namespace mismatch where A1.24's Cisco packet contains username+password but native voip_users are keyed by voip_username. Internet and other RAS paths remain unchanged.
+
+
+## Cisco pre-authorization state parity — 2026-10-17
+
+The runtime now tracks successful Cisco VoIP authorization conference IDs in process-local state. This enables the source-specific Telephony/answer Stop branch only for previously authorized calls, and a normal VoIP/originate Start consumes the corresponding ID. This closes the previous fail-closed gap without broadening acceptance to arbitrary answer-leg packets.

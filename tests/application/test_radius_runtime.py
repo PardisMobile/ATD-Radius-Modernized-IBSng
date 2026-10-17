@@ -933,3 +933,70 @@ def test_production_access_context_marks_allocated_address_as_pending():
     assert response.code is RadiusCode.ACCESS_ACCEPT
     assert pools.pending_leases()[(3, "192.0.2.20")][1] == "alice"
     assert pools.get(1).used_ips == ("192.0.2.20",)
+
+
+
+def test_runtime_tracks_successful_cisco_voip_authorization_and_consumes_on_start():
+    from atd_radius.application.radius_runtime import RadiusRuntimeHandler
+    from atd_radius.domain.accounting_lifecycle import AccountingEvent, AccountingStatus
+    from atd_radius.domain.radius_dispatch import DispatchResult
+    from atd_radius.domain.radius_runtime import SessionRegistry
+
+    dispatcher = Mock()
+    dispatcher.access.return_value = RadiusPacket(
+        RadiusCode.ACCESS_ACCEPT, 1, {}, b"0123456789abcdef"
+    )
+    sessions = Mock()
+    sessions.registry = SessionRegistry()
+    identities = Mock()
+    ras = Mock()
+    ras.ras_id = 3
+    ras.ras_type = "Cisco"
+    ras.all_attributes.return_value = {"cisco_voip_username_length": 8}
+    identities.ras.get_by_ip.return_value = ras
+    identities.ras_id.return_value = 3
+    identities.user_id.return_value = 7
+    auth_ids = {}
+    handler = RadiusRuntimeHandler(
+        dispatcher, sessions, identities, cisco_voip_auth_h323_ids=auth_ids
+    )
+    auth_packet = RadiusPacket(
+        RadiusCode.ACCESS_REQUEST, 1,
+        {
+            "User-Name": "aliceSecret",
+            "Called-Station-Id": "12345",
+            "H323-conf-id": ["H323-conf-id=auth-call-1"],
+        },
+        b"0123456789abcdef",
+    )
+    handler(auth_packet, ("192.0.2.1", 1812))
+    assert auth_ids == {3: {"auth-call-1"}}
+
+    event = AccountingEvent(
+        AccountingStatus.STOP, "aliceSecret", "acct-stop",
+        attributes={
+            "H323-conf-id": "H323-conf-id=auth-call-1",
+            "H323-call-type": "H323-call-type=Telephony",
+            "H323-call-origin": "H323-call-origin=answer",
+        },
+    )
+    dispatcher.accounting.return_value = DispatchResult(
+        RadiusPacket(RadiusCode.ACCOUNTING_RESPONSE, 2, {}, b"0123456789abcdef"),
+        event,
+    )
+    handler(
+        RadiusPacket(
+            RadiusCode.ACCOUNTING_REQUEST, 2,
+            {
+                "Acct-Status-Type": "Stop",
+                "User-Name": "aliceSecret",
+                "H323-conf-id": "H323-conf-id=auth-call-1",
+                "H323-call-type": "H323-call-type=Telephony",
+                "H323-call-origin": "H323-call-origin=answer",
+            },
+            b"0123456789abcdef",
+        ),
+        ("192.0.2.1", 1812),
+    )
+    identities.user_id.assert_called_with("alice")
+    sessions.apply.assert_called_once()

@@ -20,6 +20,7 @@ from atd_radius.domain.ip_pool import IPPoolRuntimeRegistry
 from atd_radius.domain.ip_pool_policy import IPPoolAllocationPolicy
 from atd_radius.domain.radius_runtime import SessionKey, SessionRegistry, SessionState
 from atd_radius.domain.ras_provider import (
+    normalize_ras_type,
     provider_accounting_should_apply,
     provider_session_id,
     provider_service_for_accounting,
@@ -119,6 +120,7 @@ class RadiusRuntimeHandler:
         persistence=None,
         ip_pool_sessions: IPPoolSessionManager | None = None,
         bandwidth_snapshots: PostgresBandwidthSnapshotRepository | None = None,
+        cisco_voip_auth_h323_ids: dict[int, set[str]] | None = None,
     ) -> None:
         self.dispatcher = dispatcher
         self.accounting_sessions = (
@@ -129,6 +131,11 @@ class RadiusRuntimeHandler:
         self.identities = identities
         self.ip_pool_sessions = ip_pool_sessions
         self.bandwidth_snapshots = bandwidth_snapshots
+        # A1.24 keeps successful Cisco VoIP authorization IDs in RAS-local
+        # memory until a VoIP Accounting Start consumes them.
+        self.cisco_voip_auth_h323_ids = (
+            cisco_voip_auth_h323_ids if cisco_voip_auth_h323_ids is not None else {}
+        )
         if self.dispatcher.session_control is None:
             self.dispatcher.session_control = RegistrySessionControl(accounting_sessions.registry)
 
@@ -196,14 +203,24 @@ class RadiusRuntimeHandler:
                         )
                         # Reject source-inapplicable Cisco call legs before user
                         # lookup or any charging/session side effect.
+                        auth_ids = self.cisco_voip_auth_h323_ids.get(ras_id, set())
                         if not provider_accounting_should_apply(
                             ras_record.ras_type, service, event.status.value,
-                            event.attributes,
+                            event.attributes, auth_ids,
                         ):
                             return result.response
                         session_id = provider_session_id(
                             ras_record.ras_type, event.attributes, service
                         )
+                        if (
+                            normalize_ras_type(ras_record.ras_type) == "cisco"
+                            and service == "voip"
+                            and event.status is AccountingStatus.START
+                            and session_id is not None
+                        ):
+                            # CiscoRas.__voipAcctStart consumes this ID from the
+                            # authorization-without-accounting list before VOIP_UPDATE.
+                            auth_ids.discard(session_id)
                         username = provider_accounting_username(
                             ras_record.ras_type, service, event.username, ras_attributes
                         )
@@ -249,6 +266,18 @@ class RadiusRuntimeHandler:
                                 self.ip_pool_sessions.accounting_stop(event, ras_id)
                 return result.response
         response = self.dispatcher.access(packet, source_ip=peer[0])
+        # CiscoRas._postAuth records the H.323 ID only after a successful
+        # VOIP_AUTHORIZE (Called-Station-Id present); this is process-local
+        # source state and deliberately is not persisted across a RAS restart.
+        if response.code is RadiusCode.ACCESS_ACCEPT and "Called-Station-Id" in packet.attributes:
+            ras_registry = getattr(self.identities, "ras", None)
+            ras_record = ras_registry.get_by_ip(peer[0]) if ras_registry is not None else None
+            if ras_record is not None:
+                service = provider_service_for_accounting(ras_record.ras_type, packet.attributes)
+                if normalize_ras_type(ras_record.ras_type) == "cisco" and service == "voip":
+                    conf_id = provider_session_id("Cisco", packet.attributes, "voip")
+                    if conf_id:
+                        self.cisco_voip_auth_h323_ids.setdefault(ras_record.ras_id, set()).add(conf_id)
         if self.ip_pool_sessions and response.code is RadiusCode.ACCESS_REJECT:
             # A later policy may reject after an IP allocation policy ran.
             # Release only an explicitly pending allocation; never release an
@@ -269,6 +298,7 @@ class NativeRadiusRuntimeState:
         self.pools: IPPoolRuntimeRegistry | None = None
         self.type_defaults = type_defaults
         self.sessions_recovered = False
+        self.cisco_voip_auth_h323_ids: dict[int, set[str]] = {}
 
     def initialize(self, ras_repository, pool_repository) -> None:
         self.ras = build_ras_runtime(ras_repository, self.type_defaults)
@@ -531,6 +561,7 @@ class NativeRadiusPacketHandler:
                 identities,
                 ip_pool_sessions=IPPoolSessionManager(pools, ras),
                 bandwidth_snapshots=PostgresBandwidthSnapshotRepository(conn),
+                cisco_voip_auth_h323_ids=self.state.cisco_voip_auth_h323_ids,
             )
             response = handler(packet, peer)
             if packet.code is RadiusCode.ACCOUNTING_REQUEST:
