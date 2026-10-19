@@ -588,3 +588,6 @@ Cisco session identity now fails closed when its source-defined key is absent: V
 
 
 Cisco restart recovery now has an integration regression asserting that a VoIP row with Acct-Session-Id and NAS-Port but no H.323 conference ID is skipped rather than restored under a false identity.
+
+
+Follow-up regression confirmed that the generic H.323 alias list also included Acct-Session-Id for other providers. Cisco now uses a dedicated alias subset so an Accounting session ID cannot masquerade as a Cisco H.323 conference ID.

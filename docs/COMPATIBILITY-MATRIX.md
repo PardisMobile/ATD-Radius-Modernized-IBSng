@@ -233,3 +233,6 @@ Cisco identity handling follows the native A1.24 packet representation: Internet
 
 
 Cisco provider session identity is strict to A1.24 source keys. Internet requires Cisco-NAS-Port or the NAS-Port-Type + NAS-Port composition; VoIP requires H.323 conference ID. If those are absent, runtime identity resolution returns no session key instead of falling back to Acct-Session-Id or an unrelated port.
+
+
+Cisco VoIP's strict identity extraction uses only Cisco-supported H.323 conference-ID aliases. The generic Acct-Session-Id fallback remains available to provider profiles whose A1.24 implementation defines it, but is excluded from Cisco's branch.

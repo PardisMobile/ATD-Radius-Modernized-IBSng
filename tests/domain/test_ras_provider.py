@@ -282,3 +282,11 @@ def test_cisco_session_identity_fails_closed_when_source_identity_is_missing():
     assert provider_session_id(
         "Cisco", {"Acct-Session-Id": ["acct-1"]}, service="internet"
     ) is None
+
+
+def test_cisco_voip_does_not_treat_acct_session_id_as_h323_conf_id():
+    assert provider_session_id(
+        "Cisco",
+        {"Acct-Session-Id": ["acct-1"], "NAS-Port": ["17"]},
+        service="voip",
+    ) is None

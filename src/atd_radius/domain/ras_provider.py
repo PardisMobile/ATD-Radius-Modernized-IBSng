@@ -351,8 +351,8 @@ def provider_session_id(ras_type: str | None, attributes: Mapping[str, object], 
     """Return the A1.24 provider online identity when the source defines one.
 
     Cisco Internet IDs use Cisco-NAS-Port or NAS-Port-Type + NAS-Port;
-    Cisco VoIP IDs use the decoded H.323 conference ID. Standard
-    Acct-Session-Id is only a safe fallback when the source key is absent.
+    Cisco VoIP IDs use only the decoded H.323 conference ID; Cisco does not
+    fall back to Acct-Session-Id when its provider-defined key is absent.
     """
     profile = provider_profile(ras_type)
     if profile is None:
@@ -360,7 +360,10 @@ def provider_session_id(ras_type: str | None, attributes: Mapping[str, object], 
     if profile.name == "cisco" and service == "voip":
         # CiscoRas's VoIP branch keys online calls only by H.323 conference ID;
         # a NAS-Port or Acct-Session-Id is not an interchangeable identity.
-        return _h323_value(attributes, _ID_ATTRIBUTES["h323_conf_id"])
+        return _h323_value(
+            attributes,
+            ("h323-conf-id", "H323-conf-id", "H323-Conf-ID", "Quintum-h323-conf-id"),
+        )
     if profile.name == "cisco" and service != "voip":
         port = _first_scalar(attributes, "Cisco-NAS-Port")
         if port:
