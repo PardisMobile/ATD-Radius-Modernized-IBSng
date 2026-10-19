@@ -366,3 +366,6 @@ The Cisco VoIP pre-auth H.323 ID list from A1.24 is now modeled as process-local
 
 
 Cisco Accounting Alive packets are now provider-tracker-only, not normal charge/session updates. The runtime keeps Cisco port/H.323 online metadata in memory, with username checks for Internet tracker updates and valid VoIP/originate gating. Validate with the current Python and full CI workflows before considering this checkpoint verified.
+
+
+Cisco source-identity recovery coverage now asserts that missing H.323 conference IDs do not fall back to Acct-Session-Id or NAS-Port. This protects against recovering a Cisco VoIP connection under an identity that the source RAS would not use.

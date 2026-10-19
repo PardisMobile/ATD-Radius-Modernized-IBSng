@@ -585,3 +585,6 @@ Cisco Internet and VoIP Alive packets no longer enter the normal AccountingSessi
 ## Cisco missing-identity safety — 2026-10-19
 
 Cisco session identity now fails closed when its source-defined key is absent: VoIP requires H.323 conference ID; Internet requires Cisco-NAS-Port or NAS-Port-Type + NAS-Port. Generic Acct-Session-Id is no longer used as an accidental fallback for Cisco. Regression coverage protects both service branches.
+
+
+Cisco restart recovery now has an integration regression asserting that a VoIP row with Acct-Session-Id and NAS-Port but no H.323 conference ID is skipped rather than restored under a false identity.

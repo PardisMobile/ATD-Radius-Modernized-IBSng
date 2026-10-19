@@ -1084,3 +1084,35 @@ def test_cisco_voip_alive_updates_only_provider_online_tracker():
     )
     sessions.apply.assert_not_called()
     assert online[4]["call-1"]["last_update"] == event.observed_at.timestamp()
+
+def test_recovery_skips_cisco_voip_row_without_h323_identity_even_if_nas_port_exists():
+    from datetime import datetime
+    from unittest.mock import Mock
+    from atd_radius.application.radius_runtime import NativeRadiusPacketHandler, NativeRadiusRuntimeState
+    from atd_radius.domain.radius_runtime import SessionKey
+
+    now = datetime(2026, 10, 19, 10, 0, 0)
+    conn = Mock()
+    conn.execute.return_value.fetchall.return_value = [
+        (204, 8, None, now, None, True, 2, 4, "Acct-Session-Id", "acct-204"),
+        (204, 8, None, now, None, True, 2, 4, "NAS-Port", "17"),
+        (204, 8, None, now, None, True, 2, 4, "User-Name", "voip-login"),
+    ]
+    ras = Mock()
+    ras.ras_type = "Cisco"
+    ras.ippool_ids = ()
+    ras.all_attributes.return_value = {}
+    ras_registry = Mock()
+    ras_registry.get.return_value = ras
+    pools = Mock()
+    state = NativeRadiusRuntimeState()
+    handler = NativeRadiusPacketHandler.__new__(NativeRadiusPacketHandler)
+    handler.state = state
+    handler._logger = Mock()
+    charge = Mock()
+
+    handler._recover_open_sessions(conn, charge, ras_registry, pools)
+
+    assert state.sessions.active() == ()
+    charge.start.assert_not_called()
+
