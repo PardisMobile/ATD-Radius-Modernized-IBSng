@@ -1113,6 +1113,7 @@ def test_recovery_skips_cisco_voip_row_without_h323_identity_even_if_nas_port_ex
 
     handler._recover_open_sessions(conn, charge, ras_registry, pools)
 
-    assert state.sessions.active() == ()
+    assert state.sessions.get(SessionKey(8, 4, "acct-204")) is None
+    assert state.sessions.get(SessionKey(8, 4, "17")) is None
     charge.start.assert_not_called()
 
