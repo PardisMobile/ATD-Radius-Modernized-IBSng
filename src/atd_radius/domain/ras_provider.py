@@ -358,9 +358,9 @@ def provider_session_id(ras_type: str | None, attributes: Mapping[str, object], 
     if profile is None:
         return _first_scalar(attributes, "Acct-Session-Id")
     if profile.name == "cisco" and service == "voip":
-        value = _h323_value(attributes, _ID_ATTRIBUTES["h323_conf_id"])
-        if value is not None:
-            return value
+        # CiscoRas's VoIP branch keys online calls only by H.323 conference ID;
+        # a NAS-Port or Acct-Session-Id is not an interchangeable identity.
+        return _h323_value(attributes, _ID_ATTRIBUTES["h323_conf_id"])
     if profile.name == "cisco" and service != "voip":
         port = _first_scalar(attributes, "Cisco-NAS-Port")
         if port:
@@ -374,6 +374,8 @@ def provider_session_id(ras_type: str | None, attributes: Mapping[str, object], 
         port_number = _first_scalar(attributes, "NAS-Port")
         if port_type is not None and port_number is not None:
             return port_type + port_number
+        # A1.24 does not substitute Acct-Session-Id for Cisco's port identity.
+        return None
     if profile.name == "bsae":
         raw = _first_scalar(attributes, "User-Name")
         if raw is not None:

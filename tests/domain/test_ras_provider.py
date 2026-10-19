@@ -270,3 +270,15 @@ def test_cisco_alive_never_enters_normal_accounting_lifecycle():
             "H323-call-origin": "H323-call-origin=originate",
         },
     )
+
+
+
+def test_cisco_session_identity_fails_closed_when_source_identity_is_missing():
+    # Cisco VoIP is keyed by H.323 conference ID, never NAS-Port or Acct-Session-Id.
+    assert provider_session_id(
+        "Cisco", {"NAS-Port": ["17"], "Acct-Session-Id": ["acct-1"]}, service="voip"
+    ) is None
+    # Cisco Internet is keyed by Cisco-NAS-Port or NAS-Port-Type + NAS-Port.
+    assert provider_session_id(
+        "Cisco", {"Acct-Session-Id": ["acct-1"]}, service="internet"
+    ) is None

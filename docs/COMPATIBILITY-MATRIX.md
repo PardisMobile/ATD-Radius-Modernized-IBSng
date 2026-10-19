@@ -230,3 +230,6 @@ Cisco VoIP accounting now applies source-derived call-type/origin guards for Sta
 
 
 Cisco identity handling follows the native A1.24 packet representation: Internet uses Cisco-NAS-Port or NAS-Port-Type plus NAS-Port; VoIP H.323 IDs and call-leg discriminators strip the legacy name=value prefix. This correction is scoped to identity/discriminator normalization and does not claim full Cisco RAS parity.
+
+
+Cisco provider session identity is strict to A1.24 source keys. Internet requires Cisco-NAS-Port or the NAS-Port-Type + NAS-Port composition; VoIP requires H.323 conference ID. If those are absent, runtime identity resolution returns no session key instead of falling back to Acct-Session-Id or an unrelated port.

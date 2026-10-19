@@ -580,3 +580,8 @@ The runtime now tracks successful Cisco VoIP authorization conference IDs in pro
 ## Cisco Alive handling parity — 2026-10-17
 
 Cisco Internet and VoIP Alive packets no longer enter the normal AccountingSessionService lifecycle. They update only the provider's process-local online tracker according to the source's username/port or H.323 call-leg checks. Start/Stop remain on the charge/session path where A1.24 dispatches user actions.
+
+
+## Cisco missing-identity safety — 2026-10-19
+
+Cisco session identity now fails closed when its source-defined key is absent: VoIP requires H.323 conference ID; Internet requires Cisco-NAS-Port or NAS-Port-Type + NAS-Port. Generic Acct-Session-Id is no longer used as an accidental fallback for Cisco. Regression coverage protects both service branches.
