@@ -178,9 +178,12 @@ def test_chillispot_still_requires_valid_response_authenticator():
         )
 
 
+_DEFAULT_EXTERNAL_RESULT = object()
+
+
 class FakeExternalTerminationService:
-    def __init__(self, result=None):
-        if result is None:
+    def __init__(self, result=_DEFAULT_EXTERNAL_RESULT):
+        if result is _DEFAULT_EXTERNAL_RESULT:
             result = (SimpleNamespace(error_status=0),)
         self.result = result
         self.calls = []
