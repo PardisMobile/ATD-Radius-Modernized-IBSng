@@ -616,3 +616,8 @@ A follow-up correctness increment closes a false-success gap in RAS termination.
 ## GnuGk status-port termination — source-traced, command-delivery only
 
 Canonical source: `IBSng/core/ras/rases/gnugk.py::GnuGKRas.killUser`. A1.24 only opens the status-port connection when `gnugk_multiple_login` is enabled, defaults `gnugk_status_port` to 7000, waits for a semicolon prompt, sends `disconnectalias <voip_username>`, then sends `exit`. ATD now executes that exact sequence through a bounded TCP connection, requires the source-defined VoIP alias, rejects control characters, validates the port, and fails closed if the prompt is absent/oversized or the transport errors. Tests cover command order, custom port, gate-off behavior, missing identity, invalid port, command injection and prompt failure. A completed write is not proof that the remote call disappeared; independent session verification and live GnuGk interoperability remain open.
+
+
+## GnuGk runtime identity integration
+
+The production limit-enforcement callback now resolves the native `voip_username` from the user repository before calling the GnuGk adapter, rather than assuming the RADIUS/IBSng login is the Gatekeeper alias. MVTS retains its source-specific User-Name override. A runtime regression verifies the GnuGk session keeps the original inbound User-Name while passing the database-resolved alias separately as `voip_username`.
