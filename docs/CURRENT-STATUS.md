@@ -601,3 +601,8 @@ Commit 8a0e4ddd2aadfb42d66c0e4ee762b1c60cc9a85f passed full CI on Python 3.11 an
 ## Source-backed VoIP termination wiring — 2026-10-19
 
 SourceRASDisconnectClient now delegates Cisco's configured SNMP/RSH kill branch to the existing audited application service and wires the existing PortMaster and Total Control SNMP request builders into the production termination entry point. Provider-specific defaults and source session keys are used; unsupported Cisco RSH port forms fail closed. This expands the automatic VoIP limit-enforcement path, not full provider termination parity. CI must be checked for the current commit.
+
+
+## Production VoIP termination increment — 2026-10-19
+
+PortSlave and PPPD are now connected to the automatic VoIP limit-enforcement termination path using their A1.24-configured `portslave_kill_port_command` / `pppd_kill_port_command` and exact `(RAS-IP, port)` argument order. Launcher success is accepted only when `succeeded is True`; failures are surfaced as permanent termination errors and are not recorded as successful kills. Regression tests cover both providers and failure results. This code increment requires full CI verification before being treated as verified. Remaining provider termination mechanisms and restart-safe enforcement remain open.

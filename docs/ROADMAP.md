@@ -379,3 +379,8 @@ Full CI for commit 8a0e4ddd2aadfb42d66c0e4ee762b1c60cc9a85f passed on both Pytho
 ## Production termination expansion — Cisco, PortMaster, Total Control
 
 The production VoIP termination client now invokes source-audited external operation builders for Cisco (SNMP default, configured RSH alternative), PortMaster (ifIndex = NAS port + 2, IF-MIB admin-down), and Total Control (ordered interface down/up SETs). These are reachable from the existing limit-check loop rather than only isolated application use cases. Unsupported providers remain fail-closed. Validation is pending for the current commit.
+
+
+## Next provider-enforcement increment — 2026-10-19
+
+Added production VoIP termination wiring for the source-defined PortSlave and PPPD configured-launcher branches. This uses the existing shell-free bounded launcher transport, native command attribute names, exact `(RAS-IP, port)` argument order, and explicit successful-exit validation. Regression coverage includes both provider dispatches and failed launcher outcomes. Full CI is required before marking this slice verified; live provider interoperability and the remaining provider-specific kill mechanisms are still open.

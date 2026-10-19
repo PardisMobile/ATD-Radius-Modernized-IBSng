@@ -16,7 +16,12 @@ from atd_radius.domain.radius_codec import (
 from atd_radius.domain.radius_runtime import SessionState
 from atd_radius.domain.ras import RAS
 from atd_radius.application.ras_disconnect import RASDisconnectApplicationService
-from atd_radius.domain.ras_external import build_portmaster_disconnect_request, build_total_control_disconnect_request
+from atd_radius.domain.ras_external import (
+    build_portmaster_disconnect_request,
+    build_pppd_disconnect_request,
+    build_portslave_disconnect_request,
+    build_total_control_disconnect_request,
+)
 
 
 class RASTerminationError(RuntimeError):
@@ -136,6 +141,31 @@ class SourceRASDisconnectClient:
                     retries=int(attrs.get("tc_snmp_retries", 3)),
                 )
                 self._external_service.execute_request(request)
+                return True
+
+            if provider == "portslave":
+                request = build_portslave_disconnect_request(
+                    command=str(attrs.get("portslave_kill_port_command", "")),
+                    ras_ip=ras.ip,
+                    port=unique_id,
+                )
+                result = self._external_service.execute_request(request)
+                if getattr(result, "succeeded", None) is not True:
+                    raise PermanentRASTerminationError(
+                        "PortSlave source launcher did not confirm successful termination"
+                    )
+                return True
+            if provider == "pppd":
+                request = build_pppd_disconnect_request(
+                    command=str(attrs.get("pppd_kill_port_command", "")),
+                    ras_ip=ras.ip,
+                    port=unique_id,
+                )
+                result = self._external_service.execute_request(request)
+                if getattr(result, "succeeded", None) is not True:
+                    raise PermanentRASTerminationError(
+                        "PPPD source launcher did not confirm successful termination"
+                    )
                 return True
         except (TypeError, ValueError) as exc:
             raise PermanentRASTerminationError(f"invalid {ras.ras_type} termination configuration or session identity") from exc

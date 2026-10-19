@@ -5,6 +5,7 @@ from atd_radius.domain.radius_codec import decode, encode_response
 from atd_radius.domain.radius_runtime import SessionKey, SessionState
 from atd_radius.domain.ras import RAS
 from atd_radius.infrastructure.ras_termination import (
+    PermanentRASTerminationError,
     RASTerminationError,
     SourceRASDisconnectClient,
     UnsupportedRASTermination,
@@ -226,3 +227,50 @@ def test_cisco_rsh_unsupported_port_is_not_reported_as_success():
     ras = make_ras("Cisco", attributes={"cisco_kill_use_snmp": "0", "cisco_rsh_command": "/opt/ibs/cisco/rsh_wrapper"})
     with pytest.raises(RASTerminationError, match="does not support port"):
         client.terminate(ras, make_session(unique_id="Ethernet0/1"), "credit_finished")
+
+
+class FakeLauncherResult:
+    def __init__(self, succeeded):
+        self.succeeded = succeeded
+
+
+@pytest.mark.parametrize(
+    ("provider", "attribute", "command", "expected_provider"),
+    [
+        ("Portslave", "portslave_kill_port_command", "/opt/ibs-addons/portslave/kill", "portslave"),
+        ("pppd", "pppd_kill_port_command", "/opt/ibs-addons/pppd/kill", "pppd"),
+    ],
+)
+def test_source_launcher_termination_is_wired_to_provider_kill_command(
+    provider, attribute, command, expected_provider
+):
+    external = FakeExternalTerminationService(result=FakeLauncherResult(True))
+    ras = make_ras(provider, attributes={attribute: command})
+    session = make_session(unique_id="Async7")
+    SourceRASDisconnectClient(external_service=external).terminate(
+        ras, session, "credit_finished"
+    )
+
+    name, request = external.calls[0]
+    assert name == expected_provider
+    assert request.parameters["command"] == command
+    assert request.parameters["arguments"] == (ras.ip, "Async7")
+
+
+@pytest.mark.parametrize(
+    ("provider", "attribute", "command"),
+    [
+        ("Portslave", "portslave_kill_port_command", "/opt/ibs-addons/portslave/kill"),
+        ("pppd", "pppd_kill_port_command", "/opt/ibs-addons/pppd/kill"),
+    ],
+)
+def test_source_launcher_termination_failure_is_not_reported_as_success(
+    provider, attribute, command
+):
+    external = FakeExternalTerminationService(result=FakeLauncherResult(False))
+    ras = make_ras(provider, attributes={attribute: command})
+    with pytest.raises(PermanentRASTerminationError, match="did not confirm successful termination"):
+        SourceRASDisconnectClient(external_service=external).terminate(
+            ras, make_session(unique_id="7"), "credit_finished"
+        )
+    assert len(external.calls) == 1

@@ -241,3 +241,8 @@ Cisco VoIP's strict identity extraction uses only Cisco-supported H.323 conferen
 ## Production VoIP termination adapters
 
 Cisco's configured SNMP/RSH termination branch and PortMaster/Total Control SNMP disconnects are now wired to the production SourceRASDisconnectClient. This does not imply that all provider profiles have executable kill behavior: Asterisk/GnuGK/SER, Cisco VPDN, MikroTik, PortSlave/PPPD and other source-specific operations still require their own production wiring and integration evidence.
+
+
+## VoIP enforcement — PortSlave and PPPD launcher paths (pending CI)
+
+Source-defined `Portslave` and `pppd` `killUser` operations are wired to the bounded configured-launcher transport using the native command attributes and `(RAS-IP, port)` argument order. A failed/non-confirmed launcher result is not treated as a successful disconnect. Unit regression coverage is added; live NAS/provider interoperability remains unverified.
