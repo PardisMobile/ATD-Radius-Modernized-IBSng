@@ -232,8 +232,8 @@ class SourceRASDisconnectClient:
                     prompt.extend(chunk)
                     if len(prompt) >= 4096 and b";" not in prompt:
                         raise RASTerminationError("GnuGk status prompt exceeded 4096 bytes")
-                client.sendall(f"disconnectalias {username}\\r\\n".encode("utf-8"))
-                client.sendall(b"exit\\r\\n")
+                client.sendall(f"disconnectalias {username}\r\n".encode("utf-8"))
+                client.sendall(b"exit\r\n")
         except (OSError, TimeoutError) as exc:
             raise RASTerminationError("GnuGk status-port termination failed") from exc
     def terminate(self, ras: RAS, session: SessionState, reason: str) -> None:

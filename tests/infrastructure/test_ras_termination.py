@@ -303,7 +303,7 @@ def test_external_provider_termination_requires_transport_success(provider, attr
 
 
 class FakeGnuGkSocket:
-    def __init__(self, chunks=(b"GnuGk status;\\r\\n",)):
+    def __init__(self, chunks=(b"GnuGk status;\r\n",)):
         self.chunks = list(chunks)
         self.timeout = None
         self.sent = []
@@ -329,7 +329,7 @@ def test_gnugk_termination_uses_gated_status_port_and_voip_alias():
     def factory(address, timeout):
         holder["address"] = address
         holder["factory_timeout"] = timeout
-        holder["socket"] = FakeGnuGkSocket((b"Welcome ", b"status; prompt\\r\\n"))
+        holder["socket"] = FakeGnuGkSocket((b"Welcome ", b"status; prompt\r\n"))
         return holder["socket"]
 
     ras = make_ras("GnuGk", attributes={"gnugk_multiple_login": "1", "gnugk_status_port": "7001"})
@@ -339,7 +339,7 @@ def test_gnugk_termination_uses_gated_status_port_and_voip_alias():
     assert holder["address"] == (ras.ip, 7001)
     assert holder["factory_timeout"] == 5.0
     assert holder["socket"].timeout == 5.0
-    assert holder["socket"].sent == [b"disconnectalias sip-alice\\r\\n", b"exit\\r\\n"]
+    assert holder["socket"].sent == [b"disconnectalias sip-alice\r\n", b"exit\r\n"]
 
 
 def test_gnugk_termination_fails_closed_when_source_gate_is_disabled():
@@ -370,7 +370,7 @@ def test_gnugk_termination_rejects_missing_identity_or_invalid_port(attrs, expec
 
 def test_gnugk_termination_rejects_control_characters_in_alias():
     ras = make_ras("GnuGk", attributes={"gnugk_multiple_login": "1"})
-    session = make_session(attrs={"voip_username": "alice\\r\\nexit"})
+    session = make_session(attrs={"voip_username": "alice\r\nexit"})
     with pytest.raises(PermanentRASTerminationError, match="control characters"):
         SourceRASDisconnectClient(gnugk_socket_factory=lambda *a, **k: None).terminate(
             ras, session, "credit_finished"
