@@ -59,10 +59,12 @@ class SourceRASDisconnectClient:
         socket_factory: Callable[..., object] = socket.socket,
         identifier_factory: Callable[[], int] = lambda: secrets.randbelow(256),
         external_service: RASDisconnectApplicationService | None = None,
+        gnugk_socket_factory: Callable[..., object] = socket.create_connection,
     ) -> None:
         self._socket_factory = socket_factory
         self._identifier_factory = identifier_factory
         self._external_service = external_service or RASDisconnectApplicationService()
+        self._gnugk_socket_factory = gnugk_socket_factory
 
     @staticmethod
     def _target(ras: RAS, session: SessionState) -> _Target:
@@ -193,11 +195,55 @@ class SourceRASDisconnectClient:
             raise PermanentRASTerminationError(f"invalid {ras.ras_type} termination configuration or session identity") from exc
         return False
 
+    def _terminate_gnugk(self, ras: RAS, session: SessionState) -> None:
+        """Run A1.24 GnuGk status-port disconnectalias with bounded I/O.
+
+        A1.24 only enables this kill path when gnugk_multiple_login is true.
+        Successful writes confirm command delivery, not remote call disappearance.
+        """
+        attrs = ras.all_attributes()
+        try:
+            enabled = int(attrs.get("gnugk_multiple_login", 0)) == 1
+            port = int(attrs.get("gnugk_status_port", 7000))
+        except (TypeError, ValueError) as exc:
+            raise PermanentRASTerminationError("invalid GnuGk termination configuration") from exc
+        if not enabled:
+            raise PermanentRASTerminationError(
+                "GnuGk killUser is disabled by A1.24 when gnugk_multiple_login is false"
+            )
+        if not 1 <= port <= 65535:
+            raise PermanentRASTerminationError("invalid GnuGk status port")
+        username = str(session.attributes.get("voip_username", "")).strip()
+        if not username:
+            raise PermanentRASTerminationError(
+                "GnuGk termination requires the source-defined voip_username"
+            )
+        if any(ord(char) < 32 or ord(char) == 127 for char in username):
+            raise PermanentRASTerminationError("GnuGk voip_username contains control characters")
+
+        try:
+            with self._gnugk_socket_factory((ras.ip, port), timeout=5.0) as client:
+                client.settimeout(5.0)
+                prompt = bytearray()
+                while b";" not in prompt:
+                    chunk = client.recv(min(512, 4096 - len(prompt)))
+                    if not chunk:
+                        raise RASTerminationError("GnuGk status port closed before its prompt")
+                    prompt.extend(chunk)
+                    if len(prompt) >= 4096 and b";" not in prompt:
+                        raise RASTerminationError("GnuGk status prompt exceeded 4096 bytes")
+                client.sendall(f"disconnectalias {username}\\r\\n".encode("utf-8"))
+                client.sendall(b"exit\\r\\n")
+        except (OSError, TimeoutError) as exc:
+            raise RASTerminationError("GnuGk status-port termination failed") from exc
     def terminate(self, ras: RAS, session: SessionState, reason: str) -> None:
         """Execute a source-shaped provider termination and require success."""
         if not isinstance(reason, str) or not reason.strip():
             raise ValueError("termination reason is required")
         provider = ras.ras_type.strip().lower().replace("-", "_").replace(" ", "_")
+        if provider in {"gnugk", "gnu_gatekeeper", "gnugatekeeper"}:
+            self._terminate_gnugk(ras, session)
+            return
         if provider in {"cisco", "portmaster", "total_control", "totalcontrol", "portslave", "pppd"}:
             if self._terminate_source_snmp(ras, session):
                 return

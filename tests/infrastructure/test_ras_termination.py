@@ -300,3 +300,89 @@ def test_external_provider_termination_requires_transport_success(provider, attr
             make_session(unique_id="Async3" if provider == "Cisco" else "7"),
             "credit_finished",
         )
+
+
+class FakeGnuGkSocket:
+    def __init__(self, chunks=(b"GnuGk status;\\r\\n",)):
+        self.chunks = list(chunks)
+        self.timeout = None
+        self.sent = []
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_args):
+        return False
+
+    def settimeout(self, timeout):
+        self.timeout = timeout
+
+    def recv(self, _size):
+        return self.chunks.pop(0) if self.chunks else b""
+
+    def sendall(self, payload):
+        self.sent.append(payload)
+
+
+def test_gnugk_termination_uses_gated_status_port_and_voip_alias():
+    holder = {}
+    def factory(address, timeout):
+        holder["address"] = address
+        holder["factory_timeout"] = timeout
+        holder["socket"] = FakeGnuGkSocket((b"Welcome ", b"status; prompt\\r\\n"))
+        return holder["socket"]
+
+    ras = make_ras("GnuGk", attributes={"gnugk_multiple_login": "1", "gnugk_status_port": "7001"})
+    session = make_session("conf-1", {"User-Name": "login", "voip_username": "sip-alice"})
+    SourceRASDisconnectClient(gnugk_socket_factory=factory).terminate(ras, session, "credit_finished")
+
+    assert holder["address"] == (ras.ip, 7001)
+    assert holder["factory_timeout"] == 5.0
+    assert holder["socket"].timeout == 5.0
+    assert holder["socket"].sent == [b"disconnectalias sip-alice\\r\\n", b"exit\\r\\n"]
+
+
+def test_gnugk_termination_fails_closed_when_source_gate_is_disabled():
+    calls = []
+    client = SourceRASDisconnectClient(gnugk_socket_factory=lambda *a, **k: calls.append((a, k)))
+    ras = make_ras("GnuGk", attributes={"gnugk_multiple_login": "0"})
+    session = make_session(attrs={"voip_username": "sip-alice"})
+    with pytest.raises(PermanentRASTerminationError, match="disabled"):
+        client.terminate(ras, session, "credit_finished")
+    assert calls == []
+
+
+@pytest.mark.parametrize(
+    ("attrs", "expected"),
+    [
+        ({"gnugk_multiple_login": "1"}, "voip_username"),
+        ({"gnugk_multiple_login": "1", "gnugk_status_port": "70000"}, "status port"),
+    ],
+)
+def test_gnugk_termination_rejects_missing_identity_or_invalid_port(attrs, expected):
+    ras = make_ras("GnuGk", attributes=attrs)
+    session = make_session(attrs={"User-Name": "login"})
+    with pytest.raises(PermanentRASTerminationError, match=expected):
+        SourceRASDisconnectClient(gnugk_socket_factory=lambda *a, **k: None).terminate(
+            ras, session, "credit_finished"
+        )
+
+
+def test_gnugk_termination_rejects_control_characters_in_alias():
+    ras = make_ras("GnuGk", attributes={"gnugk_multiple_login": "1"})
+    session = make_session(attrs={"voip_username": "alice\\r\\nexit"})
+    with pytest.raises(PermanentRASTerminationError, match="control characters"):
+        SourceRASDisconnectClient(gnugk_socket_factory=lambda *a, **k: None).terminate(
+            ras, session, "credit_finished"
+        )
+
+
+def test_gnugk_termination_requires_status_prompt_before_sending_command():
+    ras = make_ras("GnuGk", attributes={"gnugk_multiple_login": "1"})
+    session = make_session(attrs={"voip_username": "sip-alice"})
+    fake = FakeGnuGkSocket((b"not a prompt", b""))
+    with pytest.raises(RASTerminationError, match="closed before its prompt"):
+        SourceRASDisconnectClient(gnugk_socket_factory=lambda *a, **k: fake).terminate(
+            ras, session, "credit_finished"
+        )
+    assert fake.sent == []

@@ -389,3 +389,8 @@ Added production VoIP termination wiring for the source-defined PortSlave and PP
 ## Provider disconnect result integrity — 2026-10-19
 
 Added strict success-result validation across the currently wired Cisco, PortMaster, Total Control, PortSlave, and PPPD termination branches. Failure-shaped SNMP responses and launcher exits are surfaced instead of being reported as successful kills. New regression tests cover these negative paths. Continue with provider-side session verification/recovery only after this commit's Python and full CI evidence is reviewed.
+
+
+## GnuGk status-port termination — source-traced, command-delivery only
+
+Canonical source: `IBSng/core/ras/rases/gnugk.py::GnuGKRas.killUser`. A1.24 only opens the status-port connection when `gnugk_multiple_login` is enabled, defaults `gnugk_status_port` to 7000, waits for a semicolon prompt, sends `disconnectalias <voip_username>`, then sends `exit`. ATD now executes that exact sequence through a bounded TCP connection, requires the source-defined VoIP alias, rejects control characters, validates the port, and fails closed if the prompt is absent/oversized or the transport errors. Tests cover command order, custom port, gate-off behavior, missing identity, invalid port, command injection and prompt failure. A completed write is not proof that the remote call disappeared; independent session verification and live GnuGk interoperability remain open.

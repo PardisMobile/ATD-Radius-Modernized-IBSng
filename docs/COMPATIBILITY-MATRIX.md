@@ -251,3 +251,8 @@ Source-defined `Portslave` and `pppd` `killUser` operations are wired to the bou
 ## RAS termination response acceptance (pending current CI)
 
 Cisco, PortMaster, Total Control, PortSlave, and PPPD termination paths now validate transport success explicitly. SNMP requires a non-empty all-success response sequence; launcher-backed paths require a successful exit; absent, empty, failed, and unrecognized results are rejected. This improves result integrity but does not yet prove that a remote session has disappeared after an accepted command.
+
+
+## GnuGk status-port termination — source-traced, command-delivery only
+
+Canonical source: `IBSng/core/ras/rases/gnugk.py::GnuGKRas.killUser`. A1.24 only opens the status-port connection when `gnugk_multiple_login` is enabled, defaults `gnugk_status_port` to 7000, waits for a semicolon prompt, sends `disconnectalias <voip_username>`, then sends `exit`. ATD now executes that exact sequence through a bounded TCP connection, requires the source-defined VoIP alias, rejects control characters, validates the port, and fails closed if the prompt is absent/oversized or the transport errors. Tests cover command order, custom port, gate-off behavior, missing identity, invalid port, command injection and prompt failure. A completed write is not proof that the remote call disappeared; independent session verification and live GnuGk interoperability remain open.
