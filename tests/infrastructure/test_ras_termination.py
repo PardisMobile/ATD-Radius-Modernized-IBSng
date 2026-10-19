@@ -370,7 +370,7 @@ def test_gnugk_termination_rejects_missing_identity_or_invalid_port(attrs, expec
 
 def test_gnugk_termination_rejects_control_characters_in_alias():
     ras = make_ras("GnuGk", attributes={"gnugk_multiple_login": "1"})
-    session = make_session(attrs={"voip_username": "alice\r\nexit"})
+    session = make_session(attrs={"voip_username": "alice" + chr(13) + chr(10) + "exit"})
     with pytest.raises(PermanentRASTerminationError, match="control characters"):
         SourceRASDisconnectClient(gnugk_socket_factory=lambda *a, **k: None).terminate(
             ras, session, "credit_finished"
