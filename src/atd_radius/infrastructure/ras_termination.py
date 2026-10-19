@@ -176,7 +176,7 @@ class SourceRASDisconnectClient:
         if not isinstance(reason, str) or not reason.strip():
             raise ValueError("termination reason is required")
         provider = ras.ras_type.strip().lower().replace("-", "_").replace(" ", "_")
-        if provider in {"cisco", "portmaster", "total_control", "totalcontrol"}:
+        if provider in {"cisco", "portmaster", "total_control", "totalcontrol", "portslave", "pppd"}:
             if self._terminate_source_snmp(ras, session):
                 return
             raise UnsupportedRASTermination(f"A1.24 {ras.ras_type!r} termination action is not implemented")
