@@ -384,3 +384,8 @@ The production VoIP termination client now invokes source-audited external opera
 ## Next provider-enforcement increment — 2026-10-19
 
 Added production VoIP termination wiring for the source-defined PortSlave and PPPD configured-launcher branches. This uses the existing shell-free bounded launcher transport, native command attribute names, exact `(RAS-IP, port)` argument order, and explicit successful-exit validation. Regression coverage includes both provider dispatches and failed launcher outcomes. Full CI is required before marking this slice verified; live provider interoperability and the remaining provider-specific kill mechanisms are still open.
+
+
+## Provider disconnect result integrity — 2026-10-19
+
+Added strict success-result validation across the currently wired Cisco, PortMaster, Total Control, PortSlave, and PPPD termination branches. Failure-shaped SNMP responses and launcher exits are surfaced instead of being reported as successful kills. New regression tests cover these negative paths. Continue with provider-side session verification/recovery only after this commit's Python and full CI evidence is reviewed.

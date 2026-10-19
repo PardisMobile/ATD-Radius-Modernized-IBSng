@@ -246,3 +246,8 @@ Cisco's configured SNMP/RSH termination branch and PortMaster/Total Control SNMP
 ## VoIP enforcement — PortSlave and PPPD launcher paths (pending CI)
 
 Source-defined `Portslave` and `pppd` `killUser` operations are wired to the bounded configured-launcher transport using the native command attributes and `(RAS-IP, port)` argument order. A failed/non-confirmed launcher result is not treated as a successful disconnect. Unit regression coverage is added; live NAS/provider interoperability remains unverified.
+
+
+## RAS termination response acceptance (pending current CI)
+
+Cisco, PortMaster, Total Control, PortSlave, and PPPD termination paths now validate transport success explicitly. SNMP requires a non-empty all-success response sequence; launcher-backed paths require a successful exit; absent, empty, failed, and unrecognized results are rejected. This improves result integrity but does not yet prove that a remote session has disappeared after an accepted command.

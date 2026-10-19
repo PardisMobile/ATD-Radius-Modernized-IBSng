@@ -606,3 +606,8 @@ SourceRASDisconnectClient now delegates Cisco's configured SNMP/RSH kill branch 
 ## Production VoIP termination increment — 2026-10-19
 
 PortSlave and PPPD are now connected to the automatic VoIP limit-enforcement termination path using their A1.24-configured `portslave_kill_port_command` / `pppd_kill_port_command` and exact `(RAS-IP, port)` argument order. Launcher success is accepted only when `succeeded is True`; failures are surfaced as permanent termination errors and are not recorded as successful kills. Regression tests cover both providers and failure results. This code increment requires full CI verification before being treated as verified. Remaining provider termination mechanisms and restart-safe enforcement remain open.
+
+
+## External termination success semantics — 2026-10-19
+
+A follow-up correctness increment closes a false-success gap in RAS termination. Provider calls no longer treat any non-`None` transport return as proof of success: launcher results must report `succeeded is True`; SNMP results must contain a non-empty sequence of zero-error responses; unknown/empty/error responses fail closed. Regression coverage includes Cisco RSH nonzero exit, Cisco and PortMaster SNMP agent errors, and an empty Total Control response sequence. Remote session disappearance is still not independently verified by a provider poll.

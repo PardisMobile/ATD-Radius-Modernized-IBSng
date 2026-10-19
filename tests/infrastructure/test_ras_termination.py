@@ -1,3 +1,5 @@
+from types import SimpleNamespace
+
 import pytest
 
 from atd_radius.domain.radius import RadiusCode, RadiusPacket
@@ -177,7 +179,9 @@ def test_chillispot_still_requires_valid_response_authenticator():
 
 
 class FakeExternalTerminationService:
-    def __init__(self, result=object()):
+    def __init__(self, result=None):
+        if result is None:
+            result = (SimpleNamespace(error_status=0),)
         self.result = result
         self.calls = []
 
@@ -274,3 +278,22 @@ def test_source_launcher_termination_failure_is_not_reported_as_success(
             ras, make_session(unique_id="7"), "credit_finished"
         )
     assert len(external.calls) == 1
+
+
+@pytest.mark.parametrize(
+    ("provider", "attributes", "result"),
+    [
+        ("Cisco", {"cisco_kill_use_snmp": "0", "cisco_rsh_command": "/opt/ibs/cisco/rsh_wrapper"}, FakeLauncherResult(False)),
+        ("Cisco", {"cisco_kill_use_snmp": "1"}, (SimpleNamespace(error_status=5),)),
+        ("PortMaster", {}, (SimpleNamespace(error_status=5),)),
+        ("Total Control", {}, ()),
+    ],
+)
+def test_external_provider_termination_requires_transport_success(provider, attributes, result):
+    external = FakeExternalTerminationService(result=result)
+    with pytest.raises(PermanentRASTerminationError, match="did not confirm successful termination"):
+        SourceRASDisconnectClient(external_service=external).terminate(
+            make_ras(provider, attributes=attributes),
+            make_session(unique_id="Async3" if provider == "Cisco" else "7"),
+            "credit_finished",
+        )

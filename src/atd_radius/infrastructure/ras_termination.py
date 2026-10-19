@@ -105,6 +105,31 @@ class SourceRASDisconnectClient:
             f"A1.24 {ras.ras_type!r} termination action is not implemented"
         )
 
+    @staticmethod
+    def _require_external_success(provider: str, result: object) -> None:
+        """Fail closed unless the concrete provider transport confirms success."""
+        message = f"{provider} source termination did not confirm successful termination"
+        if result is None:
+            raise PermanentRASTerminationError(message)
+        if isinstance(result, bool):
+            if result is True:
+                return
+            raise PermanentRASTerminationError(message)
+        succeeded = getattr(result, "succeeded", None)
+        if succeeded is not None:
+            if succeeded is True:
+                return
+            raise PermanentRASTerminationError(message)
+        if isinstance(result, (tuple, list)):
+            if result and all(getattr(response, "error_status", None) == 0 for response in result):
+                return
+            raise PermanentRASTerminationError(message)
+        if isinstance(result, dict):
+            if result.get("disconnected") is True or result.get("error_status") == 0:
+                return
+            raise PermanentRASTerminationError(message)
+        raise PermanentRASTerminationError(message)
+
     def _terminate_source_snmp(self, ras: RAS, session: SessionState) -> bool:
         """Execute provider-specific SNMP kill branches traced to A1.24."""
         attrs = ras.all_attributes()
@@ -123,6 +148,7 @@ class SourceRASDisconnectClient:
                 )
                 if result is None:
                     raise PermanentRASTerminationError(f"Cisco source termination does not support port {unique_id!r}")
+                self._require_external_success("Cisco", result)
                 return True
             if provider == "portmaster":
                 request = build_portmaster_disconnect_request(
@@ -131,7 +157,8 @@ class SourceRASDisconnectClient:
                     timeout=float(attrs.get("portmaster_snmp_timeout", 10)),
                     retries=int(attrs.get("portmaster_snmp_retries", 3)),
                 )
-                self._external_service.execute_request(request)
+                result = self._external_service.execute_request(request)
+                self._require_external_success("PortMaster", result)
                 return True
             if provider in {"total_control", "totalcontrol"}:
                 request = build_total_control_disconnect_request(
@@ -140,7 +167,8 @@ class SourceRASDisconnectClient:
                     timeout=float(attrs.get("tc_snmp_timeout", 10)),
                     retries=int(attrs.get("tc_snmp_retries", 3)),
                 )
-                self._external_service.execute_request(request)
+                result = self._external_service.execute_request(request)
+                self._require_external_success("Total Control", result)
                 return True
 
             if provider == "portslave":
@@ -150,10 +178,7 @@ class SourceRASDisconnectClient:
                     port=unique_id,
                 )
                 result = self._external_service.execute_request(request)
-                if getattr(result, "succeeded", None) is not True:
-                    raise PermanentRASTerminationError(
-                        "PortSlave source launcher did not confirm successful termination"
-                    )
+                self._require_external_success("PortSlave", result)
                 return True
             if provider == "pppd":
                 request = build_pppd_disconnect_request(
@@ -162,10 +187,7 @@ class SourceRASDisconnectClient:
                     port=unique_id,
                 )
                 result = self._external_service.execute_request(request)
-                if getattr(result, "succeeded", None) is not True:
-                    raise PermanentRASTerminationError(
-                        "PPPD source launcher did not confirm successful termination"
-                    )
+                self._require_external_success("PPPD", result)
                 return True
         except (TypeError, ValueError) as exc:
             raise PermanentRASTerminationError(f"invalid {ras.ras_type} termination configuration or session identity") from exc
