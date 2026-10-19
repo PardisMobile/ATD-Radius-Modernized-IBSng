@@ -15,6 +15,8 @@ from atd_radius.domain.radius_codec import (
 )
 from atd_radius.domain.radius_runtime import SessionState
 from atd_radius.domain.ras import RAS
+from atd_radius.application.ras_disconnect import RASDisconnectApplicationService
+from atd_radius.domain.ras_external import build_portmaster_disconnect_request, build_total_control_disconnect_request
 
 
 class RASTerminationError(RuntimeError):
@@ -51,9 +53,11 @@ class SourceRASDisconnectClient:
         *,
         socket_factory: Callable[..., object] = socket.socket,
         identifier_factory: Callable[[], int] = lambda: secrets.randbelow(256),
+        external_service: RASDisconnectApplicationService | None = None,
     ) -> None:
         self._socket_factory = socket_factory
         self._identifier_factory = identifier_factory
+        self._external_service = external_service or RASDisconnectApplicationService()
 
     @staticmethod
     def _target(ras: RAS, session: SessionState) -> _Target:
@@ -96,10 +100,56 @@ class SourceRASDisconnectClient:
             f"A1.24 {ras.ras_type!r} termination action is not implemented"
         )
 
+    def _terminate_source_snmp(self, ras: RAS, session: SessionState) -> bool:
+        """Execute provider-specific SNMP kill branches traced to A1.24."""
+        attrs = ras.all_attributes()
+        provider = ras.ras_type.strip().lower().replace("-", "_").replace(" ", "_")
+        unique_id = str(session.key.unique_id)
+        try:
+            if provider == "cisco":
+                result = self._external_service.disconnect_cisco(
+                    ras_ip=ras.ip, port=unique_id,
+                    kill_use_snmp=attrs.get("cisco_kill_use_snmp", 1),
+                    wrapper=attrs.get("cisco_rsh_command"),
+                    community=str(attrs.get("cisco_snmp_community", "public")),
+                    timeout=float(attrs.get("cisco_snmp_timeout", 10)),
+                    retries=int(attrs.get("cisco_snmp_retries", 3)),
+                    snmp_version=str(attrs.get("cisco_snmp_version", "2c")),
+                )
+                if result is None:
+                    raise PermanentRASTerminationError(f"Cisco source termination does not support port {unique_id!r}")
+                return True
+            if provider == "portmaster":
+                request = build_portmaster_disconnect_request(
+                    ras_ip=ras.ip, port=unique_id,
+                    community=str(attrs.get("portmaster_snmp_community", "public")),
+                    timeout=float(attrs.get("portmaster_snmp_timeout", 10)),
+                    retries=int(attrs.get("portmaster_snmp_retries", 3)),
+                )
+                self._external_service.execute_request(request)
+                return True
+            if provider in {"total_control", "totalcontrol"}:
+                request = build_total_control_disconnect_request(
+                    ras_ip=ras.ip, interface_index=unique_id,
+                    community=str(attrs.get("tc_snmp_community", "public")),
+                    timeout=float(attrs.get("tc_snmp_timeout", 10)),
+                    retries=int(attrs.get("tc_snmp_retries", 3)),
+                )
+                self._external_service.execute_request(request)
+                return True
+        except (TypeError, ValueError) as exc:
+            raise PermanentRASTerminationError(f"invalid {ras.ras_type} termination configuration or session identity") from exc
+        return False
+
     def terminate(self, ras: RAS, session: SessionState, reason: str) -> None:
-        """Send a source-shaped Disconnect-Request and require an authenticated ACK."""
-        if not reason.strip():
+        """Execute a source-shaped provider termination and require success."""
+        if not isinstance(reason, str) or not reason.strip():
             raise ValueError("termination reason is required")
+        provider = ras.ras_type.strip().lower().replace("-", "_").replace(" ", "_")
+        if provider in {"cisco", "portmaster", "total_control", "totalcontrol"}:
+            if self._terminate_source_snmp(ras, session):
+                return
+            raise UnsupportedRASTermination(f"A1.24 {ras.ras_type!r} termination action is not implemented")
         target = self._target(ras, session)
         request = RadiusPacket(
             RadiusCode.DISCONNECT_REQUEST,

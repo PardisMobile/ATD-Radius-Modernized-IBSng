@@ -374,3 +374,8 @@ Cisco source-identity recovery coverage now asserts that missing H.323 conferenc
 ## Verified Cisco identity checkpoint — 2026-10-19
 
 Full CI for commit 8a0e4ddd2aadfb42d66c0e4ee762b1c60cc9a85f passed on both Python versions (883 passed, 2 warnings per job). Strict provider identity is now checked by domain tests and a recovery integration regression. Next Cisco source-parity item is caller-ID / VOIP_AUTHORIZE behavior; do not treat it as implemented just because standard Cisco VoIP authentication and Accounting are covered.
+
+
+## Production termination expansion — Cisco, PortMaster, Total Control
+
+The production VoIP termination client now invokes source-audited external operation builders for Cisco (SNMP default, configured RSH alternative), PortMaster (ifIndex = NAS port + 2, IF-MIB admin-down), and Total Control (ordered interface down/up SETs). These are reachable from the existing limit-check loop rather than only isolated application use cases. Unsupported providers remain fail-closed. Validation is pending for the current commit.

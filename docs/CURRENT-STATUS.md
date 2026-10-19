@@ -596,3 +596,8 @@ Follow-up regression confirmed that the generic H.323 alias list also included A
 ## Verified checkpoint — 2026-10-19
 
 Commit 8a0e4ddd2aadfb42d66c0e4ee762b1c60cc9a85f passed full CI on Python 3.11 and 3.12 (883 passed, 2 warnings each). Strict Cisco source identity is now enforced in live Accounting and restart recovery: no H.323 ID means no Cisco VoIP session identity; no source-defined port means no Cisco Internet identity. See the matching test run and CI links in PROJECT-CONTEXT.md. Cisco caller-ID authorization remains unimplemented and intentionally fails closed.
+
+
+## Source-backed VoIP termination wiring — 2026-10-19
+
+SourceRASDisconnectClient now delegates Cisco's configured SNMP/RSH kill branch to the existing audited application service and wires the existing PortMaster and Total Control SNMP request builders into the production termination entry point. Provider-specific defaults and source session keys are used; unsupported Cisco RSH port forms fail closed. This expands the automatic VoIP limit-enforcement path, not full provider termination parity. CI must be checked for the current commit.

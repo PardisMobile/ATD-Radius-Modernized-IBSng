@@ -236,3 +236,8 @@ Cisco provider session identity is strict to A1.24 source keys. Internet require
 
 
 Cisco VoIP's strict identity extraction uses only Cisco-supported H.323 conference-ID aliases. The generic Acct-Session-Id fallback remains available to provider profiles whose A1.24 implementation defines it, but is excluded from Cisco's branch.
+
+
+## Production VoIP termination adapters
+
+Cisco's configured SNMP/RSH termination branch and PortMaster/Total Control SNMP disconnects are now wired to the production SourceRASDisconnectClient. This does not imply that all provider profiles have executable kill behavior: Asterisk/GnuGK/SER, Cisco VPDN, MikroTik, PortSlave/PPPD and other source-specific operations still require their own production wiring and integration evidence.

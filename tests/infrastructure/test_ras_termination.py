@@ -173,3 +173,56 @@ def test_chillispot_still_requires_valid_response_authenticator():
         SourceRASDisconnectClient(socket_factory=socket_factory).terminate(
             make_ras("ChilliSpot"), make_session(), "credit_finished"
         )
+
+
+class FakeExternalTerminationService:
+    def __init__(self, result=object()):
+        self.result = result
+        self.calls = []
+
+    def disconnect_cisco(self, **kwargs):
+        self.calls.append(("cisco", kwargs))
+        return self.result
+
+    def execute_request(self, request, **kwargs):
+        self.calls.append((request.provider, request))
+        return self.result
+
+
+@pytest.mark.parametrize(
+    ("provider", "unique_id", "expected_provider"),
+    [("PortMaster", "7", "portmaster"), ("Total Control", "42", "total_control")],
+)
+def test_source_snmp_termination_adapters_are_wired_into_voip_kill_path(provider, unique_id, expected_provider):
+    external = FakeExternalTerminationService()
+    client = SourceRASDisconnectClient(external_service=external)
+    ras = make_ras(provider)
+    session = make_session(unique_id=unique_id)
+    client.terminate(ras, session, "credit_finished")
+    assert len(external.calls) == 1
+    name, request = external.calls[0]
+    assert name == expected_provider
+    assert request.parameters["ras_ip"] == ras.ip
+
+
+def test_cisco_termination_uses_source_configured_snmp_branch():
+    external = FakeExternalTerminationService(result={"disconnected": True})
+    client = SourceRASDisconnectClient(external_service=external)
+    ras = make_ras("Cisco", attributes={
+        "cisco_kill_use_snmp": "1", "cisco_snmp_community": "private",
+        "cisco_snmp_timeout": "6", "cisco_snmp_retries": "2", "cisco_snmp_version": "1",
+    })
+    client.terminate(ras, make_session(unique_id="Async3"), "credit_finished")
+    name, args = external.calls[0]
+    assert name == "cisco"
+    assert args["ras_ip"] == ras.ip and args["port"] == "Async3"
+    assert args["kill_use_snmp"] == "1" and args["community"] == "private"
+    assert args["timeout"] == 6 and args["retries"] == 2 and args["snmp_version"] == "1"
+
+
+def test_cisco_rsh_unsupported_port_is_not_reported_as_success():
+    external = FakeExternalTerminationService(result=None)
+    client = SourceRASDisconnectClient(external_service=external)
+    ras = make_ras("Cisco", attributes={"cisco_kill_use_snmp": "0", "cisco_rsh_command": "/opt/ibs/cisco/rsh_wrapper"})
+    with pytest.raises(RASTerminationError, match="does not support port"):
+        client.terminate(ras, make_session(unique_id="Ethernet0/1"), "credit_finished")
