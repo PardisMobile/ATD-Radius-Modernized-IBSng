@@ -1155,6 +1155,7 @@ def test_gnugk_runtime_resolves_native_voip_username_before_termination(monkeypa
     monkeypatch.setattr(radius_runtime, "UserRepository", Users)
     try:
         handler._terminate_voip_session(key, "credit_finished")
+        assert session.termination_requested_reason == "credit_finished"
         args = terminate.call_args.args
         assert args[1].key == key
         assert args[1].attributes["User-Name"] == "ibs-login"
