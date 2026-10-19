@@ -591,3 +591,8 @@ Cisco restart recovery now has an integration regression asserting that a VoIP r
 
 
 Follow-up regression confirmed that the generic H.323 alias list also included Acct-Session-Id for other providers. Cisco now uses a dedicated alias subset so an Accounting session ID cannot masquerade as a Cisco H.323 conference ID.
+
+
+## Verified checkpoint — 2026-10-19
+
+Commit 8a0e4ddd2aadfb42d66c0e4ee762b1c60cc9a85f passed full CI on Python 3.11 and 3.12 (883 passed, 2 warnings each). Strict Cisco source identity is now enforced in live Accounting and restart recovery: no H.323 ID means no Cisco VoIP session identity; no source-defined port means no Cisco Internet identity. See the matching test run and CI links in PROJECT-CONTEXT.md. Cisco caller-ID authorization remains unimplemented and intentionally fails closed.
