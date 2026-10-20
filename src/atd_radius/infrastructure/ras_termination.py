@@ -45,11 +45,12 @@ class _Target:
 
 
 class SourceRASDisconnectClient:
-    """Execute source-traced provider termination actions with bounded transports.
+    """Execute the A1.24 Disconnect-Request paths for ChilliSpot and MVTS.
 
-    ChilliSpot/MVTS use RADIUS Disconnect-Request; Asterisk uses its gated
-    Manager Hangup action; other supported providers use source-specific
-    SNMP/RSH/launcher adapters. Unsupported providers fail closed.
+    A1.24 uses a configured endpoint and User-Name for ChilliSpot, while MVTS
+    sends to the RAS IP/authentication port with User-Name and H323-conf-id.
+    Other provider types deliberately fail closed until their SNMP/RSH/launcher/
+    telephony action has a separately source-traced implementation.
     """
 
     def __init__(
@@ -137,6 +138,29 @@ class SourceRASDisconnectClient:
         provider = ras.ras_type.strip().lower().replace("-", "_").replace(" ", "_")
         unique_id = str(session.key.unique_id)
         try:
+            if provider == "asterisk":
+                try:
+                    enabled = int(attrs.get("asterisk_use_manager", 0)) == 1
+                except (TypeError, ValueError) as exc:
+                    raise PermanentRASTerminationError("invalid Asterisk manager enable flag") from exc
+                if not enabled:
+                    raise PermanentRASTerminationError(
+                        "Asterisk killUser is disabled by A1.24 when asterisk_use_manager is false"
+                    )
+                channel_pair = str(session.attributes.get("asterisk_channel") or unique_id)
+                parts = channel_pair.split("||")
+                if len(parts) != 2 or not parts[0].strip() or not parts[1].strip():
+                    raise PermanentRASTerminationError("Asterisk termination requires source asterisk_channel as channel||unique_id")
+                result = self._external_service.disconnect_asterisk(
+                    ras_ip=ras.ip,
+                    manager_port=attrs.get("asterisk_manager_port", 5038),
+                    username=str(attrs.get("asterisk_manager_username", "asterisk")),
+                    secret=str(attrs.get("asterisk_manager_secret", "asterisk")),
+                    timeout=attrs.get("asterisk_manager_timeout", 30),
+                    channel=parts[0].strip(),
+                )
+                self._require_external_success("Asterisk", result)
+                return True
             if provider == "mikrotik":
                 username = str(session.attributes.get("normal_username", "")).strip()
                 user_ip = str(session.attributes.get("Framed-IP-Address") or session.attributes.get("remote_ip") or "").strip()
@@ -275,7 +299,7 @@ class SourceRASDisconnectClient:
         if provider in {"gnugk", "gnu_gatekeeper", "gnugatekeeper"}:
             self._terminate_gnugk(ras, session)
             return
-        if provider in {"cisco", "cisco_vpdn", "mikrotik", "portmaster", "total_control", "totalcontrol", "portslave", "pppd"}:
+        if provider in {"asterisk", "cisco", "cisco_vpdn", "mikrotik", "portmaster", "total_control", "totalcontrol", "portslave", "pppd"}:
             if self._terminate_source_snmp(ras, session):
                 return
             raise UnsupportedRASTermination(f"A1.24 {ras.ras_type!r} termination action is not implemented")
