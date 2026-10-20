@@ -664,3 +664,8 @@ Validation checkpoint: Python-only suite 916 passed / 8 skipped; full PostgreSQL
 Added ATD-owned `atd_radius_live_sessions` snapshots in migration 007. Accounting transitions persist full active runtime state in the same caller-owned transaction; recovery prefers exact snapshots (including billing accumulators and sessions without connection_log history) and falls back to legacy open native connection_log rows only where no snapshot exists. Legacy recovered rows are upgraded to snapshots. A1.24 `no_connection_log` Stop now discards the early-opened log/details rather than leaving a stale open row.
 
 This is restart recovery progress, not full multi-worker parity. Concurrent workers still need database-coordinated session ownership/mutation. Previous full CI on `9ede4ff39d81788913944385281d303e1554938c` passed 924 tests on PostgreSQL/Python 3.12 and 916 on Python-only; CI on this new session-snapshot batch must run before it is marked verified.
+
+
+## CI environment correction — 2026-10-20
+
+The session snapshot batch passes the Python-only workflow: 925 passed, 8 skipped, 2 warnings. The full PostgreSQL matrix did not reach checkout/tests on Python 3.11 because the runner's pull of `public.ecr.aws/docker/library/postgres:16` was rejected with `toomanyrequests: Data limit exceeded`; this is a registry/container initialization failure, not a test failure. The CI service image has been switched to the official Docker Hub `postgres:16-alpine` image to avoid the exhausted ECR image quota. Full CI must be rerun on this workflow change.

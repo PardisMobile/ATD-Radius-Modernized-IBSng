@@ -440,3 +440,8 @@ Validation: Python-only 916 passed, 8 skipped. The full PostgreSQL-backed Python
 The new ATD extension table `atd_radius_live_sessions` snapshots runtime session and billing state in the same transaction as Accounting mutations, restores it before native open-log fallback, supports sessions intentionally omitted from `connection_log`, and preserves accrued rule state across restart. Legacy open native log rows are restored and upgraded into snapshots. A source `no_connection_log` Stop removes the prematurely created ATD history row to prevent false recovery.
 
 Still open: multi-worker row/advisory lock coordination, lifecycle reconciliation for sessions that never send Stop, and full live provider verification. This batch is pending CI validation on its new HEAD.
+
+
+## CI reliability follow-up — 2026-10-20
+
+Python-only suite for the durable-session batch: 925 passed, 8 skipped. Full PostgreSQL CI failed before checkout because the public ECR Postgres image pull hit its data limit. The workflow now uses official Docker Hub `postgres:16-alpine`; rerun the matrix before declaring the durable-session batch fully verified.

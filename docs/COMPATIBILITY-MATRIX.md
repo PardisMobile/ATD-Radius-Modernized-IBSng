@@ -299,3 +299,8 @@ Latest validation: Python-only 916 passed / 8 skipped; full Python 3.12 + Postgr
 An ATD operational extension migration stores full active runtime session snapshots in `atd_radius_live_sessions`, without altering the native IBSng table contract. Accounting transitions persist state atomically with native billing/history writes. Restart recovery restores complete charge/rule and VoIP free-second state before falling back to open native `connection_log` rows; legacy rows are upgraded into snapshots during recovery. Active sessions using `no_connection_log` can now survive process restart without requiring a history row. Stop removes the active snapshot; a suppressed-history Stop removes the ATD early-opened history row/details.
 
 Not yet verified: multi-worker concurrency, process crash during provider termination, and live RAS interoperability. This feature requires migration 007 to be applied.
+
+
+## CI container image reliability — 2026-10-20
+
+The Python-only workflow passes with 925 passed and 8 skipped on the durable-session batch. The full matrix was blocked before checkout/tests by the public ECR Postgres image pull failing with `toomanyrequests: Data limit exceeded`. CI now pulls the official Docker Hub `postgres:16-alpine` image; matrix validation is pending.
