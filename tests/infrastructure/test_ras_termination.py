@@ -146,7 +146,7 @@ def test_unsupported_provider_fails_closed_without_sending_packets():
     called = []
     client = SourceRASDisconnectClient(socket_factory=lambda *_args: called.append(True))
     with pytest.raises(UnsupportedRASTermination):
-        client.terminate(make_ras("Mikrotik"), make_session(), "credit_finished")
+        client.terminate(make_ras("SER"), make_session(), "credit_finished")
     assert called == []
 
 
