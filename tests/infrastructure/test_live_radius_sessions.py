@@ -11,6 +11,8 @@ class Result:
         self.rows = list(rows)
     def fetchall(self):
         return self.rows
+    def fetchone(self):
+        return self.rows[0] if self.rows else None
 
 
 class Connection:
