@@ -66,5 +66,5 @@ def test_reservation_provider_excludes_only_the_current_retransmitted_request():
 
     views = session_views(SessionRegistry(), Reservations(), "current")(7)
     assert len(views) == 1
-    assert views[0].session_id == "login:prior"
+    assert views[0].unique_id == "login:prior"
     assert views[0].ras_multi_login_allowed is False
