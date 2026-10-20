@@ -101,9 +101,9 @@ class InternetChargeSettlement:
             # Preserve A1.24's current-rule transition accounting and establish
             # the current rule baseline before deriving the next event.
             self.update(state, when, ras_id, port)
-            current = next((item for item in rules if item.rule_id == state.charge_rule_id), None)
-            if current is None:
-                raise ValueError("active charge rule disappeared")
+            # update() has already applied the effective-rule transition; its
+            # selected rule is therefore the current baseline for this plan.
+            current = rule
             eligible.append(state)
             rate_per_second += current.cpm / Decimal(60) + current.cpk * Decimal(current.assumed_kps)
             earliest_rule_end = min(
