@@ -60,7 +60,7 @@ class NativeAccountingPersistence:
         """Remove an early-opened log if the source RAS suppresses session history."""
         self.repository.delete(connection_log_id)
 
-    def stop(self, connection_log_id: int, event, credit_used=None) -> None
+    def stop(self, connection_log_id: int, event, credit_used=None) -> None:
         for name, value in self._details(event).items():
             self.repository.upsert_detail(connection_log_id, name, value)
         # VoipUser.logout sets call_end_time from RAS disconnect_time before

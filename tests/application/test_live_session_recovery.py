@@ -33,6 +33,7 @@ def test_recovery_restores_durable_charge_state_before_legacy_open_log_fallback(
     handler.state = state
     handler._logger = Mock()
     conn = Mock()
+    conn.execute.return_value.fetchall.return_value = []
     ras = RAS(3, "192.0.2.3", "router", "MikroTik", "secret")
     ras_registry = Mock()
     ras_registry.get.return_value = ras
