@@ -98,8 +98,25 @@ class PostgresLiveRadiusSessionRepository:
             termination_requested_at=_date(payload.get("termination_requested_at")),
         )
 
+    def lock(self, key: SessionKey) -> None:
+        """Serialize mutations for one native session until the DB transaction ends."""
+        lock_name = f"{key.user_id}:{key.ras_id}:{key.unique_id}"
+        self.conn.execute(
+            "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))",
+            (lock_name,),
+        )
+
+    def get(self, key: SessionKey) -> SessionState | None:
+        row = self.conn.execute(
+            "SELECT state FROM atd_radius_live_sessions WHERE user_id=%s AND ras_id=%s AND unique_id=%s",
+            (key.user_id, key.ras_id, key.unique_id),
+        ).fetchone()
+        if row is None:
+            return None
+        return self._decode(key.user_id, key.ras_id, key.unique_id, row[0])
+
     def save(self, state: SessionState) -> None:
-        if not state.started or state.stopped:
+        if not state.started:
             self.delete(state.key)
             return
         self.conn.execute(
@@ -119,14 +136,17 @@ class PostgresLiveRadiusSessionRepository:
         )
 
     def list_active(self) -> list[SessionState]:
+        # Retain stopped tombstones for duplicate Accounting-Stop idempotency,
+        # but bound their lifetime to avoid unbounded operational-table growth.
+        self.conn.execute(
+            "DELETE FROM atd_radius_live_sessions WHERE state->>'stopped'='true' "
+            "AND updated_at < CURRENT_TIMESTAMP - INTERVAL '7 days'"
+        )
         rows = self.conn.execute(
             "SELECT user_id, ras_id, unique_id, state FROM atd_radius_live_sessions ORDER BY user_id, ras_id, unique_id"
         ).fetchall()
-        states = []
-        for row in rows:
-            state = self._decode(int(row[0]), int(row[1]), str(row[2]), row[3])
-            if state.started and not state.stopped:
-                states.append(state)
-            else:
-                self.delete(state.key)
-        return states
+        return [
+            state for row in rows
+            if (state := self._decode(int(row[0]), int(row[1]), str(row[2]), row[3])).started
+            and not state.stopped
+        ]

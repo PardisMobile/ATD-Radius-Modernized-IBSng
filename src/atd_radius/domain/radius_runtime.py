@@ -111,6 +111,16 @@ class SessionRegistry:
 
     @_registry_locked
     def get(self,key): return self._sessions.get(key)
+
+    @_registry_locked
+    def replace(self, state: SessionState) -> SessionState:
+        """Replace a local snapshot with the latest transaction-locked durable state."""
+        self._sessions[state.key] = state
+        return state
+
+    @_registry_locked
+    def remove(self, key: SessionKey) -> None:
+        self._sessions.pop(key, None)
     @_registry_locked
     def update(self,key,input_octets,output_octets):
         state=self._sessions[key]

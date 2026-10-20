@@ -669,3 +669,10 @@ This is restart recovery progress, not full multi-worker parity. Concurrent work
 ## CI environment correction — 2026-10-20
 
 The session snapshot batch passes the Python-only workflow: 925 passed, 8 skipped, 2 warnings. The full PostgreSQL matrix did not reach checkout/tests on Python 3.11 because the runner's pull of `public.ecr.aws/docker/library/postgres:16` was rejected with `toomanyrequests: Data limit exceeded`; this is a registry/container initialization failure, not a test failure. The CI service image has been switched to the official Docker Hub `postgres:16-alpine` image to avoid the exhausted ECR image quota. Full CI must be rerun on this workflow change.
+
+
+## Cross-worker Accounting serialization — 2026-10-20
+
+Accounting session mutation now takes a transaction-scoped PostgreSQL advisory lock keyed by the full native session identity, refreshes the state from the durable table after locking, and then applies/persists the event. This closes the stale in-memory counter/charge-state race for Accounting packets arriving at different workers. Stopped tombstones remain for seven days to preserve cross-worker duplicate-Stop idempotency.
+
+Latest completed full CI before this change: Python 3.11 and 3.12 both passed 933 tests, 2 warnings each; Ruff, compilation and PHP syntax passed. The latest Python-only run also passed 925 tests with 8 skips. The new advisory-lock batch is awaiting CI.

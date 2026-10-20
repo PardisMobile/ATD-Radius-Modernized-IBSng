@@ -304,3 +304,10 @@ Not yet verified: multi-worker concurrency, process crash during provider termin
 ## CI container image reliability — 2026-10-20
 
 The Python-only workflow passes with 925 passed and 8 skipped on the durable-session batch. The full matrix was blocked before checkout/tests by the public ECR Postgres image pull failing with `toomanyrequests: Data limit exceeded`. CI now pulls the official Docker Hub `postgres:16-alpine` image; matrix validation is pending.
+
+
+## Cross-worker Accounting serialization — 2026-10-20
+
+The Accounting lifecycle now uses transaction-scoped PostgreSQL advisory locks for the complete native session key, refreshes durable state after locking, and writes the resulting state in the same transaction. This prevents concurrent workers from applying octet deltas or charge settlement from stale snapshots. Stopped tombstones are retained for seven days to support duplicate Stop idempotency across workers.
+
+Not yet covered by this lock: Access-Accept reservations, cross-worker Disconnect/CoA target selection, and timer/provider side effects. Last completed full CI before this batch passed 933 tests on Python 3.11 and 3.12.

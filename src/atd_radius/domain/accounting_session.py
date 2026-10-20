@@ -49,6 +49,18 @@ class AccountingSessionService:
         # In-process atomicity remains useful; durable snapshots are written before
         # the caller commits the same PostgreSQL transaction.
         with self.registry.synchronized():
+            key = SessionKey(user_id, ras_id, event.session_id) if event.session_id else None
+            lock = getattr(self.state_store, "lock", None)
+            load = getattr(self.state_store, "get", None)
+            if key is not None and callable(lock) and callable(load):
+                # PostgreSQL transaction advisory lock serializes the same native
+                # session across workers; refresh the local copy only after lock.
+                lock(key)
+                persisted = load(key)
+                if persisted is None:
+                    self.registry.remove(key)
+                else:
+                    self.registry.replace(persisted)
             return self._apply_locked(event, user_id, ras_id)
 
     def _apply_locked(self, event, user_id, ras_id) -> AccountingSessionResult:

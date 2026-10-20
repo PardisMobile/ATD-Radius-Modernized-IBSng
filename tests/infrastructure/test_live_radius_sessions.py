@@ -21,6 +21,8 @@ class Connection:
         self.calls.append((sql, params))
         if sql.startswith("SELECT user_id, ras_id, unique_id, state"):
             return Result(self.rows)
+        if sql.startswith("SELECT state FROM atd_radius_live_sessions"):
+            return Result(self.rows[:1])
         return Result()
 
 
@@ -72,12 +74,16 @@ def test_live_session_repository_upserts_and_deletes_by_full_native_session_key(
     )
 
 
-def test_stopped_or_unstarted_state_is_not_persisted_as_active():
+def test_stopped_state_is_kept_as_duplicate_stop_tombstone_but_unstarted_state_is_deleted():
     conn = Connection()
     repo = PostgresLiveRadiusSessionRepository(conn)
-    state = SessionState(key=SessionKey(7, 3, "sid"), started=True, stopped=True)
-    repo.save(state)
-    assert conn.calls[0][0].startswith("DELETE FROM atd_radius_live_sessions")
+    stopped = SessionState(key=SessionKey(7, 3, "sid"), started=True, stopped=True)
+    repo.save(stopped)
+    assert conn.calls[0][0].startswith("INSERT INTO atd_radius_live_sessions")
+    assert '"stopped":true' in conn.calls[0][1][3]
+    unstarted = SessionState(key=SessionKey(7, 3, "sid-2"), started=False)
+    repo.save(unstarted)
+    assert conn.calls[-1][0].startswith("DELETE FROM atd_radius_live_sessions")
 
 
 def test_list_active_decodes_postgres_jsonb_snapshot():
@@ -95,3 +101,17 @@ def test_list_active_decodes_postgres_jsonb_snapshot():
     assert restored[0].key == original.key
     assert restored[0].charge_accrued == Decimal("2.75")
     assert restored[0].attributes["no_connection_log"] == "1"
+
+
+
+def test_session_lock_uses_transaction_advisory_lock_and_get_reads_tombstone():
+    stopped = SessionState(key=SessionKey(7, 3, "sid"), started=True, stopped=True)
+    payload = PostgresLiveRadiusSessionRepository._encode(stopped)
+    conn = Connection([(payload,)])
+    repo = PostgresLiveRadiusSessionRepository(conn)
+    key = SessionKey(7, 3, "sid")
+    repo.lock(key)
+    assert "pg_advisory_xact_lock" in conn.calls[0][0]
+    assert conn.calls[0][1] == ("7:3:sid",)
+    restored = repo.get(key)
+    assert restored is not None and restored.stopped is True

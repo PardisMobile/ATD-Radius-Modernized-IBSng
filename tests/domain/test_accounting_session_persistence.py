@@ -70,3 +70,41 @@ def test_stop_removes_live_snapshot_and_no_connection_log_discards_opened_histor
     assert persistence.discarded == [100]
     assert persistence.stopped == []
     assert store.deleted == [SessionKey(7, 3, "sid")]
+
+
+
+def test_accounting_refreshes_session_under_database_advisory_lock_before_interim():
+    registry = SessionRegistry()
+    key = SessionKey(7, 3, "sid")
+    registry.start(key, {"User-Name": "alice"}, input_octets=10, output_octets=10)
+    persisted = registry.get(key)
+    persisted = type(persisted)(
+        key=key, attributes={"User-Name": "alice"}, started=True,
+        input_octets=50, output_octets=60,
+        started_at=datetime(2026, 10, 20, tzinfo=timezone.utc),
+    )
+
+    class CoordinatedStore(StateStore):
+        def __init__(self):
+            super().__init__()
+            self.events = []
+        def lock(self, locked_key):
+            self.events.append(("lock", locked_key))
+        def get(self, loaded_key):
+            self.events.append(("get", loaded_key))
+            return persisted
+        def save(self, state):
+            self.events.append(("save", state.input_octets))
+            super().save(state)
+
+    store = CoordinatedStore()
+    service = AccountingSessionService(registry, Persistence(), Charge(), store)
+    result = service.apply(
+        event(AccountingStatus.INTERIM, in_octets=70, out_octets=90),
+        7, 3,
+    )
+    assert result.delta_input_octets == 20
+    assert result.delta_output_octets == 30
+    assert store.events[0] == ("lock", key)
+    assert store.events[1] == ("get", key)
+    assert store.events[-1] == ("save", 70)

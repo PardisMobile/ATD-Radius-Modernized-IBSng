@@ -445,3 +445,10 @@ Still open: multi-worker row/advisory lock coordination, lifecycle reconciliatio
 ## CI reliability follow-up — 2026-10-20
 
 Python-only suite for the durable-session batch: 925 passed, 8 skipped. Full PostgreSQL CI failed before checkout because the public ECR Postgres image pull hit its data limit. The workflow now uses official Docker Hub `postgres:16-alpine`; rerun the matrix before declaring the durable-session batch fully verified.
+
+
+## Cross-worker Accounting state locking — 2026-10-20
+
+Accounting mutations are now serialized per full native session key using PostgreSQL transaction advisory locks. Each worker refreshes the durable snapshot only after acquiring the lock, so counter deltas and charge settlement no longer start from independently stale copies. Seven-day stopped tombstones preserve duplicate Stop idempotency across workers.
+
+Still open: cross-worker Access-Accept/login-in-progress reservation, authoritative online-session selection for Disconnect/CoA and administration, scheduler-vs-accounting ownership, and provider interoperability. Last full CI before this change passed 933 tests on both Python 3.11 and 3.12.
