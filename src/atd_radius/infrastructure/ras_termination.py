@@ -138,6 +138,38 @@ class SourceRASDisconnectClient:
         provider = ras.ras_type.strip().lower().replace("-", "_").replace(" ", "_")
         unique_id = str(session.key.unique_id)
         try:
+            if provider == "mikrotik":
+                username = str(session.attributes.get("normal_username", "")).strip()
+                user_ip = str(session.attributes.get("Framed-IP-Address") or session.attributes.get("remote_ip") or "").strip()
+                nas_port_type = str(session.attributes.get("NAS-Port-Type") or session.attributes.get("nas_port_type") or "").strip()
+                if not username:
+                    raise PermanentRASTerminationError("MikroTik termination requires the source-defined normal_username")
+                if not user_ip or not nas_port_type:
+                    raise PermanentRASTerminationError("MikroTik termination requires source session IP and NAS-Port-Type")
+                result = self._external_service.disconnect_mikrotik(
+                    ras_ip=ras.ip, nas_port_type=nas_port_type, username=username, user_ip=user_ip,
+                    ssh_wrapper=str(attrs.get("mikrotik_ssh_wrapper", "")),
+                    ssh_username=str(attrs.get("mikrotik_ssh_username", "")),
+                    ssh_password=str(attrs.get("mikrotik_ssh_password", "")),
+                )
+                self._require_external_success("MikroTik", result)
+                return True
+            if provider == "cisco_vpdn":
+                username = str(session.attributes.get("normal_username") or session.attributes.get("User-Name") or "").strip()
+                if not username:
+                    raise PermanentRASTerminationError("Cisco VPDN termination requires the source-defined username")
+                remote_ip = str(session.attributes.get("Framed-IP-Address") or session.attributes.get("remote_ip") or "").strip() or None
+                try:
+                    concurrency = int(attrs.get("cisco_rsh_max_concurrent_connections", 3))
+                except (TypeError, ValueError) as exc:
+                    raise PermanentRASTerminationError("invalid Cisco VPDN RSH concurrency configuration") from exc
+                result = self._external_service.disconnect_cisco_vpdn(
+                    ras_ip=ras.ip, username=username, remote_ip=remote_ip,
+                    wrapper=str(attrs.get("cisco_rsh_command", "")),
+                    max_concurrent_connections=concurrency,
+                )
+                self._require_external_success("Cisco VPDN", result)
+                return True
             if provider == "cisco":
                 result = self._external_service.disconnect_cisco(
                     ras_ip=ras.ip, port=unique_id,
@@ -244,7 +276,7 @@ class SourceRASDisconnectClient:
         if provider in {"gnugk", "gnu_gatekeeper", "gnugatekeeper"}:
             self._terminate_gnugk(ras, session)
             return
-        if provider in {"cisco", "portmaster", "total_control", "totalcontrol", "portslave", "pppd"}:
+        if provider in {"cisco", "cisco_vpdn", "mikrotik", "portmaster", "total_control", "totalcontrol", "portslave", "pppd"}:
             if self._terminate_source_snmp(ras, session):
                 return
             raise UnsupportedRASTermination(f"A1.24 {ras.ras_type!r} termination action is not implemented")

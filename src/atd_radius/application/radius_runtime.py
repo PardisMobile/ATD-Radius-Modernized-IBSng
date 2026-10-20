@@ -490,6 +490,16 @@ class NativeRadiusPacketHandler:
                             snapshot,
                             attributes={**snapshot.attributes, "voip_username": credentials[0]},
                         )
+                if provider in {"mikrotik", "cisco_vpdn"}:
+                    credentials = UserRepository(conn).normal_credentials(session_key.user_id)
+                    if credentials is None or not credentials[0].strip():
+                        raise PermanentRASTerminationError(
+                            f"{ras.ras_type} session user has no configured normal_username"
+                        )
+                    snapshot = replace(
+                        snapshot,
+                        attributes={**snapshot.attributes, "normal_username": credentials[0]},
+                    )
                 self._ras_terminator.terminate(ras, snapshot, reason)
         except Exception:
             with self.state.sessions.synchronized():

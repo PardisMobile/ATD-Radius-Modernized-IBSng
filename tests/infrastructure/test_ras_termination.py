@@ -192,6 +192,14 @@ class FakeExternalTerminationService:
         self.calls.append(("cisco", kwargs))
         return self.result
 
+    def disconnect_mikrotik(self, **kwargs):
+        self.calls.append(("mikrotik", kwargs))
+        return self.result
+
+    def disconnect_cisco_vpdn(self, **kwargs):
+        self.calls.append(("cisco_vpdn", kwargs))
+        return self.result
+
     def execute_request(self, request, **kwargs):
         self.calls.append((request.provider, request))
         return self.result
@@ -386,3 +394,39 @@ def test_gnugk_termination_requires_status_prompt_before_sending_command():
             ras, session, "credit_finished"
         )
     assert fake.sent == []
+
+
+def test_mikrotik_termination_uses_source_identity_and_nas_branch():
+    external = FakeExternalTerminationService(result=FakeLauncherResult(True))
+    ras = make_ras("MikroTik", attributes={"mikrotik_ssh_wrapper": "/opt/ibs-addons/mikrotik/ssh_wrapper", "mikrotik_ssh_username": "operator", "mikrotik_ssh_password": "configured-secret"})
+    session = make_session("7", {"User-Name": "wire-login", "normal_username": "native-user", "Framed-IP-Address": "198.51.100.9", "NAS-Port-Type": "Wireless-802.11"})
+    SourceRASDisconnectClient(external_service=external).terminate(ras, session, "credit_finished")
+    name, kwargs = external.calls[0]
+    assert name == "mikrotik"
+    assert kwargs["username"] == "native-user" and kwargs["user_ip"] == "198.51.100.9"
+    assert kwargs["nas_port_type"] == "Wireless-802.11"
+    assert kwargs["ssh_wrapper"] == "/opt/ibs-addons/mikrotik/ssh_wrapper"
+
+
+def test_mikrotik_termination_fails_closed_without_source_ip_or_port_type():
+    external = FakeExternalTerminationService(result=FakeLauncherResult(True))
+    with pytest.raises(PermanentRASTerminationError, match="session IP and NAS-Port-Type"):
+        SourceRASDisconnectClient(external_service=external).terminate(ras=make_ras("MikroTik"), session=make_session(attrs={"normal_username": "native-user"}), reason="credit_finished")
+    assert external.calls == []
+
+
+def test_cisco_vpdn_termination_uses_source_session_identity():
+    external = FakeExternalTerminationService(result=FakeLauncherResult(True))
+    ras = make_ras("Cisco VPDN", attributes={"cisco_rsh_command": "/opt/ibs-addons/cisco/rsh_wrapper", "cisco_rsh_max_concurrent_connections": "5"})
+    session = make_session("sid-1", {"User-Name": "native-user", "normal_username": "native-user", "Framed-IP-Address": "198.51.100.11"})
+    SourceRASDisconnectClient(external_service=external).terminate(ras, session, "credit_finished")
+    name, kwargs = external.calls[0]
+    assert name == "cisco_vpdn" and kwargs["username"] == "native-user"
+    assert kwargs["remote_ip"] == "198.51.100.11" and kwargs["max_concurrent_connections"] == 5
+
+
+def test_cisco_vpdn_termination_fails_closed_without_source_username():
+    external = FakeExternalTerminationService(result=FakeLauncherResult(True))
+    with pytest.raises(PermanentRASTerminationError, match="source-defined username"):
+        SourceRASDisconnectClient(external_service=external).terminate(make_ras("Cisco VPDN"), make_session(attrs={"Framed-IP-Address": "198.51.100.11"}), "credit_finished")
+    assert external.calls == []

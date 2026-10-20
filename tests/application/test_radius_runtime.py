@@ -1163,3 +1163,43 @@ def test_gnugk_runtime_resolves_native_voip_username_before_termination(monkeypa
         assert args[2] == "credit_finished"
     finally:
         handler.close()
+
+
+@pytest.mark.parametrize(
+    ("provider", "ras_attrs"),
+    [("MikroTik", {"mikrotik_ssh_wrapper": "/opt/ibs-addons/mikrotik/ssh_wrapper"}), ("Cisco VPDN", {"cisco_rsh_command": "/opt/ibs-addons/cisco/rsh_wrapper"})],
+)
+def test_native_termination_runtime_resolves_normal_username_for_internet_ras(monkeypatch, provider, ras_attrs):
+    from atd_radius.application import radius_runtime
+    from atd_radius.application.radius_runtime import NativeRadiusPacketHandler, NativeRadiusRuntimeState
+    from atd_radius.domain.radius_runtime import SessionKey
+    from atd_radius.domain.ras import RAS
+
+    class Connection:
+        def __enter__(self): return self
+        def __exit__(self, *_args): return False
+    class Registry:
+        def get(self, ras_id):
+            return RAS(3, "192.0.2.30", "termination test", provider, "secret", attributes=ras_attrs) if ras_id == 3 else None
+    class Users:
+        def __init__(self, _conn): pass
+        def normal_credentials(self, user_id):
+            assert user_id == 7
+            return ("native-user", "secret")
+
+    state = NativeRadiusRuntimeState()
+    key = SessionKey(7, 3, "sid-7")
+    session = state.sessions.start(key, {"User-Name": "wire-login", "Framed-IP-Address": "198.51.100.20", "NAS-Port-Type": "Wireless-802.11"})
+    handler = NativeRadiusPacketHandler(state, lambda: Connection())
+    terminate = Mock()
+    handler._ras_terminator.terminate = terminate
+    monkeypatch.setattr(radius_runtime, "build_ras_runtime", lambda *_args: Registry())
+    monkeypatch.setattr(radius_runtime, "UserRepository", Users)
+    try:
+        handler._terminate_voip_session(key, "credit_finished")
+        assert session.termination_requested_reason == "credit_finished"
+        snapshot = terminate.call_args.args[1]
+        assert snapshot.attributes["normal_username"] == "native-user"
+        assert snapshot.attributes["User-Name"] == "wire-login"
+    finally:
+        handler.close()

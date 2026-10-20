@@ -621,3 +621,8 @@ Canonical source: `IBSng/core/ras/rases/gnugk.py::GnuGKRas.killUser`. A1.24 only
 ## GnuGk runtime identity integration
 
 The production limit-enforcement callback now resolves the native `voip_username` from the user repository before calling the GnuGk adapter, rather than assuming the RADIUS/IBSng login is the Gatekeeper alias. MVTS retains its source-specific User-Name override. A runtime regression verifies the GnuGk session keeps the original inbound User-Name while passing the database-resolved alias separately as `voip_username`.
+
+
+## Production termination expansion — MikroTik and Cisco VPDN
+
+Canonical A1.24 source paths: `IBSng/core/ras/rases/mikrotik.py::killUser` and `IBSng/core/ras/rases/cisco_vpdn.py::killUser`. Both kill paths are connected to production VoIP-limit enforcement. MikroTik resolves the native normal username, requires the session IP and NAS-Port-Type, preserves the source split between Wireless-802.11 hotspot removal and PPP active-session removal, and uses configured SSH wrapper credentials through bounded RSH. Cisco VPDN resolves the normal username and source remote IP, performs `show caller user` interface discovery, selects the matching interface when an IP is available (source behavior: first match if absent), then runs `clear interface`. Both require explicit transport success and fail closed on missing identity/configuration. Regression tests cover provider dispatch and runtime identity resolution. Live NAS interoperability and independent proof of session disappearance remain unverified.
