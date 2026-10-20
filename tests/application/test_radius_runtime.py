@@ -1,3 +1,4 @@
+import pytest
 from unittest.mock import Mock
 
 from atd_radius.application.radius_runtime import NativeAccountingIdentityResolver, build_radius_dispatcher

@@ -445,3 +445,63 @@ def test_voip_limit_plan_only_marks_call_without_effective_rule_for_kill():
 
     assert plan.kill_reasons == ((bad.key, "no_effective_rule"),)
     assert plan.remaining_seconds is not None and plan.remaining_seconds > 0
+
+
+def test_internet_limit_planner_aggregates_concurrent_session_rates():
+    rule = InternetChargeRule(1, frozenset({0}), 0, 86399, ports=frozenset({ALL}), cpm=Decimal("60"))
+    settlement = InternetChargeSettlement(Rules(rule), Policies(), Credits())
+    registry = SessionRegistry()
+    start = datetime(2026, 1, 5, 10, 0, tzinfo=timezone.utc)
+    a = registry.start(SessionKey(7, 3, "limit-a"), started_at=start)
+    b = registry.start(SessionKey(7, 3, "limit-b"), started_at=start)
+    settlement.start(a, start, 3, None)
+    settlement.start(b, start, 3, None)
+
+    plan = settlement.plan_limits((a, b), start, Decimal("100"), lambda state: (state.key.ras_id, None))
+
+    assert plan.remaining_seconds == Decimal("50")
+    assert plan.kill_reasons == ()
+
+
+def test_internet_limit_planner_kills_all_sessions_when_credit_is_exhausted():
+    rule = InternetChargeRule(1, frozenset({0}), 0, 86399, ports=frozenset({ALL}), cpm=Decimal("60"))
+    settlement = InternetChargeSettlement(Rules(rule), Policies(), Credits())
+    start = datetime(2026, 1, 5, 10, 0, tzinfo=timezone.utc)
+    a = SessionRegistry().start(SessionKey(7, 3, "limit-zero-a"), started_at=start)
+    b = SessionRegistry().start(SessionKey(7, 4, "limit-zero-b"), started_at=start)
+    a.charge_id = b.charge_id = 9
+
+    plan = settlement.plan_limits((a, b), start, Decimal("0"), lambda state: (state.key.ras_id, None))
+
+    assert plan.remaining_seconds == Decimal("0")
+    assert plan.kill_reasons == ((a.key, "credit_finished"), (b.key, "credit_finished"))
+
+
+def test_internet_limit_planner_schedules_start_of_more_specific_rule():
+    general = InternetChargeRule(1, frozenset({0}), 0, 86399, ports=frozenset({ALL}), cpm=Decimal("60"))
+    specific = InternetChargeRule(2, frozenset({0}), 36000, 50000, ras_id=3, ports=frozenset({"7"}), cpm=Decimal("120"))
+    class TwoRules:
+        def list(self, charge_id=None): return [general, specific]
+    settlement = InternetChargeSettlement(TwoRules(), Policies(), Credits())
+    start = datetime(2026, 1, 5, 9, 59, tzinfo=timezone.utc)
+    state = SessionRegistry().start(SessionKey(7, 3, "limit-specific"), started_at=start)
+    settlement.start(state, start, 3, "7")
+
+    plan = settlement.plan_limits((state,), start, Decimal("10000"), lambda item: (item.key.ras_id, "7"))
+
+    assert plan.remaining_seconds == Decimal("60")
+
+
+def test_internet_limit_planner_kills_only_sessions_without_an_effective_rule():
+    rule = InternetChargeRule(1, frozenset({0}), 0, 86399, ras_id=3, ports=frozenset({"7"}), cpm=Decimal("60"))
+    settlement = InternetChargeSettlement(Rules(rule), Policies(), Credits())
+    start = datetime(2026, 1, 5, 10, 0, tzinfo=timezone.utc)
+    good = SessionRegistry().start(SessionKey(7, 3, "limit-good"), started_at=start)
+    bad = SessionRegistry().start(SessionKey(7, 4, "limit-bad"), started_at=start)
+    good.charge_id = bad.charge_id = 9
+    settlement.start(good, start, 3, "7")
+
+    plan = settlement.plan_limits((good, bad), start, Decimal("100"), lambda item: (item.key.ras_id, "7"))
+
+    assert plan.kill_reasons == ((bad.key, "no_effective_rule"),)
+    assert plan.remaining_seconds is not None and plan.remaining_seconds > 0

@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 from typing import Callable, Protocol
 from .billing import BillingError, BillingUsage
-from .billing_rules import InternetChargeRule, VoipChargeRule, select_effective_rule, select_effective_voip_rule
+from .billing_rules import ALL, InternetChargeRule, VoipChargeRule, select_effective_rule, select_effective_voip_rule
 from .radius_runtime import SessionKey, SessionState
 
 class ChargeRuleSource(Protocol):
@@ -59,6 +59,94 @@ class InternetChargeSettlement:
         if state.charge_id is not None:
             self.credits.change(state.key.user_id, -total)
         return total
+
+    def plan_limits(
+        self,
+        states,
+        when: datetime,
+        available_credit: Decimal,
+        context_resolver: Callable[[SessionState], tuple[int, str | None]],
+    ) -> "VoipLimitPlan":
+        """Mirror A1.24 InternetCharge.checkLimits without executing kills.
+
+        The source sums the time/assumed-transfer rate across active instances,
+        kills all when credit is exhausted, kills only sessions lacking an
+        effective rule, and schedules the earliest credit/rule/more-specific
+        rule boundary. Effective-rule transitions are applied through update()
+        so the outgoing rule's accumulated usage and the next baseline stay in
+        the same state machine used by Accounting.
+        """
+        active = [state for state in states if state.charge_id is not None and not state.stopped]
+        if available_credit <= 0:
+            return VoipLimitPlan(Decimal("0"), tuple(
+                (state.key, "credit_finished") for state in active
+            ))
+
+        seconds_today = when.hour * 3600 + when.minute * 60 + when.second
+        earliest_rule_end = Decimal(7 * 24 * 3600)
+        next_more_applicable = Decimal(7 * 24 * 3600)
+        rate_per_second = Decimal("0")
+        kills: list[tuple[SessionKey, str]] = []
+        eligible = []
+
+        for state in active:
+            ras_id, port = context_resolver(state)
+            rules = self.rules.list(state.charge_id)
+            try:
+                rule = select_effective_rule(rules, when, ras_id, port)
+            except BillingError:
+                kills.append((state.key, "no_effective_rule"))
+                continue
+
+            # Preserve A1.24's current-rule transition accounting and establish
+            # the current rule baseline before deriving the next event.
+            self.update(state, when, ras_id, port)
+            current = next((item for item in rules if item.rule_id == state.charge_rule_id), None)
+            if current is None:
+                raise ValueError("active charge rule disappeared")
+            eligible.append(state)
+            rate_per_second += current.cpm / Decimal(60) + current.cpk * Decimal(current.assumed_kps)
+            earliest_rule_end = min(
+                earliest_rule_end,
+                Decimal(max(1, current.end_second - seconds_today + 1)),
+            )
+
+            if current.priority < 3:
+                for candidate in rules:
+                    if candidate.priority <= current.priority or when.weekday() not in candidate.days:
+                        continue
+                    if candidate.start_second <= seconds_today:
+                        continue
+                    if candidate.ras_id is not None and candidate.ras_id != ras_id:
+                        continue
+                    if port not in candidate.ports and ALL not in candidate.ports:
+                        continue
+                    next_more_applicable = min(
+                        next_more_applicable,
+                        Decimal(candidate.start_second - seconds_today),
+                    )
+
+        if not eligible:
+            return VoipLimitPlan(Decimal("0"), tuple(kills))
+        if rate_per_second > 0:
+            remaining_credit_seconds = available_credit / rate_per_second
+        else:
+            remaining_credit_seconds = Decimal(7 * 24 * 3600)
+        if remaining_credit_seconds <= 0:
+            return VoipLimitPlan(Decimal("0"), tuple(
+                (state.key, "credit_finished") for state in eligible
+            ) + tuple(kills))
+
+        next_event = min(
+            remaining_credit_seconds,
+            earliest_rule_end,
+            next_more_applicable,
+            Decimal(max(1, seconds_today)),
+        )
+        return VoipLimitPlan(
+            min(Decimal(7 * 24 * 3600), max(Decimal(1), next_event)),
+            tuple(kills),
+        )
 
     @staticmethod
     def _begin(rule: InternetChargeRule, state: SessionState, when: datetime) -> None:

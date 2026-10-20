@@ -403,7 +403,7 @@ class NativeRadiusPacketHandler:
             active = self.state.sessions.active_for_user(user_id)
             has_voip_charge = any(
                 state.charge_id is not None
-                and state.charge_kind == "voip"
+                and state.charge_kind in {"voip", "internet"}
                 and ras_registry.get(state.key.ras_id) is not None
                 for state in active
             )
@@ -422,36 +422,39 @@ class NativeRadiusPacketHandler:
             available_credit = credits.get(user_id)
             if available_credit is None:
                 return VoipLimitPlan(None)
-            settlement = VoipChargeSettlement(
-                PostgresVoipChargeRuleRepository(conn),
-                users,
-                PostgresVoipTariffRepository(conn),
-                credits,
-            )
             with self.state.sessions.synchronized():
                 active = tuple(
                     state
                     for state in self.state.sessions.active_for_user(user_id)
                     if state.charge_id is not None
-                    and state.charge_kind == "voip"
+                    and state.charge_kind in {"internet", "voip"}
                     and ras_registry.get(state.key.ras_id) is not None
                 )
                 if not active:
                     return VoipLimitPlan(None)
-                # A1.24 evaluates charge-rule day/time intervals in the
-                # server's local timezone (time.time()/secondsFromMorning), not UTC.
-                # Passing UTC here can select a different tariff window and
-                # terminate or bill calls against the wrong rule near boundaries.
+                # UserChargeSettlement routes normal users to InternetCharge
+                # and all other supported users to VoIPCharge in A1.24.
+                # The same classification selects the matching limit planner.
+                normal_user = users.is_normal_user(user_id)
+                charge_kind = "internet" if normal_user else "voip"
+                active = tuple(state for state in active if state.charge_kind == charge_kind)
+                if not active:
+                    return VoipLimitPlan(None)
                 when = datetime.now().astimezone()
-                return settlement.plan_limits(
-                    active,
-                    when,
-                    available_credit,
-                    lambda state: (
-                        state.key.ras_id,
-                        state.attributes.get("NAS-Port") or state.attributes.get("NAS-Port-Id"),
-                    ),
+                context = lambda state: (
+                    state.key.ras_id,
+                    state.attributes.get("NAS-Port") or state.attributes.get("NAS-Port-Id"),
                 )
+                if normal_user:
+                    settlement = InternetChargeSettlement(
+                        PostgresInternetChargeRuleRepository(conn), users, credits
+                    )
+                else:
+                    settlement = VoipChargeSettlement(
+                        PostgresVoipChargeRuleRepository(conn), users,
+                        PostgresVoipTariffRepository(conn), credits,
+                    )
+                return settlement.plan_limits(active, when, available_credit, context)
 
     def _terminate_voip_session(self, session_key: SessionKey, reason: str) -> None:
         with self.state.sessions.synchronized():
