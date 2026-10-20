@@ -683,3 +683,10 @@ Latest completed full CI before this change: Python 3.11 and 3.12 both passed 93
 Inbound RFC 5176 control now reconciles the authenticated source RAS's session set against durable snapshots and acquires per-session transaction advisory locks before selecting targets. Sessions active on another worker are visible to control processing; local stale entries are replaced or removed from the authoritative durable result.
 
 Latest full CI before this control-refresh batch: Python 3.11 and 3.12 each passed 935 tests, 2 warnings; Ruff, compilation and PHP syntax passed. Python-only suite passed 927 tests, 8 skipped. This control-refresh change is pending CI.
+
+
+## Cross-worker login reservation batch — 2026-10-20
+
+Added migration 008 and a PostgreSQL login-reservation repository traced to A1.24's `user_pool.getUserByID(..., online_flag=True)` / `LoadedUser.online_flag` lifecycle. Access-Request admission locks the user before MultiLogin evaluation, refreshes durable sessions, includes reservations accepted by other workers, and excludes only the exact request key for retransmission idempotency. Access-Accept creates a durable reservation; a newly created Accounting Start/Interim consumes one reservation under the same user-level lock. Duplicate Start does not consume another reservation.
+
+Last completed full CI before this batch passed 936 tests on Python 3.11 and 3.12; Python-only suite passed 928 with 8 skips. The login-reservation batch is pending CI.

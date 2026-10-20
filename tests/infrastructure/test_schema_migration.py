@@ -52,3 +52,10 @@ def test_live_radius_session_state_is_an_operational_extension_not_a_replacement
     assert "state jsonb not null" in migration
     assert "primary key (user_id, ras_id, unique_id)" in migration
     assert "references users" not in migration
+
+
+def test_login_reservations_migration_is_separate_from_native_ibsng_schema():
+    migration = Path("migrations/008_login_reservations.sql").read_text(encoding="utf-8").lower()
+    assert "create table if not exists atd_radius_login_reservations" in migration
+    assert "request_key char(64) not null unique" in migration
+    assert "pg_advisory_xact_lock" in migration or "created_at timestamptz" in migration

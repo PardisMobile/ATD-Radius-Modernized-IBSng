@@ -318,3 +318,10 @@ Not yet covered by this lock: Access-Accept reservations, cross-worker Disconnec
 RFC 5176 control requests refresh the durable active-session scope for the authenticated RAS, acquire per-session transaction advisory locks, and reload target state before dispatch. This supports selecting sessions that were established by a different worker and removes stale local state when the durable row is absent.
 
 Still open: durable Access-Accept/login-in-progress reservation and authoritative cross-worker MultiLogin admission. Last full CI before this batch passed 935 tests on Python 3.11 and 3.12.
+
+
+## Cross-worker login-in-progress reservation — 2026-10-20
+
+A1.24 online-flag behavior is represented by migration 008. Per-user PostgreSQL advisory locks serialize Access-Request admission and Accounting Start; MultiLogin policy now includes durable reservations created by accepted requests across workers and excludes the exact retransmitted request key. A new Accounting Start/Interim consumes one reservation, while duplicate Start does not.
+
+Reservations have no arbitrary expiry because the source clears online state through lifecycle events; missing Accounting can leave a stale reservation and requires operational reconciliation. Full source plugin/login-hook parity is not implied. Last full CI before this batch passed 936 tests on both Python versions.

@@ -122,6 +122,7 @@ class RadiusRuntimeHandler:
         bandwidth_snapshots: PostgresBandwidthSnapshotRepository | None = None,
         cisco_voip_auth_h323_ids: dict[int, set[str]] | None = None,
         cisco_online_status: dict[int, dict[str, dict[str, object]]] | None = None,
+        login_reservations=None,
     ) -> None:
         self.dispatcher = dispatcher
         self.accounting_sessions = (
@@ -130,6 +131,7 @@ class RadiusRuntimeHandler:
             else accounting_sessions
         )
         self.identities = identities
+        self.login_reservations = login_reservations
         self.ip_pool_sessions = ip_pool_sessions
         self.bandwidth_snapshots = bandwidth_snapshots
         # A1.24 keeps successful Cisco VoIP authorization IDs in RAS-local
@@ -319,7 +321,20 @@ class RadiusRuntimeHandler:
                         )
                     user_id = self.identities.user_id(event.username)
                     if user_id is not None and ras_id is not None:
+                        if (
+                            self.login_reservations is not None
+                            and event.status in (AccountingStatus.START, AccountingStatus.INTERIM)
+                        ):
+                            # Access admission and the transition from reservation
+                            # to an accounted session share this user-level lock.
+                            self.login_reservations.lock_user(user_id)
                         accounting_result = self.accounting_sessions.apply(event, user_id, ras_id)
+                        if (
+                            self.login_reservations is not None
+                            and accounting_result.created
+                            and event.status in (AccountingStatus.START, AccountingStatus.INTERIM)
+                        ):
+                            self.login_reservations.consume_one(user_id, ras_id)
                         # A1.24 BWSnapShotOnlinesLoopClient only records normal
                         # users with the effective save_bw_usage marker. RADIUS
                         # counter deltas are aggregated into the native snapshot
@@ -348,7 +363,42 @@ class RadiusRuntimeHandler:
                             elif event.status.value == "Stop":
                                 self.ip_pool_sessions.accounting_stop(event, ras_id)
                 return result.response
+        reservation_user_id = None
+        reservation_ras_id = None
+        reservation_request_key = None
+        if self.login_reservations is not None:
+            username = str(packet.attributes.get("User-Name", ""))
+            user_source = getattr(self.identities, "users", None)
+            lookup = getattr(user_source, "get_authentication_record", None)
+            record = lookup(username) if callable(lookup) and username else None
+            resolved_ras_id = self.identities.ras_id(peer[0])
+            if record is not None and resolved_ras_id is not None:
+                reservation_user_id = int(record[0])
+                reservation_ras_id = int(resolved_ras_id)
+                reservation_request_key = self.login_reservations.request_key(packet, peer)
+                self.login_reservations.lock_user(reservation_user_id)
+                self.accounting_sessions.refresh_user_sessions(reservation_user_id)
         response = self.dispatcher.access(packet, source_ip=peer[0])
+        if (
+            response.code is RadiusCode.ACCESS_ACCEPT
+            and self.login_reservations is not None
+            and reservation_user_id is not None
+            and reservation_ras_id is not None
+            and reservation_request_key is not None
+        ):
+            ras_registry = getattr(self.identities, "ras", None)
+            ras_record = ras_registry.get_by_ip(peer[0]) if ras_registry is not None else None
+            if ras_record is not None:
+                service = provider_service_for_accounting(ras_record.ras_type, packet.attributes)
+                self.login_reservations.reserve(
+                    reservation_user_id,
+                    reservation_ras_id,
+                    reservation_request_key,
+                    str(packet.attributes.get("User-Name", "")),
+                    ras_allows_multi_login(
+                        ras_record.ras_type, ras_record.all_attributes(), service
+                    ),
+                )
         # CiscoRas._postAuth records the H.323 ID only after a successful
         # VOIP_AUTHORIZE (Called-Station-Id present); this is process-local
         # source state and deliberately is not persisted across a RAS restart.
@@ -680,14 +730,21 @@ class NativeRadiusPacketHandler:
             )
             charge = UserChargeSettlement(users, internet_charge, voip_charge)
             from atd_radius.infrastructure.live_radius_sessions import PostgresLiveRadiusSessionRepository
+            from atd_radius.infrastructure.login_reservations import PostgresLoginReservationRepository
             session_store = PostgresLiveRadiusSessionRepository(conn)
+            login_reservations = PostgresLoginReservationRepository(conn)
             recovered_voip_users = self._recover_open_sessions(conn, charge, ras, pools, session_store)
             for recovered_user_id in recovered_voip_users:
                 self._refresh_voip_limit_schedule(recovered_user_id)
             accounting = AccountingSessionService(self.state.sessions, persistence, charge, session_store)
             dispatcher = build_radius_dispatcher(
                 users,
-                active_sessions_provider=session_views(self.state.sessions),
+                active_sessions_provider=session_views(
+                    self.state.sessions,
+                    login_reservations,
+                    login_reservations.request_key(packet, peer)
+                    if packet.code is RadiusCode.ACCESS_REQUEST else None,
+                ),
                 ras=ras,
                 ip_pools=pools,
             )
@@ -700,6 +757,7 @@ class NativeRadiusPacketHandler:
                 bandwidth_snapshots=PostgresBandwidthSnapshotRepository(conn),
                 cisco_voip_auth_h323_ids=self.state.cisco_voip_auth_h323_ids,
                 cisco_online_status=self.state.cisco_online_status,
+                login_reservations=login_reservations,
             )
             response = handler(packet, peer)
             if packet.code is RadiusCode.ACCOUNTING_REQUEST:
@@ -767,19 +825,26 @@ class NativeAccountingIdentityResolver:
         return int(record.ras_id) if record else None
 
 
-def session_views(registry) -> callable:
-    """Return policy views including each active session's source RAS capability."""
+def session_views(registry, reservation_source=None, exclude_request_key=None) -> callable:
+    """Return active sessions plus accepted login reservations for MultiLogin."""
     def provider(user_id: int) -> tuple[ActiveSessionView, ...]:
-        views = []
-        for state in registry.active_for_user(user_id):
-            ras_allowed = state.ras_multi_login_allowed
-            views.append(
-                ActiveSessionView(
-                    state.key.unique_id,
-                    state.started_at,
-                    ras_multi_login_allowed=ras_allowed,
-                )
+        views = [
+            ActiveSessionView(
+                state.key.unique_id,
+                state.started_at,
+                ras_multi_login_allowed=state.ras_multi_login_allowed,
             )
+            for state in registry.active_for_user(user_id)
+        ]
+        if reservation_source is not None:
+            for reservation in reservation_source.list_active(user_id, exclude_request_key):
+                views.append(
+                    ActiveSessionView(
+                        f"login:{reservation.request_key}",
+                        reservation.created_at,
+                        ras_multi_login_allowed=reservation.ras_multi_login_allowed,
+                    )
+                )
         return tuple(views)
 
     return provider

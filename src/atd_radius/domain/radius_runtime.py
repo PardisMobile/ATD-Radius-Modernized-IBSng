@@ -117,6 +117,10 @@ class SessionRegistry:
         return tuple(state for state in self._sessions.values() if state.key.ras_id == ras_id)
 
     @_registry_locked
+    def all_for_user(self, user_id: int) -> tuple[SessionState, ...]:
+        return tuple(state for state in self._sessions.values() if state.key.user_id == user_id)
+
+    @_registry_locked
     def replace(self, state: SessionState) -> SessionState:
         """Replace a local snapshot with the latest transaction-locked durable state."""
         self._sessions[state.key] = state

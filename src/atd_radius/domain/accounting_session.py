@@ -22,6 +22,7 @@ class AccountingSessionResult:
     delta_output_octets: int = 0
     connection_log_id: int | None = None
     credit_used: str | None = None
+    created: bool = False
 
 
 class ChargeSettlement(Protocol):
@@ -44,6 +45,26 @@ class AccountingSessionService:
         """Persist state inside the same caller-owned transaction as accounting."""
         if self.state_store is not None:
             self.state_store.save(state)
+
+    def refresh_user_sessions(self, user_id: int) -> None:
+        """Refresh a user's sessions from shared storage before MultiLogin admission."""
+        store = self.state_store
+        list_active = getattr(store, "list_active", None)
+        lock = getattr(store, "lock", None)
+        load = getattr(store, "get", None)
+        if not (callable(list_active) and callable(lock) and callable(load)):
+            return
+        durable = [state for state in list_active() if state.key.user_id == user_id]
+        local = self.registry.all_for_user(user_id)
+        keys = {state.key for state in durable}
+        keys.update(state.key for state in local)
+        for key in sorted(keys, key=lambda item: (item.user_id, item.ras_id, item.unique_id)):
+            lock(key)
+            state = load(key)
+            if state is None:
+                self.registry.remove(key)
+            else:
+                self.registry.replace(state)
 
     def refresh_ras_sessions(self, ras_id: int) -> None:
         """Refresh every session on one RAS under per-session DB locks.
@@ -108,7 +129,7 @@ class AccountingSessionService:
             if log_id is not None:
                 state.attributes = {**state.attributes, "__connection_log_id": str(log_id)}
             self.persist_state(state)
-            return AccountingSessionResult(state, connection_log_id=log_id)
+            return AccountingSessionResult(state, connection_log_id=log_id, created=True)
 
         if current is not None and current.stopped:
             return AccountingSessionResult(
@@ -139,7 +160,7 @@ class AccountingSessionService:
                 if log_id is not None:
                     state.attributes = {**state.attributes, "__connection_log_id": str(log_id)}
                 self.persist_state(state)
-                return AccountingSessionResult(state, connection_log_id=log_id)
+                return AccountingSessionResult(state, connection_log_id=log_id, created=True)
             raise LookupError("RADIUS session not found")
 
         log_id = (

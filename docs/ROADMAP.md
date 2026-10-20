@@ -459,3 +459,10 @@ Still open: cross-worker Access-Accept/login-in-progress reservation, authoritat
 Disconnect/CoA processing now refreshes the authenticated RAS's durable session scope, locks keys in deterministic order, and reloads each row before selecting control targets. This reduces stale-worker omissions and prevents control actions from operating only on a worker-local snapshot.
 
 Remaining major session blocker: Access-Accept/login-in-progress reservations and cross-worker MultiLogin admission before Accounting Start. Last full CI before this batch passed 935 tests on Python 3.11 and 3.12.
+
+
+## Durable login-in-progress reservation — 2026-10-20
+
+Migration 008 adds an ATD operational reservation table to model the A1.24 online-flag reservation while login is in progress. Per-user advisory locks serialize Access-Request admission with Accounting Start. MultiLogin sees durable sessions plus accepted reservations from other workers; a request excludes only its own stable request key so retransmissions remain idempotent. Access-Accept reserves; Access-Reject does not; the first new Accounting Start/Interim consumes one reservation. Duplicate Start leaves reservation counts unchanged.
+
+The reservation deliberately has no short TTL, following source lifecycle semantics; accepted attempts without accounting may remain reserved and need operational reconciliation. Last full CI before this batch passed 936 tests on Python 3.11 and 3.12.
