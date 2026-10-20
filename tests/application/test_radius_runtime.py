@@ -1204,3 +1204,79 @@ def test_native_termination_runtime_resolves_normal_username_for_internet_ras(mo
         assert snapshot.attributes["User-Name"] == "wire-login"
     finally:
         handler.close()
+
+
+def test_coa_request_updates_only_supported_live_authorization_without_settlement():
+    from unittest.mock import Mock
+    from atd_radius.application.radius_runtime import RadiusRuntimeHandler
+    from atd_radius.domain.aaa import PluginPipeline
+    from atd_radius.domain.accounting_session import AccountingSessionService
+    from atd_radius.domain.radius import RadiusCode, RadiusPacket
+    from atd_radius.domain.radius_dispatch import RadiusDispatcher
+    from atd_radius.domain.radius_runtime import SessionKey, SessionRegistry
+
+    registry = SessionRegistry()
+    key = SessionKey(7, 3, "sid-coa")
+    state = registry.start(
+        key,
+        {"User-Name": "alice", "Acct-Session-Id": "sid-coa", "Filter-Id": "bronze"},
+        input_octets=12,
+        output_octets=34,
+    )
+    charge = Mock()
+    sessions = AccountingSessionService(registry, charge=charge)
+    handler = RadiusRuntimeHandler(RadiusDispatcher(PluginPipeline([])), sessions, Mock())
+
+    response = handler(
+        RadiusPacket(
+            RadiusCode.COA_REQUEST,
+            23,
+            {"Acct-Session-Id": "sid-coa", "Filter-Id": "gold"},
+            bytes(16),
+        ),
+        ("192.0.2.1", 1812),
+    )
+
+    assert response.code is RadiusCode.COA_ACK
+    assert state.stopped is False
+    assert state.attributes["Filter-Id"] == "gold"
+    assert state.input_octets == 12 and state.output_octets == 34
+    charge.settle.assert_not_called()
+
+
+def test_invalid_coa_nak_does_not_mutate_or_stop_live_session():
+    from unittest.mock import Mock
+    from atd_radius.application.radius_runtime import RadiusRuntimeHandler
+    from atd_radius.domain.aaa import PluginPipeline
+    from atd_radius.domain.accounting_session import AccountingSessionService
+    from atd_radius.domain.radius import RadiusCode, RadiusPacket
+    from atd_radius.domain.radius_dispatch import RadiusDispatcher
+    from atd_radius.domain.radius_runtime import SessionKey, SessionRegistry
+
+    registry = SessionRegistry()
+    key = SessionKey(7, 3, "sid-coa-invalid")
+    state = registry.start(
+        key,
+        {"User-Name": "alice", "Acct-Session-Id": "sid-coa-invalid", "Filter-Id": "bronze"},
+    )
+    before = dict(state.attributes)
+    handler = RadiusRuntimeHandler(
+        RadiusDispatcher(PluginPipeline([])),
+        AccountingSessionService(registry),
+        Mock(),
+    )
+
+    response = handler(
+        RadiusPacket(
+            RadiusCode.COA_REQUEST,
+            24,
+            {"Acct-Session-Id": "sid-coa-invalid"},
+            bytes(16),
+        ),
+        ("192.0.2.1", 1812),
+    )
+
+    assert response.code is RadiusCode.COA_NAK
+    assert dict(state.attributes) == before
+    assert state.stopped is False
+    assert state.started is True

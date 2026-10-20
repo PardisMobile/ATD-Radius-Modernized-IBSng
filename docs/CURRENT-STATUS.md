@@ -1,9 +1,9 @@
 # Current project status — ATD Radius / Modernized IBSng
 
-Updated: 2026-10-12  
+Updated: 2026-10-20  
 Repository: `PardisMobile/ATD-Radius-Modernized-IBSng`  
 Branch: `main`  
-Latest verified code/test commit: `43325d2c1cb71815c3bd85854e512c41eacdf3c0` (VoIP limit-plan decisions with per-session RAS/port context). Full CI run `38524638385`: Python 3.11/3.12 each 821 passed, 2 warnings; Ruff, compilation, PHP syntax and PostgreSQL integration passed. Python-only run `38524638404`: 813 passed, 8 skipped, 2 warnings.
+Latest verified code/test commit: `101d8151a324a90801bf80dc122baf44b21c9d30` (production Asterisk AMI termination dispatch). Python-only run `39346541153`: 912 passed, 8 skipped. Latest full-matrix run `39346541188`: Python 3.11 passed; Python 3.12 failed during container initialization before checkout/tests, so latest full matrix is **not yet green**.
 
 ## Authority and validation
 
@@ -37,7 +37,7 @@ Latest verified code/test commit: `43325d2c1cb71815c3bd85854e512c41eacdf3c0` (Vo
 
 1. Administrator volatile activity fields (`last_request_ip`, `last_activity`, `online_status`) remain open; administrator permission editing and deletion are implemented and tested.
 2. Extend the user-attribute mutation slice to remaining specialized plugin families; user deletion remains open (source audit recorded in `docs/A1.24-USER-DELETION-AUDIT.md`). Owner transfer and group reassignment have separate implemented routes.
-3. Online-user listing/permissions and safe disconnect/CoA session resolution, permission, side-effect and audit sequencing. **RAS disconnect remains unmounted.**
+3. Admin-facing online-user listing/permissions and administrative disconnect remain blocked on source-compatible admin identity/permission/audit wiring and supported single-process runtime topology. Inbound RFC 5176 Disconnect-Request and CoA-Request are already handled by the authenticated RADIUS control path; successful Disconnect settles and closes the native connection log and releases the IP-pool lease, while CoA updates only the currently supported authorization attributes. The admin HTTP disconnect endpoint remains intentionally unmounted.
 4. Full billing persistence, charging/usage integration, expiry/subscription and report parity.
 5. Complete RAS provider runtime/transport interoperability and RADIUS dictionary coverage.
 6. XML-RPC compatibility.
@@ -641,3 +641,12 @@ The existing per-user scheduler now includes active Internet charge sessions as 
 ## Asterisk Manager termination — source-traced
 
 Canonical source: `IBSng/core/ras/rases/asterisk.py::AsteriskRas.killUser` and `IBSng/core/lib/asterisk/manager.py::AsteriskManager.run`. The production charge-limit path now honors `asterisk_use_manager`, parses the stored `channel||unique_id` identity and issues only the source-defined AMI Login followed by Hangup for the channel. The transport has bounded connection/read time, frame-size and frame-count limits, matching ActionID checks, explicit manager rejection handling, and header-control-character validation. It does not claim independent proof that the channel has disappeared. Live Asterisk Manager interoperability remains unverified.
+
+
+## Latest verified runtime batch — 2026-10-20
+
+- Production charge-limit termination reaches source-audited Asterisk AMI, GnuGk, MikroTik, Cisco VPDN, Cisco SNMP/RSH, PortMaster, Total Control, PortSlave/PPPD, ChilliSpot and MVTS adapters where A1.24 defines a kill operation. SER remains unsupported because the canonical source's kill method is a no-op.
+- The production limit planner covers normal Internet and VoIP sessions, aggregates per-user active-session charge rates and fails closed on ambiguous mixed charge classification.
+- Inbound RFC 5176 Disconnect/CoA processing is part of RadiusRuntimeHandler; Disconnect uses the accounting settlement/persistence path and IP lease release, rather than only toggling an in-memory flag. Administrative online-user/disconnect API is still not exposed.
+- Python-only tests: 912 passed, 8 skipped. Latest full CI Python 3.11 passed; Python 3.12 failed before checkout during container initialization and must be rerun. Full matrix verification is still pending.
+- Main remaining production blockers: cross-process authoritative session coordination, A1.24 login-in-progress reservations, complete user deletion with refund/IAS/audit/side-effects, complete billing and bandwidth persistence parity, provider live interoperability, full schema/data migration parity, remaining attribute/plugin and XML-RPC parity, UI workflows, installer/upgrade/rollback, and release hardening. Frozen PAP/CHAP/MS-CHAPv2/MPPE and MultiLogin areas will not be reopened without a source-backed defect.

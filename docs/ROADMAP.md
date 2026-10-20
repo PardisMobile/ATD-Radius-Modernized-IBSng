@@ -419,3 +419,10 @@ The existing per-user scheduler now includes active Internet charge sessions as 
 ## Asterisk Manager termination — source-traced
 
 Canonical source: `IBSng/core/ras/rases/asterisk.py::AsteriskRas.killUser` and `IBSng/core/lib/asterisk/manager.py::AsteriskManager.run`. The production charge-limit path now honors `asterisk_use_manager`, parses the stored `channel||unique_id` identity and issues only the source-defined AMI Login followed by Hangup for the channel. The transport has bounded connection/read time, frame-size and frame-count limits, matching ActionID checks, explicit manager rejection handling, and header-control-character validation. It does not claim independent proof that the channel has disappeared. Live Asterisk Manager interoperability remains unverified.
+
+
+## Runtime control and enforcement checkpoint — 2026-10-20
+
+Latest code checkpoint: `101d8151a324a90801bf80dc122baf44b21c9d30`. Source-shaped Internet and VoIP limit planners share the recurring per-user enforcement loop; production termination is wired for audited providers with actual A1.24 kill behavior, including Asterisk AMI, GnuGk, MikroTik, Cisco VPDN and earlier SNMP/launcher/Disconnect-Request adapters. Incoming RFC 5176 Disconnect closes accounting through settlement/persistence and releases the IP lease; incoming CoA mutates only supported authorization attributes. Admin-facing online-session management remains gated on authoritative runtime/session ownership, permission dependencies and audit sequencing.
+
+Validation: Python-only CI passed 912 tests with 8 skips on the latest code. Python 3.11 passed latest full CI; Python 3.12 failed before checkout during container initialization, so rerun before marking the matrix green. This is not a full compatibility release. Database importer/parity validator, cross-process session authority, full deletion/billing/plugin parity, remaining UI, and installer/upgrade/rollback work remain open.
