@@ -3,7 +3,7 @@
 Updated: 2026-10-20  
 Repository: `PardisMobile/ATD-Radius-Modernized-IBSng`  
 Branch: `main`  
-Latest verified code/test commit: `101d8151a324a90801bf80dc122baf44b21c9d30` (production Asterisk AMI termination dispatch). Python-only run `39346541153`: 912 passed, 8 skipped. Latest full-matrix run `39346541188`: Python 3.11 passed; Python 3.12 failed during container initialization before checkout/tests, so latest full matrix is **not yet green**.
+Latest code checkpoint: `ea1870eaa5f4f0d0115aa5dccdf6bd20b1517d61` (authenticated-RAS scoping for inbound RFC 5176 control). Python-only run `39347322775`: 916 passed, 8 skipped. Full Python 3.12 job executed 924 passed, 2 warnings; the latest Python 3.11 matrix attempt failed during container initialization before checkout/tests, so the full matrix is **not yet green**.
 
 ## Authority and validation
 
@@ -650,3 +650,10 @@ Canonical source: `IBSng/core/ras/rases/asterisk.py::AsteriskRas.killUser` and `
 - Inbound RFC 5176 Disconnect/CoA processing is part of RadiusRuntimeHandler; Disconnect uses the accounting settlement/persistence path and IP lease release, rather than only toggling an in-memory flag. Administrative online-user/disconnect API is still not exposed.
 - Python-only tests: 912 passed, 8 skipped. Latest full CI Python 3.11 passed; Python 3.12 failed before checkout during container initialization and must be rerun. Full matrix verification is still pending.
 - Main remaining production blockers: cross-process authoritative session coordination, A1.24 login-in-progress reservations, complete user deletion with refund/IAS/audit/side-effects, complete billing and bandwidth persistence parity, provider live interoperability, full schema/data migration parity, remaining attribute/plugin and XML-RPC parity, UI workflows, installer/upgrade/rollback, and release hardening. Frozen PAP/CHAP/MS-CHAPv2/MPPE and MultiLogin areas will not be reopened without a source-backed defect.
+
+
+## Authenticated RAS control scope — 2026-10-20
+
+Inbound Disconnect-Request and CoA-Request now constrain session selection to the native RAS resolved from the authenticated UDP peer IP. NAS-IP-Address/NAS-Identifier remain RAS-level identifiers within that scope rather than requiring them to appear in each session detail row. An unresolved RAS returns NAK with Error-Cause 503 and cannot mutate sessions. Tests cover Disconnect cross-RAS isolation, CoA cross-RAS isolation, and unresolved-peer fail-closed behavior.
+
+Validation checkpoint: Python-only suite 916 passed / 8 skipped; full PostgreSQL-backed Python 3.12 suite 924 passed / 2 warnings, plus Ruff, Python compilation and PHP syntax. Python 3.11's latest attempt failed before checkout during container initialization; rerun it before calling the matrix green.

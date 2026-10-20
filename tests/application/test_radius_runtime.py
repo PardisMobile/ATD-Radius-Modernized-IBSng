@@ -1346,3 +1346,46 @@ def test_control_request_from_unresolved_ras_fails_closed_without_mutation():
     assert response.code is RadiusCode.DISCONNECT_NAK
     assert response.attributes["Error-Cause"] == "503"
     assert state.stopped is False
+
+
+
+def test_coa_is_scoped_to_authenticated_source_ras():
+    from unittest.mock import Mock
+    from atd_radius.application.radius_runtime import RadiusRuntimeHandler
+    from atd_radius.domain.aaa import PluginPipeline
+    from atd_radius.domain.accounting_session import AccountingSessionService
+    from atd_radius.domain.radius import RadiusCode, RadiusPacket
+    from atd_radius.domain.radius_dispatch import RadiusDispatcher
+    from atd_radius.domain.radius_runtime import SessionKey, SessionRegistry
+
+    registry = SessionRegistry()
+    local = registry.start(
+        SessionKey(7, 3, "local-coa"),
+        {"User-Name": "alice", "Acct-Session-Id": "local-coa", "Filter-Id": "bronze"},
+    )
+    remote = registry.start(
+        SessionKey(7, 4, "remote-coa"),
+        {"User-Name": "alice", "Acct-Session-Id": "remote-coa", "Filter-Id": "silver"},
+    )
+    identities = Mock()
+    identities.ras_id.return_value = 3
+    handler = RadiusRuntimeHandler(
+        RadiusDispatcher(PluginPipeline([])),
+        AccountingSessionService(registry),
+        identities,
+    )
+
+    response = handler(
+        RadiusPacket(
+            RadiusCode.COA_REQUEST,
+            27,
+            {"User-Name": "alice", "Filter-Id": "gold"},
+            bytes(16),
+        ),
+        ("192.0.2.1", 1812),
+    )
+
+    assert response.code is RadiusCode.COA_ACK
+    assert local.attributes["Filter-Id"] == "gold"
+    assert remote.attributes["Filter-Id"] == "silver"
+    assert local.stopped is False and remote.stopped is False

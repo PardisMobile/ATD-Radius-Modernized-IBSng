@@ -426,3 +426,10 @@ Canonical source: `IBSng/core/ras/rases/asterisk.py::AsteriskRas.killUser` and `
 Latest code checkpoint: `101d8151a324a90801bf80dc122baf44b21c9d30`. Source-shaped Internet and VoIP limit planners share the recurring per-user enforcement loop; production termination is wired for audited providers with actual A1.24 kill behavior, including Asterisk AMI, GnuGk, MikroTik, Cisco VPDN and earlier SNMP/launcher/Disconnect-Request adapters. Incoming RFC 5176 Disconnect closes accounting through settlement/persistence and releases the IP lease; incoming CoA mutates only supported authorization attributes. Admin-facing online-session management remains gated on authoritative runtime/session ownership, permission dependencies and audit sequencing.
 
 Validation: Python-only CI passed 912 tests with 8 skips on the latest code. Python 3.11 passed latest full CI; Python 3.12 failed before checkout during container initialization, so rerun before marking the matrix green. This is not a full compatibility release. Database importer/parity validator, cross-process session authority, full deletion/billing/plugin parity, remaining UI, and installer/upgrade/rollback work remain open.
+
+
+## Authenticated RAS-scoped Disconnect/CoA — 2026-10-20
+
+The inbound RFC 5176 control path now scopes both Disconnect and CoA target resolution to the RAS ID resolved from the authenticated peer IP. A username-only selector cannot affect a same-named session attached to another RAS. Unresolved peer-to-RAS identity returns NAK / Error-Cause 503 without mutation. Regression tests cover both control actions and the unresolved-peer boundary.
+
+Validation: Python-only 916 passed, 8 skipped. The full PostgreSQL-backed Python 3.12 job ran 924 passed, 2 warnings, with Ruff, compilation and PHP syntax checks successful. Python 3.11's latest full-matrix attempt failed during container initialization before checkout/tests and remains to be rerun.

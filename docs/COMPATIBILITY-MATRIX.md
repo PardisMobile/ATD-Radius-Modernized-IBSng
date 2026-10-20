@@ -285,3 +285,10 @@ Canonical source: `IBSng/core/ras/rases/asterisk.py::AsteriskRas.killUser` and `
 - Inbound Disconnect-Request settles native charging, closes the native connection log and releases the IP lease; CoA changes supported authorization attributes only. Admin-facing online-session operations remain intentionally unexposed pending permission/audit and cross-process session safety.
 - Latest Python-only run: 912 passed, 8 skipped. Python 3.11 full-CI job passed. Python 3.12 latest attempt failed during container initialization before checkout/tests; full matrix remains pending.
 - Not complete: cross-process/restart authoritative session state, login-in-progress reservation, full source-parity billing/bandwidth and user deletion, schema importer/parity validation, remaining plugin/XML-RPC coverage, UI, installer and upgrade/rollback acceptance.
+
+
+## Authenticated control-session scoping — 2026-10-20
+
+Disconnect-Request and CoA-Request selection is scoped to the native RAS identified by the authenticated UDP peer IP; a username-only selector cannot mutate sessions on other RASes. Unresolved peer identity fails closed with Error-Cause 503. Cross-RAS tests cover both control actions.
+
+Latest validation: Python-only 916 passed / 8 skipped; full Python 3.12 + PostgreSQL suite 924 passed / 2 warnings; Ruff, compile and PHP syntax passed. Python 3.11 matrix rerun is pending because its latest attempt failed during container initialization, before checkout or tests.
