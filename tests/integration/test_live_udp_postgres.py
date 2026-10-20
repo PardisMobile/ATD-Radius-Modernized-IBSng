@@ -29,7 +29,7 @@ def live_db():
     with psycopg.connect(dsn) as conn:
         conn.execute("DROP SCHEMA public CASCADE")
         conn.execute("CREATE SCHEMA public")
-        for name in ("migrations/001_initial.sql", "migrations/002_functions.sql"):
+        for name in ("migrations/001_initial.sql", "migrations/002_functions.sql", "migrations/007_live_radius_sessions.sql"):
             conn.execute(Path(name).read_text(encoding="utf-8"))
         conn.execute(
             """
