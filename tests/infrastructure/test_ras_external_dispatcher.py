@@ -182,3 +182,25 @@ def test_dispatcher_rejects_non_source_audited_snmp_oids_before_transport():
         dispatcher.execute(request)
     assert snmp.executed == []
 
+
+
+def test_dispatcher_routes_audited_asterisk_manager_hangup():
+    from atd_radius.domain.ras_external import build_asterisk_manager_hangup_request
+
+    class FakeAsteriskManager:
+        def __init__(self): self.requests = []
+        def execute(self, request):
+            self.requests.append(request)
+            return "hangup-accepted"
+
+    manager = FakeAsteriskManager()
+    dispatcher = RASExternalOperationDispatcher(
+        snmp=FakeSnmp(), launcher=FakeLauncher(), rsh=FakeRSH(),
+        chillispot=FakeChilliSpot(), asterisk_manager=manager,
+    )
+    request = build_asterisk_manager_hangup_request(
+        ras_ip="192.0.2.9", manager_port="5038", username="admin",
+        secret="secret", timeout="30", channel="PJSIP/alice-000001",
+    )
+    assert dispatcher.execute(request) == "hangup-accepted"
+    assert manager.requests == [request]

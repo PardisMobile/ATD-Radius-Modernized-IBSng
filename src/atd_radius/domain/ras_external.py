@@ -710,3 +710,31 @@ def encode_chillispot_disconnect_datagram(
         (disconnect_ip, disconnect_port),
         encode_control_request(packet, secret),
     )
+
+
+def build_asterisk_manager_hangup_request(
+    *, ras_ip: str, manager_port: object, username: str, secret: str,
+    timeout: object, channel: str,
+) -> ProviderOperationRequest:
+    """Build A1.24 Asterisk AMI Hangup request after the manager gate is checked."""
+    from math import isfinite
+    host = _source_ipv4(ras_ip)
+    port = _source_integer(manager_port, "asterisk_manager_port", minimum=1)
+    if port > 65535:
+        raise ValueError("asterisk_manager_port must not exceed 65535")
+    if isinstance(timeout, bool):
+        raise ValueError("asterisk_manager_timeout must be finite and in (0, 300] seconds")
+    try:
+        timeout_value = float(timeout)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("asterisk_manager_timeout must be finite and in (0, 300] seconds") from exc
+    if not isfinite(timeout_value) or not 0 < timeout_value <= 300:
+        raise ValueError("asterisk_manager_timeout must be finite and in (0, 300] seconds")
+    for name, value in (("asterisk_manager_username", username), ("asterisk_manager_secret", secret), ("asterisk_channel", channel)):
+        if not isinstance(value, str) or not value.strip() or any(ord(ch) < 32 or ord(ch) == 127 for ch in value):
+            raise ValueError(f"{name} must be non-empty and contain no control characters")
+    return ProviderOperationRequest(
+        provider="asterisk", operation=ExternalOperation.ASTERISK_MANAGER,
+        action="hangup",
+        parameters={"host": host, "port": port, "username": username, "secret": secret, "timeout": timeout_value, "channel": channel},
+    )

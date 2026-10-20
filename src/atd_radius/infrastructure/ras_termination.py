@@ -45,12 +45,11 @@ class _Target:
 
 
 class SourceRASDisconnectClient:
-    """Execute the A1.24 Disconnect-Request paths for ChilliSpot and MVTS.
+    """Execute source-traced provider termination actions with bounded transports.
 
-    A1.24 uses a configured endpoint and User-Name for ChilliSpot, while MVTS
-    sends to the RAS IP/authentication port with User-Name and H323-conf-id.
-    Other provider types deliberately fail closed until their SNMP/RSH/launcher/
-    telephony action has a separately source-traced implementation.
+    ChilliSpot/MVTS use RADIUS Disconnect-Request; Asterisk uses its gated
+    Manager Hangup action; other supported providers use source-specific
+    SNMP/RSH/launcher adapters. Unsupported providers fail closed.
     """
 
     def __init__(

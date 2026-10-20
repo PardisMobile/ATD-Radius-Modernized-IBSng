@@ -671,3 +671,22 @@ def test_cisco_snmp_port_map_request_uses_source_ifdescr_walk_oid():
     assert request.parameters["walk_oid"] == ".1.3.6.1.2.1.2.2.1.2"
     assert request.parameters["version"] == "2c"
     assert request.parameters["udp_port"] == 161
+
+
+def test_asterisk_manager_builder_preserves_source_config_and_rejects_header_injection():
+    from atd_radius.domain.ras_external import build_asterisk_manager_hangup_request
+
+    request = build_asterisk_manager_hangup_request(
+        ras_ip="192.0.2.9", manager_port="5038", username="admin",
+        secret="secret", timeout="30", channel="PJSIP/alice-000001",
+    )
+    assert request.provider == "asterisk"
+    assert request.operation is ExternalOperation.ASTERISK_MANAGER
+    assert request.action == "hangup"
+    assert request.parameters["timeout"] == 30.0
+    assert request.parameters["channel"] == "PJSIP/alice-000001"
+    with pytest.raises(ValueError, match="control characters"):
+        build_asterisk_manager_hangup_request(
+            ras_ip="192.0.2.9", manager_port=5038, username="admin",
+            secret="secret", timeout=30, channel="PJSIP/alice" + chr(13) + chr(10) + "Action: Login",
+        )

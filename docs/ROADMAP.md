@@ -414,3 +414,8 @@ Canonical source: `IBSng/core/charge/internet_charge.py::checkLimits` and `IBSng
 ## Charge-limit scheduler scope correction — 2026-10-20
 
 The existing per-user scheduler now includes active Internet charge sessions as well as VoIP sessions. Planner selection follows each active session's `charge_kind`, which was assigned by the A1.24-compatible `UserChargeSettlement` classification, and refuses mixed Internet/VoIP charge kinds for one user instead of silently selecting one planner. Regression coverage updates the previous Internet-only-not-scheduled expectation to the source-derived shared scheduling behavior.
+
+
+## Asterisk Manager termination — source-traced
+
+Canonical source: `IBSng/core/ras/rases/asterisk.py::AsteriskRas.killUser` and `IBSng/core/lib/asterisk/manager.py::AsteriskManager.run`. The production charge-limit path now honors `asterisk_use_manager`, parses the stored `channel||unique_id` identity and issues only the source-defined AMI Login followed by Hangup for the channel. The transport has bounded connection/read time, frame-size and frame-count limits, matching ActionID checks, explicit manager rejection handling, and header-control-character validation. It does not claim independent proof that the channel has disappeared. Live Asterisk Manager interoperability remains unverified.

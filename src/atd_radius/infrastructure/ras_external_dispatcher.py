@@ -15,6 +15,7 @@ from atd_radius.infrastructure.chillispot_disconnect import ChilliSpotDisconnect
 from atd_radius.infrastructure.launcher_transport import ConfiguredLauncherTransport
 from atd_radius.infrastructure.snmp_transport import SnmpV1V2cSetTransport
 from atd_radius.infrastructure.rsh_transport import ConfiguredRSHTransport
+from atd_radius.infrastructure.asterisk_manager_transport import AsteriskManagerTransport
 
 
 class _SnmpTransport(Protocol):
@@ -27,6 +28,10 @@ class _LauncherTransport(Protocol):
 
 
 class _RSHTransport(Protocol):
+    def execute(self, request: ProviderOperationRequest) -> object: ...
+
+
+class _AsteriskManagerTransport(Protocol):
     def execute(self, request: ProviderOperationRequest) -> object: ...
 
 
@@ -53,6 +58,7 @@ class RASExternalOperationDispatcher:
     launcher: _LauncherTransport | None = None
     rsh: _RSHTransport | None = None
     chillispot: _ChilliSpotClient | None = None
+    asterisk_manager: _AsteriskManagerTransport | None = None
 
     def __post_init__(self) -> None:
         if self.snmp is None:
@@ -63,6 +69,8 @@ class RASExternalOperationDispatcher:
             self.rsh = ConfiguredRSHTransport()
         if self.chillispot is None:
             self.chillispot = ChilliSpotDisconnectClient()
+        if self.asterisk_manager is None:
+            self.asterisk_manager = AsteriskManagerTransport()
 
     @staticmethod
     def _validate_snmp_envelope(request: ProviderOperationRequest) -> None:
@@ -128,6 +136,13 @@ class RASExternalOperationDispatcher:
             if self.rsh is None:
                 raise UnsupportedExternalOperation("RSH transport is not configured")
             return self.rsh.execute(request)
+
+        if request.operation is ExternalOperation.ASTERISK_MANAGER:
+            if self.asterisk_manager is None:
+                raise UnsupportedExternalOperation("Asterisk Manager transport is not configured")
+            if request.provider != "asterisk" or request.action != "hangup":
+                raise UnsupportedExternalOperation("Asterisk Manager is only enabled for the audited Hangup path")
+            return self.asterisk_manager.execute(request)
 
         if request.operation is ExternalOperation.RADIUS_DISCONNECT:
             if self.chillispot is None:

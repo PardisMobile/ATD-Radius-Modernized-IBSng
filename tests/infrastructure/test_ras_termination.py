@@ -200,6 +200,10 @@ class FakeExternalTerminationService:
         self.calls.append(("cisco_vpdn", kwargs))
         return self.result
 
+    def disconnect_asterisk(self, **kwargs):
+        self.calls.append(("asterisk", kwargs))
+        return self.result
+
     def execute_request(self, request, **kwargs):
         self.calls.append((request.provider, request))
         return self.result
@@ -429,4 +433,36 @@ def test_cisco_vpdn_termination_fails_closed_without_source_username():
     external = FakeExternalTerminationService(result=FakeLauncherResult(True))
     with pytest.raises(PermanentRASTerminationError, match="source-defined username"):
         SourceRASDisconnectClient(external_service=external).terminate(make_ras("Cisco VPDN"), make_session(attrs={"Framed-IP-Address": "198.51.100.11"}), "credit_finished")
+    assert external.calls == []
+
+
+def test_asterisk_termination_uses_manager_gate_and_source_channel():
+    external = FakeExternalTerminationService(result=FakeLauncherResult(True))
+    ras = make_ras("Asterisk", attributes={
+        "asterisk_use_manager": "1", "asterisk_manager_port": "5038",
+        "asterisk_manager_username": "operator", "asterisk_manager_secret": "configured-secret",
+        "asterisk_manager_timeout": "30",
+    })
+    session = make_session("PJSIP/alice-000001||unique-1", {"User-Name": "sip-alice"})
+    SourceRASDisconnectClient(external_service=external).terminate(ras, session, "credit_finished")
+    name, kwargs = external.calls[0]
+    assert name == "asterisk"
+    assert kwargs == {
+        "ras_ip": ras.ip, "manager_port": "5038", "username": "operator",
+        "secret": "configured-secret", "timeout": "30", "channel": "PJSIP/alice-000001",
+    }
+
+
+def test_asterisk_termination_fails_closed_when_manager_is_disabled_or_channel_invalid():
+    external = FakeExternalTerminationService(result=FakeLauncherResult(True))
+    with pytest.raises(PermanentRASTerminationError, match="disabled"):
+        SourceRASDisconnectClient(external_service=external).terminate(
+            make_ras("Asterisk", attributes={"asterisk_use_manager": "0"}),
+            make_session("PJSIP/alice-000001||unique-1"), "credit_finished"
+        )
+    with pytest.raises(PermanentRASTerminationError, match="channel"):
+        SourceRASDisconnectClient(external_service=external).terminate(
+            make_ras("Asterisk", attributes={"asterisk_use_manager": "1"}),
+            make_session("malformed-channel"), "credit_finished"
+        )
     assert external.calls == []

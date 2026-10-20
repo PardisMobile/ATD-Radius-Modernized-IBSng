@@ -16,6 +16,7 @@ from atd_radius.domain.ras_external import (
     build_cisco_vpdn_disconnect_request,
     build_cisco_vpdn_interface_lookup_request,
     build_mikrotik_disconnect_request,
+    build_asterisk_manager_hangup_request,
 )
 from atd_radius.domain.ras_provider_adapters import (
     CISCO_EXTERNAL_ADAPTER,
@@ -164,5 +165,17 @@ class RASDisconnectApplicationService:
             ssh_wrapper=ssh_wrapper,
             ssh_username=ssh_username,
             ssh_password=ssh_password,
+        )
+        return self.execute_request(request)
+
+
+    def disconnect_asterisk(
+        self, *, ras_ip: str, manager_port: object, username: str, secret: str,
+        timeout: object, channel: str,
+    ) -> object:
+        """Run A1.24's gated AMI Login→Hangup sequence through the bounded transport."""
+        request = build_asterisk_manager_hangup_request(
+            ras_ip=ras_ip, manager_port=manager_port, username=username,
+            secret=secret, timeout=timeout, channel=channel,
         )
         return self.execute_request(request)

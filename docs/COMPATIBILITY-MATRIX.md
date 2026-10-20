@@ -271,3 +271,8 @@ Canonical A1.24 source paths: `IBSng/core/ras/rases/mikrotik.py::killUser` and `
 ## Internet session limit enforcement — source-shaped planning
 
 Canonical source: `IBSng/core/charge/internet_charge.py::checkLimits` and `IBSng/core/charge/charge.py::_getNextMoreApplicableRuleForTime`. Normal-user sessions now share the existing per-user timer worker with VoIP sessions. The Internet planner handles exhausted credit, per-session missing effective rules, aggregate concurrent-instance time/assumed-transfer rates, current rule end boundaries, and the start of a more-applicable rule; effective-rule transitions use the same settlement state machine as Accounting. Runtime selects the Internet or VoIP planner according to the same `normal_users` classification used by `UserChargeSettlement`. This also makes the source-audited MikroTik and Cisco VPDN termination adapters reachable from the appropriate normal-user limit path. Provider live interoperability and post-command session disappearance remain unverified.
+
+
+## Asterisk Manager termination — source-traced
+
+Canonical source: `IBSng/core/ras/rases/asterisk.py::AsteriskRas.killUser` and `IBSng/core/lib/asterisk/manager.py::AsteriskManager.run`. The production charge-limit path now honors `asterisk_use_manager`, parses the stored `channel||unique_id` identity and issues only the source-defined AMI Login followed by Hangup for the channel. The transport has bounded connection/read time, frame-size and frame-count limits, matching ActionID checks, explicit manager rejection handling, and header-control-character validation. It does not claim independent proof that the channel has disappeared. Live Asterisk Manager interoperability remains unverified.
