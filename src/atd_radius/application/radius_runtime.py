@@ -200,7 +200,20 @@ class RadiusRuntimeHandler:
                     if packet.code is RadiusCode.DISCONNECT_REQUEST and source_ras_id is not None
                     else ()
                 )
-                response = self.dispatcher.control(packet, ras_id=source_ras_id)
+                if source_ras_id is None:
+                    response_code = (
+                        RadiusCode.DISCONNECT_NAK
+                        if packet.code is RadiusCode.DISCONNECT_REQUEST
+                        else RadiusCode.COA_NAK
+                    )
+                    response = RadiusPacket(
+                        response_code,
+                        packet.identifier,
+                        {"Error-Cause": "503"},
+                        packet.authenticator,
+                    )
+                else:
+                    response = self.dispatcher.control(packet, ras_id=source_ras_id)
                 if response.code is RadiusCode.DISCONNECT_ACK:
                     for state in matches:
                         if state.stopped:
