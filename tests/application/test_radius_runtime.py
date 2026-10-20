@@ -472,7 +472,7 @@ def test_accounting_identity_resolution_and_apply_share_registry_lock():
     assert guard["entered"] is False
 
 
-def test_native_packet_handler_schedules_only_users_with_active_voip_charge_sessions():
+def test_native_packet_handler_schedules_users_with_active_charge_sessions():
     from atd_radius.application.radius_runtime import NativeRadiusPacketHandler, NativeRadiusRuntimeState
     from atd_radius.domain.radius_runtime import SessionKey
     from atd_radius.domain.ras import RAS
@@ -491,7 +491,7 @@ def test_native_packet_handler_schedules_only_users_with_active_voip_charge_sess
         handler.close()
 
 
-def test_native_packet_handler_does_not_schedule_internet_only_sessions():
+def test_native_packet_handler_schedules_internet_only_sessions():
     from atd_radius.application.radius_runtime import NativeRadiusPacketHandler, NativeRadiusRuntimeState
     from atd_radius.domain.radius_runtime import SessionKey
     from atd_radius.domain.ras import RAS
@@ -505,7 +505,7 @@ def test_native_packet_handler_does_not_schedule_internet_only_sessions():
     handler = NativeRadiusPacketHandler(state, Mock())
     try:
         handler._refresh_voip_limit_schedule(7)
-        assert handler.voip_limit_loop.scheduler.pending_keys() == ()
+        assert ("voip-user", 7) in handler.voip_limit_loop.scheduler.pending_keys()
     finally:
         handler.close()
 

@@ -432,20 +432,19 @@ class NativeRadiusPacketHandler:
                 )
                 if not active:
                     return VoipLimitPlan(None)
-                # UserChargeSettlement routes normal users to InternetCharge
-                # and all other supported users to VoIPCharge in A1.24.
-                # The same classification selects the matching limit planner.
-                normal_user = users.is_normal_user(user_id)
-                charge_kind = "internet" if normal_user else "voip"
-                active = tuple(state for state in active if state.charge_kind == charge_kind)
-                if not active:
-                    return VoipLimitPlan(None)
+                # Accounting's UserChargeSettlement assigned this native
+                # charge kind using the A1.24 normal-user/VoIP-user boundary.
+                # Keep the planner consistent with the actual active state.
+                charge_kinds = {state.charge_kind for state in active}
+                if len(charge_kinds) != 1:
+                    raise ValueError("user has mixed Internet and VoIP charge sessions")
+                charge_kind = next(iter(charge_kinds))
                 when = datetime.now().astimezone()
                 context = lambda state: (
                     state.key.ras_id,
                     state.attributes.get("NAS-Port") or state.attributes.get("NAS-Port-Id"),
                 )
-                if normal_user:
+                if charge_kind == "internet":
                     settlement = InternetChargeSettlement(
                         PostgresInternetChargeRuleRepository(conn), users, credits
                     )

@@ -631,3 +631,8 @@ Canonical A1.24 source paths: `IBSng/core/ras/rases/mikrotik.py::killUser` and `
 ## Internet session limit enforcement — source-shaped planning
 
 Canonical source: `IBSng/core/charge/internet_charge.py::checkLimits` and `IBSng/core/charge/charge.py::_getNextMoreApplicableRuleForTime`. Normal-user sessions now share the existing per-user timer worker with VoIP sessions. The Internet planner handles exhausted credit, per-session missing effective rules, aggregate concurrent-instance time/assumed-transfer rates, current rule end boundaries, and the start of a more-applicable rule; effective-rule transitions use the same settlement state machine as Accounting. Runtime selects the Internet or VoIP planner according to the same `normal_users` classification used by `UserChargeSettlement`. This also makes the source-audited MikroTik and Cisco VPDN termination adapters reachable from the appropriate normal-user limit path. Provider live interoperability and post-command session disappearance remain unverified.
+
+
+## Charge-limit scheduler scope correction — 2026-10-20
+
+The existing per-user scheduler now includes active Internet charge sessions as well as VoIP sessions. Planner selection follows each active session's `charge_kind`, which was assigned by the A1.24-compatible `UserChargeSettlement` classification, and refuses mixed Internet/VoIP charge kinds for one user instead of silently selecting one planner. Regression coverage updates the previous Internet-only-not-scheduled expectation to the source-derived shared scheduling behavior.
