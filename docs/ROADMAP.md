@@ -433,3 +433,10 @@ Validation: Python-only CI passed 912 tests with 8 skips on the latest code. Pyt
 The inbound RFC 5176 control path now scopes both Disconnect and CoA target resolution to the RAS ID resolved from the authenticated peer IP. A username-only selector cannot affect a same-named session attached to another RAS. Unresolved peer-to-RAS identity returns NAK / Error-Cause 503 without mutation. Regression tests cover both control actions and the unresolved-peer boundary.
 
 Validation: Python-only 916 passed, 8 skipped. The full PostgreSQL-backed Python 3.12 job ran 924 passed, 2 warnings, with Ruff, compilation and PHP syntax checks successful. Python 3.11's latest full-matrix attempt failed during container initialization before checkout/tests and remains to be rerun.
+
+
+## Durable RADIUS session recovery — 2026-10-20
+
+The new ATD extension table `atd_radius_live_sessions` snapshots runtime session and billing state in the same transaction as Accounting mutations, restores it before native open-log fallback, supports sessions intentionally omitted from `connection_log`, and preserves accrued rule state across restart. Legacy open native log rows are restored and upgraded into snapshots. A source `no_connection_log` Stop removes the prematurely created ATD history row to prevent false recovery.
+
+Still open: multi-worker row/advisory lock coordination, lifecycle reconciliation for sessions that never send Stop, and full live provider verification. This batch is pending CI validation on its new HEAD.

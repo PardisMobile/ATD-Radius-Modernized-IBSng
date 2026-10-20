@@ -83,6 +83,17 @@ class ConnectionLogRepository:
             (logout_time, credit_used, successful, connection_log_id),
         )
 
+    def delete(self, connection_log_id: int) -> None:
+        """Delete a not-yet-closed log when A1.24 suppresses history for the session."""
+        self.conn.execute(
+            "DELETE FROM connection_log_details WHERE connection_log_id=%s",
+            (connection_log_id,),
+        )
+        self.conn.execute(
+            "DELETE FROM connection_log WHERE connection_log_id=%s",
+            (connection_log_id,),
+        )
+
     def list_open(self) -> list[ConnectionLog]:
         """Load successful sessions whose native connection_log has no logout time.
 

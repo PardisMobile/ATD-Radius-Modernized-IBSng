@@ -200,6 +200,11 @@ class RadiusRuntimeHandler:
                     if packet.code is RadiusCode.DISCONNECT_REQUEST and source_ras_id is not None
                     else ()
                 )
+                coa_matches = (
+                    registry.matching(packet.attributes, ras_id=source_ras_id)
+                    if packet.code is RadiusCode.COA_REQUEST and source_ras_id is not None
+                    else ()
+                )
                 if source_ras_id is None:
                     response_code = (
                         RadiusCode.DISCONNECT_NAK
@@ -214,6 +219,9 @@ class RadiusRuntimeHandler:
                     )
                 else:
                     response = self.dispatcher.control(packet, ras_id=source_ras_id)
+                if response.code is RadiusCode.COA_ACK:
+                    for state in coa_matches:
+                        self.accounting_sessions.persist_state(state)
                 if response.code is RadiusCode.DISCONNECT_ACK:
                     for state in matches:
                         if state.stopped:
@@ -528,7 +536,7 @@ class NativeRadiusPacketHandler:
                     current.termination_requested_at = None
             raise
 
-    def _recover_open_sessions(self, conn, charge, ras_registry, pools) -> set[int]:
+    def _recover_open_sessions(self, conn, charge, ras_registry, pools, session_store=None) -> set[int]:
         """Rehydrate open rows and return users needing restored VoIP timers.
 
         This deliberately uses the existing A1.24 connection_log/details tables.
@@ -542,8 +550,38 @@ class NativeRadiusPacketHandler:
         repository = ConnectionLogRepository(conn)
         recovered = 0
         recovered_voip_users: set[int] = set()
+        durable_log_ids: set[int] = set()
         now = datetime.now().astimezone()
+        # Restore full snapshots first, including sessions intentionally omitted
+        # from connection_log by A1.24 no_connection_log RAS messages.
+        if session_store is not None:
+            for state in session_store.list_active():
+                log_id = state.attributes.get("__connection_log_id")
+                if log_id:
+                    try:
+                        durable_log_ids.add(int(log_id))
+                    except ValueError:
+                        self._logger.warning("Skipping malformed durable connection-log identity %r", log_id)
+                ras = ras_registry.get(state.key.ras_id)
+                if ras is None:
+                    self._logger.warning(
+                        "Skipping durable session %s because RAS %s is unavailable",
+                        state.key.unique_id, state.key.ras_id,
+                    )
+                    continue
+                if not self.state.sessions.restore(state):
+                    continue
+                ip = state.attributes.get("Framed-IP-Address")
+                if ip:
+                    pool_id = pools.find_pool(ras.ippool_ids, ip)
+                    if pool_id is not None:
+                        pools.ensure_claimed(pool_id, ip)
+                if state.charge_kind in {"voip", "internet"} and state.charge_id is not None:
+                    recovered_voip_users.add(state.key.user_id)
+                recovered += 1
         for record in repository.list_open():
+            if record.connection_log_id in durable_log_ids:
+                continue
             if record.user_id is None or record.ras_id is None:
                 self._logger.warning(
                     "Skipping open connection_log %s without user/RAS identity",
@@ -602,7 +640,9 @@ class NativeRadiusPacketHandler:
             # Historical accrued rule transitions cannot be reconstructed from
             # connection_log alone, so we never fabricate an old accumulator.
             charge.start(state, now, record.ras_id, port)
-            if state.charge_kind == "voip" and state.charge_id is not None:
+            if session_store is not None:
+                session_store.save(state)
+            if state.charge_kind in {"voip", "internet"} and state.charge_id is not None:
                 recovered_voip_users.add(record.user_id)
             ip = attrs.get("Framed-IP-Address")
             if ip:
@@ -637,10 +677,12 @@ class NativeRadiusPacketHandler:
                 PostgresVoipTariffRepository(conn), credits,
             )
             charge = UserChargeSettlement(users, internet_charge, voip_charge)
-            recovered_voip_users = self._recover_open_sessions(conn, charge, ras, pools)
+            from atd_radius.infrastructure.live_radius_sessions import PostgresLiveRadiusSessionRepository
+            session_store = PostgresLiveRadiusSessionRepository(conn)
+            recovered_voip_users = self._recover_open_sessions(conn, charge, ras, pools, session_store)
             for recovered_user_id in recovered_voip_users:
                 self._refresh_voip_limit_schedule(recovered_user_id)
-            accounting = AccountingSessionService(self.state.sessions, persistence, charge)
+            accounting = AccountingSessionService(self.state.sessions, persistence, charge, session_store)
             dispatcher = build_radius_dispatcher(
                 users,
                 active_sessions_provider=session_views(self.state.sessions),

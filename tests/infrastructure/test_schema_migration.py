@@ -44,3 +44,11 @@ def test_admin_sessions_are_a_separate_revocable_extension():
     assert "token_hash char(64) not null unique" in migration
     assert "revoked_at" in migration
     assert "expires_at timestamptz not null" in migration
+
+
+def test_live_radius_session_state_is_an_operational_extension_not_a_replacement_schema():
+    migration = Path("migrations/007_live_radius_sessions.sql").read_text(encoding="utf-8").lower()
+    assert "create table if not exists atd_radius_live_sessions" in migration
+    assert "state jsonb not null" in migration
+    assert "primary key (user_id, ras_id, unique_id)" in migration
+    assert "references users" not in migration

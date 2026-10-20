@@ -292,3 +292,10 @@ Canonical source: `IBSng/core/ras/rases/asterisk.py::AsteriskRas.killUser` and `
 Disconnect-Request and CoA-Request selection is scoped to the native RAS identified by the authenticated UDP peer IP; a username-only selector cannot mutate sessions on other RASes. Unresolved peer identity fails closed with Error-Cause 503. Cross-RAS tests cover both control actions.
 
 Latest validation: Python-only 916 passed / 8 skipped; full Python 3.12 + PostgreSQL suite 924 passed / 2 warnings; Ruff, compile and PHP syntax passed. Python 3.11 matrix rerun is pending because its latest attempt failed during container initialization, before checkout or tests.
+
+
+## Durable session state and restart recovery — 2026-10-20
+
+An ATD operational extension migration stores full active runtime session snapshots in `atd_radius_live_sessions`, without altering the native IBSng table contract. Accounting transitions persist state atomically with native billing/history writes. Restart recovery restores complete charge/rule and VoIP free-second state before falling back to open native `connection_log` rows; legacy rows are upgraded into snapshots during recovery. Active sessions using `no_connection_log` can now survive process restart without requiring a history row. Stop removes the active snapshot; a suppressed-history Stop removes the ATD early-opened history row/details.
+
+Not yet verified: multi-worker concurrency, process crash during provider termination, and live RAS interoperability. This feature requires migration 007 to be applied.

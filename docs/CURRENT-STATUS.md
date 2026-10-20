@@ -657,3 +657,10 @@ Canonical source: `IBSng/core/ras/rases/asterisk.py::AsteriskRas.killUser` and `
 Inbound Disconnect-Request and CoA-Request now constrain session selection to the native RAS resolved from the authenticated UDP peer IP. NAS-IP-Address/NAS-Identifier remain RAS-level identifiers within that scope rather than requiring them to appear in each session detail row. An unresolved RAS returns NAK with Error-Cause 503 and cannot mutate sessions. Tests cover Disconnect cross-RAS isolation, CoA cross-RAS isolation, and unresolved-peer fail-closed behavior.
 
 Validation checkpoint: Python-only suite 916 passed / 8 skipped; full PostgreSQL-backed Python 3.12 suite 924 passed / 2 warnings, plus Ruff, Python compilation and PHP syntax. Python 3.11's latest attempt failed before checkout during container initialization; rerun it before calling the matrix green.
+
+
+## Durable session-state batch — 2026-10-20
+
+Added ATD-owned `atd_radius_live_sessions` snapshots in migration 007. Accounting transitions persist full active runtime state in the same caller-owned transaction; recovery prefers exact snapshots (including billing accumulators and sessions without connection_log history) and falls back to legacy open native connection_log rows only where no snapshot exists. Legacy recovered rows are upgraded to snapshots. A1.24 `no_connection_log` Stop now discards the early-opened log/details rather than leaving a stale open row.
+
+This is restart recovery progress, not full multi-worker parity. Concurrent workers still need database-coordinated session ownership/mutation. Previous full CI on `9ede4ff39d81788913944385281d303e1554938c` passed 924 tests on PostgreSQL/Python 3.12 and 916 on Python-only; CI on this new session-snapshot batch must run before it is marked verified.
