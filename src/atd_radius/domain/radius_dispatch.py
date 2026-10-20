@@ -36,12 +36,12 @@ class RadiusDispatcher:
     def accounting(self,packet:RadiusPacket)->DispatchResult:
         if packet.code is not RadiusCode.ACCOUNTING_REQUEST: raise ValueError("expected Accounting-Request")
         return DispatchResult(RadiusPacket(RadiusCode.ACCOUNTING_RESPONSE,packet.identifier,{},packet.authenticator),event_from_attributes(packet.attributes))
-    def control(self, packet: RadiusPacket) -> RadiusPacket:
+    def control(self, packet: RadiusPacket, *, ras_id: int | None = None) -> RadiusPacket:
         if packet.code is RadiusCode.DISCONNECT_REQUEST:
-            result = self.session_control.disconnect(packet.attributes) if self.session_control is not None else False
+            result = self.session_control.disconnect(packet.attributes, ras_id=ras_id) if self.session_control is not None and ras_id is not None else False
             code = RadiusCode.DISCONNECT_ACK if (result.ok if hasattr(result, "ok") else result) else RadiusCode.DISCONNECT_NAK
         elif packet.code is RadiusCode.COA_REQUEST:
-            result = self.session_control.change_of_authorization(packet.attributes) if self.session_control is not None else False
+            result = self.session_control.change_of_authorization(packet.attributes, ras_id=ras_id) if self.session_control is not None and ras_id is not None else False
             code = RadiusCode.COA_ACK if (result.ok if hasattr(result, "ok") else result) else RadiusCode.COA_NAK
         else:
             raise ValueError("unsupported control packet")

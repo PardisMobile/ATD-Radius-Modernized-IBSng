@@ -191,12 +191,16 @@ class RadiusRuntimeHandler:
             # accounting lifecycle performs charge settlement and closes the
             # native connection_log before the session is finally stopped.
             with registry.synchronized():
+                # A control packet is authenticated against the RAS secret
+                # selected by peer IP. Never let a username-only selector affect
+                # a similarly named session attached to a different RAS.
+                source_ras_id = self.identities.ras_id(peer[0])
                 matches = (
-                    registry.matching(packet.attributes)
-                    if packet.code is RadiusCode.DISCONNECT_REQUEST
+                    registry.matching(packet.attributes, ras_id=source_ras_id)
+                    if packet.code is RadiusCode.DISCONNECT_REQUEST and source_ras_id is not None
                     else ()
                 )
-                response = self.dispatcher.control(packet)
+                response = self.dispatcher.control(packet, ras_id=source_ras_id)
                 if response.code is RadiusCode.DISCONNECT_ACK:
                     for state in matches:
                         if state.stopped:

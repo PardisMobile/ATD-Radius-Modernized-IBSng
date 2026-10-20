@@ -721,7 +721,9 @@ def test_disconnect_request_settles_charge_and_closes_native_log():
     charge = Charge()
     sessions = AccountingSessionService(registry, persistence, charge)
     dispatcher = RadiusDispatcher(PluginPipeline([]))
-    handler = RadiusRuntimeHandler(dispatcher, sessions, Mock())
+    identities = Mock()
+    identities.ras_id.return_value = 3
+    handler = RadiusRuntimeHandler(dispatcher, sessions, identities)
 
     response = handler(
         RadiusPacket(
@@ -1225,7 +1227,9 @@ def test_coa_request_updates_only_supported_live_authorization_without_settlemen
     )
     charge = Mock()
     sessions = AccountingSessionService(registry, charge=charge)
-    handler = RadiusRuntimeHandler(RadiusDispatcher(PluginPipeline([])), sessions, Mock())
+    identities = Mock()
+    identities.ras_id.return_value = 3
+    handler = RadiusRuntimeHandler(RadiusDispatcher(PluginPipeline([])), sessions, identities)
 
     response = handler(
         RadiusPacket(
@@ -1260,10 +1264,12 @@ def test_invalid_coa_nak_does_not_mutate_or_stop_live_session():
         {"User-Name": "alice", "Acct-Session-Id": "sid-coa-invalid", "Filter-Id": "bronze"},
     )
     before = dict(state.attributes)
+    identities = Mock()
+    identities.ras_id.return_value = 3
     handler = RadiusRuntimeHandler(
         RadiusDispatcher(PluginPipeline([])),
         AccountingSessionService(registry),
-        Mock(),
+        identities,
     )
 
     response = handler(
@@ -1280,3 +1286,63 @@ def test_invalid_coa_nak_does_not_mutate_or_stop_live_session():
     assert dict(state.attributes) == before
     assert state.stopped is False
     assert state.started is True
+
+
+
+def test_disconnect_is_scoped_to_authenticated_source_ras_even_for_username_selector():
+    from unittest.mock import Mock
+    from atd_radius.application.radius_runtime import RadiusRuntimeHandler
+    from atd_radius.domain.aaa import PluginPipeline
+    from atd_radius.domain.accounting_session import AccountingSessionService
+    from atd_radius.domain.radius import RadiusCode, RadiusPacket
+    from atd_radius.domain.radius_dispatch import RadiusDispatcher
+    from atd_radius.domain.radius_runtime import SessionKey, SessionRegistry
+
+    registry = SessionRegistry()
+    local = registry.start(SessionKey(7, 3, "local"), {"User-Name": "alice", "Acct-Session-Id": "local"})
+    remote = registry.start(SessionKey(7, 4, "remote"), {"User-Name": "alice", "Acct-Session-Id": "remote"})
+    identities = Mock()
+    identities.ras_id.return_value = 3
+    handler = RadiusRuntimeHandler(
+        RadiusDispatcher(PluginPipeline([])),
+        AccountingSessionService(registry),
+        identities,
+    )
+
+    response = handler(
+        RadiusPacket(RadiusCode.DISCONNECT_REQUEST, 25, {"User-Name": "alice"}, bytes(16)),
+        ("192.0.2.1", 1812),
+    )
+
+    assert response.code is RadiusCode.DISCONNECT_ACK
+    assert local.stopped is True
+    assert remote.stopped is False
+
+
+def test_control_request_from_unresolved_ras_fails_closed_without_mutation():
+    from unittest.mock import Mock
+    from atd_radius.application.radius_runtime import RadiusRuntimeHandler
+    from atd_radius.domain.aaa import PluginPipeline
+    from atd_radius.domain.accounting_session import AccountingSessionService
+    from atd_radius.domain.radius import RadiusCode, RadiusPacket
+    from atd_radius.domain.radius_dispatch import RadiusDispatcher
+    from atd_radius.domain.radius_runtime import SessionKey, SessionRegistry
+
+    registry = SessionRegistry()
+    state = registry.start(SessionKey(7, 3, "sid"), {"User-Name": "alice", "Acct-Session-Id": "sid"})
+    identities = Mock()
+    identities.ras_id.return_value = None
+    handler = RadiusRuntimeHandler(
+        RadiusDispatcher(PluginPipeline([])),
+        AccountingSessionService(registry),
+        identities,
+    )
+
+    response = handler(
+        RadiusPacket(RadiusCode.DISCONNECT_REQUEST, 26, {"Acct-Session-Id": "sid"}, bytes(16)),
+        ("192.0.2.99", 1812),
+    )
+
+    assert response.code is RadiusCode.DISCONNECT_NAK
+    assert response.attributes["Error-Cause"] == "503"
+    assert state.stopped is False

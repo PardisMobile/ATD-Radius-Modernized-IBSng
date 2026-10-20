@@ -22,19 +22,19 @@ class ControlResult:
 @dataclass(slots=True)
 class RegistrySessionControl:
     registry:SessionRegistry
-    def _select(self,attributes:Mapping[str,str],allowed:set[str]):
+    def _select(self,attributes:Mapping[str,str],allowed:set[str],ras_id:int|None=None):
         if set(attributes)-allowed: return (),ERROR_UNSUPPORTED_ATTRIBUTE
         if not any(name in attributes for name in SESSION_IDENTIFIERS): return (),ERROR_MISSING_ATTRIBUTE
-        matches=self.registry.matching(attributes)
+        matches=self.registry.matching(attributes,ras_id=ras_id)
         if not matches: return (),ERROR_SESSION_NOT_FOUND
         return matches,None
-    def disconnect(self,attributes:Mapping[str,str])->ControlResult:
-        matches,error=self._select(attributes,DISCONNECT_ALLOWED)
+    def disconnect(self,attributes:Mapping[str,str],ras_id:int|None=None)->ControlResult:
+        matches,error=self._select(attributes,DISCONNECT_ALLOWED,ras_id)
         if error: return ControlResult(False,error)
         for state in matches: state.stopped=True
         return ControlResult(True)
-    def change_of_authorization(self,attributes:Mapping[str,str])->ControlResult:
-        matches,error=self._select(attributes,COA_ALLOWED)
+    def change_of_authorization(self,attributes:Mapping[str,str],ras_id:int|None=None)->ControlResult:
+        matches,error=self._select(attributes,COA_ALLOWED,ras_id)
         if error: return ControlResult(False,error)
         changes={name:value for name,value in attributes.items() if name in {"Filter-Id","NAS-Filter-Rule"}}
         if not changes: return ControlResult(False,ERROR_MISSING_ATTRIBUTE)

@@ -126,11 +126,14 @@ class SessionRegistry:
             if state.key.unique_id==unique_id: return state
         return None
     @_registry_locked
-    def matching(self,attributes):
+    def matching(self,attributes,ras_id=None):
+        # NAS identity is authenticated by the source address/secret and is
+        # enforced as the owning RAS scope. It is not a per-session attribute
+        # in connection_log_details, so do not compare it to absent session data.
         names={"NAS-IP-Address","NAS-Identifier","User-Name","NAS-Port","Framed-IP-Address","Calling-Station-Id","Called-Station-Id","Acct-Session-Id","Acct-Multi-Session-Id","NAS-Port-Id","Chargeable-User-Identity"}
-        ids={k:v for k,v in attributes.items() if k in names}
+        ids={k:v for k,v in attributes.items() if k in names and not (ras_id is not None and k in {"NAS-IP-Address","NAS-Identifier"})}
         if not ids:return ()
-        return tuple(s for s in self._sessions.values() if s.started and not s.stopped and all(s.attributes.get(k)==v for k,v in ids.items()))
+        return tuple(s for s in self._sessions.values() if s.started and not s.stopped and (ras_id is None or s.key.ras_id==ras_id) and all(s.attributes.get(k)==v for k,v in ids.items()))
     @_registry_locked
     def disconnect_matching(self,attributes):
         matches=self.matching(attributes)
