@@ -1389,3 +1389,61 @@ def test_coa_is_scoped_to_authenticated_source_ras():
     assert local.attributes["Filter-Id"] == "gold"
     assert remote.attributes["Filter-Id"] == "silver"
     assert local.stopped is False and remote.stopped is False
+
+
+
+def test_coa_refreshes_durable_remote_worker_session_before_selecting_targets():
+    from unittest.mock import Mock
+    from atd_radius.application.radius_runtime import RadiusRuntimeHandler
+    from atd_radius.domain.accounting_session import AccountingSessionService
+    from atd_radius.domain.aaa import PluginPipeline
+    from atd_radius.domain.radius import RadiusCode, RadiusPacket
+    from atd_radius.domain.radius_dispatch import RadiusDispatcher
+    from atd_radius.domain.radius_runtime import SessionKey, SessionRegistry, SessionState
+
+    key = SessionKey(7, 3, "remote-worker-session")
+    durable_state = SessionState(
+        key=key,
+        attributes={"User-Name": "alice", "Acct-Session-Id": key.unique_id, "Filter-Id": "bronze"},
+        started=True,
+    )
+
+    class Store:
+        def __init__(self):
+            self.saved = []
+            self.locked = []
+        def list_active(self):
+            return [durable_state]
+        def lock(self, session_key):
+            self.locked.append(session_key)
+        def get(self, session_key):
+            return durable_state if session_key == key else None
+        def save(self, state):
+            self.saved.append((state.key, dict(state.attributes)))
+
+    registry = SessionRegistry()
+    store = Store()
+    sessions = AccountingSessionService(registry, state_store=store)
+    identities = Mock()
+    identities.ras_id.return_value = 3
+    handler = RadiusRuntimeHandler(
+        RadiusDispatcher(PluginPipeline([])),
+        sessions,
+        identities,
+    )
+
+    response = handler(
+        RadiusPacket(
+            RadiusCode.COA_REQUEST, 31,
+            {"User-Name": "alice", "Filter-Id": "gold"},
+            bytes(16),
+        ),
+        ("192.0.2.1", 1812),
+    )
+
+    refreshed = registry.get(key)
+    assert response.code is RadiusCode.COA_ACK
+    assert refreshed is durable_state
+    assert refreshed.attributes["Filter-Id"] == "gold"
+    assert store.locked == [key]
+    assert store.saved[-1] == (key, dict(refreshed.attributes))

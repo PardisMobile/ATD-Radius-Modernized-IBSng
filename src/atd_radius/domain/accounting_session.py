@@ -45,6 +45,30 @@ class AccountingSessionService:
         if self.state_store is not None:
             self.state_store.save(state)
 
+    def refresh_ras_sessions(self, ras_id: int) -> None:
+        """Refresh every session on one RAS under per-session DB locks.
+
+        Control requests are rare, so reconciling this RAS scope is preferable
+        to applying Disconnect/CoA against a potentially stale worker-local view.
+        """
+        store = self.state_store
+        list_active = getattr(store, "list_active", None)
+        lock = getattr(store, "lock", None)
+        load = getattr(store, "get", None)
+        if not (callable(list_active) and callable(lock) and callable(load)):
+            return
+        durable = [state for state in list_active() if state.key.ras_id == ras_id]
+        local = self.registry.all_for_ras(ras_id)
+        keys = {state.key for state in durable}
+        keys.update(state.key for state in local)
+        for key in sorted(keys, key=lambda item: (item.user_id, item.ras_id, item.unique_id)):
+            lock(key)
+            state = load(key)
+            if state is None:
+                self.registry.remove(key)
+            else:
+                self.registry.replace(state)
+
     def apply(self, event, user_id, ras_id) -> AccountingSessionResult:
         # In-process atomicity remains useful; durable snapshots are written before
         # the caller commits the same PostgreSQL transaction.

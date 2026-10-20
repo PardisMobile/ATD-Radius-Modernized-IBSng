@@ -676,3 +676,10 @@ The session snapshot batch passes the Python-only workflow: 925 passed, 8 skippe
 Accounting session mutation now takes a transaction-scoped PostgreSQL advisory lock keyed by the full native session identity, refreshes the state from the durable table after locking, and then applies/persists the event. This closes the stale in-memory counter/charge-state race for Accounting packets arriving at different workers. Stopped tombstones remain for seven days to preserve cross-worker duplicate-Stop idempotency.
 
 Latest completed full CI before this change: Python 3.11 and 3.12 both passed 933 tests, 2 warnings each; Ruff, compilation and PHP syntax passed. The latest Python-only run also passed 925 tests with 8 skips. The new advisory-lock batch is awaiting CI.
+
+
+## Cross-worker Disconnect/CoA refresh — 2026-10-20
+
+Inbound RFC 5176 control now reconciles the authenticated source RAS's session set against durable snapshots and acquires per-session transaction advisory locks before selecting targets. Sessions active on another worker are visible to control processing; local stale entries are replaced or removed from the authoritative durable result.
+
+Latest full CI before this control-refresh batch: Python 3.11 and 3.12 each passed 935 tests, 2 warnings; Ruff, compilation and PHP syntax passed. Python-only suite passed 927 tests, 8 skipped. This control-refresh change is pending CI.

@@ -452,3 +452,10 @@ Python-only suite for the durable-session batch: 925 passed, 8 skipped. Full Pos
 Accounting mutations are now serialized per full native session key using PostgreSQL transaction advisory locks. Each worker refreshes the durable snapshot only after acquiring the lock, so counter deltas and charge settlement no longer start from independently stale copies. Seven-day stopped tombstones preserve duplicate Stop idempotency across workers.
 
 Still open: cross-worker Access-Accept/login-in-progress reservation, authoritative online-session selection for Disconnect/CoA and administration, scheduler-vs-accounting ownership, and provider interoperability. Last full CI before this change passed 933 tests on both Python 3.11 and 3.12.
+
+
+## Cross-worker RFC 5176 target resolution — 2026-10-20
+
+Disconnect/CoA processing now refreshes the authenticated RAS's durable session scope, locks keys in deterministic order, and reloads each row before selecting control targets. This reduces stale-worker omissions and prevents control actions from operating only on a worker-local snapshot.
+
+Remaining major session blocker: Access-Accept/login-in-progress reservations and cross-worker MultiLogin admission before Accounting Start. Last full CI before this batch passed 935 tests on Python 3.11 and 3.12.

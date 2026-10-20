@@ -311,3 +311,10 @@ The Python-only workflow passes with 925 passed and 8 skipped on the durable-ses
 The Accounting lifecycle now uses transaction-scoped PostgreSQL advisory locks for the complete native session key, refreshes durable state after locking, and writes the resulting state in the same transaction. This prevents concurrent workers from applying octet deltas or charge settlement from stale snapshots. Stopped tombstones are retained for seven days to support duplicate Stop idempotency across workers.
 
 Not yet covered by this lock: Access-Accept reservations, cross-worker Disconnect/CoA target selection, and timer/provider side effects. Last completed full CI before this batch passed 933 tests on Python 3.11 and 3.12.
+
+
+## Cross-worker Disconnect/CoA target refresh — 2026-10-20
+
+RFC 5176 control requests refresh the durable active-session scope for the authenticated RAS, acquire per-session transaction advisory locks, and reload target state before dispatch. This supports selecting sessions that were established by a different worker and removes stale local state when the durable row is absent.
+
+Still open: durable Access-Accept/login-in-progress reservation and authoritative cross-worker MultiLogin admission. Last full CI before this batch passed 935 tests on Python 3.11 and 3.12.
