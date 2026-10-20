@@ -81,7 +81,7 @@ def test_stopped_state_is_kept_as_duplicate_stop_tombstone_but_unstarted_state_i
     repo = PostgresLiveRadiusSessionRepository(conn)
     stopped = SessionState(key=SessionKey(7, 3, "sid"), started=True, stopped=True)
     repo.save(stopped)
-    assert conn.calls[0][0].startswith("INSERT INTO atd_radius_live_sessions")
+    assert conn.calls[0][0].lstrip().startswith("INSERT INTO atd_radius_live_sessions")
     assert '"stopped":true' in conn.calls[0][1][3]
     unstarted = SessionState(key=SessionKey(7, 3, "sid-2"), started=False)
     repo.save(unstarted)
