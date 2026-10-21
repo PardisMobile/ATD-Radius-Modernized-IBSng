@@ -491,8 +491,33 @@ class NativeRadiusPacketHandler:
         else:
             self.voip_limit_loop.cancel(user_id)
 
+    def _refresh_durable_user_sessions(self, conn, user_id: int) -> None:
+        """Refresh the full user's session set while holding deterministic DB locks."""
+        if not callable(getattr(conn, "execute", None)):
+            return
+        from atd_radius.infrastructure.live_radius_sessions import PostgresLiveRadiusSessionRepository
+
+        store = PostgresLiveRadiusSessionRepository(conn)
+        durable = [state for state in store.list_active() if state.key.user_id == user_id]
+        with self.state.sessions.synchronized():
+            local = self.state.sessions.all_for_user(user_id)
+        keys = {state.key for state in durable}
+        keys.update(state.key for state in local)
+        for key in sorted(keys, key=lambda item: (item.user_id, item.ras_id, item.unique_id)):
+            store.lock(key)
+            state = store.get(key)
+            with self.state.sessions.synchronized():
+                if state is None or not state.started or state.stopped:
+                    self.state.sessions.remove(key)
+                else:
+                    self.state.sessions.replace(state)
+
     def _check_voip_limits(self, user_id: int) -> VoipLimitPlan:
         with self.connection_factory() as conn:
+            # The timer may run in a worker that did not receive the latest
+            # Accounting packet. Plan against durable cross-worker state, not
+            # only the worker-local cache.
+            self._refresh_durable_user_sessions(conn, user_id)
             ras_registry = build_ras_runtime(RASRepository(conn), self.state.type_defaults)
             users = UserRepository(conn)
             credits = UserCreditRepository(conn)
