@@ -83,6 +83,17 @@ _USER_PERMISSIONS = AdminPermissionEvaluator(
             dependencies=("CHANGE USER ATTRIBUTES",),
             evaluator=_all_or_owner,
         ),
+        PermissionSpec(
+            "SEE ONLINE USERS",
+            PermissionKind.CONTEXTUAL,
+            evaluator=_all_or_owner,
+        ),
+        PermissionSpec(
+            "KILL USER",
+            PermissionKind.CONTEXTUAL,
+            dependencies=("SEE ONLINE USERS",),
+            evaluator=_all_or_owner,
+        ),
         PermissionSpec("NO DEPOSIT LIMIT", PermissionKind.NO_VALUE),
     ]
 )
@@ -270,6 +281,22 @@ def can_delete_user(principal: AdminPrincipal, owner_id: int | None) -> bool:
     return _USER_PERMISSIONS.can_do(
         principal.permissions,
         "DELETE USER",
+        context={"admin_id": principal.admin_id, "owner_id": owner_id},
+    )
+
+
+def can_see_online_users(principal: AdminPrincipal, owner_id: int | None) -> bool:
+    return _USER_PERMISSIONS.can_do(
+        principal.permissions,
+        "SEE ONLINE USERS",
+        context={"admin_id": principal.admin_id, "owner_id": owner_id},
+    )
+
+
+def can_kill_user(principal: AdminPrincipal, owner_id: int | None) -> bool:
+    return _USER_PERMISSIONS.can_do(
+        principal.permissions,
+        "KILL USER",
         context={"admin_id": principal.admin_id, "owner_id": owner_id},
     )
 
