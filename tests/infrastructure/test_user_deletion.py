@@ -28,10 +28,12 @@ class Connection:
         normalized = " ".join(sql.split())
         self.statements.append((normalized, params))
         if "FROM users u" in normalized and "LEFT JOIN normal_users" in normalized:
-            return Result([
+            rows = [
                 (1, 8, Decimal("4.25"), "alice", True),
                 (2, 8, Decimal("-3.00"), None, False),
-            ])
+            ]
+            requested = params[0]
+            return Result([row for row in rows if row[0] in requested])
         if "SELECT DISTINCT user_id FROM atd_radius_live_sessions" in normalized:
             return Result(self.online_rows)
         if "SELECT deposit::numeric FROM admins" in normalized:
