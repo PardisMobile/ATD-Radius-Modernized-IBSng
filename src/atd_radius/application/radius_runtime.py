@@ -546,6 +546,27 @@ class NativeRadiusPacketHandler:
             snapshot = replace(state, attributes=dict(state.attributes))
         try:
             with self.connection_factory() as conn:
+                # Serialize limit-triggered provider side effects across workers.
+                # The transaction-scoped session lock stays held until the provider
+                # request returns, so a second scheduler cannot issue a duplicate kill.
+                if callable(getattr(conn, "execute", None)):
+                    from atd_radius.infrastructure.live_radius_sessions import PostgresLiveRadiusSessionRepository
+
+                    durable_sessions = PostgresLiveRadiusSessionRepository(conn)
+                    durable_sessions.lock(session_key)
+                    durable = durable_sessions.get(session_key)
+                    if durable is None or durable.stopped:
+                        with self.state.sessions.synchronized():
+                            self.state.sessions.remove(session_key)
+                        return
+                    if durable.termination_requested_reason:
+                        with self.state.sessions.synchronized():
+                            self.state.sessions.replace(durable)
+                        return
+                    durable.termination_requested_reason = reason
+                    durable.termination_requested_at = datetime.now(timezone.utc)
+                    durable_sessions.save(durable)
+                    snapshot = replace(durable, attributes=dict(durable.attributes))
                 ras_registry = build_ras_runtime(RASRepository(conn), self.state.type_defaults)
                 ras = ras_registry.get(session_key.ras_id)
                 if ras is None:
