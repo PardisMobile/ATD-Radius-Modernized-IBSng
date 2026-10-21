@@ -188,7 +188,7 @@ class UserDeletionRepository:
             )
             self.conn.execute("DELETE FROM connection_log WHERE user_id = ANY(%s)", (ids,))
         if delete_audit_logs:
-            self.conn.execute("DELETE FROM user_audit_log WHERE user_id = ANY(%s)", (ids,))
+            self.conn.execute("DELETE FROM user_audit_log WHERE is_user = 't' AND object_id = ANY(%s)", (ids,))
 
         self.conn.execute("DELETE FROM users WHERE user_id = ANY(%s)", (ids,))
         return UserDeletionResult(tuple(targets), refund)
