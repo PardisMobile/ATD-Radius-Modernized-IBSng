@@ -1609,3 +1609,48 @@ def test_limit_termination_claim_is_persisted_under_shared_session_lock(monkeypa
         terminate.assert_called_once()
     finally:
         handler.close()
+
+
+def test_limit_termination_skips_claim_already_owned_by_another_worker(monkeypatch):
+    from copy import deepcopy
+    from atd_radius.application import radius_runtime
+    from atd_radius.application.radius_runtime import NativeRadiusPacketHandler, NativeRadiusRuntimeState
+    from atd_radius.domain.radius_runtime import SessionKey
+    from atd_radius.domain.ras import RAS
+
+    class Connection:
+        def __enter__(self): return self
+        def __exit__(self, *_args): return False
+        def execute(self, *_args): return None
+
+    state = NativeRadiusRuntimeState()
+    key = SessionKey(7, 3, "already-claimed")
+    local = state.sessions.start(key, {"User-Name": "alice"})
+    durable = deepcopy(local)
+    durable.termination_requested_reason = "credit_finished"
+    durable.termination_requested_at = datetime.now(timezone.utc)
+
+    class Store:
+        def __init__(self, _conn): pass
+        def lock(self, got_key): assert got_key == key
+        def get(self, got_key): assert got_key == key; return durable
+        def save(self, _state): raise AssertionError("existing claim must not be rewritten")
+
+    class Registry:
+        def get(self, ras_id):
+            return RAS(3, "192.0.2.3", "router", "router", "secret") if ras_id == 3 else None
+
+    handler = NativeRadiusPacketHandler(state, lambda: Connection())
+    terminate = Mock()
+    handler._ras_terminator.terminate = terminate
+    monkeypatch.setattr(radius_runtime, "build_ras_runtime", lambda *_args: Registry())
+    monkeypatch.setattr(
+        "atd_radius.infrastructure.live_radius_sessions.PostgresLiveRadiusSessionRepository",
+        Store,
+    )
+    try:
+        handler._terminate_voip_session(key, "credit_finished")
+        terminate.assert_not_called()
+        assert local.termination_requested_reason == "credit_finished"
+    finally:
+        handler.close()
