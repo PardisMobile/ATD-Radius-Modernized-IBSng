@@ -561,22 +561,16 @@ class NativeRadiusPacketHandler:
 
     def _terminate_voip_session(self, session_key: SessionKey, reason: str) -> None:
         with self.state.sessions.synchronized():
-            state = self.state.sessions.get(session_key)
-            if state is None or state.stopped:
+            local = self.state.sessions.get(session_key)
+            if local is None or local.stopped:
                 return
-            # Successful provider requests stay marked until Accounting-Stop;
-            # this prevents duplicate Disconnect-Requests on repeated Interim.
-            if getattr(state, "termination_requested_reason", None):
-                return
-            state.termination_requested_reason = reason
-            state.termination_requested_at = datetime.now(timezone.utc)
-            snapshot = replace(state, attributes=dict(state.attributes))
+            local_pending = bool(getattr(local, "termination_requested_reason", None))
+            snapshot = replace(local, attributes=dict(local.attributes))
         try:
             with self.connection_factory() as conn:
-                # Serialize limit-triggered provider side effects across workers.
-                # The transaction-scoped session lock stays held until the provider
-                # request returns, so a second scheduler cannot issue a duplicate kill.
                 if callable(getattr(conn, "execute", None)):
+                    # The transaction-scoped session lock serializes the durable
+                    # claim across workers until the provider request returns.
                     from atd_radius.infrastructure.live_radius_sessions import PostgresLiveRadiusSessionRepository
 
                     durable_sessions = PostgresLiveRadiusSessionRepository(conn)
@@ -594,6 +588,21 @@ class NativeRadiusPacketHandler:
                     durable.termination_requested_at = datetime.now(timezone.utc)
                     durable_sessions.save(durable)
                     snapshot = replace(durable, attributes=dict(durable.attributes))
+                    with self.state.sessions.synchronized():
+                        self.state.sessions.replace(snapshot)
+                else:
+                    # Non-PostgreSQL test adapters retain process-local idempotency.
+                    with self.state.sessions.synchronized():
+                        current = self.state.sessions.get(session_key)
+                        if (
+                            current is None or current.stopped
+                            or current.termination_requested_reason or local_pending
+                        ):
+                            return
+                        current.termination_requested_reason = reason
+                        current.termination_requested_at = datetime.now(timezone.utc)
+                        snapshot = replace(current, attributes=dict(current.attributes))
+
                 ras_registry = build_ras_runtime(RASRepository(conn), self.state.type_defaults)
                 ras = ras_registry.get(session_key.ras_id)
                 if ras is None:
@@ -631,7 +640,10 @@ class NativeRadiusPacketHandler:
         except Exception:
             with self.state.sessions.synchronized():
                 current = self.state.sessions.get(session_key)
-                if current is state and not current.stopped:
+                if (
+                    current is not None and not current.stopped
+                    and current.termination_requested_reason == reason
+                ):
                     current.termination_requested_reason = None
                     current.termination_requested_at = None
             raise

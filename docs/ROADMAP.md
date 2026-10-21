@@ -475,3 +475,10 @@ The timer-based limit planner now refreshes durable sessions for the user under 
 A source-traced user-deletion repository and permission-checked batch API now implement A1.24's online/login-in-progress guard, non-negative credit refund, native `DEL_USER` credit history, conditional IAS `DELETE_USER`, dependent-table cleanup, optional connection/audit log deletion and transactional operational audit. PostgreSQL integration coverage verifies refund, IAS, connection-history deletion and user-audit deletion.
 
 Validation checkpoint: full CI passed on Python 3.11 and 3.12 with **950 passed, 2 warnings each**; Python-only CI passed **941 passed, 8 skipped, 2 warnings**. Mailbox deletion remains an explicit gap because ATD has no configured mailbox transport; deletion responses and audit events identify pending mailbox cleanup. The project remains incomplete until database import/parity, remaining A1.24 billing/plugins/XML-RPC, UI, and installer/upgrade/rollback work is completed.
+
+
+## Admin online-session management increment — 2026-10-21
+
+The backend now exposes owner-scoped online-session reporting for durable active sessions and login-in-progress reservations, plus an audited `KILL USER` API that delegates to the existing source-traced provider termination adapters. The termination path rechecks durable state under session locks and permits retries when a stale worker-local marker outlives a cleared durable claim. A successful provider request is not treated as proof of remote disappearance; Accounting-Stop remains the confirmation boundary. `CLEAR USER` is not implemented.
+
+Validation: full PostgreSQL CI passed **954 tests, 2 warnings** on Python 3.11 and 3.12; Python-only CI passed **945 tests, 9 skipped, 2 warnings**. Live provider interoperability, full user/admin UI workflows, database import/parity, remaining billing/plugin/XML-RPC behavior and installation/upgrade/rollback remain open.

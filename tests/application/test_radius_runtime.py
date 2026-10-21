@@ -515,12 +515,16 @@ def test_native_packet_handler_does_not_repeat_a_successfully_requested_terminat
     from atd_radius.application.radius_runtime import NativeRadiusPacketHandler, NativeRadiusRuntimeState
     from atd_radius.domain.radius_runtime import SessionKey
 
+    class Connection:
+        def __enter__(self): return self
+        def __exit__(self, *_args): return False
+
     state = NativeRadiusRuntimeState()
     key = SessionKey(7, 3, "conf-7")
     session = state.sessions.start(key, {"User-Name": "alice"})
     session.termination_requested_reason = "credit_finished"
     session.termination_requested_at = datetime.now(timezone.utc)
-    handler = NativeRadiusPacketHandler(state, Mock())
+    handler = NativeRadiusPacketHandler(state, lambda: Connection())
     try:
         handler._terminate_voip_session(key, "credit_finished")
         assert session.termination_requested_reason == "credit_finished"
@@ -1605,7 +1609,7 @@ def test_limit_termination_claim_is_persisted_under_shared_session_lock(monkeypa
         handler._terminate_voip_session(key, "credit_finished")
         assert events == ["locked", "saved"]
         assert durable.termination_requested_reason == "credit_finished"
-        assert local.termination_requested_reason == "credit_finished"
+        assert state.sessions.get(key).termination_requested_reason == "credit_finished"
         terminate.assert_called_once()
     finally:
         handler.close()
@@ -1652,7 +1656,7 @@ def test_limit_termination_skips_claim_already_owned_by_another_worker(monkeypat
     try:
         handler._terminate_voip_session(key, "credit_finished")
         terminate.assert_not_called()
-        assert local.termination_requested_reason == "credit_finished"
+        assert state.sessions.get(key).termination_requested_reason == "credit_finished"
     finally:
         handler.close()
 
@@ -1760,3 +1764,53 @@ def test_accounting_stop_takes_user_lock_before_session_mutation():
     )
 
     assert calls == [("lock", 7), ("apply", 7, 3)]
+
+
+def test_stale_local_termination_marker_does_not_block_durable_retry(monkeypatch):
+    from copy import deepcopy
+    from datetime import datetime, timezone
+    from atd_radius.application import radius_runtime
+    from atd_radius.application.radius_runtime import NativeRadiusPacketHandler, NativeRadiusRuntimeState
+    from atd_radius.domain.radius_runtime import SessionKey
+    from atd_radius.domain.ras import RAS
+
+    class Connection:
+        def __enter__(self): return self
+        def __exit__(self, *_args): return False
+        def execute(self, *_args): return None
+
+    state = NativeRadiusRuntimeState()
+    key = SessionKey(7, 3, "retry-after-clear")
+    local = state.sessions.start(key, {"User-Name": "alice"})
+    local.termination_requested_reason = "old_failed_attempt"
+    local.termination_requested_at = datetime.now(timezone.utc)
+    durable = deepcopy(local)
+    durable.termination_requested_reason = None
+    durable.termination_requested_at = None
+
+    class Store:
+        def __init__(self, _conn): pass
+        def lock(self, got_key): assert got_key == key
+        def get(self, got_key): assert got_key == key; return durable
+        def save(self, new_state):
+            nonlocal durable
+            durable = deepcopy(new_state)
+
+    class Registry:
+        def get(self, ras_id):
+            return RAS(3, "192.0.2.3", "router", "router", "secret") if ras_id == 3 else None
+
+    handler = NativeRadiusPacketHandler(state, lambda: Connection())
+    terminate = Mock()
+    handler._ras_terminator.terminate = terminate
+    monkeypatch.setattr(radius_runtime, "build_ras_runtime", lambda *_args: Registry())
+    monkeypatch.setattr(
+        "atd_radius.infrastructure.live_radius_sessions.PostgresLiveRadiusSessionRepository",
+        Store,
+    )
+    try:
+        handler._terminate_voip_session(key, "credit_finished")
+        terminate.assert_called_once()
+        assert durable.termination_requested_reason == "credit_finished"
+    finally:
+        handler.close()

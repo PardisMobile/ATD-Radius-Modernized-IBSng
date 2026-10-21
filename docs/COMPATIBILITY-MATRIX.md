@@ -19,7 +19,7 @@ This is the master parity ledger. A feature is not considered migrated merely be
 | Service policy | service/plugin behavior | Service policy + resolver | In progress |
 | RAS/NAS | core/ras/*, radius_server/* | RAS registry/adapters | Runtime registry + live packet lookup + source-derived provider profiles implemented / provider-specific behavior parity pending |
 | IP pools | core/ippool/* | Transaction-safe allocator | Native membership repository + A1.24-compatible runtime allocation / claim / release; Access/session lifecycle integration pending |
-| Sessions | session/accounting plugins | Session domain + accounting store | Accounting-backed in-process runtime and connection-log persistence implemented / authoritative A1.24 online/login-in-progress state, restart recovery and full source parity pending |
+| Sessions | session/accounting plugins | Session domain + accounting store + admin online-session API | Durable cross-worker session snapshots, login-in-progress reservations, owner-scoped online-session reporting and audited KILL USER provider action implemented; remote disappearance verification, CLEAR USER, live provider interoperability and full UI parity pending |
 | RADIUS authentication | radius_server/* | Python RADIUS server | Runtime + live UDP wiring implemented / end-to-end parity pending |
 | PAP | IBSng RADIUS auth | RADIUS auth pipeline | Implemented / end-to-end parity pending |
 | CHAP | IBSng RADIUS auth | RADIUS auth pipeline | Implemented / end-to-end parity pending |
@@ -335,3 +335,10 @@ The limit planner now reads the durable cross-worker active session set under or
 The user-deletion API is source-traced to A1.24 and includes owner-scoped DELETE USER authorization, login-in-progress and online-session guards, non-negative credit refund, native DEL_USER history, conditional IAS DELETE_USER, dependent-table cleanup, optional connection/audit log deletion and transactional operational audit. PostgreSQL integration and unit tests passed in the latest full matrix: **950 passed, 2 warnings on Python 3.11 and Python 3.12**. Python-only: **941 passed, 8 skipped, 2 warnings**.
 
 **Not full parity yet:** ATD has no configured post-commit mailbox deletion transport; the endpoint reports and audits mailbox cleanup still required. This capability remains partial until that external side effect and production backup/restore/concurrency validation are complete.
+
+
+## Admin online-session API — 2026-10-21
+
+`GET /api/v1/online-sessions` reports durable active sessions and accepted login-in-progress reservations under `SEE ONLINE USERS` scope. `POST /api/v1/online-sessions/disconnect` uses owner-scoped `KILL USER`, the existing source-traced provider termination adapters, and operational audit. It does not claim that the remote RAS session disappeared until Accounting-Stop confirms closure. The stale local termination marker retry path is covered by regression tests.
+
+Full CI passed **954 tests on Python 3.11 and 3.12, 2 warnings each**; Python-only passed **945 tests, 9 skipped, 2 warnings**. `CLEAR USER`, live RAS interoperability and the final UI workflow remain incomplete.
