@@ -1713,9 +1713,11 @@ def test_accounting_stop_takes_user_lock_before_session_mutation():
     from unittest.mock import Mock
     from atd_radius.application.radius_runtime import RadiusRuntimeHandler
     from atd_radius.domain.accounting_lifecycle import AccountingEvent, AccountingStatus
+    from atd_radius.domain.accounting_session import AccountingSessionService
     from atd_radius.domain.aaa import PluginPipeline
     from atd_radius.domain.radius import RadiusCode, RadiusPacket
     from atd_radius.domain.radius_dispatch import DispatchResult, RadiusDispatcher
+    from atd_radius.domain.radius_runtime import SessionKey, SessionRegistry
 
     calls = []
 
@@ -1736,11 +1738,15 @@ def test_accounting_stop_takes_user_lock_before_session_mutation():
     identities.user_id.return_value = 7
     identities.ras_id.return_value = 3
     identities.ras = None
+    registry = SessionRegistry()
+    registry.start(SessionKey(7, 3, "sid"), {"User-Name": "alice"})
+    delegate = AccountingSessionService(registry)
 
     class AccountingSessions:
-        def apply(self, _event, user_id, ras_id):
+        def __init__(self): self.registry = registry
+        def apply(self, got_event, user_id, ras_id):
             calls.append(("apply", user_id, ras_id))
-            return SimpleNamespace(created=False, delta_input_octets=0, delta_output_octets=0)
+            return delegate.apply(got_event, user_id, ras_id)
 
     handler = RadiusRuntimeHandler(
         dispatcher, AccountingSessions(), identities, login_reservations=Reservations()
