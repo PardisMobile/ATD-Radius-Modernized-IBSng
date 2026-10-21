@@ -1655,3 +1655,37 @@ def test_limit_termination_skips_claim_already_owned_by_another_worker(monkeypat
         assert local.termination_requested_reason == "credit_finished"
     finally:
         handler.close()
+
+
+def test_limit_planner_refreshes_user_sessions_from_durable_cross_worker_state(monkeypatch):
+    from atd_radius.application.radius_runtime import NativeRadiusPacketHandler, NativeRadiusRuntimeState
+    from atd_radius.domain.radius_runtime import SessionKey
+
+    class Connection:
+        def execute(self, *_args): return None
+
+    state = NativeRadiusRuntimeState()
+    stale_key = SessionKey(7, 2, "stale-local")
+    durable_key = SessionKey(7, 3, "durable-remote")
+    state.sessions.start(stale_key, {"User-Name": "alice"})
+    durable_state = state.sessions.start(durable_key, {"User-Name": "alice"})
+    state.sessions.remove(durable_key)
+    locked = []
+
+    class Store:
+        def __init__(self, _conn): pass
+        def list_active(self): return [durable_state]
+        def lock(self, key): locked.append(key)
+        def get(self, key): return durable_state if key == durable_key else None
+
+    monkeypatch.setattr(
+        "atd_radius.infrastructure.live_radius_sessions.PostgresLiveRadiusSessionRepository",
+        Store,
+    )
+    handler = NativeRadiusPacketHandler.__new__(NativeRadiusPacketHandler)
+    handler.state = state
+    handler._refresh_durable_user_sessions(Connection(), 7)
+
+    active = state.sessions.active_for_user(7)
+    assert [item.key for item in active] == [durable_key]
+    assert locked == [stale_key, durable_key]
