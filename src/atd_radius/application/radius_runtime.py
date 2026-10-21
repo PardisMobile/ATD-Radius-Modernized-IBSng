@@ -321,12 +321,10 @@ class RadiusRuntimeHandler:
                         )
                     user_id = self.identities.user_id(event.username)
                     if user_id is not None and ras_id is not None:
-                        if (
-                            self.login_reservations is not None
-                            and event.status in (AccountingStatus.START, AccountingStatus.INTERIM)
-                        ):
-                            # Access admission and the transition from reservation
-                            # to an accounted session share this user-level lock.
+                        if self.login_reservations is not None:
+                            # Serialize every accounting transition with limit
+                            # planning and login admission. This also keeps Stop
+                            # from inverting the registry/session-lock order.
                             self.login_reservations.lock_user(user_id)
                         accounting_result = self.accounting_sessions.apply(event, user_id, ras_id)
                         if (
