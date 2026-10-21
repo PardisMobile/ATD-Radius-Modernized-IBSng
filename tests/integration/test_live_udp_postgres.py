@@ -554,7 +554,7 @@ def test_live_postgres_user_deletion_refunds_and_cleans_native_history(live_db):
         )
         conn.execute(
             "INSERT INTO defs (name, value, type) VALUES (%s, %s, %s)",
-            ("IAS_ENABLED", "I1\\n.", "integer"),
+            ("IAS_ENABLED", "I1\n.", "integer"),
         )
         log_id = conn.execute("SELECT nextval('connection_log_id')").fetchone()[0]
         conn.execute(
