@@ -700,3 +700,13 @@ Last completed full CI before this batch passed 936 tests on Python 3.11 and 3.1
 - Latest full CI for the deletion implementation: Python 3.11 and 3.12 each passed **950 tests, 2 warnings**, including PostgreSQL integration, Ruff, Python compilation and PHP syntax (run [39598521257](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/39598521257)). Python-only workflow passed **941 tests, 8 skipped, 2 warnings** (run [39598521382](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/39598521382)).
 - Remaining deletion release gap: no ATD mailbox transport is configured. The endpoint reports and audits `mailbox_cleanup_pending` usernames instead of claiming that the A1.24 post-commit mailbox deletion occurred. Live production backup/restore and concurrent-operation exercises are still needed.
 - These increments do not mean the entire IBSng modernization is complete. Schema importer/parity, remaining A1.24 billing/plugin/XML-RPC behavior, full admin/user UI, and installer/upgrade/rollback remain release work.
+
+
+## Admin online-session reporting and kill action — 2026-10-21
+
+- Added source-backed `SEE ONLINE USERS` and `KILL USER` owner-scoped permissions.
+- `GET /api/v1/online-sessions` now reports durable active session snapshots and Access-Accept login-in-progress reservations, without returning credential-bearing attributes.
+- `POST /api/v1/online-sessions/disconnect` refreshes authoritative user sessions, verifies ownership and permission, invokes the existing A1.24 provider termination path, and records success/failure in operational audit. It explicitly reports that remote disappearance is not verified until Accounting-Stop.
+- Fixed stale local termination markers: durable state is now authoritative, so a worker can retry after another worker clears a failed claim; failure cleanup no longer depends on object identity after refreshing the registry snapshot.
+- Latest full CI: **954 passed, 2 warnings** on Python 3.11 and 3.12 (run [39600839533](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/39600839533)). Python-only: **945 passed, 9 skipped, 2 warnings** (run [39600839199](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/39600839199)).
+- Remaining: live RAS interoperability and proof of remote session disappearance; CLEAR USER semantics remain unimplemented. Full UI, schema import/parity, remaining billing/plugins/XML-RPC, and install/upgrade/rollback are still release blockers.
