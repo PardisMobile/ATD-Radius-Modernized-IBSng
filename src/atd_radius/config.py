@@ -1,3 +1,4 @@
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -14,6 +15,8 @@ class Settings(BaseSettings):
     radius_auth_port: int = 1812
     radius_acct_host: str = "0.0.0.0"
     radius_acct_port: int = 1813
+    mailbox_delete_command: str = ""
+    mailbox_delete_timeout_seconds: float = Field(default=10.0, gt=0, le=60)
 
     model_config = SettingsConfigDict(env_file=".env", env_prefix="ATD_", extra="ignore")
 
