@@ -1552,3 +1552,60 @@ def test_new_accounting_start_consumes_one_reservation_only_once():
     assert reservations.calls.count(("consume", 7, 3)) == 1
     assert reservations.calls.count(("lock", 7)) == 2
     assert store.states[SessionKey(7, 3, "sid")].started is True
+
+
+def test_limit_termination_claim_is_persisted_under_shared_session_lock(monkeypatch):
+    from copy import deepcopy
+    from atd_radius.application import radius_runtime
+    from atd_radius.application.radius_runtime import NativeRadiusPacketHandler, NativeRadiusRuntimeState
+    from atd_radius.domain.radius_runtime import SessionKey
+    from atd_radius.domain.ras import RAS
+
+    class Connection:
+        def __enter__(self): return self
+        def __exit__(self, *_args): return False
+        def execute(self, *_args): return None
+
+    state = NativeRadiusRuntimeState()
+    key = SessionKey(7, 3, "durable-claim")
+    local = state.sessions.start(key, {"User-Name": "alice"})
+    durable = deepcopy(local)
+    events = []
+
+    class Store:
+        def __init__(self, _conn): pass
+        def lock(self, got_key):
+            assert got_key == key
+            events.append("locked")
+        def get(self, got_key):
+            assert got_key == key
+            return durable
+        def save(self, got_state):
+            nonlocal durable
+            durable = deepcopy(got_state)
+            events.append("saved")
+
+    class Registry:
+        def get(self, ras_id):
+            return RAS(3, "192.0.2.3", "router", "router", "secret") if ras_id == 3 else None
+
+    handler = NativeRadiusPacketHandler(state, lambda: Connection())
+    terminate = Mock()
+    def verify_claim(*_args):
+        assert durable.termination_requested_reason == "credit_finished"
+        assert events == ["locked", "saved"]
+    terminate.side_effect = verify_claim
+    handler._ras_terminator.terminate = terminate
+    monkeypatch.setattr(radius_runtime, "build_ras_runtime", lambda *_args: Registry())
+    monkeypatch.setattr(
+        "atd_radius.infrastructure.live_radius_sessions.PostgresLiveRadiusSessionRepository",
+        Store,
+    )
+    try:
+        handler._terminate_voip_session(key, "credit_finished")
+        assert events == ["locked", "saved"]
+        assert durable.termination_requested_reason == "credit_finished"
+        assert local.termination_requested_reason == "credit_finished"
+        terminate.assert_called_once()
+    finally:
+        handler.close()
