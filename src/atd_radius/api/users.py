@@ -27,6 +27,8 @@ from atd_radius.infrastructure.credit_repository import (
     UserCreditRepository,
 )
 from atd_radius.infrastructure.db import connection
+from atd_radius.config import settings
+from atd_radius.infrastructure.mailbox_cleanup import delete_mailbox
 from atd_radius.infrastructure.group import GroupRepository
 from atd_radius.infrastructure.operational_audit import OperationalAuditRepository
 from atd_radius.infrastructure.user_detail import UserDetailRepository
@@ -336,10 +338,47 @@ def delete_users(
                     "delete_connection_logs": payload.delete_connection_logs,
                     "delete_audit_logs": payload.delete_audit_logs,
                     "comment": payload.comment.strip(),
-                    "mailbox_cleanup_pending": mailbox_cleanup_pending,
+                    "mailbox_cleanup_required": mailbox_cleanup_pending,
                 },
             )
             conn.commit()
+
+            # A1.24 deletes mailboxes only after the native DB transaction has
+            # succeeded. Run only an explicitly configured absolute wrapper path.
+            mailbox_cleanup_required = list(mailbox_cleanup_pending)
+            command = settings.mailbox_delete_command.strip()
+            if command and mailbox_cleanup_pending:
+                cleaned: list[str] = []
+                for mailbox_username in mailbox_cleanup_pending:
+                    if delete_mailbox(
+                        command, mailbox_username, settings.mailbox_delete_timeout_seconds
+                    ):
+                        cleaned.append(mailbox_username)
+                mailbox_cleanup_pending = [
+                    username for username in mailbox_cleanup_required if username not in cleaned
+                ]
+                try:
+                    OperationalAuditRepository(conn).append(
+                        actor_admin_id=admin.admin_id,
+                        actor_username=admin.username,
+                        action="user.mailbox_cleanup",
+                        outcome="success" if not mailbox_cleanup_pending else "failed",
+                        target_type="mailbox",
+                        target_id=",".join(mailbox_cleanup_required),
+                        remote_addr=remote_addr,
+                        details={
+                            "cleaned": cleaned,
+                            "pending": mailbox_cleanup_pending,
+                            "command_configured": True,
+                        },
+                    )
+                    conn.commit()
+                except Exception:
+                    # Deletion has already committed and external actions cannot be
+                    # rolled back. Keep the cleanup result, and clear only the audit
+                    # transaction so the connection context can close cleanly.
+                    conn.rollback()
+
             return UserDeleteView(
                 deleted_user_ids=[target.user_id for target in result.targets],
                 deleted_count=len(result.targets),
