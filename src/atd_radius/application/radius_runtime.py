@@ -321,12 +321,10 @@ class RadiusRuntimeHandler:
                         )
                     user_id = self.identities.user_id(event.username)
                     if user_id is not None and ras_id is not None:
-                        if (
-                            self.login_reservations is not None
-                            and event.status in (AccountingStatus.START, AccountingStatus.INTERIM)
-                        ):
-                            # Access admission and the transition from reservation
-                            # to an accounted session share this user-level lock.
+                        if self.login_reservations is not None:
+                            # Serialize every accounting transition with limit
+                            # planning and login admission. This also keeps Stop
+                            # from inverting the registry/session-lock order.
                             self.login_reservations.lock_user(user_id)
                         accounting_result = self.accounting_sessions.apply(event, user_id, ras_id)
                         if (
@@ -496,7 +494,11 @@ class NativeRadiusPacketHandler:
         if not callable(getattr(conn, "execute", None)):
             return
         from atd_radius.infrastructure.live_radius_sessions import PostgresLiveRadiusSessionRepository
+        from atd_radius.infrastructure.login_reservations import PostgresLoginReservationRepository
 
+        # Share the login/Accounting handoff lock so a new session cannot
+        # appear between durable enumeration and deadline calculation.
+        PostgresLoginReservationRepository(conn).lock_user(user_id)
         store = PostgresLiveRadiusSessionRepository(conn)
         durable = [state for state in store.list_active() if state.key.user_id == user_id]
         with self.state.sessions.synchronized():

@@ -1671,16 +1671,31 @@ def test_limit_planner_refreshes_user_sessions_from_durable_cross_worker_state(m
     durable_state = state.sessions.start(durable_key, {"User-Name": "alice"})
     state.sessions.remove(durable_key)
     locked = []
+    events = []
 
     class Store:
         def __init__(self, _conn): pass
-        def list_active(self): return [durable_state]
-        def lock(self, key): locked.append(key)
+        def list_active(self):
+            events.append("enumerate")
+            return [durable_state]
+        def lock(self, key):
+            locked.append(key)
+            events.append(("session-lock", key))
         def get(self, key): return durable_state if key == durable_key else None
+
+    class LoginReservations:
+        def __init__(self, _conn): pass
+        def lock_user(self, user_id):
+            assert user_id == 7
+            events.append("user-lock")
 
     monkeypatch.setattr(
         "atd_radius.infrastructure.live_radius_sessions.PostgresLiveRadiusSessionRepository",
         Store,
+    )
+    monkeypatch.setattr(
+        "atd_radius.infrastructure.login_reservations.PostgresLoginReservationRepository",
+        LoginReservations,
     )
     handler = NativeRadiusPacketHandler.__new__(NativeRadiusPacketHandler)
     handler.state = state
@@ -1689,3 +1704,59 @@ def test_limit_planner_refreshes_user_sessions_from_durable_cross_worker_state(m
     active = state.sessions.active_for_user(7)
     assert [item.key for item in active] == [durable_key]
     assert locked == [stale_key, durable_key]
+    assert events[0:2] == ["user-lock", "enumerate"]
+
+
+def test_accounting_stop_takes_user_lock_before_session_mutation():
+    from datetime import datetime, timezone
+    from unittest.mock import Mock
+    from atd_radius.application.radius_runtime import RadiusRuntimeHandler
+    from atd_radius.domain.accounting_lifecycle import AccountingEvent, AccountingStatus
+    from atd_radius.domain.accounting_session import AccountingSessionService
+    from atd_radius.domain.aaa import PluginPipeline
+    from atd_radius.domain.radius import RadiusCode, RadiusPacket
+    from atd_radius.domain.radius_dispatch import DispatchResult, RadiusDispatcher
+    from atd_radius.domain.radius_runtime import SessionKey, SessionRegistry
+
+    calls = []
+
+    class Reservations:
+        def lock_user(self, user_id): calls.append(("lock", user_id))
+        def consume_one(self, *_args): calls.append(("consume", *_args))
+
+    event = AccountingEvent(
+        AccountingStatus.STOP, "alice", "sid",
+        attributes={"User-Name": "alice", "Acct-Session-Id": "sid"},
+        observed_at=datetime(2026, 10, 21, tzinfo=timezone.utc),
+    )
+    dispatcher = RadiusDispatcher(PluginPipeline([]))
+    dispatcher.accounting = Mock(return_value=DispatchResult(
+        RadiusPacket(RadiusCode.ACCOUNTING_RESPONSE, 6, {}, bytes(16)), event
+    ))
+    identities = Mock()
+    identities.user_id.return_value = 7
+    identities.ras_id.return_value = 3
+    identities.ras = None
+    registry = SessionRegistry()
+    registry.start(SessionKey(7, 3, "sid"), {"User-Name": "alice"})
+    delegate = AccountingSessionService(registry)
+
+    class AccountingSessions:
+        def __init__(self): self.registry = registry
+        def apply(self, got_event, user_id, ras_id):
+            calls.append(("apply", user_id, ras_id))
+            return delegate.apply(got_event, user_id, ras_id)
+
+    handler = RadiusRuntimeHandler(
+        dispatcher, AccountingSessions(), identities, login_reservations=Reservations()
+    )
+    handler(
+        RadiusPacket(
+            RadiusCode.ACCOUNTING_REQUEST, 6,
+            {"User-Name": "alice", "Acct-Status-Type": "Stop", "Acct-Session-Id": "sid"},
+            bytes(16),
+        ),
+        ("192.0.2.1", 1812),
+    )
+
+    assert calls == [("lock", 7), ("apply", 7, 3)]
