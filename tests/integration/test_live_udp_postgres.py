@@ -542,3 +542,65 @@ def test_postgres_ias_user_info_projection_round_trip(live_db):
         assert users[0].user_id == 1
         assert users[0].credit == Decimal("12.50")
         assert users[0].normal_username == "live-user"
+
+
+def test_live_postgres_user_deletion_refunds_and_cleans_native_history(live_db):
+    from decimal import Decimal
+    from atd_radius.infrastructure.user_deletion import UserDeletionRepository
+
+    with psycopg.connect(live_db) as conn:
+        conn.execute(
+            "INSERT INTO admins (admin_id, username, deposit) VALUES (8, 'delete-admin', 10)"
+        )
+        conn.execute(
+            "INSERT INTO defs (name, value, type) VALUES (%s, %s, %s)",
+            ("IAS_ENABLED", "I1\n.", "integer"),
+        )
+        log_id = conn.execute("SELECT nextval('connection_log_id')").fetchone()[0]
+        conn.execute(
+            """
+            INSERT INTO connection_log
+                (connection_log_id, user_id, credit_used, login_time, logout_time,
+                 successful, service, ras_id)
+            VALUES (%s, 1, NULL, CURRENT_TIMESTAMP - INTERVAL '1 hour',
+                    CURRENT_TIMESTAMP, TRUE, 1, 1)
+            """,
+            (log_id,),
+        )
+        conn.execute(
+            "INSERT INTO connection_log_details (connection_log_id, name, value) VALUES (%s, 'sample', 'value')",
+            (log_id,),
+        )
+        conn.execute(
+            """
+            INSERT INTO user_audit_log
+                (admin_id, is_user, object_id, attr_name, old_value, new_value)
+            VALUES (8, TRUE, 1, 'sample', 'old', 'new')
+            """
+        )
+
+    with psycopg.connect(live_db) as conn:
+        result = UserDeletionRepository(conn).delete(
+            [1],
+            admin_id=8,
+            admin_username="delete-admin",
+            remote_addr="192.0.2.10",
+            comment="integration cleanup",
+            delete_connection_logs=True,
+            delete_audit_logs=True,
+        )
+        assert result.refunded_credit == Decimal("100.00")
+
+    with psycopg.connect(live_db) as conn:
+        assert conn.execute("SELECT count(*) FROM users WHERE user_id=1").fetchone()[0] == 0
+        assert conn.execute("SELECT deposit FROM admins WHERE admin_id=8").fetchone()[0] == Decimal("110.00")
+        credit = conn.execute(
+            "SELECT action, per_user_credit, admin_credit FROM credit_change WHERE admin_id=8"
+        ).fetchone()
+        assert credit == (3, Decimal("0.00"), Decimal("-100.00"))
+        ias = conn.execute(
+            "SELECT event_type, actor, amount, destinations FROM ias_event"
+        ).fetchone()
+        assert ias == (4, "delete-admin", Decimal("0.00"), "1")
+        assert conn.execute("SELECT count(*) FROM connection_log WHERE user_id=1").fetchone()[0] == 0
+        assert conn.execute("SELECT count(*) FROM user_audit_log WHERE object_id=1").fetchone()[0] == 0

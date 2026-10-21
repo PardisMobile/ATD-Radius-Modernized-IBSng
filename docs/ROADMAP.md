@@ -466,3 +466,12 @@ Remaining major session blocker: Access-Accept/login-in-progress reservations an
 Migration 008 adds an ATD operational reservation table to model the A1.24 online-flag reservation while login is in progress. Per-user advisory locks serialize Access-Request admission with Accounting Start. MultiLogin sees durable sessions plus accepted reservations from other workers; a request excludes only its own stable request key so retransmissions remain idempotent. Access-Accept reserves; Access-Reject does not; the first new Accounting Start/Interim consumes one reservation. Duplicate Start leaves reservation counts unchanged.
 
 The reservation deliberately has no short TTL, following source lifecycle semantics; accepted attempts without accounting may remain reserved and need operational reconciliation. Last full CI before this batch passed 936 tests on Python 3.11 and 3.12.
+
+
+## Cross-worker enforcement and user deletion batch — 2026-10-21
+
+The timer-based limit planner now refreshes durable sessions for the user under deterministic advisory locks before calculating a deadline. Provider termination claims are also serialized through the durable session row before an external kill command, suppressing duplicate commands from competing workers.
+
+A source-traced user-deletion repository and permission-checked batch API now implement A1.24's online/login-in-progress guard, non-negative credit refund, native `DEL_USER` credit history, conditional IAS `DELETE_USER`, dependent-table cleanup, optional connection/audit log deletion and transactional operational audit. PostgreSQL integration coverage verifies refund, IAS, connection-history deletion and user-audit deletion.
+
+Validation checkpoint: full CI passed on Python 3.11 and 3.12 with **950 passed, 2 warnings each**; Python-only CI passed **941 passed, 8 skipped, 2 warnings**. Mailbox deletion remains an explicit gap because ATD has no configured mailbox transport; deletion responses and audit events identify pending mailbox cleanup. The project remains incomplete until database import/parity, remaining A1.24 billing/plugins/XML-RPC, UI, and installer/upgrade/rollback work is completed.

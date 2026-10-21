@@ -29,6 +29,7 @@ This is the master parity ledger. A feature is not considered migrated merely be
 | Disconnect | RADIUS/RAS behavior | RADIUS CoA/Disconnect adapter | RADIUS control packet boundary and session matching implemented; provider side effects and admin HTTP action remain gated/unmounted / full RAS interoperability pending |
 | Charging | charge plugins/core | Billing/charge engine | Charge catalog/assignment and Internet/VoIP rule/tariff CRUD implemented; VoIP settlement is wired into accounting Start/Interim/Stop. Bandwidth interface/tree/node/leaf read APIs are implemented. Time-driven VoIP rule/credit events, RAS prefix/min-duration effects, missed-call parity, bandwidth hierarchy/service mutations, live tc shaping and full billing parity remain pending |
 | Credit | credit plugins/core | Credit ledger/policy | Foundation |
+| User deletion | `core/user/user_actions.py::delUser` | Permission-checked transactional `DELETE /users` API | Implemented with native refund/history/IAS and online/login-reservation guard; mailbox cleanup transport and production parity exercise pending |
 | Reports | interface/admin/report/* | Report subsystem | Not started |
 | Graphs | interface/admin/graph/* | Metrics/graphs | Not started |
 | Admin permissions | admin/user management | RBAC/permission service | Source-backed evaluator plus selected admin/user/RAS/VoIP-tariff API workflows implemented; remaining feature workflows pending |
@@ -325,3 +326,12 @@ Still open: durable Access-Accept/login-in-progress reservation and authoritativ
 A1.24 online-flag behavior is represented by migration 008. Per-user PostgreSQL advisory locks serialize Access-Request admission and Accounting Start; MultiLogin policy now includes durable reservations created by accepted requests across workers and excludes the exact retransmitted request key. A new Accounting Start/Interim consumes one reservation, while duplicate Start does not.
 
 Reservations have no arbitrary expiry because the source clears online state through lifecycle events; missing Accounting can leave a stale reservation and requires operational reconciliation. Full source plugin/login-hook parity is not implied. Last full CI before this batch passed 936 tests on both Python versions.
+
+
+## Cross-worker enforcement and user deletion — 2026-10-21
+
+The limit planner now reads the durable cross-worker active session set under ordered per-session locks; external RAS termination claims are persisted under the same session lock before provider operations to suppress competing duplicate kills.
+
+The user-deletion API is source-traced to A1.24 and includes owner-scoped DELETE USER authorization, login-in-progress and online-session guards, non-negative credit refund, native DEL_USER history, conditional IAS DELETE_USER, dependent-table cleanup, optional connection/audit log deletion and transactional operational audit. PostgreSQL integration and unit tests passed in the latest full matrix: **950 passed, 2 warnings on Python 3.11 and Python 3.12**. Python-only: **941 passed, 8 skipped, 2 warnings**.
+
+**Not full parity yet:** ATD has no configured post-commit mailbox deletion transport; the endpoint reports and audits mailbox cleanup still required. This capability remains partial until that external side effect and production backup/restore/concurrency validation are complete.
