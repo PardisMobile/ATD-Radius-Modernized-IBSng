@@ -10,6 +10,7 @@ from atd_radius.api.admin_dependencies import (
     AdminPrincipal,
     can_access_user,
     can_change_user,
+    can_delete_user,
     can_change_user_credit,
     can_change_voip_user_attributes,
     can_use_charge,
@@ -29,6 +30,11 @@ from atd_radius.infrastructure.db import connection
 from atd_radius.infrastructure.group import GroupRepository
 from atd_radius.infrastructure.operational_audit import OperationalAuditRepository
 from atd_radius.infrastructure.user_detail import UserDetailRepository
+from atd_radius.infrastructure.user_deletion import (
+    UserDeletionError,
+    UserDeletionOnlineError,
+    UserDeletionRepository,
+)
 from atd_radius.infrastructure.user_attribute_mutations import (
     UserAttributeMutationError,
     UserAttributeMutationRepository,
@@ -51,6 +57,19 @@ class UserCreate(BaseModel):
     initial_credit: Decimal = Field(default=Decimal("0.00"), ge=0, max_digits=12, decimal_places=2)
     credit_comment: str = Field(default="", max_length=1000)
 
+
+class UserDeletePayload(BaseModel):
+    user_ids: list[int] = Field(min_length=1, max_length=100)
+    comment: str = Field(min_length=1, max_length=1000)
+    delete_connection_logs: bool = False
+    delete_audit_logs: bool = False
+
+
+class UserDeleteView(BaseModel):
+    deleted_user_ids: list[int]
+    deleted_count: int
+    refunded_credit: str
+    mailbox_cleanup_pending: list[str]
 
 class UserAttributeMutation(BaseModel):
     attrs: dict[str, str] = Field(default_factory=dict)
@@ -263,6 +282,79 @@ def create_user(payload: UserCreate, admin: AdminPrincipal = Depends(require_adm
         raise
     except Exception as exc:
         raise HTTPException(status_code=409, detail="USER could not be created") from exc
+
+
+@router.delete("", response_model=UserDeleteView)
+def delete_users(
+    payload: UserDeletePayload,
+    admin: AdminPrincipal = Depends(require_admin_session),
+) -> UserDeleteView:
+    if admin.remote_addr is None:
+        raise HTTPException(status_code=400, detail="A valid administrator remote address is required")
+    try:
+        remote_addr = str(ipaddress.ip_address(admin.remote_addr))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="A valid administrator remote address is required") from exc
+
+    try:
+        with connection() as conn:
+            repository = UserDeletionRepository(conn)
+            targets = repository.lock_targets(payload.user_ids)
+            for target in targets:
+                if not can_delete_user(admin, target.owner_id):
+                    raise HTTPException(status_code=403, detail="Administrator cannot delete one or more users")
+
+            result = repository.delete(
+                payload.user_ids,
+                admin_id=admin.admin_id,
+                admin_username=admin.username,
+                remote_addr=remote_addr,
+                comment=payload.comment.strip(),
+                delete_connection_logs=payload.delete_connection_logs,
+                delete_audit_logs=payload.delete_audit_logs,
+            )
+            # The legacy post-commit mailbox deletion hook has no configured ATD
+            # transport yet. Return the exact names needing that external cleanup
+            # rather than silently claiming the side effect was completed.
+            mailbox_cleanup_pending = [
+                target.normal_username
+                for target in result.targets
+                if target.has_mail_quota and target.normal_username
+            ]
+            OperationalAuditRepository(conn).append(
+                actor_admin_id=admin.admin_id,
+                actor_username=admin.username,
+                action="user.delete",
+                outcome="success",
+                target_type="user",
+                target_id=",".join(str(user_id) for user_id in payload.user_ids),
+                remote_addr=remote_addr,
+                details={
+                    "deleted_user_ids": [target.user_id for target in result.targets],
+                    "refunded_credit": str(result.refunded_credit),
+                    "delete_connection_logs": payload.delete_connection_logs,
+                    "delete_audit_logs": payload.delete_audit_logs,
+                    "comment": payload.comment.strip(),
+                    "mailbox_cleanup_pending": mailbox_cleanup_pending,
+                },
+            )
+            conn.commit()
+            return UserDeleteView(
+                deleted_user_ids=[target.user_id for target in result.targets],
+                deleted_count=len(result.targets),
+                refunded_credit=str(result.refunded_credit),
+                mailbox_cleanup_pending=mailbox_cleanup_pending,
+            )
+    except HTTPException:
+        raise
+    except UserDeletionOnlineError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except UserDeletionError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=409, detail="USER deletion failed; transaction rolled back") from exc
 
 
 @router.get("", response_model=UserListView)
