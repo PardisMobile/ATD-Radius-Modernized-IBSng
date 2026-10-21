@@ -1656,7 +1656,7 @@ def test_limit_termination_skips_claim_already_owned_by_another_worker(monkeypat
     try:
         handler._terminate_voip_session(key, "credit_finished")
         terminate.assert_not_called()
-        assert local.termination_requested_reason == "credit_finished"
+        assert state.sessions.get(key).termination_requested_reason == "credit_finished"
     finally:
         handler.close()
 
