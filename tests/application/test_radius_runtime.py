@@ -1705,3 +1705,53 @@ def test_limit_planner_refreshes_user_sessions_from_durable_cross_worker_state(m
     assert [item.key for item in active] == [durable_key]
     assert locked == [stale_key, durable_key]
     assert events[0:2] == ["user-lock", "enumerate"]
+
+
+def test_accounting_stop_takes_user_lock_before_session_mutation():
+    from datetime import datetime, timezone
+    from types import SimpleNamespace
+    from unittest.mock import Mock
+    from atd_radius.application.radius_runtime import RadiusRuntimeHandler
+    from atd_radius.domain.accounting_lifecycle import AccountingEvent, AccountingStatus
+    from atd_radius.domain.aaa import PluginPipeline
+    from atd_radius.domain.radius import RadiusCode, RadiusPacket
+    from atd_radius.domain.radius_dispatch import DispatchResult, RadiusDispatcher
+
+    calls = []
+
+    class Reservations:
+        def lock_user(self, user_id): calls.append(("lock", user_id))
+        def consume_one(self, *_args): calls.append(("consume", *_args))
+
+    event = AccountingEvent(
+        AccountingStatus.STOP, "alice", "sid",
+        attributes={"User-Name": "alice", "Acct-Session-Id": "sid"},
+        observed_at=datetime(2026, 10, 21, tzinfo=timezone.utc),
+    )
+    dispatcher = RadiusDispatcher(PluginPipeline([]))
+    dispatcher.accounting = Mock(return_value=DispatchResult(
+        RadiusPacket(RadiusCode.ACCOUNTING_RESPONSE, 6, {}, bytes(16)), event
+    ))
+    identities = Mock()
+    identities.user_id.return_value = 7
+    identities.ras_id.return_value = 3
+    identities.ras = None
+
+    class AccountingSessions:
+        def apply(self, _event, user_id, ras_id):
+            calls.append(("apply", user_id, ras_id))
+            return SimpleNamespace(created=False, delta_input_octets=0, delta_output_octets=0)
+
+    handler = RadiusRuntimeHandler(
+        dispatcher, AccountingSessions(), identities, login_reservations=Reservations()
+    )
+    handler(
+        RadiusPacket(
+            RadiusCode.ACCOUNTING_REQUEST, 6,
+            {"User-Name": "alice", "Acct-Status-Type": "Stop", "Acct-Session-Id": "sid"},
+            bytes(16),
+        ),
+        ("192.0.2.1", 1812),
+    )
+
+    assert calls == [("lock", 7), ("apply", 7, 3)]
