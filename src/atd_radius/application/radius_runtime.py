@@ -496,7 +496,11 @@ class NativeRadiusPacketHandler:
         if not callable(getattr(conn, "execute", None)):
             return
         from atd_radius.infrastructure.live_radius_sessions import PostgresLiveRadiusSessionRepository
+        from atd_radius.infrastructure.login_reservations import PostgresLoginReservationRepository
 
+        # Share the login/Accounting handoff lock so a new session cannot
+        # appear between durable enumeration and deadline calculation.
+        PostgresLoginReservationRepository(conn).lock_user(user_id)
         store = PostgresLiveRadiusSessionRepository(conn)
         durable = [state for state in store.list_active() if state.key.user_id == user_id]
         with self.state.sessions.synchronized():
