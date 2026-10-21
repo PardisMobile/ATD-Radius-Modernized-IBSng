@@ -10,8 +10,8 @@ from atd_radius.api.admin_dependencies import (
     AdminPrincipal,
     can_access_user,
     can_change_user,
-    can_delete_user,
     can_change_user_credit,
+    can_delete_user,
     can_change_voip_user_attributes,
     can_use_charge,
     can_use_group,
@@ -70,6 +70,7 @@ class UserDeleteView(BaseModel):
     deleted_count: int
     refunded_credit: str
     mailbox_cleanup_pending: list[str]
+
 
 class UserAttributeMutation(BaseModel):
     attrs: dict[str, str] = Field(default_factory=dict)
