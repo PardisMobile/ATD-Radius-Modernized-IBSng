@@ -1612,6 +1612,7 @@ def test_limit_termination_claim_is_persisted_under_shared_session_lock(monkeypa
 
 
 def test_limit_termination_skips_claim_already_owned_by_another_worker(monkeypatch):
+    from datetime import datetime, timezone
     from copy import deepcopy
     from atd_radius.application import radius_runtime
     from atd_radius.application.radius_runtime import NativeRadiusPacketHandler, NativeRadiusRuntimeState
