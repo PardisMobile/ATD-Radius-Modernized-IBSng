@@ -515,12 +515,16 @@ def test_native_packet_handler_does_not_repeat_a_successfully_requested_terminat
     from atd_radius.application.radius_runtime import NativeRadiusPacketHandler, NativeRadiusRuntimeState
     from atd_radius.domain.radius_runtime import SessionKey
 
+    class Connection:
+        def __enter__(self): return self
+        def __exit__(self, *_args): return False
+
     state = NativeRadiusRuntimeState()
     key = SessionKey(7, 3, "conf-7")
     session = state.sessions.start(key, {"User-Name": "alice"})
     session.termination_requested_reason = "credit_finished"
     session.termination_requested_at = datetime.now(timezone.utc)
-    handler = NativeRadiusPacketHandler(state, Mock())
+    handler = NativeRadiusPacketHandler(state, lambda: Connection())
     try:
         handler._terminate_voip_session(key, "credit_finished")
         assert session.termination_requested_reason == "credit_finished"
