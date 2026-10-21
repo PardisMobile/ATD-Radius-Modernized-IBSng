@@ -1709,7 +1709,6 @@ def test_limit_planner_refreshes_user_sessions_from_durable_cross_worker_state(m
 
 def test_accounting_stop_takes_user_lock_before_session_mutation():
     from datetime import datetime, timezone
-    from types import SimpleNamespace
     from unittest.mock import Mock
     from atd_radius.application.radius_runtime import RadiusRuntimeHandler
     from atd_radius.domain.accounting_lifecycle import AccountingEvent, AccountingStatus
