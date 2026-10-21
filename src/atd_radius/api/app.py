@@ -11,6 +11,7 @@ from atd_radius.api.admins import router as admins_router
 from atd_radius.api.groups import router as groups_router
 from atd_radius.api.ras import router as ras_router
 from atd_radius.api.users import router as users_router
+from atd_radius.api.online_sessions import router as online_sessions_router
 from atd_radius.api.voip_tariffs import router as voip_tariffs_router
 from atd_radius.api.voip_charge_rules import router as voip_charge_rules_router
 from atd_radius.api.internet_charge_rules import router as internet_charge_rules_router
@@ -55,6 +56,7 @@ app.include_router(admin_auth_router, prefix=settings.api_prefix)
 app.include_router(admin_deposits_router, prefix=settings.api_prefix)
 app.include_router(admins_router, prefix=settings.api_prefix)
 app.include_router(users_router, prefix=settings.api_prefix)
+app.include_router(online_sessions_router, prefix=settings.api_prefix)
 app.include_router(groups_router, prefix=settings.api_prefix)
 app.include_router(ras_router, prefix=settings.api_prefix)
 app.include_router(voip_tariffs_router, prefix=settings.api_prefix)
