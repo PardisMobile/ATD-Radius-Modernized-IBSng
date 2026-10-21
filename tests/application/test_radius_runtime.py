@@ -1671,16 +1671,31 @@ def test_limit_planner_refreshes_user_sessions_from_durable_cross_worker_state(m
     durable_state = state.sessions.start(durable_key, {"User-Name": "alice"})
     state.sessions.remove(durable_key)
     locked = []
+    events = []
 
     class Store:
         def __init__(self, _conn): pass
-        def list_active(self): return [durable_state]
-        def lock(self, key): locked.append(key)
+        def list_active(self):
+            events.append("enumerate")
+            return [durable_state]
+        def lock(self, key):
+            locked.append(key)
+            events.append(("session-lock", key))
         def get(self, key): return durable_state if key == durable_key else None
+
+    class LoginReservations:
+        def __init__(self, _conn): pass
+        def lock_user(self, user_id):
+            assert user_id == 7
+            events.append("user-lock")
 
     monkeypatch.setattr(
         "atd_radius.infrastructure.live_radius_sessions.PostgresLiveRadiusSessionRepository",
         Store,
+    )
+    monkeypatch.setattr(
+        "atd_radius.infrastructure.login_reservations.PostgresLoginReservationRepository",
+        LoginReservations,
     )
     handler = NativeRadiusPacketHandler.__new__(NativeRadiusPacketHandler)
     handler.state = state
@@ -1689,3 +1704,4 @@ def test_limit_planner_refreshes_user_sessions_from_durable_cross_worker_state(m
     active = state.sessions.active_for_user(7)
     assert [item.key for item in active] == [durable_key]
     assert locked == [stale_key, durable_key]
+    assert events[0:2] == ["user-lock", "enumerate"]
