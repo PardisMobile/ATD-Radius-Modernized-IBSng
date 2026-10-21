@@ -1609,7 +1609,7 @@ def test_limit_termination_claim_is_persisted_under_shared_session_lock(monkeypa
         handler._terminate_voip_session(key, "credit_finished")
         assert events == ["locked", "saved"]
         assert durable.termination_requested_reason == "credit_finished"
-        assert local.termination_requested_reason == "credit_finished"
+        assert state.sessions.get(key).termination_requested_reason == "credit_finished"
         terminate.assert_called_once()
     finally:
         handler.close()
