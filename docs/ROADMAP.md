@@ -491,4 +491,4 @@ Added a read-only A1.24 static-schema comparison command against PostgreSQL cata
 
 ## Schema inventory gate expanded — 2026-10-23
 
-The first audit gate now covers A1.24 static table/column, explicit index, and sequence names and emits separate missing/extra lists. The audit is read-only and CI-gateable. Column types/defaults/nullability, constraint parity, plugin-created objects, lossless data import and representative restore remain open; Phase 2 is not complete.
+The audit gate now covers static table/column, explicit index, and sequence names, plus column type/default/nullability comparisons. It emits missing/extra lists and definition drift and is read-only/CI-gateable. Constraint semantics, plugin-created objects, lossless data import and representative restore remain open; Phase 2 is not complete.
