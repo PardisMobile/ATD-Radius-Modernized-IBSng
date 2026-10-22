@@ -273,7 +273,7 @@ def generate_mschapv2_authenticator_response(
     auth = _octets(authenticator_challenge)
     if len(nt) != 24 or len(peer) != 16 or len(auth) != 16:
         raise ValueError("invalid MS-CHAPv2 response/challenge length")
-    password_hash = _md4(password.encode("utf-16le"))
+    # Match A1.24 core.lib.mschap.utils.str2unicode: interleave zero bytes\n    # into the source UTF-8 bytes rather than encoding Unicode code points.\n    password_hash = _md4(_a124_str2unicode(password))
     password_hash_hash = _md4(password_hash)
     magic1 = b"Magic server to client signing constant"
     digest = sha1(password_hash_hash + nt + magic1).digest()
