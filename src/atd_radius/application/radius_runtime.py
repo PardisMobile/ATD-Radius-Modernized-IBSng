@@ -676,13 +676,13 @@ class NativeRadiusPacketHandler:
             )
             charge = UserChargeSettlement(users, internet_charge, voip_charge)
             session_store = PostgresLiveRadiusSessionRepository(conn)
+            login_reservations = PostgresLoginReservationRepository(conn)
+            login_reservations.lock_user(session_key.user_id)
             # Ensure legacy open connection_log rows are rehydrated before the
             # admin action resolves its target; snapshots alone are not enough.
             recovered_voip_users = self._recover_open_sessions(
                 conn, charge, ras_registry, pools, session_store,
             )
-            login_reservations = PostgresLoginReservationRepository(conn)
-            login_reservations.lock_user(session_key.user_id)
             self._refresh_durable_user_sessions(conn, session_key.user_id)
             with self.state.sessions.synchronized():
                 current = self.state.sessions.get(session_key)
