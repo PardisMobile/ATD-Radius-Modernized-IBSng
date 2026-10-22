@@ -87,3 +87,15 @@ def test_inventory_comparison_reports_index_and_sequence_drift():
 def test_comment_stripping_does_not_delete_comment_markers_inside_strings():
     parsed = parse_a124_tables("CREATE TABLE messages (body text DEFAULT 'keep -- this');")
     assert parsed["messages"]["body"] == "text DEFAULT 'keep -- this'"
+
+
+def test_checked_in_a124_migration_inventory_is_complete_for_static_ddl():
+    from pathlib import Path
+
+    migration = Path(__file__).resolve().parents[2] / "migrations" / "001_initial.sql"
+    inventory = parse_a124_inventory(migration.read_text(encoding="utf-8"))
+    tables = inventory["tables"]
+    assert len(tables) == 51
+    assert sum(len(columns) for columns in tables.values()) == 224
+    assert len(inventory["indexes"]) == 19
+    assert len(inventory["sequences"]) == 26
