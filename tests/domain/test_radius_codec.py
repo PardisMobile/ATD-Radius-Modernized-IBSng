@@ -261,6 +261,9 @@ def test_response_message_authenticator_covers_final_mppe_salts():
         "md5",
     ).digest()
     assert wire[ma_offset:ma_offset + 16] == expected_ma
+    decoded = decode(wire, "shared", request_authenticator=request_authenticator)
+    assert decoded.attributes["MS-MPPE-Send-Key"] == "00112233445566778899aabbccddeeff"
+    assert decoded.attributes["MS-MPPE-Recv-Key"] == "ffeeddccbbaa99887766554433221100"
     expected_auth = md5(
         wire[:4] + request_authenticator + wire[20:] + b"shared"
     ).digest()
