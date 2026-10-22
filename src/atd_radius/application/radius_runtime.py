@@ -648,6 +648,78 @@ class NativeRadiusPacketHandler:
                     current.termination_requested_at = None
             raise
 
+    def clear_user_session(self, session_key: SessionKey) -> None:
+        """Apply A1.24 CLEAR USER locally, without issuing a RAS kill or charging credit."""
+        with self.connection_factory() as conn:
+            if self.state.ras is None or self.state.pools is None:
+                self.state.initialize(RASRepository(conn), PostgresIPPoolRepository(conn))
+            else:
+                self.state.ras.repository = RASRepository(conn)
+                self.state.pools.repository = PostgresIPPoolRepository(conn)
+                self.state.ras.reload()
+                self.state.pools.reload()
+
+            from atd_radius.infrastructure.live_radius_sessions import PostgresLiveRadiusSessionRepository
+            from atd_radius.infrastructure.login_reservations import PostgresLoginReservationRepository
+
+            users = UserRepository(conn)
+            ras_registry = self.state.ras
+            pools = self.state.pools
+            login_reservations = PostgresLoginReservationRepository(conn)
+            login_reservations.lock_user(session_key.user_id)
+            self._refresh_durable_user_sessions(conn, session_key.user_id)
+            with self.state.sessions.synchronized():
+                current = self.state.sessions.get(session_key)
+                if current is None or current.stopped:
+                    raise LookupError("online session not found")
+                snapshot = replace(current, attributes=dict(current.attributes))
+
+            # The native logout path computes usage and closes connection_log,
+            # but no_commit suppresses the credit mutation. Internal markers and
+            # the private snapshot log ID must never become persisted RADIUS details.
+            attrs = {
+                str(name): str(value)
+                for name, value in snapshot.attributes.items()
+                if not str(name).startswith("__")
+            }
+            attrs.update({
+                "Acct-Status-Type": "Stop",
+                "Acct-Session-Id": session_key.unique_id,
+                "Acct-Input-Octets": str(snapshot.input_octets),
+                "Acct-Output-Octets": str(snapshot.output_octets),
+                "Acct-Terminate-Cause": "Admin-Reset",
+                "no_commit": "1",
+            })
+            event = AccountingEvent(
+                status=AccountingStatus.STOP,
+                username=attrs.get("User-Name", ""),
+                session_id=session_key.unique_id,
+                remote_ip=attrs.get("Framed-IP-Address"),
+                input_octets=snapshot.input_octets,
+                output_octets=snapshot.output_octets,
+                terminate_cause="Admin-Reset",
+                attributes=attrs,
+                observed_at=datetime.now(timezone.utc),
+                ras_multi_login_allowed=snapshot.ras_multi_login_allowed,
+                service=snapshot.charge_kind or "internet",
+            )
+            persistence = NativeAccountingPersistence(ConnectionLogRepository(conn))
+            credits = UserCreditRepository(conn)
+            internet_charge = InternetChargeSettlement(
+                PostgresInternetChargeRuleRepository(conn), users, credits,
+            )
+            voip_charge = VoipChargeSettlement(
+                PostgresVoipChargeRuleRepository(conn), users,
+                PostgresVoipTariffRepository(conn), credits,
+            )
+            charge = UserChargeSettlement(users, internet_charge, voip_charge)
+            session_store = PostgresLiveRadiusSessionRepository(conn)
+            accounting = AccountingSessionService(self.state.sessions, persistence, charge, session_store)
+            accounting.apply(event, session_key.user_id, session_key.ras_id)
+            IPPoolSessionManager(pools, ras_registry).accounting_stop(event, session_key.ras_id)
+
+        self._refresh_voip_limit_schedule(session_key.user_id)
+
     def _recover_open_sessions(self, conn, charge, ras_registry, pools, session_store=None) -> set[int]:
         """Rehydrate open rows and return users needing restored VoIP timers.
 
