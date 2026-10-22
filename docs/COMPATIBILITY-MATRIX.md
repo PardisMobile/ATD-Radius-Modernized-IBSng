@@ -342,3 +342,8 @@ The user-deletion API is source-traced to A1.24 and includes owner-scoped DELETE
 `GET /api/v1/online-sessions` reports durable active sessions and accepted login-in-progress reservations under `SEE ONLINE USERS` scope. `POST /api/v1/online-sessions/disconnect` uses owner-scoped `KILL USER`, the existing source-traced provider termination adapters, and operational audit. It does not claim that the remote RAS session disappeared until Accounting-Stop confirms closure. The stale local termination marker retry path is covered by regression tests.
 
 Full CI passed **954 tests on Python 3.11 and 3.12, 2 warnings each**; Python-only passed **945 tests, 9 skipped, 2 warnings**. `CLEAR USER`, live RAS interoperability and the final UI workflow remain incomplete.
+
+
+## A1.24 MS-CHAPv2 hash parity follow-up — 2026-10-23
+
+The AuthenticatorResponse implementation now shares the A1.24 byte-wise password-hash helper already used by MS-CHAPv2 NT-Response verification and RFC 3079 MPPE key derivation. A new end-to-end non-ASCII regression exercises the complete response/hash/AuthResponse/Send-Recv key pipeline, preserving the RFC ASCII vectors. This closes a source-identified inconsistency. Full CI passed on Python 3.11 and 3.12 (**955 passed, 2 warnings each**; [run 39851170974](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/39851170974)); Python-only CI passed **946 passed, 9 skipped, 2 warnings** ([run 39851171057](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/39851171057)). Live NAS interoperability remains unverified.
