@@ -119,7 +119,7 @@ def test_a124_non_ascii_mschapv2_pipeline_uses_one_source_password_hash():
     peer_challenge = bytes.fromhex("21402324255E262A28295F2B3A337C7E")
     challenge = _challenge_hash(peer_challenge, auth_challenge, username)
     nt_response = _nt_response(challenge, password)
-    response = b"\\x01\\x00" + peer_challenge + b"\\x00" * 8 + nt_response
+    response = b"\x01\x00" + peer_challenge + b"\x00" * 8 + nt_response
 
     # The complete non-ASCII response must verify against A1.24's byte-wise
     # password conversion, not Python's Unicode-code-point UTF-16LE encoding.
@@ -141,8 +141,8 @@ def test_a124_non_ascii_mschapv2_pipeline_uses_one_source_password_hash():
     master_key = sha1(
         password_hash_hash + nt_response + b"This is the MPPE Master Key"
     ).digest()[:16]
-    pad1 = b"\\x00" * 40
-    pad2 = b"\\xf2" * 40
+    pad1 = b"\x00" * 40
+    pad2 = b"\xf2" * 40
     expected_send = sha1(
         master_key + pad1
         + b"On the client side, this is the receive key; on the server side, it is the send key."
