@@ -556,5 +556,9 @@ class UserChargeSettlement:
     def update(self, state, when, ras_id, port):
         return self._for(state).update(state, when, ras_id, port)
 
+    def settle_without_commit(self, state, when, ras_id, port):
+        """Calculate logout usage while preserving the user's credit balance."""
+        return self._for(state).settle_without_commit(state, when, ras_id, port)
+
     def settle(self, state, when, ras_id, port):
         return self._for(state).settle(state, when, ras_id, port)
