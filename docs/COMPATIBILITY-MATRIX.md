@@ -23,7 +23,7 @@ This is the master parity ledger. A feature is not considered migrated merely be
 | RADIUS authentication | radius_server/* | Python RADIUS server | Runtime + live UDP wiring implemented / end-to-end parity pending |
 | PAP | IBSng RADIUS auth | RADIUS auth pipeline | Implemented / end-to-end parity pending |
 | CHAP | IBSng RADIUS auth | RADIUS auth pipeline | Implemented / end-to-end parity pending |
-| MS-CHAP | IBSng RADIUS auth/plugin behavior | RADIUS auth pipeline | MS-CHAPv1/v2 + MPPE implemented / end-to-end parity pending |
+| MS-CHAP | IBSng RADIUS auth/plugin behavior | RADIUS auth pipeline | MS-CHAPv1/v2 + MPPE implemented; MS-CHAPv2 AuthenticatorResponse now uses A1.24 password-byte conversion / live end-to-end parity pending |
 | Accounting | radius_server/* + accounting plugins | Accounting engine | Start/Stop/Alive + native connection-log + no_connection_log + Charge/Credit runtime + live UDP wiring implemented / live integration parity pending |
 | Duplicate requests | IBSng RADIUS request handling | Request deduplication/idempotency | Implemented boundary / full parity pending |
 | Disconnect | RADIUS/RAS behavior | RADIUS CoA/Disconnect adapter + admin online-session action | Authenticated-RAS-scoped inbound Disconnect/CoA, durable cross-worker target refresh, accounting settlement/IP release, and permission-checked admin termination endpoint implemented; provider disappearance verification and full live RAS interoperability pending |
@@ -36,7 +36,7 @@ This is the master parity ledger. A feature is not considered migrated merely be
 | XML-RPC/IAS | IBSng XML-RPC interfaces and IAS handler | IAS event REST adapter / XML-RPC compatibility adapter | Partial: /xmlrpc transport/auth for the three registered IAS methods and bounded request streaming implemented; full response/error and persistence semantics parity still pending. lockUser/lockAdmin are not registered source methods. |
 | Admin UI | interface/admin/* + Smarty | Modern PHP 8 ATD UI | Deferred until backend parity; final stage |
 | User UI | interface/user/* + Smarty | Modern user workspace | Deferred until backend parity; final stage |
-| EAP | Not present in A1.24 | EAP subsystem | ATD-only / foundation |
+| EAP | Not present in A1.24 | EAP subsystem | ATD-only / foundation; UDP boundary now requires and validates Message-Authenticator on EAP Access-Requests; EAP method and live interoperability parity pending |
 
 ## Attribute policy milestone
 The attribute system is a first-class compatibility surface. The modern engine keeps scope/provenance, deterministic precedence, typed values, multi-valued attributes, explicit set/add/remove/replace operations and explainability. The compatibility gate remains source-derived fixtures for user/group/RAS load and mutation behavior.

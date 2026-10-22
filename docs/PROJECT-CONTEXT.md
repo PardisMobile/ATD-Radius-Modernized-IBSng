@@ -1,5 +1,13 @@
 # Project Context — Carry-Forward Memory
 
+## Verified protocol compatibility increment — 2026-10-22 (PR #7)
+
+Source review of A1.24 `core/lib/mschap/utils.py::str2unicode` and `core/lib/mschap/mschap.py::generate_authenticator_response` found that the MS-CHAPv2 AuthenticatorResponse path must hash the legacy source-byte interleaving, not standard UTF-16LE code points. ATD now uses its existing `_a124_str2unicode` conversion and includes a non-ASCII password regression.
+
+The UDP RADIUS boundary now drops Access-Requests containing `EAP-Message` if `Message-Authenticator` is absent, and continues to reject invalid HMACs. Regression coverage exercises missing, invalid and valid authenticators. This secures the EAP protocol boundary; it does not claim that an EAP method is fully implemented or interoperable.
+
+Latest code checkpoint: `985c6eb5d8451167b819740ff2c38b5b70879021` on PR [#7](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/pull/7). Full CI run [39819802822](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/39819802822) passed on Python 3.11 and 3.12: **958 passed, 2 warnings per job**, including PostgreSQL integration, compile, Ruff and PHP syntax. Python-only run [39819802903](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/39819802903): **949 passed, 9 skipped, 2 warnings**.
+
 ## Latest verified checkpoint — 2026-10-14
 
 Latest verified code/test commit `8a0e4ddd2aadfb42d66c0e4ee762b1c60cc9a85f` tightens Cisco A1.24 session identity: Cisco VoIP requires a decoded H.323 conference ID; Cisco Internet requires Cisco-NAS-Port or NAS-Port-Type + NAS-Port. No cross-service or Acct-Session-Id fallback is allowed for Cisco, and restart recovery skips rows without the source-required key. Full CI passed on Python 3.11 and 3.12: **883 passed, 2 warnings per matrix job** (run [39217070816](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/39217070816)); Python-only run passed **875 passed, 8 skipped, 2 warnings** (run [39217070813](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/39217070813)). Recent source-derived Cisco work also covers dual-service Accounting routing, call-leg gating, pre-auth H.323 IDs, username prefix resolution, and Alive tracker-only handling. Remaining open work includes complete Cisco caller-ID/VOIP_AUTHORIZE semantics, durable session/timer truth, production provider termination integrations, and broader live RAS interoperability.
