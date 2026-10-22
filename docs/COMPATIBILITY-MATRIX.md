@@ -351,4 +351,4 @@ The new read-only audit command compares target table/column names with the cano
 
 ## Schema inventory audit — 2026-10-23
 
-The read-only schema audit now reports table/column drift plus explicit index and sequence name drift from the canonical static DDL. It does not compare types/defaults/nullability, constraints, plugin-created objects, functions, data, or runtime behavior; no complete database-parity claim is made.
+The read-only schema audit reports table/column, explicit index and sequence name drift, plus column type/default/nullability drift from the canonical static DDL. It does not compare constraint semantics, plugin-created objects, functions, data, or runtime behavior; no complete database-parity claim is made.
