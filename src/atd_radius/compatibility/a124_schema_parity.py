@@ -302,6 +302,7 @@ def compare_inventory(source: Mapping[str, object], target: Mapping[str, object]
         "column_definition_drift": definition_drift,
         "matches_inventory_by_name": inventory_drift == 0,
         "matches_column_definitions": len(definition_drift) == 0,
+        "matches_all_audited_fields": inventory_drift == 0 and len(definition_drift) == 0,
         "scope_note": (
             "Compares table/column/index/sequence names plus column type, nullable flag and "
             "default expressions where PostgreSQL catalog data is supplied. Default expression "
@@ -391,7 +392,7 @@ def main(argv: list[str] | None = None) -> int:
             stream.write(rendered)
     else:
         sys.stdout.write(rendered)
-    return 2 if args.fail_on_drift and not report["comparison"]["matches_inventory_by_name"] else 0
+    return 2 if args.fail_on_drift and not report["comparison"]["matches_all_audited_fields"] else 0
 
 
 if __name__ == "__main__":
