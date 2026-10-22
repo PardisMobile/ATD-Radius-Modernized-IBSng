@@ -347,3 +347,8 @@ Full CI passed **954 tests on Python 3.11 and 3.12, 2 warnings each**; Python-on
 ## Static DDL inventory comparison — 2026-10-23
 
 The new read-only audit command compares target table/column names with the canonical archive's `IBSng/db/tables.sql` and emits machine-readable drift. It does not mark database compatibility complete: type/default/constraint/index/sequence parity, plugin-created tables, data migration, restore fidelity, and behavioral compatibility remain open.
+
+
+## Schema inventory audit — 2026-10-23
+
+The read-only schema audit now reports table/column drift plus explicit index and sequence name drift from the canonical static DDL. It does not compare types/defaults/nullability, constraints, plugin-created objects, functions, data, or runtime behavior; no complete database-parity claim is made.
