@@ -223,10 +223,11 @@ def test_mppe_vsa_decode_without_secret_preserves_encrypted_hex():
         "clientPass",
         bytes.fromhex("82309ECD8D708B5EA08FAA3981CD83544233114A3D85D6DF"),
     )
+    request = RadiusPacket(RadiusCode.ACCESS_REQUEST, 15, {}, request_authenticator)
     packet = RadiusPacket(
         RadiusCode.ACCESS_ACCEPT, 15, {"MS-MPPE-Send-Key": send_key}, request_authenticator
     )
-    wire = encode(packet, "shared")
+    wire = encode_response(packet, request, "shared")
     decoded_without_secret = decode(wire)
     assert decoded_without_secret.attributes["MS-MPPE-Send-Key"] != send_key.hex()
     assert len(decoded_without_secret.attributes["MS-MPPE-Send-Key"]) >= 36
@@ -261,7 +262,7 @@ def test_mppe_keys_are_salted_and_rfc2548_encrypted():
         request_authenticator,
     )
     wire = encode(packet, "shared")
-    round_trip = decode(wire, "shared")
+    round_trip = decode(wire, "shared", request_authenticator=request_authenticator)
     assert round_trip.attributes["MS-MPPE-Send-Key"] == send_key.hex()
     assert round_trip.attributes["MS-MPPE-Recv-Key"] == recv_key.hex()
     offset = 20
