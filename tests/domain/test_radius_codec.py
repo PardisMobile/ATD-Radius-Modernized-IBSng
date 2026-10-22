@@ -215,6 +215,33 @@ def test_mschapv2_success_vsa_round_trip():
     assert decoded.attributes["MS-CHAP2-Success"] == success
 
 
+def test_mppe_vsa_decode_without_secret_preserves_encrypted_hex():
+    from atd_radius.domain.radius_auth import derive_mschapv2_mppe_keys
+
+    request_authenticator = bytes.fromhex("00112233445566778899aabbccddeeff")
+    send_key, _ = derive_mschapv2_mppe_keys(
+        "clientPass",
+        bytes.fromhex("82309ECD8D708B5EA08FAA3981CD83544233114A3D85D6DF"),
+    )
+    packet = RadiusPacket(
+        RadiusCode.ACCESS_ACCEPT, 15, {"MS-MPPE-Send-Key": send_key}, request_authenticator
+    )
+    wire = encode(packet, "shared")
+    decoded_without_secret = decode(wire)
+    assert decoded_without_secret.attributes["MS-MPPE-Send-Key"] != send_key.hex()
+    assert len(decoded_without_secret.attributes["MS-MPPE-Send-Key"]) >= 36
+
+
+def test_mppe_key_decrypt_rejects_invalid_salt_and_ciphertext():
+    from atd_radius.domain.radius_codec import _decrypt_ms_mppe_key
+
+    authenticator = bytes.fromhex("00112233445566778899aabbccddeeff")
+    with pytest.raises(RadiusCodecError, match="salt or length"):
+        _decrypt_ms_mppe_key(bytes(18), "shared", authenticator)
+    with pytest.raises(RadiusCodecError, match="ciphertext length"):
+        _decrypt_ms_mppe_key(b"\\x80\\x01" + bytes(15), "shared", authenticator)
+
+
 def test_mppe_keys_are_salted_and_rfc2548_encrypted():
     from hashlib import md5
     from atd_radius.domain.radius_auth import derive_mschapv2_mppe_keys
