@@ -135,3 +135,21 @@ def test_udp_server_accepts_eap_access_request_with_valid_message_authenticator(
     assert len(calls) == 1
     assert calls[0].attributes["EAP-Message"] == "0200000501"
     assert len(sock.sent) == 1
+
+
+def test_udp_server_drops_eap_access_request_with_invalid_message_authenticator():
+    calls = []
+
+    def handler(packet, peer):
+        calls.append(packet)
+        return RadiusPacket(RadiusCode.ACCESS_ACCEPT, packet.identifier, {}, packet.authenticator)
+
+    wire = bytearray(_access_request_with_eap(include_message_authenticator=True))
+    wire[-1] ^= 1
+    server = RadiusUDPServer(handler, SecretResolver())
+    sock = FakeSocket(bytes(wire))
+    server._socket = sock
+    server.serve_once()
+
+    assert calls == []
+    assert sock.sent == []
