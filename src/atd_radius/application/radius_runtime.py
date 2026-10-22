@@ -665,6 +665,22 @@ class NativeRadiusPacketHandler:
             users = UserRepository(conn)
             ras_registry = self.state.ras
             pools = self.state.pools
+            persistence = NativeAccountingPersistence(ConnectionLogRepository(conn))
+            credits = UserCreditRepository(conn)
+            internet_charge = InternetChargeSettlement(
+                PostgresInternetChargeRuleRepository(conn), users, credits,
+            )
+            voip_charge = VoipChargeSettlement(
+                PostgresVoipChargeRuleRepository(conn), users,
+                PostgresVoipTariffRepository(conn), credits,
+            )
+            charge = UserChargeSettlement(users, internet_charge, voip_charge)
+            session_store = PostgresLiveRadiusSessionRepository(conn)
+            # Ensure legacy open connection_log rows are rehydrated before the
+            # admin action resolves its target; snapshots alone are not enough.
+            recovered_voip_users = self._recover_open_sessions(
+                conn, charge, ras_registry, pools, session_store,
+            )
             login_reservations = PostgresLoginReservationRepository(conn)
             login_reservations.lock_user(session_key.user_id)
             self._refresh_durable_user_sessions(conn, session_key.user_id)
@@ -703,22 +719,12 @@ class NativeRadiusPacketHandler:
                 ras_multi_login_allowed=snapshot.ras_multi_login_allowed,
                 service=snapshot.charge_kind or "internet",
             )
-            persistence = NativeAccountingPersistence(ConnectionLogRepository(conn))
-            credits = UserCreditRepository(conn)
-            internet_charge = InternetChargeSettlement(
-                PostgresInternetChargeRuleRepository(conn), users, credits,
-            )
-            voip_charge = VoipChargeSettlement(
-                PostgresVoipChargeRuleRepository(conn), users,
-                PostgresVoipTariffRepository(conn), credits,
-            )
-            charge = UserChargeSettlement(users, internet_charge, voip_charge)
-            session_store = PostgresLiveRadiusSessionRepository(conn)
             accounting = AccountingSessionService(self.state.sessions, persistence, charge, session_store)
             accounting.apply(event, session_key.user_id, session_key.ras_id)
             IPPoolSessionManager(pools, ras_registry).accounting_stop(event, session_key.ras_id)
 
-        self._refresh_voip_limit_schedule(session_key.user_id)
+        for recovered_user_id in recovered_voip_users | {session_key.user_id}:
+            self._refresh_voip_limit_schedule(recovered_user_id)
 
     def _recover_open_sessions(self, conn, charge, ras_registry, pools, session_store=None) -> set[int]:
         """Rehydrate open rows and return users needing restored VoIP timers.
