@@ -6,6 +6,7 @@ application tables in the configured database.
 from __future__ import annotations
 
 import os
+from decimal import Decimal
 from contextlib import contextmanager
 from uuid import uuid4
 
@@ -87,11 +88,11 @@ def test_postgres_delete_refund_history_and_ias_are_transactional(ias_enabled, e
             [2, 1], admin_id=8, admin_username="admin", remote_addr="192.0.2.10",
             comment="cleanup", delete_connection_logs=False, delete_audit_logs=False,
         )
-        assert result.refunded_credit == 4.25
+        assert result.refunded_credit == Decimal("4.25")
         assert [target.user_id for target in result.targets] == [1, 2]
         conn.commit()
 
-        assert conn.execute("SELECT deposit FROM admins WHERE admin_id=8").fetchone()[0] == 14.25
+        assert conn.execute("SELECT deposit FROM admins WHERE admin_id=8").fetchone()[0] == Decimal("14.25")
         assert conn.execute("SELECT count(*) FROM users").fetchone()[0] == 0
         assert conn.execute("SELECT count(*) FROM credit_change").fetchone()[0] == 1
         assert conn.execute("SELECT count(*) FROM credit_change_userid").fetchone()[0] == 2
@@ -121,7 +122,7 @@ def test_postgres_delete_fails_closed_for_each_online_state_source(online_source
             )
         conn.rollback()
         assert conn.execute("SELECT count(*) FROM users WHERE user_id=1").fetchone()[0] == 1
-        assert conn.execute("SELECT deposit FROM admins WHERE admin_id=8").fetchone()[0] == 10.00
+        assert conn.execute("SELECT deposit FROM admins WHERE admin_id=8").fetchone()[0] == Decimal("10.00")
         assert conn.execute("SELECT count(*) FROM credit_change").fetchone()[0] == 0
 
 
