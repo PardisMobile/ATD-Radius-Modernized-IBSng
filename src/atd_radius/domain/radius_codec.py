@@ -593,6 +593,23 @@ def decode_sip(data: bytes) -> RadiusPacket:
     except KeyError as exc:
         raise RadiusCodecError(f"unsupported RADIUS code: {code_byte}") from exc
     authenticator = data[4:20]
+    response_codes = {
+        RadiusCode.ACCESS_ACCEPT, RadiusCode.ACCESS_REJECT, RadiusCode.ACCESS_CHALLENGE,
+        RadiusCode.ACCOUNTING_RESPONSE, RadiusCode.DISCONNECT_ACK, RadiusCode.DISCONNECT_NAK,
+        RadiusCode.COA_ACK, RadiusCode.COA_NAK,
+    }
+    if request_authenticator is not None and len(request_authenticator) != 16:
+        raise RadiusCodecError("request_authenticator must be exactly 16 bytes")
+    # MPPE VSA decryption uses the original Access-Request authenticator, not
+    # the response authenticator carried on the wire. Without that context,
+    # preserve encrypted VSA bytes instead of returning misleading plaintext.
+    vsa_secret = secret
+    vsa_authenticator = authenticator
+    if code in response_codes:
+        if request_authenticator is None:
+            vsa_secret = None
+        else:
+            vsa_authenticator = request_authenticator
     attrs = {}
     offset = 20
     while offset < length:
@@ -673,7 +690,12 @@ def encode(packet: RadiusPacket, secret: str | None = None) -> bytes:
     return pack("!BBH", _CODE_TO_BYTE[packet.code], packet.identifier, length) + authenticator + body
 
 
-def decode(data: bytes, secret: str | None = None) -> RadiusPacket:
+def decode(
+    data: bytes,
+    secret: str | None = None,
+    *,
+    request_authenticator: bytes | None = None,
+) -> RadiusPacket:
     if len(data) < 20:
         raise RadiusCodecError("RADIUS packet is shorter than 20 bytes")
     code_byte, identifier, length = unpack("!BBH", data[:4])
@@ -694,7 +716,7 @@ def decode(data: bytes, secret: str | None = None) -> RadiusPacket:
             raise RadiusCodecError("invalid attribute length")
         raw = data[offset + 2 : offset + attr_length]
         if number == 26:
-            name, value = _decode_vendor_specific(raw, secret, authenticator)
+            name, value = _decode_vendor_specific(raw, vsa_secret, vsa_authenticator)
         else:
             name = _ATTR_NAMES.get(number, f"Attr-{number}")
             value = _decode_value(name, raw, secret, authenticator)
