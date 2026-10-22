@@ -342,3 +342,8 @@ The user-deletion API is source-traced to A1.24 and includes owner-scoped DELETE
 `GET /api/v1/online-sessions` reports durable active sessions and accepted login-in-progress reservations under `SEE ONLINE USERS` scope. `POST /api/v1/online-sessions/disconnect` uses owner-scoped `KILL USER`, the existing source-traced provider termination adapters, and operational audit. It does not claim that the remote RAS session disappeared until Accounting-Stop confirms closure. The stale local termination marker retry path is covered by regression tests.
 
 Full CI passed **954 tests on Python 3.11 and 3.12, 2 warnings each**; Python-only passed **945 tests, 9 skipped, 2 warnings**. `CLEAR USER`, live RAS interoperability and the final UI workflow remain incomplete.
+
+
+## Verified RADIUS MPPE codec increment — 2026-10-22
+
+PR #8 (`feat/decrypt-mppe-vsa-on-decode`, `db28ba40d9aff38ee2ef46d665175a628f09d828`) adds context-aware decryption of RFC 2548 Microsoft MPPE Send/Receive keys, fail-closed validation of malformed encrypted values, and stable one-wire-image Message-Authenticator calculation for responses containing randomized MPPE salts. Regression coverage verifies key round-trip and both RADIUS response integrity checks. Full CI passed on Python 3.11 and 3.12, including PostgreSQL integration, Ruff, Python compilation and PHP syntax. Remaining: real NAS/supplicant interoperability, complete CHAP/MS-CHAPv2 exchange parity, and the other release blockers listed above.
