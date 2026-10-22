@@ -774,13 +774,16 @@ def encode_response(response: RadiusPacket, request: RadiusPacket, secret: str) 
     )
     if needs_message_authenticator:
         attributes["Message-Authenticator"] = "00" * 16
-        unsigned = RadiusPacket(response.code, response.identifier, attributes, request.authenticator)
-        wire = encode(unsigned, secret)
-        attributes["Message-Authenticator"] = hmac.new(
-            secret.encode("utf-8"), wire, "md5"
-        ).digest().hex()
     unsigned = RadiusPacket(response.code, response.identifier, attributes, request.authenticator)
+    # Encode exactly once: Microsoft MPPE VSAs use random salts, so re-encoding
+    # after computing Message-Authenticator would change the authenticated bytes.
     wire = encode(unsigned, secret)
+    if needs_message_authenticator:
+        offset = _message_authenticator_offset(wire)
+        if offset is None:
+            raise RadiusCodecError("Message-Authenticator was requested but not encoded")
+        message_authenticator = hmac.new(secret.encode("utf-8"), wire, "md5").digest()
+        wire = wire[:offset] + message_authenticator + wire[offset + 16 :]
     response_authenticator = md5(
         wire[:4] + request.authenticator + wire[20:] + secret.encode("utf-8")
     ).digest()
