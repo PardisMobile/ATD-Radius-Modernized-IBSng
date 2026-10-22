@@ -1,9 +1,24 @@
 # Current project status — ATD Radius / Modernized IBSng
 
-Updated: 2026-10-20  
+Updated: 2026-10-22  
 Repository: `PardisMobile/ATD-Radius-Modernized-IBSng`  
 Branch: `main`  
-Latest code checkpoint: `ea1870eaa5f4f0d0115aa5dccdf6bd20b1517d61` (authenticated-RAS scoping for inbound RFC 5176 control). Python-only run `39347322775`: 916 passed, 8 skipped. Full Python 3.12 job executed 924 passed, 2 warnings; the latest Python 3.11 matrix attempt failed during container initialization before checkout/tests, so the full matrix is **not yet green**.
+Latest merged code checkpoint: `3430e1d6f585f630898a18f6649f81c2022770df` — cross-worker RAS termination claim coordination. The new change and its regression tests passed both Python 3.11 and 3.12 full CI jobs, including Ruff, Python compilation, PHP syntax checks, and PostgreSQL-backed integration.
+
+## Latest release checkpoint — 2026-10-22
+
+The charge-limit enforcement path now acquires the durable session advisory lock, reloads authoritative session state, and persists a termination claim before the external RAS provider call. A second worker waits on the same session lock and then observes the durable claim, suppressing duplicate termination commands. Missing/stopped durable sessions are removed from stale local state. Tests cover durable claim persistence and duplicate-claim suppression.
+
+This improves cross-worker idempotency but does **not** prove the NAS/VoIP provider has removed the session. Provider interoperability, reconciliation after a provider timeout/ambiguous result, and full end-to-end A1.24 parity remain release gates.
+
+## Remaining release blockers
+
+1. Complete the source-to-implementation-to-test compatibility matrix across all A1.24 subsystems; do not infer parity from API/model presence.
+2. Lossless A1.24 database import/restore and a representative backup parity report.
+3. Close remaining authentication/accounting edge cases with end-to-end live UDP/PostgreSQL fixtures, including CHAP/MS-CHAPv2/MPPE interoperability and provider-specific accounting.
+4. Complete billing and expiry parity, including bandwidth shaping, source plugin side effects and time-driven rule transitions.
+5. Finish remaining admin/user workflows and modern responsive UI, then validate install/upgrade/rollback on supported deployment targets.
+6. Live RAS interoperability and authoritative post-disconnect verification across supported provider types.
 
 ## Authority and validation
 
