@@ -152,3 +152,51 @@ def test_postgres_delete_rolls_back_refund_and_ledgers_on_late_failure():
         assert conn.execute("SELECT deposit FROM admins WHERE admin_id=8").fetchone()[0] == 10.00
         assert conn.execute("SELECT count(*) FROM credit_change").fetchone()[0] == 0
         assert conn.execute("SELECT count(*) FROM ias_event").fetchone()[0] == 0
+
+
+
+def test_postgres_delete_waits_for_inflight_login_reservation_lock():
+    """Deletion shares the Access/login handoff lock and cannot race it."""
+    import threading
+    from time import monotonic, sleep
+
+    with _isolated_schema() as conn:
+        _seed_users(conn)
+        schema = conn.execute("SELECT current_schema()").fetchone()[0]
+        conn.commit()
+        # Simulate an Access admission/login handoff holding the canonical
+        # per-user lock. The deletion transaction must wait, then re-check state.
+        conn.execute("SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))", ("login:1",))
+        started = threading.Event()
+        finished = threading.Event()
+        errors = []
+
+        def delete_in_other_worker():
+            try:
+                with psycopg.connect(_DSN) as worker:
+                    worker.execute(f'SET search_path TO "{schema}"')
+                    started.set()
+                    UserDeletionRepository(worker).delete(
+                        [1], admin_id=8, admin_username="admin", remote_addr="192.0.2.10",
+                        comment="concurrency regression", delete_connection_logs=False,
+                        delete_audit_logs=False,
+                    )
+                    worker.commit()
+            except Exception as exc:  # propagate worker failures to the test thread
+                errors.append(exc)
+            finally:
+                finished.set()
+
+        thread = threading.Thread(target=delete_in_other_worker, daemon=True)
+        thread.start()
+        assert started.wait(timeout=5), "worker did not start"
+        # Wait briefly for the worker to reach the blocking advisory lock.
+        deadline = monotonic() + 2
+        while monotonic() < deadline and not finished.is_set():
+            sleep(0.02)
+        assert not finished.is_set(), "deletion bypassed the in-flight login lock"
+        conn.commit()  # release the simulated login reservation lock
+        thread.join(timeout=10)
+        assert not thread.is_alive(), "deletion worker remained blocked after lock release"
+        assert not errors, f"deletion worker failed: {errors!r}"
+        assert conn.execute("SELECT count(*) FROM users WHERE user_id=1").fetchone()[0] == 0
