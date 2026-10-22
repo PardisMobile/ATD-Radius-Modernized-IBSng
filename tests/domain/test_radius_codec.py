@@ -234,6 +234,9 @@ def test_mppe_keys_are_salted_and_rfc2548_encrypted():
         request_authenticator,
     )
     wire = encode(packet, "shared")
+    round_trip = decode(wire, "shared")
+    assert round_trip.attributes["MS-MPPE-Send-Key"] == send_key.hex()
+    assert round_trip.attributes["MS-MPPE-Recv-Key"] == recv_key.hex()
     offset = 20
     decoded = {}
     salts = []
