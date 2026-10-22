@@ -171,7 +171,13 @@ class AccountingSessionService:
             event.attributes.get("NAS-Port") or event.attributes.get("NAS-Port-Id")
             or current.attributes.get("NAS-Port") or current.attributes.get("NAS-Port-Id")
         )
-        current.attributes = {**current.attributes, **event.attributes}
+        current.attributes = {
+            **current.attributes,
+            **{
+                name: value for name, value in event.attributes.items()
+                if name not in {"no_commit", "no_connection_log"} and not name.startswith("__")
+            },
+        }
 
         if event.status in (AccountingStatus.INTERIM, AccountingStatus.ALIVE):
             delta_in, delta_out = self.registry.update(key, event.input_octets, event.output_octets)
