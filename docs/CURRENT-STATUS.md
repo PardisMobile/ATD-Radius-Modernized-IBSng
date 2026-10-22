@@ -724,4 +724,12 @@ Last completed full CI before this batch passed 936 tests on Python 3.11 and 3.1
 - `POST /api/v1/online-sessions/disconnect` refreshes authoritative user sessions, verifies ownership and permission, invokes the existing A1.24 provider termination path, and records success/failure in operational audit. It explicitly reports that remote disappearance is not verified until Accounting-Stop.
 - Fixed stale local termination markers: durable state is now authoritative, so a worker can retry after another worker clears a failed claim; failure cleanup no longer depends on object identity after refreshing the registry snapshot.
 - Latest full CI: **954 passed, 2 warnings** on Python 3.11 and 3.12 (run [39600839533](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/39600839533)). Python-only: **945 passed, 9 skipped, 2 warnings** (run [39600839199](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/39600839199)).
-- Remaining: live RAS interoperability and proof of remote session disappearance; CLEAR USER semantics remain unimplemented. Full UI, schema import/parity, remaining billing/plugins/XML-RPC, and install/upgrade/rollback are still release blockers.
+- Remaining: live RAS interoperability and proof of remote session disappearance; A1.24 CLEAR USER is implemented on PR #13 as a separate local no-commit logout path; its CI and live parity gates remain open. Full UI, schema import/parity, remaining billing/plugins/XML-RPC, and install/upgrade/rollback are still release blockers.
+
+
+## A1.24 CLEAR USER local logout batch — 2026-10-23
+
+- Implemented a distinct owner-scoped `CLEAR USER` endpoint (`POST /api/v1/online-sessions/clear`) rather than reusing remote `KILL USER`.
+- Added no-commit Internet/VoIP settlement previews: usage is calculated for native connection-log closure without mutating user credit.
+- The handler serializes against login admission and durable Accounting state, marks the session stopped, closes its native log, releases its local IP lease, and audits the operation. No remote RAS command is sent.
+- PR #13: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/pull/13. CI is running; do not mark verified until the full PostgreSQL/Python matrix passes.

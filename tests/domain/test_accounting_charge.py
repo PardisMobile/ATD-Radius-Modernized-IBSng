@@ -505,3 +505,38 @@ def test_internet_limit_planner_kills_only_sessions_without_an_effective_rule():
 
     assert plan.kill_reasons == ((bad.key, "no_effective_rule"),)
     assert plan.remaining_seconds is not None and plan.remaining_seconds > 0
+
+
+
+def test_internet_clear_user_previews_usage_without_credit_mutation():
+    rule = InternetChargeRule(1, frozenset({0}), 0, 86399, ports=frozenset({ALL}), cpm=Decimal("60"), cpk=Decimal("1"))
+    credits = Credits()
+    settlement = InternetChargeSettlement(Rules(rule), Policies(), credits)
+    start = datetime(2026, 1, 5, 10, 0, tzinfo=timezone.utc)
+    state = SessionRegistry().start(SessionKey(7, 3, "clear-internet"), input_octets=100, output_octets=200, started_at=start)
+    settlement.start(state, start, 3, None)
+    state.input_octets = 1124
+    state.output_octets = 1224
+
+    usage = settlement.settle_without_commit(state, start.replace(minute=2), 3, None)
+
+    assert usage == Decimal("122")
+    assert credits.changes == []
+
+
+def test_voip_clear_user_previews_usage_without_credit_mutation():
+    rule = _voip_rule(1, 5, 0, 86399)
+    credits = Credits()
+    settlement = VoipChargeSettlement(
+        VoipRules([rule]), VoipPolicies(), Tariffs({5: _voip_tariff(5, "60")}), credits,
+    )
+    start = datetime(2026, 1, 5, 10, 0, tzinfo=timezone.utc)
+    state = SessionRegistry().start(
+        SessionKey(7, 3, "clear-voip"), {"Called-Station-Id": "98912"}, started_at=start,
+    )
+    settlement.start(state, start, 3, None)
+
+    usage = settlement.settle_without_commit(state, start.replace(second=20), 3, None)
+
+    assert usage == Decimal("20")
+    assert credits.changes == []

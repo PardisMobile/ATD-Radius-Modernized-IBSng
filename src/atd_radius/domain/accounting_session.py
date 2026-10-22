@@ -171,7 +171,13 @@ class AccountingSessionService:
             event.attributes.get("NAS-Port") or event.attributes.get("NAS-Port-Id")
             or current.attributes.get("NAS-Port") or current.attributes.get("NAS-Port-Id")
         )
-        current.attributes = {**current.attributes, **event.attributes}
+        current.attributes = {
+            **current.attributes,
+            **{
+                name: value for name, value in event.attributes.items()
+                if name not in {"no_commit", "no_connection_log"} and not name.startswith("__")
+            },
+        }
 
         if event.status in (AccountingStatus.INTERIM, AccountingStatus.ALIVE):
             delta_in, delta_out = self.registry.update(key, event.input_octets, event.output_octets)
@@ -185,10 +191,16 @@ class AccountingSessionService:
         if event.status is AccountingStatus.STOP:
             delta_in, delta_out = self.registry.update(key, event.input_octets, event.output_octets)
             state = self.registry.stop(key, event.input_octets, event.output_octets)
-            used = (
-                Decimal("0") if "no_commit" in event.attributes
-                else self.charge.settle(state, event.observed_at, ras_id, port)
-            ) if self.charge else None
+            if self.charge:
+                if "no_commit" in event.attributes:
+                    # Native A1.24 CLEAR USER logs out the local session but
+                    # must not deduct the computed usage from user credit.
+                    preview = getattr(self.charge, "settle_without_commit", None)
+                    used = preview(state, event.observed_at, ras_id, port) if callable(preview) else Decimal("0")
+                else:
+                    used = self.charge.settle(state, event.observed_at, ras_id, port)
+            else:
+                used = None
             if self.persistence and log_id is not None:
                 if "no_connection_log" in event.attributes:
                     discard = getattr(self.persistence, "discard", None)
