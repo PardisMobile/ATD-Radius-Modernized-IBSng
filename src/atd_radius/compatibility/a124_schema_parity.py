@@ -203,6 +203,7 @@ def _source_column_spec(declaration: str, table_primary_key: bool) -> dict[str, 
         "serial": "integer", "smallserial": "smallint", "bigserial": "bigint",
         "int": "integer", "int4": "integer", "int8": "bigint", "int2": "smallint",
         "bool": "boolean", "char": "character",
+        "timestamp": "timestamp without time zone", "time": "time without time zone",
     }
     for alias, canonical in type_aliases.items():
         if type_name == alias:
@@ -269,7 +270,9 @@ def compare_inventory(source: Mapping[str, object], target: Mapping[str, object]
                 if bool(target_row["nullable"]) != bool(spec["nullable"]):
                     definition_drift.append({"table": table, "column": column, "field": "nullable",
                                              "source": spec["nullable"], "target": bool(target_row["nullable"])})
-                if _normalize_default(str(target_row["default"]) if target_row["default"] is not None else None) != spec["default"]:
+                if not spec["serial"] and _normalize_default(
+                    str(target_row["default"]) if target_row["default"] is not None else None
+                ) != spec["default"]:
                     definition_drift.append({"table": table, "column": column, "field": "default",
                                              "source": spec["default"], "target": _normalize_default(
                                                  str(target_row["default"]) if target_row["default"] is not None else None)})
