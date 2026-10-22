@@ -487,3 +487,8 @@ Validation: full PostgreSQL CI passed **954 tests, 2 warnings** on Python 3.11 a
 ## Phase 2 tooling increment — 2026-10-23
 
 Added a read-only A1.24 static-schema comparison command against PostgreSQL catalog metadata. It reports missing/extra table and column names as JSON and can exit nonzero on drift. This is a repeatable first gate for database compatibility; it is not the lossless importer, full schema diff, or representative backup/restore validation. Phase 2 remains open.
+
+
+## Schema inventory gate expanded — 2026-10-23
+
+The first audit gate now covers A1.24 static table/column, explicit index, and sequence names and emits separate missing/extra lists. The audit is read-only and CI-gateable. Column types/defaults/nullability, constraint parity, plugin-created objects, lossless data import and representative restore remain open; Phase 2 is not complete.
