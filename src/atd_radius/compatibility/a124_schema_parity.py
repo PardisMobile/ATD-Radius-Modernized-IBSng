@@ -1,6 +1,11 @@
 """Read-only name-level schema audit against IBSng A1.24 static DDL."""
 from __future__ import annotations
-import argparse, hashlib, json, re, sys, tarfile
+import argparse
+import hashlib
+import json
+import re
+import sys
+import tarfile
 from typing import Iterable, Mapping
 
 _CREATE_TABLE = re.compile(r'\bcreate\s+table\s+(?:if\s+not\s+exists\s+)?(?:"?([\w]+)"?)\s*\(', re.I)
