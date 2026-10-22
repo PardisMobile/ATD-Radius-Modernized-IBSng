@@ -128,7 +128,7 @@ def parse_a124_inventory(sql: str) -> dict[str, object]:
     for table, body in _table_bodies(cleaned):
         keys = set()
         for declaration in _split(body):
-            match = re.match(r"^primary\\s+key\\s*\\(([^)]+)\\)", declaration, re.I)
+            match = re.match(r"^primary\s+key\s*\(([^)]+)\)", declaration, re.I)
             if match:
                 keys.update(part.strip().strip('"').lower() for part in match.group(1).split(","))
         primary_keys[table] = keys
@@ -136,7 +136,7 @@ def parse_a124_inventory(sql: str) -> dict[str, object]:
     sequences = {m.group(1).lower() for m in _CREATE_SEQUENCE.finditer(cleaned)}
     for table, columns in tables.items():
         for column, declaration in columns.items():
-            if re.match(r'^(?:smallserial|serial|bigserial)\\b', declaration, re.I):
+            if re.match(r'^(?:smallserial|serial|bigserial)\b', declaration, re.I):
                 sequences.add(f"{table}_{column}_seq")
     return {
         "tables": tables,
@@ -191,14 +191,14 @@ def compare_schema(
 
 def _source_column_spec(declaration: str, table_primary_key: bool) -> dict[str, object]:
     default_match = re.search(
-        r"\\bdefault\\s+(.+?)(?=\\s+(?:not\\s+null|primary\\s+key|unique|references|check)\\b|$)",
+        r"\bdefault\s+(.+?)(?=\s+(?:not\s+null|primary\s+key|unique|references|check)\b|$)",
         declaration, re.I,
     )
     type_part = re.split(
-        r"\\b(?:default|not\\s+null|null|primary\\s+key|unique|references|check|collate|generated)\\b",
+        r"\b(?:default|not\s+null|null|primary\s+key|unique|references|check|collate|generated)\b",
         declaration, maxsplit=1, flags=re.I,
     )[0].strip()
-    type_name = re.sub(r"\\s+", " ", type_part).lower()
+    type_name = re.sub(r"\s+", " ", type_part).lower()
     type_aliases = {
         "serial": "integer", "smallserial": "smallint", "bigserial": "bigint",
         "int": "integer", "int4": "integer", "int8": "bigint", "int2": "smallint",
@@ -211,11 +211,11 @@ def _source_column_spec(declaration: str, table_primary_key: bool) -> dict[str, 
         if type_name.startswith(alias + "("):
             type_name = canonical + type_name[len(alias):]
             break
-    serial_type = re.match(r"^(?:smallserial|serial|bigserial)\\b", declaration, re.I) is not None
+    serial_type = re.match(r"^(?:smallserial|serial|bigserial)\b", declaration, re.I) is not None
     default_value = default_match.group(1).strip() if default_match else None
     return {
         "type": type_name,
-        "nullable": not bool(re.search(r"\\bnot\\s+null\\b|\\bprimary\\s+key\\b", declaration, re.I) or table_primary_key),
+        "nullable": not bool(re.search(r"\bnot\s+null\b|\bprimary\s+key\b", declaration, re.I) or table_primary_key),
         "default": None if serial_type else _normalize_default(default_value),
         "serial": serial_type,
     }
@@ -260,7 +260,7 @@ def compare_inventory(source: Mapping[str, object], target: Mapping[str, object]
                     declaration,
                     column in source_keys.get(table, set()),  # type: ignore[union-attr]
                 )
-                target_type = re.sub(r"\\s+", " ", str(target_row["type"]).lower())
+                target_type = re.sub(r"\s+", " ", str(target_row["type"]).lower())
                 type_aliases = {"character varying": "character varying", "character": "character"}
                 target_type = type_aliases.get(target_type, target_type)
                 if target_type != spec["type"]:
