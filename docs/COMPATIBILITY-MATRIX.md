@@ -342,3 +342,13 @@ The user-deletion API is source-traced to A1.24 and includes owner-scoped DELETE
 `GET /api/v1/online-sessions` reports durable active sessions and accepted login-in-progress reservations under `SEE ONLINE USERS` scope. `POST /api/v1/online-sessions/disconnect` uses owner-scoped `KILL USER`, the existing source-traced provider termination adapters, and operational audit. It does not claim that the remote RAS session disappeared until Accounting-Stop confirms closure. The stale local termination marker retry path is covered by regression tests.
 
 Full CI passed **954 tests on Python 3.11 and 3.12, 2 warnings each**; Python-only passed **945 tests, 9 skipped, 2 warnings**. `CLEAR USER`, live RAS interoperability and the final UI workflow remain incomplete.
+
+
+## Static DDL inventory comparison — 2026-10-23
+
+The new read-only audit command compares target table/column names with the canonical archive's `IBSng/db/tables.sql` and emits machine-readable drift. It does not mark database compatibility complete: type/default/constraint/index/sequence parity, plugin-created tables, data migration, restore fidelity, and behavioral compatibility remain open.
+
+
+## Schema inventory audit — 2026-10-23
+
+The read-only schema audit reports table/column, explicit index and sequence name drift, plus column type/default/nullability drift from the canonical static DDL. It does not compare constraint semantics, plugin-created objects, functions, data, or runtime behavior; no complete database-parity claim is made.
