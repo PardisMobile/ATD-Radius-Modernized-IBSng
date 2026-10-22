@@ -121,17 +121,26 @@ def parse_a124_tables(sql: str) -> dict[str, dict[str, str]]:
 
 
 def parse_a124_inventory(sql: str) -> dict[str, object]:
-    """Parse static tables, explicit indexes and sequences plus serial-owned sequences."""
+    """Parse static tables, primary-key columns, explicit indexes and sequences."""
     cleaned = _clean_sql(sql)
     tables = parse_a124_tables(cleaned)
+    primary_keys: dict[str, set[str]] = {}
+    for table, body in _table_bodies(cleaned):
+        keys = set()
+        for declaration in _split(body):
+            match = re.match(r"^primary\\s+key\\s*\\(([^)]+)\\)", declaration, re.I)
+            if match:
+                keys.update(part.strip().strip('"').lower() for part in match.group(1).split(","))
+        primary_keys[table] = keys
     indexes = sorted({m.group(1).lower() for m in _CREATE_INDEX.finditer(cleaned)})
     sequences = {m.group(1).lower() for m in _CREATE_SEQUENCE.finditer(cleaned)}
     for table, columns in tables.items():
         for column, declaration in columns.items():
-            if re.match(r'^(?:smallserial|serial|bigserial)\b', declaration, re.I):
+            if re.match(r'^(?:smallserial|serial|bigserial)\\b', declaration, re.I):
                 sequences.add(f"{table}_{column}_seq")
     return {
         "tables": tables,
+        "primary_keys": primary_keys,
         "indexes": indexes,
         "sequences": sorted(sequences),
     }
@@ -180,12 +189,91 @@ def compare_schema(
     }
 
 
+def _source_column_spec(declaration: str, table_primary_key: bool) -> dict[str, object]:
+    default_match = re.search(
+        r"\\bdefault\\s+(.+?)(?=\\s+(?:not\\s+null|primary\\s+key|unique|references|check)\\b|$)",
+        declaration, re.I,
+    )
+    type_part = re.split(
+        r"\\b(?:default|not\\s+null|null|primary\\s+key|unique|references|check|collate|generated)\\b",
+        declaration, maxsplit=1, flags=re.I,
+    )[0].strip()
+    type_name = re.sub(r"\\s+", " ", type_part).lower()
+    type_aliases = {
+        "serial": "integer", "smallserial": "smallint", "bigserial": "bigint",
+        "int": "integer", "int4": "integer", "int8": "bigint", "int2": "smallint",
+        "bool": "boolean", "char": "character",
+    }
+    for alias, canonical in type_aliases.items():
+        if type_name == alias:
+            type_name = canonical
+            break
+        if type_name.startswith(alias + "("):
+            type_name = canonical + type_name[len(alias):]
+            break
+    serial_type = re.match(r"^(?:smallserial|serial|bigserial)\\b", declaration, re.I) is not None
+    default_value = default_match.group(1).strip() if default_match else None
+    return {
+        "type": type_name,
+        "nullable": not bool(re.search(r"\\bnot\\s+null\\b|\\bprimary\\s+key\\b", declaration, re.I) or table_primary_key),
+        "default": None if serial_type else _normalize_default(default_value),
+        "serial": serial_type,
+    }
+
+
+def _normalize_default(value: str | None) -> str | None:
+    if value is None:
+        return None
+    normalized = value.strip().lower()
+    while len(normalized) > 1 and normalized[0] == "(" and normalized[-1] == ")":
+        normalized = normalized[1:-1].strip()
+    normalized = re.sub(r"^'(t|true)'$", "true", normalized)
+    normalized = re.sub(r"^'(f|false)'$", "false", normalized)
+    return normalized
+
+
 def compare_inventory(source: Mapping[str, object], target: Mapping[str, object]) -> dict[str, object]:
-    """Compare A1.24 table/column names and explicit index/sequence names."""
+    """Compare table/column names, column definitions, explicit indexes and sequences."""
+    target_columns = target["columns"]
+    if target_columns and isinstance(target_columns[0], Mapping):  # type: ignore[index]
+        name_rows = [(row["table"], row["column"]) for row in target_columns]  # type: ignore[index]
+    else:
+        name_rows = target_columns
     table_report = compare_schema(
         source["tables"],  # type: ignore[arg-type]
-        target["columns"],  # type: ignore[arg-type]
+        name_rows,  # type: ignore[arg-type]
     )
+    source_tables = source["tables"]  # type: ignore[assignment]
+    source_keys = source.get("primary_keys", {})
+    definition_drift: list[dict[str, object]] = []
+    if target_columns and isinstance(target_columns[0], Mapping):  # type: ignore[index]
+        target_by_key = {
+            (str(row["table"]).lower(), str(row["column"]).lower()): row
+            for row in target_columns  # type: ignore[union-attr]
+        }
+        for table, columns in source_tables.items():  # type: ignore[union-attr]
+            for column, declaration in columns.items():
+                target_row = target_by_key.get((table, column))
+                if target_row is None:
+                    continue
+                spec = _source_column_spec(
+                    declaration,
+                    column in source_keys.get(table, set()),  # type: ignore[union-attr]
+                )
+                target_type = re.sub(r"\\s+", " ", str(target_row["type"]).lower())
+                type_aliases = {"character varying": "character varying", "character": "character"}
+                target_type = type_aliases.get(target_type, target_type)
+                if target_type != spec["type"]:
+                    definition_drift.append({"table": table, "column": column, "field": "type",
+                                             "source": spec["type"], "target": target_type})
+                if bool(target_row["nullable"]) != bool(spec["nullable"]):
+                    definition_drift.append({"table": table, "column": column, "field": "nullable",
+                                             "source": spec["nullable"], "target": bool(target_row["nullable"])})
+                if _normalize_default(str(target_row["default"]) if target_row["default"] is not None else None) != spec["default"]:
+                    definition_drift.append({"table": table, "column": column, "field": "default",
+                                             "source": spec["default"], "target": _normalize_default(
+                                                 str(target_row["default"]) if target_row["default"] is not None else None)})
+
     source_indexes, target_indexes = set(source["indexes"]), set(target["indexes"])  # type: ignore[arg-type]
     source_sequences, target_sequences = set(source["sequences"]), set(target["sequences"])  # type: ignore[arg-type]
     missing_indexes = sorted(source_indexes - target_indexes)
@@ -207,12 +295,17 @@ def compare_inventory(source: Mapping[str, object], target: Mapping[str, object]
         "missing_sequences": missing_sequences,
         "extra_sequences": extra_sequences,
         "inventory_drift_count": inventory_drift,
+        "column_definition_drift_count": len(definition_drift),
+        "column_definition_drift": definition_drift,
         "matches_inventory_by_name": inventory_drift == 0,
+        "matches_column_definitions": len(definition_drift) == 0,
         "scope_note": (
-            "Name-level comparison of static IBSng/db/tables.sql objects. Does not compare "
-            "column types/defaults/nullability, constraints, extension/plugin DDL, functions, "
-            "data, backup/restore fidelity, or runtime behavior. Constraint-backed indexes "
-            "are excluded from the target explicit-index inventory."
+            "Compares table/column/index/sequence names plus column type, nullable flag and "
+            "default expressions where PostgreSQL catalog data is supplied. Default expression "
+            "normalization is conservative and may flag semantically equivalent SQL. Does not "
+            "compare check/foreign-key/unique constraint semantics, extension/plugin DDL, "
+            "functions, data, backup/restore fidelity, or runtime behavior. Constraint-backed "
+            "indexes are excluded from the target explicit-index inventory."
         ),
     }
 
@@ -225,10 +318,15 @@ def _target_inventory(dsn: str, schema: str) -> dict[str, object]:
     with psycopg.connect(dsn) as conn, conn.cursor() as cursor:
         cursor.execute(
             """
-            SELECT table_class.relname, attribute.attname
+            SELECT table_class.relname, attribute.attname,
+                   pg_catalog.format_type(attribute.atttypid, attribute.atttypmod),
+                   NOT attribute.attnotnull,
+                   pg_catalog.pg_get_expr(defaults.adbin, defaults.adrelid)
             FROM pg_class AS table_class
             JOIN pg_namespace AS namespace ON namespace.oid = table_class.relnamespace
             JOIN pg_attribute AS attribute ON attribute.attrelid = table_class.oid
+            LEFT JOIN pg_attrdef AS defaults
+              ON defaults.adrelid = table_class.oid AND defaults.adnum = attribute.attnum
             WHERE namespace.nspname = %s
               AND table_class.relkind IN ('r', 'p')
               AND attribute.attnum > 0
@@ -236,7 +334,11 @@ def _target_inventory(dsn: str, schema: str) -> dict[str, object]:
             ORDER BY table_class.relname, attribute.attnum
             """, (schema,)
         )
-        columns = [(str(table), str(column)) for table, column in cursor.fetchall()]
+        columns = [
+            {"table": str(table), "column": str(column), "type": str(type_name),
+             "nullable": bool(nullable), "default": str(default) if default is not None else None}
+            for table, column, type_name, nullable, default in cursor.fetchall()
+        ]
         cursor.execute(
             """
             SELECT index_class.relname
