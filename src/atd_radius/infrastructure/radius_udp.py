@@ -49,8 +49,14 @@ class RadiusUDPServer:
         request = decode(data, secret)
         if request.code is RadiusCode.ACCOUNTING_REQUEST and not verify_accounting_request(data, secret):
             return
-        if request.code is RadiusCode.ACCESS_REQUEST and "Message-Authenticator" in request.attributes and not verify_message_authenticator(data, secret):
-            return
+        if request.code is RadiusCode.ACCESS_REQUEST:
+            has_message_authenticator = "Message-Authenticator" in request.attributes
+            # RFC 3579 requires Message-Authenticator on Access-Requests that
+            # carry EAP-Message. Reject missing as well as invalid authenticators.
+            if "EAP-Message" in request.attributes and not has_message_authenticator:
+                return
+            if has_message_authenticator and not verify_message_authenticator(data, secret):
+                return
         if request.code in (RadiusCode.DISCONNECT_REQUEST, RadiusCode.COA_REQUEST) and not verify_control_request(data, secret):
             return
         self.cache.purge_expired(self.duplicate_cache_max_age)
