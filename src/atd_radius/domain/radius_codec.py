@@ -379,6 +379,35 @@ def _encrypt_ms_mppe_key(
     return salt + bytes(encrypted)
 
 
+def _decrypt_ms_mppe_key(
+    value: bytes,
+    secret: str,
+    authenticator: bytes,
+) -> bytes:
+    """Decrypt an RFC 2548 MS-MPPE-Send/Recv-Key attribute value."""
+    if len(authenticator) != 16:
+        raise RadiusCodecError("MS-MPPE key decryption requires a 16-byte request authenticator")
+    if len(value) < 18 or value[0] & 0x80 == 0:
+        raise RadiusCodecError("invalid encrypted MS-MPPE key salt or length")
+    salt, ciphertext = value[:2], value[2:]
+    if not ciphertext or len(ciphertext) % 16:
+        raise RadiusCodecError("invalid encrypted MS-MPPE key ciphertext length")
+    secret_bytes = secret.encode("utf-8")
+    previous = md5(secret_bytes + authenticator + salt).digest()
+    plaintext = bytearray(a ^ b for a, b in zip(ciphertext[:16], previous))
+    for offset in range(16, len(ciphertext), 16):
+        previous = md5(secret_bytes + ciphertext[offset - 16 : offset]).digest()
+        plaintext.extend(
+            a ^ b for a, b in zip(ciphertext[offset : offset + 16], previous)
+        )
+    key_length = plaintext[0]
+    if key_length == 0 or key_length > len(plaintext) - 1:
+        raise RadiusCodecError("invalid decrypted MS-MPPE key length")
+    if any(plaintext[1 + key_length :]):
+        raise RadiusCodecError("invalid MS-MPPE key padding")
+    return bytes(plaintext[1 : 1 + key_length])
+
+
 def _encode_provider_vsa(name: str, value: object) -> bytes | None:
     definition = _PROVIDER_VSAS.get(name)
     if definition is None:
@@ -457,7 +486,11 @@ def _decode_value(name: str, value: bytes, secret: str | None, authenticator: by
         return value.hex()
 
 
-def _decode_vendor_specific(value: bytes) -> tuple[str, str]:
+def _decode_vendor_specific(
+    value: bytes,
+    secret: str | None = None,
+    authenticator: bytes = b"",
+) -> tuple[str, str]:
     if len(value) < 6:
         raise RadiusCodecError("Vendor-Specific attribute is too short")
     vendor_id = unpack("!I", value[:4])[0]
@@ -499,6 +532,8 @@ def _decode_vendor_specific(value: bytes) -> tuple[str, str]:
             return name, vendor_value.hex()
     if vendor_id == _MICROSOFT_VENDOR_ID:
         name = _MICROSOFT_VSA_NAMES.get(vendor_type, f"Microsoft-{vendor_type}")
+        if name in {"MS-MPPE-Send-Key", "MS-MPPE-Recv-Key"} and secret is not None:
+            return name, _decrypt_ms_mppe_key(vendor_value, secret, authenticator).hex()
         if name in {"MS-CHAP-Response", "MS-CHAP-Challenge", "MS-CHAP2-Response", "MS-CHAP-MPPE-Keys", "MS-MPPE-Send-Key", "MS-MPPE-Recv-Key", "MS-MPPE-Encryption-Policy", "MS-MPPE-Encryption-Types"}:
             return name, vendor_value.hex()
         if name in _MICROSOFT_VSA_IP_NAMES:
@@ -638,7 +673,12 @@ def encode(packet: RadiusPacket, secret: str | None = None) -> bytes:
     return pack("!BBH", _CODE_TO_BYTE[packet.code], packet.identifier, length) + authenticator + body
 
 
-def decode(data: bytes, secret: str | None = None) -> RadiusPacket:
+def decode(
+    data: bytes,
+    secret: str | None = None,
+    *,
+    request_authenticator: bytes | None = None,
+) -> RadiusPacket:
     if len(data) < 20:
         raise RadiusCodecError("RADIUS packet is shorter than 20 bytes")
     code_byte, identifier, length = unpack("!BBH", data[:4])
@@ -649,6 +689,23 @@ def decode(data: bytes, secret: str | None = None) -> RadiusPacket:
     except KeyError as exc:
         raise RadiusCodecError(f"unsupported RADIUS code: {code_byte}") from exc
     authenticator = data[4:20]
+    response_codes = {
+        RadiusCode.ACCESS_ACCEPT, RadiusCode.ACCESS_REJECT, RadiusCode.ACCESS_CHALLENGE,
+        RadiusCode.ACCOUNTING_RESPONSE, RadiusCode.DISCONNECT_ACK, RadiusCode.DISCONNECT_NAK,
+        RadiusCode.COA_ACK, RadiusCode.COA_NAK,
+    }
+    if request_authenticator is not None and len(request_authenticator) != 16:
+        raise RadiusCodecError("request_authenticator must be exactly 16 bytes")
+    # MPPE VSA decryption uses the original Access-Request authenticator, not
+    # the response authenticator carried on the wire. Without that context,
+    # preserve encrypted VSA bytes instead of returning misleading plaintext.
+    vsa_secret = secret
+    vsa_authenticator = authenticator
+    if code in response_codes:
+        if request_authenticator is None:
+            vsa_secret = None
+        else:
+            vsa_authenticator = request_authenticator
     attrs = {}
     offset = 20
     while offset < length:
@@ -659,7 +716,7 @@ def decode(data: bytes, secret: str | None = None) -> RadiusPacket:
             raise RadiusCodecError("invalid attribute length")
         raw = data[offset + 2 : offset + attr_length]
         if number == 26:
-            name, value = _decode_vendor_specific(raw)
+            name, value = _decode_vendor_specific(raw, vsa_secret, vsa_authenticator)
         else:
             name = _ATTR_NAMES.get(number, f"Attr-{number}")
             value = _decode_value(name, raw, secret, authenticator)
@@ -717,13 +774,16 @@ def encode_response(response: RadiusPacket, request: RadiusPacket, secret: str) 
     )
     if needs_message_authenticator:
         attributes["Message-Authenticator"] = "00" * 16
-        unsigned = RadiusPacket(response.code, response.identifier, attributes, request.authenticator)
-        wire = encode(unsigned, secret)
-        attributes["Message-Authenticator"] = hmac.new(
-            secret.encode("utf-8"), wire, "md5"
-        ).digest().hex()
     unsigned = RadiusPacket(response.code, response.identifier, attributes, request.authenticator)
+    # Encode exactly once: Microsoft MPPE VSAs use random salts, so re-encoding
+    # after computing Message-Authenticator would change the authenticated bytes.
     wire = encode(unsigned, secret)
+    if needs_message_authenticator:
+        offset = _message_authenticator_offset(wire)
+        if offset is None:
+            raise RadiusCodecError("Message-Authenticator was requested but not encoded")
+        message_authenticator = hmac.new(secret.encode("utf-8"), wire, "md5").digest()
+        wire = wire[:offset] + message_authenticator + wire[offset + 16 :]
     response_authenticator = md5(
         wire[:4] + request.authenticator + wire[20:] + secret.encode("utf-8")
     ).digest()
