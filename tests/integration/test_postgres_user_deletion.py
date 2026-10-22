@@ -129,11 +129,11 @@ def test_postgres_delete_rolls_back_refund_and_ledgers_on_late_failure():
     with _isolated_schema() as conn:
         _seed_users(conn)
         conn.execute("""
-            CREATE FUNCTION reject_user_delete() RETURNS trigger LANGUAGE plpgsql AS $
+            CREATE FUNCTION reject_user_delete() RETURNS trigger LANGUAGE plpgsql AS $fn$
             BEGIN
                 RAISE EXCEPTION 'injected user deletion failure';
             END;
-            $
+            $fn$
         """)
         conn.execute("""
             CREATE TRIGGER reject_user_delete BEFORE DELETE ON users
