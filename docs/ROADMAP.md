@@ -466,3 +466,8 @@ Remaining major session blocker: Access-Accept/login-in-progress reservations an
 Migration 008 adds an ATD operational reservation table to model the A1.24 online-flag reservation while login is in progress. Per-user advisory locks serialize Access-Request admission with Accounting Start. MultiLogin sees durable sessions plus accepted reservations from other workers; a request excludes only its own stable request key so retransmissions remain idempotent. Access-Accept reserves; Access-Reject does not; the first new Accounting Start/Interim consumes one reservation. Duplicate Start leaves reservation counts unchanged.
 
 The reservation deliberately has no short TTL, following source lifecycle semantics; accepted attempts without accounting may remain reserved and need operational reconciliation. Last full CI before this batch passed 936 tests on Python 3.11 and 3.12.
+
+
+## Phase 2 tooling increment — 2026-10-23
+
+Added a read-only A1.24 static-schema comparison command against PostgreSQL catalog metadata. It reports missing/extra table and column names as JSON and can exit nonzero on drift. This is a repeatable first gate for database compatibility; it is not the lossless importer, full schema diff, or representative backup/restore validation. Phase 2 remains open.
