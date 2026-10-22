@@ -725,3 +725,10 @@ Last completed full CI before this batch passed 936 tests on Python 3.11 and 3.1
 - Fixed stale local termination markers: durable state is now authoritative, so a worker can retry after another worker clears a failed claim; failure cleanup no longer depends on object identity after refreshing the registry snapshot.
 - Latest full CI: **954 passed, 2 warnings** on Python 3.11 and 3.12 (run [39600839533](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/39600839533)). Python-only: **945 passed, 9 skipped, 2 warnings** (run [39600839199](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/39600839199)).
 - Remaining: live RAS interoperability and proof of remote session disappearance; CLEAR USER semantics remain unimplemented. Full UI, schema import/parity, remaining billing/plugins/XML-RPC, and install/upgrade/rollback are still release blockers.
+
+
+## A1.24 static schema parity audit tool — 2026-10-23
+
+Added a read-only command, `python -m atd_radius.compatibility.a124_schema_parity`, that reads `IBSng/db/tables.sql` from the canonical archive, hashes the archive, queries PostgreSQL `information_schema.columns`, and emits a JSON report of missing/extra table and column names. `--fail-on-drift` can gate a CI or release check. The tool never mutates the database.
+
+This is a Phase 2 verification increment, not a completed importer or proof of database parity. The supplied static DDL contains 51 tables and 224 columns. Types/defaults/constraints/indexes/sequences, plugin-created tables, functions, data, backup/restore fidelity, and runtime semantics remain outside this first gate and remain release blockers.
