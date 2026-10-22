@@ -54,8 +54,12 @@ class InternetChargeSettlement:
             self._begin(rule, state, when)
         return state.charge_accrued + self._calculate(rule, state, when)
 
+    def settle_without_commit(self, state: SessionState, when: datetime, ras_id: int, port: str | None) -> Decimal:
+        """Calculate the logout usage without changing the user's credit."""
+        return self.update(state, when, ras_id, port)
+
     def settle(self, state: SessionState, when: datetime, ras_id: int, port: str | None) -> Decimal:
-        total = self.update(state, when, ras_id, port)
+        total = self.settle_without_commit(state, when, ras_id, port)
         if state.charge_id is not None:
             self.credits.change(state.key.user_id, -total)
         return total
@@ -216,7 +220,8 @@ class VoipChargeSettlement:
             self._begin(rule, state, when, prefix)
         return state.charge_accrued + self._current_usage(state, when, rounded=False)
 
-    def settle(self, state: SessionState, when: datetime, ras_id: int, port: str | None) -> Decimal:
+    def settle_without_commit(self, state: SessionState, when: datetime, ras_id: int, port: str | None) -> Decimal:
+        """Calculate native logout usage without mutating the user's credit."""
         call_started = _ras_epoch_time(state.attributes.get("connect_time"))
         call_ended = _ras_epoch_time(state.attributes.get("disconnect_time"))
         called_number = _called_number(state.attributes)
@@ -238,6 +243,10 @@ class VoipChargeSettlement:
         if min_duration > 0 and duration < min_duration:
             state.voip_missed_call = True
             total = Decimal("0")
+        return total
+
+    def settle(self, state: SessionState, when: datetime, ras_id: int, port: str | None) -> Decimal:
+        total = self.settle_without_commit(state, when, ras_id, port)
         if state.charge_id is not None:
             self.credits.change(state.key.user_id, -total)
         return total
