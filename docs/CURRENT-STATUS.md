@@ -732,3 +732,8 @@ Last completed full CI before this batch passed 936 tests on Python 3.11 and 3.1
 Added a read-only command, `python -m atd_radius.compatibility.a124_schema_parity`, that reads `IBSng/db/tables.sql` from the canonical archive, hashes the archive, queries PostgreSQL `information_schema.columns`, and emits a JSON report of missing/extra table and column names. `--fail-on-drift` can gate a CI or release check. The tool never mutates the database.
 
 This is a Phase 2 verification increment, not a completed importer or proof of database parity. The supplied static DDL contains 51 tables and 224 columns. Types/defaults/constraints/indexes/sequences, plugin-created tables, functions, data, backup/restore fidelity, and runtime semantics remain outside this first gate and remain release blockers.
+
+
+## Schema inventory audit expansion — 2026-10-23
+
+The read-only A1.24 schema audit now compares explicit index and sequence names in addition to table/column names. PostgreSQL's constraint-backed indexes are excluded from the explicit-index target inventory, while serial-owned sequences are inferred from source column declarations. Reports separate missing and extra objects and can fail CI on inventory drift. This is still name-level inventory only; types/defaults/nullability, constraints, plugin DDL, data import, and restore parity remain release blockers.
