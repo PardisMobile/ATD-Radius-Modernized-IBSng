@@ -34,7 +34,7 @@ def _isolated_schema():
 
 
 def _create_schema(conn):
-    conn.execute("""
+    ddl = """
         CREATE TABLE admins (admin_id integer PRIMARY KEY, deposit numeric(12,2) NOT NULL);
         CREATE TABLE users (user_id bigint PRIMARY KEY, owner_id integer, credit numeric(12,2));
         CREATE TABLE normal_users (user_id bigint, normal_username text);
@@ -65,7 +65,10 @@ def _create_schema(conn):
             event_id bigint PRIMARY KEY, event_type smallint, actor text,
             amount numeric(12,2), destinations text, comment text
         );
-    """)
+    """
+    for statement in ddl.split(";"):
+        if statement.strip():
+            conn.execute(statement)
 
 
 def _seed_users(conn, ias_enabled="I1\n."):
@@ -126,13 +129,15 @@ def test_postgres_delete_rolls_back_refund_and_ledgers_on_late_failure():
     with _isolated_schema() as conn:
         _seed_users(conn)
         conn.execute("""
-            CREATE FUNCTION reject_user_delete() RETURNS trigger LANGUAGE plpgsql AS $$
+            CREATE FUNCTION reject_user_delete() RETURNS trigger LANGUAGE plpgsql AS $
             BEGIN
                 RAISE EXCEPTION 'injected user deletion failure';
             END;
-            $$;
+            $
+        """)
+        conn.execute("""
             CREATE TRIGGER reject_user_delete BEFORE DELETE ON users
-            FOR EACH ROW EXECUTE FUNCTION reject_user_delete();
+            FOR EACH ROW EXECUTE FUNCTION reject_user_delete()
         """)
         conn.commit()
 
