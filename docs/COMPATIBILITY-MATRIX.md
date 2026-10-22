@@ -325,3 +325,8 @@ Still open: durable Access-Accept/login-in-progress reservation and authoritativ
 A1.24 online-flag behavior is represented by migration 008. Per-user PostgreSQL advisory locks serialize Access-Request admission and Accounting Start; MultiLogin policy now includes durable reservations created by accepted requests across workers and excludes the exact retransmitted request key. A new Accounting Start/Interim consumes one reservation, while duplicate Start does not.
 
 Reservations have no arbitrary expiry because the source clears online state through lifecycle events; missing Accounting can leave a stale reservation and requires operational reconciliation. Full source plugin/login-hook parity is not implied. Last full CI before this batch passed 936 tests on both Python versions.
+
+
+## Static DDL inventory comparison — 2026-10-23
+
+The new read-only audit command compares target table/column names with the canonical archive's `IBSng/db/tables.sql` and emits machine-readable drift. It does not mark database compatibility complete: type/default/constraint/index/sequence parity, plugin-created tables, data migration, restore fidelity, and behavioral compatibility remain open.
