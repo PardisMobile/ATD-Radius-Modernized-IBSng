@@ -16,7 +16,11 @@ class NativeAccountingPersistence:
 
     @staticmethod
     def _details(event) -> dict[str, str]:
-        details = dict(event.attributes)
+        details = {
+            str(name): str(value)
+            for name, value in event.attributes.items()
+            if not str(name).startswith("__") and str(name) not in {"no_commit", "no_connection_log"}
+        }
         if event.session_id:
             details.setdefault("Acct-Session-Id", event.session_id)
         if event.remote_ip:
