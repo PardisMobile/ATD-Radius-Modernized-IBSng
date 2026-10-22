@@ -690,3 +690,10 @@ Latest full CI before this control-refresh batch: Python 3.11 and 3.12 each pass
 Added migration 008 and a PostgreSQL login-reservation repository traced to A1.24's `user_pool.getUserByID(..., online_flag=True)` / `LoadedUser.online_flag` lifecycle. Access-Request admission locks the user before MultiLogin evaluation, refreshes durable sessions, includes reservations accepted by other workers, and excludes only the exact request key for retransmission idempotency. Access-Accept creates a durable reservation; a newly created Accounting Start/Interim consumes one reservation under the same user-level lock. Duplicate Start does not consume another reservation.
 
 Last completed full CI before this batch passed 936 tests on Python 3.11 and 3.12; Python-only suite passed 928 with 8 skips. The login-reservation batch is pending CI.
+
+
+## A1.24 static schema parity audit tool — 2026-10-23
+
+Added a read-only command, `python -m atd_radius.compatibility.a124_schema_parity`, that reads `IBSng/db/tables.sql` from the canonical archive, hashes the archive, queries PostgreSQL `information_schema.columns`, and emits a JSON report of missing/extra table and column names. `--fail-on-drift` can gate a CI or release check. The tool never mutates the database.
+
+This is a Phase 2 verification increment, not a completed importer or proof of database parity. The supplied static DDL contains 51 tables and 224 columns. Types/defaults/constraints/indexes/sequences, plugin-created tables, functions, data, backup/restore fidelity, and runtime semantics remain outside this first gate and remain release blockers.
