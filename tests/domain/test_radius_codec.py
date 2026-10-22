@@ -239,7 +239,7 @@ def test_mppe_key_decrypt_rejects_invalid_salt_and_ciphertext():
     with pytest.raises(RadiusCodecError, match="salt or length"):
         _decrypt_ms_mppe_key(bytes(18), "shared", authenticator)
     with pytest.raises(RadiusCodecError, match="ciphertext length"):
-        _decrypt_ms_mppe_key(b"\\x80\\x01" + bytes(15), "shared", authenticator)
+        _decrypt_ms_mppe_key(b"\x80\x01" + bytes(15), "shared", authenticator)
 
 
 def test_mppe_keys_are_salted_and_rfc2548_encrypted():
