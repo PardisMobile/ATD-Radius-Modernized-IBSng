@@ -1,5 +1,13 @@
 # Current project status — ATD Radius / Modernized IBSng
 
+## Verified protocol compatibility increment — 2026-10-22 (PR #7)
+
+Source review of A1.24 `core/lib/mschap/utils.py::str2unicode` and `core/lib/mschap/mschap.py::generate_authenticator_response` found that the MS-CHAPv2 AuthenticatorResponse path must hash the legacy source-byte interleaving, not standard UTF-16LE code points. ATD now uses its existing `_a124_str2unicode` conversion and includes a non-ASCII password regression.
+
+The UDP RADIUS boundary now drops Access-Requests containing `EAP-Message` if `Message-Authenticator` is absent, and continues to reject invalid HMACs. Regression coverage exercises missing, invalid and valid authenticators. This secures the EAP protocol boundary; it does not claim that an EAP method is fully implemented or interoperable.
+
+Latest code checkpoint: `985c6eb5d8451167b819740ff2c38b5b70879021` on PR [#7](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/pull/7). Full CI run [39819802822](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/39819802822) passed on Python 3.11 and 3.12: **958 passed, 2 warnings per job**, including PostgreSQL integration, compile, Ruff and PHP syntax. Python-only run [39819802903](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/39819802903): **949 passed, 9 skipped, 2 warnings**.
+
 Updated: 2026-10-22  
 Repository: `PardisMobile/ATD-Radius-Modernized-IBSng`  
 Branch: `main`  
