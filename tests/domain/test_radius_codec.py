@@ -233,6 +233,40 @@ def test_mppe_vsa_decode_without_secret_preserves_encrypted_hex():
     assert len(decoded_without_secret.attributes["MS-MPPE-Send-Key"]) >= 36
 
 
+def test_response_message_authenticator_covers_final_mppe_salts():
+    import hmac
+    from hashlib import md5
+
+    request_authenticator = bytes.fromhex("00112233445566778899aabbccddeeff")
+    request = RadiusPacket(
+        RadiusCode.ACCESS_REQUEST,
+        23,
+        {"User-Name": "alice", "Message-Authenticator": "00" * 16},
+        request_authenticator,
+    )
+    response = RadiusPacket(
+        RadiusCode.ACCESS_ACCEPT,
+        23,
+        {
+            "MS-MPPE-Send-Key": bytes.fromhex("00112233445566778899aabbccddeeff"),
+            "MS-MPPE-Recv-Key": bytes.fromhex("ffeeddccbbaa99887766554433221100"),
+        },
+        request_authenticator,
+    )
+    wire = encode_response(response, request, "shared")
+    ma_offset = wire.index(bytes((80, 18))) + 2
+    expected_ma = hmac.new(
+        b"shared",
+        wire[:4] + request_authenticator + wire[20:ma_offset] + bytes(16) + wire[ma_offset + 16:],
+        "md5",
+    ).digest()
+    assert wire[ma_offset:ma_offset + 16] == expected_ma
+    expected_auth = md5(
+        wire[:4] + request_authenticator + wire[20:] + b"shared"
+    ).digest()
+    assert wire[4:20] == expected_auth
+
+
 def test_mppe_key_decrypt_rejects_invalid_salt_and_ciphertext():
     from atd_radius.domain.radius_codec import _decrypt_ms_mppe_key
 
