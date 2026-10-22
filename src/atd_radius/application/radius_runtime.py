@@ -684,12 +684,12 @@ class NativeRadiusPacketHandler:
             }
             attrs.update({
                 "Acct-Status-Type": "Stop",
-                "Acct-Session-Id": session_key.unique_id,
                 "Acct-Input-Octets": str(snapshot.input_octets),
                 "Acct-Output-Octets": str(snapshot.output_octets),
                 "Acct-Terminate-Cause": "Admin-Reset",
                 "no_commit": "1",
             })
+            attrs.setdefault("Acct-Session-Id", session_key.unique_id)
             event = AccountingEvent(
                 status=AccountingStatus.STOP,
                 username=attrs.get("User-Name", ""),
