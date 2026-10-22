@@ -224,3 +224,28 @@ def test_change_user_credit_requires_get_information_and_owner_scope():
     god = AdminPrincipal(7, "operator", None, AdminPermissionSet({"GOD": ""}))
     assert can_change_user_credit(god, 8)
 
+
+
+
+def test_clear_user_permission_requires_see_online_and_owner_scope():
+    from atd_radius.api.admin_dependencies import AdminPrincipal, can_clear_user
+    from atd_radius.domain.admin_permissions import AdminPermissionSet
+
+    restricted = AdminPrincipal(
+        7, "operator", None,
+        AdminPermissionSet({"SEE ONLINE USERS": "Restricted", "CLEAR USER": "Restricted"}),
+    )
+    assert can_clear_user(restricted, 7)
+    assert not can_clear_user(restricted, 8)
+
+    without_dependency = AdminPrincipal(7, "operator", None, AdminPermissionSet({"CLEAR USER": "All"}))
+    assert not can_clear_user(without_dependency, 7)
+
+    all_users = AdminPrincipal(
+        7, "operator", None,
+        AdminPermissionSet({"SEE ONLINE USERS": "All", "CLEAR USER": "All"}),
+    )
+    assert can_clear_user(all_users, 8)
+
+    god = AdminPrincipal(7, "operator", None, AdminPermissionSet({"GOD": ""}))
+    assert can_clear_user(god, 8)
