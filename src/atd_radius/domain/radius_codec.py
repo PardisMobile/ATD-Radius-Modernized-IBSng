@@ -379,6 +379,35 @@ def _encrypt_ms_mppe_key(
     return salt + bytes(encrypted)
 
 
+def _decrypt_ms_mppe_key(
+    value: bytes,
+    secret: str,
+    authenticator: bytes,
+) -> bytes:
+    """Decrypt an RFC 2548 MS-MPPE-Send/Recv-Key attribute value."""
+    if len(authenticator) != 16:
+        raise RadiusCodecError("MS-MPPE key decryption requires a 16-byte request authenticator")
+    if len(value) < 18 or value[0] & 0x80 == 0:
+        raise RadiusCodecError("invalid encrypted MS-MPPE key salt or length")
+    salt, ciphertext = value[:2], value[2:]
+    if not ciphertext or len(ciphertext) % 16:
+        raise RadiusCodecError("invalid encrypted MS-MPPE key ciphertext length")
+    secret_bytes = secret.encode("utf-8")
+    previous = md5(secret_bytes + authenticator + salt).digest()
+    plaintext = bytearray(a ^ b for a, b in zip(ciphertext[:16], previous))
+    for offset in range(16, len(ciphertext), 16):
+        previous = md5(secret_bytes + ciphertext[offset - 16 : offset]).digest()
+        plaintext.extend(
+            a ^ b for a, b in zip(ciphertext[offset : offset + 16], previous)
+        )
+    key_length = plaintext[0]
+    if key_length == 0 or key_length > len(plaintext) - 1:
+        raise RadiusCodecError("invalid decrypted MS-MPPE key length")
+    if any(plaintext[1 + key_length :]):
+        raise RadiusCodecError("invalid MS-MPPE key padding")
+    return bytes(plaintext[1 : 1 + key_length])
+
+
 def _encode_provider_vsa(name: str, value: object) -> bytes | None:
     definition = _PROVIDER_VSAS.get(name)
     if definition is None:
@@ -457,7 +486,11 @@ def _decode_value(name: str, value: bytes, secret: str | None, authenticator: by
         return value.hex()
 
 
-def _decode_vendor_specific(value: bytes) -> tuple[str, str]:
+def _decode_vendor_specific(
+    value: bytes,
+    secret: str | None = None,
+    authenticator: bytes = b"",
+) -> tuple[str, str]:
     if len(value) < 6:
         raise RadiusCodecError("Vendor-Specific attribute is too short")
     vendor_id = unpack("!I", value[:4])[0]
@@ -499,6 +532,8 @@ def _decode_vendor_specific(value: bytes) -> tuple[str, str]:
             return name, vendor_value.hex()
     if vendor_id == _MICROSOFT_VENDOR_ID:
         name = _MICROSOFT_VSA_NAMES.get(vendor_type, f"Microsoft-{vendor_type}")
+        if name in {"MS-MPPE-Send-Key", "MS-MPPE-Recv-Key"} and secret is not None:
+            return name, _decrypt_ms_mppe_key(vendor_value, secret, authenticator).hex()
         if name in {"MS-CHAP-Response", "MS-CHAP-Challenge", "MS-CHAP2-Response", "MS-CHAP-MPPE-Keys", "MS-MPPE-Send-Key", "MS-MPPE-Recv-Key", "MS-MPPE-Encryption-Policy", "MS-MPPE-Encryption-Types"}:
             return name, vendor_value.hex()
         if name in _MICROSOFT_VSA_IP_NAMES:
@@ -659,7 +694,7 @@ def decode(data: bytes, secret: str | None = None) -> RadiusPacket:
             raise RadiusCodecError("invalid attribute length")
         raw = data[offset + 2 : offset + attr_length]
         if number == 26:
-            name, value = _decode_vendor_specific(raw)
+            name, value = _decode_vendor_specific(raw, secret, authenticator)
         else:
             name = _ATTR_NAMES.get(number, f"Attr-{number}")
             value = _decode_value(name, raw, secret, authenticator)
