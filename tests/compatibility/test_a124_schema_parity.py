@@ -99,3 +99,44 @@ def test_checked_in_a124_migration_inventory_is_complete_for_static_ddl():
     assert sum(len(columns) for columns in tables.values()) == 224
     assert len(inventory["indexes"]) == 19
     assert len(inventory["sequences"]) == 26
+
+
+def test_inventory_compares_type_default_and_nullability_metadata():
+    source = parse_a124_inventory("""
+        CREATE TABLE users (
+          user_id integer,
+          active boolean DEFAULT 't',
+          credit numeric(12,2) DEFAULT 0,
+          created_at timestamp DEFAULT CURRENT_TIMESTAMP,
+          PRIMARY KEY (user_id)
+        );
+    """)
+    target = {
+        "columns": [
+            {"table": "users", "column": "user_id", "type": "integer", "nullable": False, "default": None},
+            {"table": "users", "column": "active", "type": "boolean", "nullable": True, "default": "true"},
+            {"table": "users", "column": "credit", "type": "numeric(12,2)", "nullable": True, "default": "0"},
+            {"table": "users", "column": "created_at", "type": "timestamp without time zone", "nullable": True,
+             "default": "CURRENT_TIMESTAMP"},
+        ],
+        "indexes": [],
+        "sequences": [],
+    }
+    report = compare_inventory(source, target)
+    assert report["column_definition_drift_count"] == 0
+    assert report["matches_column_definitions"] is True
+
+
+def test_inventory_reports_real_column_definition_drift():
+    source = parse_a124_inventory("CREATE TABLE users (id integer PRIMARY KEY, enabled boolean DEFAULT true);")
+    target = {
+        "columns": [
+            {"table": "users", "column": "id", "type": "bigint", "nullable": True, "default": None},
+            {"table": "users", "column": "enabled", "type": "boolean", "nullable": True, "default": "false"},
+        ],
+        "indexes": [],
+        "sequences": [],
+    }
+    report = compare_inventory(source, target)
+    drift = {(item["column"], item["field"]) for item in report["column_definition_drift"]}
+    assert drift == {("id", "type"), ("id", "nullable"), ("enabled", "default")}
