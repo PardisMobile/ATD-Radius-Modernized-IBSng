@@ -224,8 +224,17 @@ def _target_inventory(dsn: str, schema: str) -> dict[str, object]:
         raise RuntimeError("psycopg is required to query the target PostgreSQL schema") from exc
     with psycopg.connect(dsn) as conn, conn.cursor() as cursor:
         cursor.execute(
-            "SELECT table_name, column_name FROM information_schema.columns "
-            "WHERE table_schema = %s ORDER BY table_name, ordinal_position", (schema,)
+            """
+            SELECT table_class.relname, attribute.attname
+            FROM pg_class AS table_class
+            JOIN pg_namespace AS namespace ON namespace.oid = table_class.relnamespace
+            JOIN pg_attribute AS attribute ON attribute.attrelid = table_class.oid
+            WHERE namespace.nspname = %s
+              AND table_class.relkind IN ('r', 'p')
+              AND attribute.attnum > 0
+              AND NOT attribute.attisdropped
+            ORDER BY table_class.relname, attribute.attnum
+            """, (schema,)
         )
         columns = [(str(table), str(column)) for table, column in cursor.fetchall()]
         cursor.execute(
