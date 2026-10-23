@@ -488,7 +488,7 @@ def _source_sequence_specs(
         tail = cleaned[match.end():]
         statement_end = tail.find(";")
         declaration = tail[:statement_end] if statement_end >= 0 else ""
-        if re.search(r"\\b(?:as|increment|start|minvalue|maxvalue|cache|cycle)\\b", declaration, re.I):
+        if re.search(r"\b(?:as|increment|start|minvalue|maxvalue|cache|cycle)\b", declaration, re.I):
             raise ValueError(f"Unsupported non-default canonical sequence declaration: {name}")
         specs[name] = {
             "start": 1, "minimum": 1, "maximum": 9223372036854775807,
