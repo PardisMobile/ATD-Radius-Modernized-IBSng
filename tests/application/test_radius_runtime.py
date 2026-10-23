@@ -1503,6 +1503,52 @@ def test_access_accept_persists_login_reservation_under_user_lock():
     assert reservations.calls[1][1:5] == (7, 3, "r" * 64, "alice")
 
 
+def test_access_reject_releases_only_the_current_login_reservation():
+    from types import SimpleNamespace
+    from unittest.mock import Mock
+    from atd_radius.application.radius_runtime import RadiusRuntimeHandler
+    from atd_radius.domain.accounting_session import AccountingSessionService
+    from atd_radius.domain.aaa import PluginPipeline
+    from atd_radius.domain.radius import RadiusCode, RadiusPacket
+    from atd_radius.domain.radius_dispatch import RadiusDispatcher
+    from atd_radius.domain.radius_runtime import SessionRegistry
+
+    class SessionStore:
+        def list_active(self): return []
+        def lock(self, _key): pass
+        def get(self, _key): return None
+        def save(self, _state): pass
+
+    class Reservations:
+        def __init__(self): self.calls = []
+        def request_key(self, _packet, _peer): return "r" * 64
+        def lock_user(self, user_id): self.calls.append(("lock", user_id))
+        def list_active(self, _user_id, _exclude=None): return ()
+        def release(self, request_key): self.calls.append(("release", request_key))
+
+    dispatcher = RadiusDispatcher(PluginPipeline([]))
+    dispatcher.access = Mock(return_value=RadiusPacket(RadiusCode.ACCESS_REJECT, 5, {}, bytes(16)))
+    identities = Mock()
+    identities.users.get_authentication_record.return_value = (7, "secret", False)
+    identities.ras_id.return_value = 3
+    identities.ras.get_by_ip.return_value = SimpleNamespace(ras_id=3, ras_type="MikroTik")
+    reservations = Reservations()
+    handler = RadiusRuntimeHandler(
+        dispatcher,
+        AccountingSessionService(SessionRegistry(), state_store=SessionStore()),
+        identities,
+        login_reservations=reservations,
+    )
+
+    response = handler(
+        RadiusPacket(RadiusCode.ACCESS_REQUEST, 5, {"User-Name": "alice"}, bytes(range(16))),
+        ("192.0.2.1", 1812),
+    )
+
+    assert response.code is RadiusCode.ACCESS_REJECT
+    assert ("release", "r" * 64) in reservations.calls
+
+
 def test_new_accounting_start_consumes_one_reservation_only_once():
     from datetime import datetime, timezone
     from unittest.mock import Mock
