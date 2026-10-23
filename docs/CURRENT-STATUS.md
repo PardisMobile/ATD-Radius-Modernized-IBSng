@@ -725,3 +725,22 @@ Last completed full CI before this batch passed 936 tests on Python 3.11 and 3.1
 - Fixed stale local termination markers: durable state is now authoritative, so a worker can retry after another worker clears a failed claim; failure cleanup no longer depends on object identity after refreshing the registry snapshot.
 - Latest full CI: **954 passed, 2 warnings** on Python 3.11 and 3.12 (run [39600839533](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/39600839533)). Python-only: **945 passed, 9 skipped, 2 warnings** (run [39600839199](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/39600839199)).
 - Remaining: live RAS interoperability and proof of remote session disappearance; CLEAR USER semantics remain unimplemented. Full UI, schema import/parity, remaining billing/plugins/XML-RPC, and install/upgrade/rollback are still release blockers.
+
+
+## Explicit PostgreSQL migration runner — 2026-10-23
+
+A clean-install migration CLI is now implemented on PR branch `feat/safe-migration-runner`:
+- `atd-radius-migrate --check`, `--dry-run`, and explicit apply mode.
+- Numbered migration validation, SHA-256 ledger, immutable applied-migration checksums, transaction-scoped advisory lock, and all-or-nothing application of pending migrations.
+- Refuses an untracked database with existing public tables instead of accidentally applying the clean-install schema to an existing IBSng installation.
+- Never runs automatically at service startup; documented in `docs/MIGRATION-RUNNER.md`.
+
+This closes the missing operator-controlled migration-runner mechanism for clean installs, **not** the lossless A1.24 data importer/adoption workflow, backup/restore automation, or verified rollback. Tests cover ordering, checksums, idempotence, unsafe adoption refusal, and rollback after a failed migration. A real PostgreSQL acceptance test applies all eight migrations in an isolated database, verifies the ledger and idempotence, then confirms a deliberately failing ninth migration leaves no schema or ledger residue. Full CI passed on Python 3.11 and 3.12 with **962 passed, 2 warnings per version**; Python-only passed **952 passed, 9 skipped, 2 warnings**. Ruff, compilation, and PHP syntax checks passed. See PR #14.
+
+
+
+## Migration-ledger corruption safety — 2026-10-23
+
+The explicit migration runner now fails closed if the recorded versions are not a contiguous prefix from `001`, or if the ledger is empty while application tables exist. This prevents replaying an old migration into a later schema after ledger damage. Added unit and real PostgreSQL acceptance tests for both cases; the acceptance tests use an isolated disposable database and verify no schema/ledger mutation on refusal.
+
+Full PostgreSQL CI passed on Python 3.11 and 3.12: **966 passed, 2 warnings per version** (run [39939341755](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/39939341755)). Python-only CI passed **954 passed, 12 skipped, 2 warnings** (run [39939341712](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/39939341712)). This is still not the A1.24 data importer/adoption workflow.
