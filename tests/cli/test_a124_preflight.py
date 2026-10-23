@@ -17,6 +17,7 @@ from atd_radius.cli.a124_preflight import (
     _initial_admin_seed,
     _initial_god_permission_seed,
     _seed_values_equal,
+    _source_constraint_signatures,
 )
 
 
@@ -219,3 +220,22 @@ def test_seed_comparison_accounts_for_postgresql_fixed_char_padding():
     assert _seed_values_equal("", " " * 34, spec)
     assert not _seed_values_equal("hash", "other", spec)
     assert not _seed_values_equal("", " " * 34, {"type": "text"})
+
+
+
+def test_source_constraint_parser_tracks_primary_unique_foreign_key_and_check():
+    schema = """
+      CREATE TABLE parents (id integer primary key);
+      CREATE TABLE children (
+        id integer primary key,
+        parent_id integer references parents,
+        label text unique,
+        quantity integer CHECK (quantity > 0)
+      );
+    """
+    signatures = _source_constraint_signatures(schema)
+    assert ("parents", "p", ("id",), None, (), None) in signatures
+    assert ("children", "p", ("id",), None, (), None) in signatures
+    assert ("children", "u", ("label",), None, (), None) in signatures
+    assert ("children", "f", ("parent_id",), "parents", ("id",), None) in signatures
+    assert ("children", "c", (), None, (), "quantity>0") in signatures
