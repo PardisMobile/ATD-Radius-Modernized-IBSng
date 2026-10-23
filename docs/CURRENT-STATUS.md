@@ -774,3 +774,8 @@ The preflight now parses every ibs_states seed from canonical A1.24 initial.sql 
 ## Exact initial administrator seed parity — 2026-10-23
 
 The preflight now parses the complete positional system-admin seed row using the canonical source table column order and compares every field with the target. It also compares all fields of the explicit GOD permission seed row. Reports expose only drifted field names, not target values or password material. Unit tests cover numeric/string parsing and exact seed shape. This supplements the seven-state-value and defs checks; it does not validate all runtime data or plugin-owned rows.
+
+
+## Relational constraint signature parity — 2026-10-23
+
+Added source-derived PK, UNIQUE, FK, and CHECK constraint signatures from canonical A1.24 tables.sql and compares them with PostgreSQL catalog semantics, including ordered local/referenced columns and normalized check expressions. Missing or extra signatures now block passes_audited_checks. Unit tests cover inline and table-level constraints; PostgreSQL acceptance tests compare a representative schema against the catalog. Full index-definition and trigger-body parity remain open.
