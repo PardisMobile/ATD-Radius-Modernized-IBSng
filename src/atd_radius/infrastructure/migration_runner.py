@@ -120,6 +120,18 @@ def run_migrations(
             ).fetchall()
             existing = {int(version): (str(name), str(checksum).strip()) for version, name, checksum in rows}
 
+        # The ledger must represent a contiguous prefix of this release's
+        # ordered migrations. Without this guard, a damaged ledger such as
+        # versions [1, 3] would cause migration 002 to be replayed against a
+        # database that has already applied 003.
+        recorded_versions = sorted(existing)
+        expected_prefix = list(range(1, len(recorded_versions) + 1))
+        if recorded_versions != expected_prefix:
+            raise MigrationError(
+                "migration ledger is not a contiguous prefix starting at 001; "
+                f"recorded versions: {recorded_versions}"
+            )
+
         by_version = {item.version: item for item in migrations}
         unknown = sorted(set(existing) - set(by_version))
         if unknown:
