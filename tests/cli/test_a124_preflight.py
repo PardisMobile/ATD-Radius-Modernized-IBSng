@@ -14,6 +14,8 @@ from atd_radius.cli.a124_preflight import (
     _normalize_rule_condition,
     _function_definitions,
     _initial_state_expectations,
+    _initial_admin_seed,
+    _initial_god_permission_seed,
 )
 
 
@@ -176,3 +178,35 @@ def test_initial_state_parser_captures_every_canonical_state_seed():
             "INSERT INTO ibs_states VALUES ('MIDNIGHT_JOBS','0'); "
             "INSERT INTO ibs_states VALUES ('MIDNIGHT_JOBS','1');"
         )
+
+
+
+def test_initial_admin_and_god_permission_seeds_are_parsed_exactly():
+    tables = """
+      CREATE TABLE admins (
+        admin_id integer primary key,
+        username text unique,
+        password char(34),
+        deposit numeric(12,2) default 0,
+        due numeric(12,2) default 0,
+        name text,
+        comment text,
+        creator_id integer
+      );
+    """
+    initial = """
+      INSERT INTO admins VALUES (0,'system','',0,0,'IBS Internal System Account','',0);
+      INSERT INTO admin_perms (admin_id,perm_name,perm_value) VALUES (0,'GOD','');
+    """
+    admin = _initial_admin_seed(initial, tables)
+    assert admin["admin_id"] == 0
+    assert admin["username"] == "system"
+    assert admin["password"] == ""
+    assert admin["deposit"] == 0
+    assert admin["due"] == 0
+    assert admin["name"] == "IBS Internal System Account"
+    assert admin["comment"] == ""
+    assert admin["creator_id"] == 0
+    assert _initial_god_permission_seed(initial) == {
+        "admin_id": 0, "perm_name": "GOD", "perm_value": ""
+    }
