@@ -71,25 +71,48 @@ def create_backup(output: Path) -> dict[str, object]:
     fd, temp_name = tempfile.mkstemp(prefix=f".{output.name}.", suffix=".tmp", dir=output.parent)
     os.close(fd)
     temp_path = Path(temp_name)
+    manifest_tmp: Path | None = None
+    published_inode: int | None = None
     try:
         _run([pg_dump, "--format=custom", "--no-owner", "--no-privileges", "--file", str(temp_path)], env=env)
         _run([pg_restore, "--list", str(temp_path)], env=env)
         digest = _sha256(temp_path)
-        os.replace(temp_path, output)
         manifest = {
             "format": "postgresql-custom",
             "sha256": digest,
-            "size_bytes": output.stat().st_size,
+            "size_bytes": temp_path.stat().st_size,
             "backup_file": output.name,
             "verified_archive_listing": True,
         }
-        manifest_tmp = manifest_path.with_suffix(manifest_path.suffix + ".tmp")
-        manifest_tmp.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+        # Stage the sidecar with private permissions before publishing either name.
+        manifest_fd, manifest_name = tempfile.mkstemp(
+            prefix=f".{manifest_path.name}.", suffix=".tmp", dir=output.parent
+        )
+        manifest_tmp = Path(manifest_name)
+        with os.fdopen(manifest_fd, "w", encoding="utf-8") as stream:
+            stream.write(json.dumps(manifest, indent=2) + "\n")
+            stream.flush()
+            os.fsync(stream.fileno())
         manifest_tmp.chmod(0o600)
-        os.replace(manifest_tmp, manifest_path)
+        # Hard-link publication is atomic and never overwrites a path that
+        # appeared after the initial collision check.
+        os.link(temp_path, output)
+        published_inode = output.stat().st_ino
+        try:
+            os.link(manifest_tmp, manifest_path)
+        except BaseException:
+            try:
+                if output.stat().st_ino == published_inode:
+                    output.unlink()
+            except FileNotFoundError:
+                pass
+            raise
         return manifest
     finally:
         temp_path.unlink(missing_ok=True)
+        if manifest_tmp is not None:
+            manifest_tmp.unlink(missing_ok=True)
+
 
 
 def verify_backup(backup: Path) -> dict[str, object]:
