@@ -11,6 +11,7 @@ from atd_radius.cli.a124_preflight import (
     _source_column_spec,
     source_inventory,
     _source_rules,
+    _normalize_rule_condition,
     _function_definitions,
 )
 
@@ -145,3 +146,10 @@ def test_function_body_parser_fails_closed_on_missing_or_unterminated_body():
         _function_definitions("CREATE FUNCTION f(integer) RETURNS integer;")
     with pytest.raises(ValueError, match="Unterminated quoted function body"):
         _function_definitions("CREATE FUNCTION f(integer) RETURNS integer AS 'BEGIN RETURN $1;")
+
+
+
+def test_rule_condition_normalization_handles_catalog_parentheses_and_type_casts():
+    assert _normalize_rule_condition("((admin_id = 0) AND (perm_name = 'GOD'::text))") == (
+        "admin_id=0andperm_name='god'"
+    )
