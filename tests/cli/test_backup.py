@@ -14,7 +14,8 @@ def test_verify_backup_checks_manifest_digest_and_archive_listing(tmp_path, monk
     archive.write_bytes(b"valid fixture archive")
     (tmp_path / "db.dump.json").write_text(json.dumps({
         "format": "postgresql-custom",
-        "sha256": hashlib.sha256(archive.read_bytes()).hexdigest(),\n        "size_bytes": archive.stat().st_size,
+        "sha256": hashlib.sha256(archive.read_bytes()).hexdigest(),
+        "size_bytes": archive.stat().st_size,
     }), encoding="utf-8")
     calls = []
     monkeypatch.setattr(backup, "_tool", lambda name: f"/usr/bin/{name}")
