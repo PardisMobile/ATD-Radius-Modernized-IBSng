@@ -1,3 +1,13 @@
+# LATEST HANDOFF — 2026-10-23
+
+Active work branch: `feat/a124-semantic-object-inventory`; current documentation head at the time of this note is `72d6fc8e068d01a919664b7f83f5bf29280ab1a3`. The latest code checkpoint, `3cb3faac5cb07f771fc9e49a160971199ec0f245`, passed Python-only CI and PostgreSQL-backed CI on Python 3.11 and 3.12. Documentation-only commits followed; their CI must be checked separately. Do not treat the older `main` / 2026-10-22 opening checkpoint below as the current branch/head.
+
+The complete 71-file Markdown content review is in `docs/MARKDOWN-CONTENT-AUDIT-2026-10-23.md`. Key recent code work: A1.24-compatible MS-CHAPv2 AuthenticatorResponse password conversion with non-ASCII regression coverage; MultiLogin user-limit precedence and incoming/existing RAS capability semantics with false-like value normalization. This is not full A1.24 parity and does not establish live NAS interoperability.
+
+**Release gates still open:** lossless database import/adoption and restore proof; live RADIUS/NAS/MPPE/provider interoperability and remote-disconnect verification; stale accepted-login reservation reconciliation; full VoIP/billing and bandwidth side effects; remaining specialized attributes/plugin/XML-RPC/UI flows; supported install/upgrade/rollback/licensing. User deletion remains partial while mailbox deletion has no configured transport; `CLEAR USER` and final release validation remain open.
+
+---
+
 # Current project status — ATD Radius / Modernized IBSng
 
 Updated: 2026-10-22  
