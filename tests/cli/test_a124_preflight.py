@@ -18,6 +18,7 @@ from atd_radius.cli.a124_preflight import (
     _initial_god_permission_seed,
     _seed_values_equal,
     _source_constraint_signatures,
+    _normalize_check_expression,
 )
 
 
@@ -239,3 +240,14 @@ def test_source_constraint_parser_tracks_primary_unique_foreign_key_and_check():
     assert ("children", "u", ("label",), None, (), None) in signatures
     assert ("children", "f", ("parent_id",), "parents", ("id",), None) in signatures
     assert ("children", "c", (), None, (), "quantity>0") in signatures
+
+
+
+def test_check_expression_normalization_preserves_meaningful_grouping():
+    assert _normalize_check_expression("(quantity > 0)") == "quantity>0"
+    assert _normalize_check_expression("quantity > 0 AND (quantity < 99)") == (
+        "quantity>0and(quantity<99)"
+    )
+    assert _normalize_check_expression("(quantity > 0 AND quantity < 99)") != (
+        _normalize_check_expression("quantity > 0 OR quantity < 99")
+    )
