@@ -811,3 +811,10 @@ Hardened the backup CLI by keeping database credentials in the child-process env
 ## A1.24 sequence semantic parity batch — 2026-10-23
 
 The read-only adoption preflight now compares canonical sequence configuration (start/minimum/maximum/increment/cycle/cache) separately from ownership and high-water safety. Explicit A1.24 sequences and serial-generated integer sequences are modeled with their respective PostgreSQL defaults. Regression tests cover extracted defaults, multiple drift fields, missing target-state evidence, and unexpected native-table triggers. CI must be checked against the latest commit before describing this batch as verified; this remains an assessment tool, not an importer or production adoption approval.
+
+
+## MS-CHAPv2 non-ASCII and MultiLogin regression batch — 2026-10-23
+
+Verified on head `3cb3faac5cb07f771fc9e49a160971199ec0f245`: Python-only workflow passed, and the full PostgreSQL-backed CI matrix passed on Python 3.11 and 3.12. The MS-CHAPv2 AuthenticatorResponse now uses the same A1.24 byte-wise password conversion helper as NT-response verification and MPPE derivation; an explicit non-ASCII regression test covers that parity decision while the RFC ASCII vector remains covered. MultiLogin policy now enforces the configured instance limit before checking the incoming and existing RAS MultiLogin capabilities. False-like RAS values are normalized consistently and rejection reasons retain the established AAA/API mapping. Regression tests cover precedence, existing/incoming RAS restrictions, and the all-RAS-allow case.
+
+This does not close live NAS interoperability or establish the source database/client charset for non-ASCII passwords. Durable accepted-login reservations can remain stale when Accounting never arrives and still require an operational reconciliation path. No claim of full A1.24 runtime parity is made.
