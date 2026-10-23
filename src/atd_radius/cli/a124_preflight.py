@@ -967,9 +967,8 @@ def run_preflight(archive_path: str, dsn: str, schema: str = "public") -> dict[s
             "required_seed_markers": seed_markers,
         },
         "scope": (
-            "Read-only readiness evidence only. Does not compare every column type/default, "
-            "constraint/trigger parity (target-side evidence is included), plugin objects, all data, "
-            "manually advanced/unowned sequence values, backup/restore fidelity, or runtime behavior. A clean result "
+            "Read-only readiness evidence only. Compares source-derived PK/UNIQUE/FK/CHECK signatures, but not every index definition or trigger body; plugin objects, all data, "
+            "manually advanced/unowned sequence values, backup/restore fidelity, and runtime behavior remain outside scope. A clean result "
             "does not authorize migration-ledger stamping or production cutover."
         ),
     }
