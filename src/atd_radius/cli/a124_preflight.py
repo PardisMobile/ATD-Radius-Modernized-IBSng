@@ -329,7 +329,7 @@ def _initial_state_expectations(initial_sql: str) -> dict[str, str]:
     """Read every canonical IBS state seed from A1.24 initial.sql."""
     pattern = re.compile(
         r"insert\s+into\s+ibs_states\s+values\s*"
-        r"\(\s*'((?:''|\\\\'|[^'])*)'\s*,\s*'((?:''|\\\\'|[^'])*)'\s*\)",
+        r"\(\s*'((?:''|\\'|[^'])*)'\s*,\s*'((?:''|\\'|[^'])*)'\s*\)",
         re.I | re.S,
     )
     values: dict[str, str] = {}
