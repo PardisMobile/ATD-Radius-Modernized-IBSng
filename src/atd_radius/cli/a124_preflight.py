@@ -201,7 +201,29 @@ def _function_signatures(functions_sql: str) -> set[tuple[str, tuple[str, ...]]]
         raise ValueError("No function signatures found in canonical A1.24 functions.sql")
     return signatures
 
-def source_inventory(tables_sql: str, functions_sql: str) -> dict[str, Any]:
+def _source_rules(initial_sql: str) -> dict[str, dict[str, str]]:
+    """Extract the two simple, source-defined A1.24 protection rules."""
+    cleaned = _strip_line_comments(initial_sql)
+    pattern = re.compile(
+        r"create\s+rule\s+([a-z_][\w$]*)\s+as\s+on\s+(delete|update|insert)\s+"
+        r"to\s+([a-z_][\w$]*)\s+where\s+(.+?)\s+do\s+instead\s+nothing\s*;",
+        re.I | re.S,
+    )
+    rules: dict[str, dict[str, str]] = {}
+    for match in pattern.finditer(cleaned):
+        name, event, table, condition = match.groups()
+        rules[name.lower()] = {
+            "event": event.upper(),
+            "table": table.lower(),
+            "condition": re.sub(r"\s+", "", condition).lower(),
+            "action": "INSTEAD NOTHING",
+        }
+    if not rules:
+        raise ValueError("No supported source protection rules found in canonical A1.24 initial.sql")
+    return rules
+
+
+def source_inventory(tables_sql: str, functions_sql: str, initial_sql: str = "") -> dict[str, Any]:
     tables: dict[str, set[str]] = {}
     sequences = {m.group(1).lower() for m in _CREATE_SEQUENCE.finditer(_strip_line_comments(tables_sql))}
     indexes = {m.group(1).lower() for m in _CREATE_INDEX.finditer(_strip_line_comments(tables_sql))}
@@ -230,7 +252,8 @@ def source_inventory(tables_sql: str, functions_sql: str) -> dict[str, Any]:
         tables[table] = columns
     function_signatures = _function_signatures(functions_sql)
     functions = {name for name, _ in function_signatures}
-    return {"tables": tables, "column_specs": column_specs, "indexes": indexes, "sequences": sequences, "functions": functions, "function_signatures": function_signatures}
+    rules = _source_rules(initial_sql) if initial_sql.strip() else {}
+    return {"tables": tables, "column_specs": column_specs, "indexes": indexes, "sequences": sequences, "functions": functions, "function_signatures": function_signatures, "rules": rules}
 
 
 def _defs_expected(defs_sql: str) -> dict[str, str]:
@@ -308,7 +331,10 @@ def _target_inventory(conn: psycopg.Connection, schema: str) -> dict[str, Any]:
     ).fetchall()
     rules = conn.execute(
         """
-        SELECT c.relname, r.rulename, pg_get_ruledef(r.oid, true)
+        SELECT c.relname, r.rulename, pg_get_ruledef(r.oid, true),
+               CASE r.ev_type WHEN '1' THEN 'SELECT' WHEN '2' THEN 'UPDATE'
+                    WHEN '3' THEN 'INSERT' WHEN '4' THEN 'DELETE' ELSE r.ev_type::text END,
+               pg_get_expr(r.ev_qual, r.ev_class, true)
         FROM pg_rewrite r
         JOIN pg_class c ON c.oid=r.ev_class
         JOIN pg_namespace n ON n.oid=c.relnamespace
@@ -350,7 +376,8 @@ def _target_inventory(conn: psycopg.Connection, schema: str) -> dict[str, Any]:
             for row in constraints
         ],
         "rules": [
-            {"table": row[0], "name": row[1], "definition": row[2]}
+            {"table": row[0], "name": row[1], "definition": row[2],
+             "event": row[3], "condition": row[4]}
             for row in rules
         ],
         "triggers": [
@@ -389,7 +416,11 @@ def run_preflight(archive_path: str, dsn: str, schema: str = "public") -> dict[s
                 raise ValueError(f"Cannot read archive member {filename}")
             contents[filename] = stream.read().decode("utf-8")
 
-    source = source_inventory(contents["IBSng/db/tables.sql"], contents["IBSng/db/functions.sql"])
+    source = source_inventory(
+        contents["IBSng/db/tables.sql"],
+        contents["IBSng/db/functions.sql"],
+        contents["IBSng/db/initial.sql"],
+    )
     expected_defs = _defs_expected(contents["IBSng/db/defs.sql"])
     with psycopg.connect(dsn) as conn:
         target = _target_inventory(conn, schema)
@@ -420,6 +451,28 @@ def run_preflight(archive_path: str, dsn: str, schema: str = "public") -> dict[s
         source_sequences, target_sequences = set(source["sequences"]), target["sequences"]
         source_functions, target_functions = set(source["functions"]), target["functions"]
         source_function_signatures, target_function_signatures = source["function_signatures"], target["function_signatures"]
+        source_rules = source["rules"]
+        target_rules = {
+            item["name"]: item for item in target["rules"]
+            if item["name"] in source_rules
+        }
+        rule_drift: list[dict[str, Any]] = []
+        for name, expected in source_rules.items():
+            actual = target_rules.get(name)
+            if actual is None:
+                rule_drift.append({"name": name, "field": "presence", "source": expected, "target": None})
+                continue
+            observed = {
+                "event": actual["event"],
+                "table": actual["table"],
+                "condition": re.sub(r"\s+", "", str(actual["condition"] or "")).lower(),
+            }
+            for field in ("event", "table", "condition"):
+                if observed[field] != expected[field]:
+                    rule_drift.append({
+                        "name": name, "field": field,
+                        "source": expected[field], "target": observed[field],
+                    })
         required_data_tables = {"defs", "admins", "admin_perms", "ibs_states"}
         present_data_tables = set()
         for table_name in required_data_tables:
@@ -486,6 +539,11 @@ def run_preflight(archive_path: str, dsn: str, schema: str = "public") -> dict[s
                 "extra": sorted(f"{name}({', '.join(args)})" for name, args in target_function_signatures - source_function_signatures),
             },
             "column_definition_drift": column_definition_drift,
+            "source_defined_protection_rules": {
+                "missing": sorted(set(source_rules) - set(target_rules)),
+                "extra": sorted(set(item["name"] for item in target["rules"]) - set(source_rules)),
+                "definition_drift": rule_drift,
+            },
         },
         "target_semantic_objects": {
             "constraints": target["constraints"],
@@ -518,6 +576,9 @@ def run_preflight(archive_path: str, dsn: str, schema: str = "public") -> dict[s
         and not data["missing_definitions"]
         and not data["definitions_with_value_drift"]
         and not inv["column_definition_drift"]
+        and not inv["source_defined_protection_rules"]["missing"]
+        and not inv["source_defined_protection_rules"]["extra"]
+        and not inv["source_defined_protection_rules"]["definition_drift"]
         and all(data["required_seed_markers"].values())
     )
     return report
