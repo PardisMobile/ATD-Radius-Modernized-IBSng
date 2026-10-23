@@ -45,3 +45,18 @@ INSERT INTO defs (name,value) VALUES ('B','I60
 
 def test_canonical_archive_hash_is_pinned():
     assert re.fullmatch(r"[0-9a-f]{64}", CANONICAL_A124_SHA256)
+
+
+
+def test_defs_parser_handles_legacy_backslash_escaped_quotes():
+    sql = r"""INSERT INTO defs (name,value) VALUES ('BW_IPTABLES_COMMAND','S\'iptables\'
+p0
+.') ;"""
+    assert _defs_expected(sql) == {"BW_IPTABLES_COMMAND": "S'iptables'\np0\n."}
+
+
+def test_defs_parser_handles_full_native_shape():
+    # Includes the two legacy SQL escape styles used by the A1.24 archive.
+    sql = """INSERT INTO defs (name,value) VALUES ('A','S''iptables''\np0\n.') ;
+INSERT INTO defs (name,value) VALUES ('B','S\\'tc\\'\np0\n.') ;"""
+    assert _defs_expected(sql) == {"A": "S'iptables'\np0\n.", "B": "S'tc'\np0\n."}
