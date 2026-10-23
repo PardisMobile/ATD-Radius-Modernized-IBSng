@@ -1,3 +1,18 @@
+# LATEST HANDOFF — 2026-10-23
+
+Active branch: `feat/a124-semantic-object-inventory`. Latest verified code checkpoint is `3cb3faac5cb07f771fc9e49a160971199ec0f245`: Python-only and PostgreSQL-backed CI on Python 3.11/3.12 passed. Subsequent commits are documentation-only updates; check their own CI before calling the current branch head green.
+
+The complete 71-file Markdown review and stale-status reconciliation is recorded in `docs/MARKDOWN-CONTENT-AUDIT-2026-10-23.md`. Treat the older 2026-10-14 checkpoint below as historical, not as the current repository state. Canonical source archive SHA-256: `c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839bb9349d18a8`.
+
+Recent verified code increment:
+- MS-CHAPv2 AuthenticatorResponse uses the A1.24 byte-wise password conversion helper, with non-ASCII regression coverage.
+- MultiLogin checks the effective user limit before the incoming/existing RAS MultiLogin capabilities; false-like capability values and established rejection reasons are covered.
+- This does not establish live NAS interoperability, non-ASCII DB/client charset parity, or full A1.24 runtime parity.
+
+Continue large cohesive batches. Preserve frozen/tested work; trace the canonical source and consumers, implement behavior plus persistence/side effects, add tests, run full CI, and update `docs/CURRENT-STATUS.md`, `ROADMAP.md`, `docs/ROADMAP.md`, `docs/COMPATIBILITY-MATRIX.md`, and the relevant subsystem audit. Major blockers remain lossless import/adoption and restore proof, live RADIUS/NAS/MPPE/provider interoperability, stale reservation reconciliation, complete billing/VoIP and bandwidth effects, remaining specialized attributes/plugins/XML-RPC/UI, and install/upgrade/rollback/licensing. User deletion still has a mailbox side-effect gap; `CLEAR USER` remains open.
+
+---
+
 # Project Context — Carry-Forward Memory
 
 ## Latest verified checkpoint — 2026-10-14
