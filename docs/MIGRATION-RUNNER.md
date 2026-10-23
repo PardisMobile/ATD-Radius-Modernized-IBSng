@@ -20,6 +20,7 @@ The default path is the package checkout's `migrations/` directory. `--migration
 - Requires the recorded versions to be a contiguous prefix beginning at `001`. A damaged ledger such as `001, 003` is rejected instead of replaying migration `002` against a later schema.
 - Applies pending SQL and ledger entries in one transaction. Any failure rolls back the entire batch, including the ledger.
 - Refuses to initialize an untracked database that already has public tables. This prevents accidentally running the clean-install schema on an existing IBSng installation.
+- Refuses an empty migration ledger if application tables already exist, and rejects a ledger with missing middle versions. Neither state is treated as a clean install.
 - Does not automatically migrate or adopt a production A1.24 database. That requires the separately reviewed lossless import/adoption workflow and a verified backup/restore.
 
 ## Operational sequence
