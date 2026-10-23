@@ -146,3 +146,8 @@ The API now exposes native tariff/prefix read and mutation workflows. The depend
 - `CHANGE VOIP TARIFF` requires `CHANGE CHARGE`.
 
 The ATD evaluator enforces that chain instead of treating tariff permissions as standalone grants. Read routes require `SEE VOIP TARIFF`; create/update/delete tariff and prefix routes require `CHANGE VOIP TARIFF`. Operational audit entries are committed with each successful mutation. Full CI on code HEAD `057b69789e9c353a8531d927129e09fafaf3105d` passed both Python 3.11 and 3.12 (720 passed, 2 warnings per job). This is not a claim that all charge-management workflows are complete.
+
+
+## Current-status reconciliation — 2026-10-23
+
+The permission/status table above is a historical inventory snapshot and contains entries that were stale by later implementation checkpoints. Do not use its older “Not implemented” cells as the current release status without checking `docs/CURRENT-STATUS.md` and the latest dated audit sections. Later verified slices include transactional user deletion (with mailbox cleanup still pending), owner/group workflows, selected user-attribute and credit APIs, and owner-scoped online-session reporting plus audited KILL USER action. `CLEAR USER`, complete permission-consumer coverage, mailbox transport, live provider interoperability, and full UI parity remain open. The complete stale-document reconciliation is recorded in `docs/MARKDOWN-CONTENT-AUDIT-2026-10-23.md`.
