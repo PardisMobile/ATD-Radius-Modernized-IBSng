@@ -736,3 +736,11 @@ A clean-install migration CLI is now implemented on PR branch `feat/safe-migrati
 - Never runs automatically at service startup; documented in `docs/MIGRATION-RUNNER.md`.
 
 This closes the missing operator-controlled migration-runner mechanism for clean installs, **not** the lossless A1.24 data importer/adoption workflow, backup/restore automation, or verified rollback. Tests cover ordering, checksums, idempotence, unsafe adoption refusal, and rollback after a failed migration. A real PostgreSQL acceptance test applies all eight migrations in an isolated database, verifies the ledger and idempotence, then confirms a deliberately failing ninth migration leaves no schema or ledger residue. Full CI passed on Python 3.11 and 3.12 with **962 passed, 2 warnings per version**; Python-only passed **952 passed, 9 skipped, 2 warnings**. Ruff, compilation, and PHP syntax checks passed. See PR #14.
+
+
+
+## Read-only A1.24 adoption preflight — 2026-10-23
+
+Added `atd-radius-a124-preflight` on PR branch `feat/a124-adoption-preflight`. It pins the canonical archive SHA-256 and emits JSON drift evidence for native tables/columns, explicit indexes, sequences, function names, the exact A1.24 `defs` baseline values, the system-admin/GOD seed, core IBS state markers, and the two native deletion-protection rules. It is strictly read-only and supports a nonzero exit with `--fail-on-drift`.
+
+This is an adoption-readiness checkpoint, **not** a lossless importer and not permission to stamp migration versions. The report explicitly disclaims full column type/default parity, complete constraint/rule semantics, function bodies/signatures, plugin objects, all row data, sequence values, backup/restore fidelity, and runtime behavior. These remain release gates. Tests cover schema inventory parsing and both legacy escaped-quote styles in A1.24 `defs.sql`; CI is pending on the branch.
