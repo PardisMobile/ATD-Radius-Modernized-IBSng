@@ -16,6 +16,7 @@ from atd_radius.cli.a124_preflight import (
     _initial_state_expectations,
     _initial_admin_seed,
     _initial_god_permission_seed,
+    _seed_values_equal,
 )
 
 
@@ -210,3 +211,11 @@ def test_initial_admin_and_god_permission_seeds_are_parsed_exactly():
     assert _initial_god_permission_seed(initial) == {
         "admin_id": 0, "perm_name": "GOD", "perm_value": ""
     }
+
+
+
+def test_seed_comparison_accounts_for_postgresql_fixed_char_padding():
+    spec = {"type": "character(34)"}
+    assert _seed_values_equal("", " " * 34, spec)
+    assert not _seed_values_equal("hash", "other", spec)
+    assert not _seed_values_equal("", " " * 34, {"type": "text"})
