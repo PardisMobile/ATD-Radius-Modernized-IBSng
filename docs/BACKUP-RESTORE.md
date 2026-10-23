@@ -9,7 +9,7 @@ atd-radius-backup create --output /secure/backups/atd-radius-$(date +%F-%H%M%S).
 atd-radius-backup verify /secure/backups/atd-radius-YYYY-MM-DD-HHMMSS.dump
 ```
 
-Keep both the `.dump` and its `.dump.json` manifest. Store backups off-host with restrictive permissions and encryption appropriate to your environment. A successful archive-list check verifies file integrity/structure, **not** that a restore will succeed or the application will behave correctly.
+Keep both the `.dump` and its `.dump.json` manifest. Verification checks the manifest's JSON structure, recorded filename, format, byte size, SHA-256 digest, and PostgreSQL archive listing. Store backups off-host with restrictive permissions and encryption appropriate to your environment. A successful archive-list check verifies file integrity/structure, **not** that a restore will succeed or the application will behave correctly.
 
 ## Restore (destructive)
 
