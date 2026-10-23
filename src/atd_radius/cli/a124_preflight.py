@@ -284,6 +284,85 @@ def _function_definitions(functions_sql: str) -> dict[tuple[str, tuple[str, ...]
     return definitions
 
 
+def _source_constraint_signatures(tables_sql: str) -> set[tuple[Any, ...]]:
+    """Extract table-level and inline PK/UNIQUE/FK/CHECK semantics from A1.24 DDL."""
+    table_bodies = _table_bodies(tables_sql)
+    declarations_by_table = {
+        table: _split_top_level(body) for table, body in table_bodies
+    }
+    primary_keys: dict[str, tuple[str, ...]] = {}
+    for table, declarations in declarations_by_table.items():
+        for declaration in declarations:
+            clean = re.sub(r"^constraint\s+[^\s]+\s+", "", declaration.strip(), flags=re.I)
+            table_pk = re.match(r"^primary\s+key\s*\(([^)]+)\)", clean, re.I)
+            if table_pk:
+                primary_keys[table] = tuple(
+                    item.strip().strip('"').lower() for item in table_pk.group(1).split(",")
+                )
+                break
+            column_match = re.match(r"^([a-z_][\w$]*)\s+(.+)", declaration, re.I | re.S)
+            if column_match and re.search(r"\bprimary\s+key\b", column_match.group(2), re.I):
+                primary_keys[table] = (column_match.group(1).lower(),)
+                break
+
+    signatures: set[tuple[Any, ...]] = set()
+    for table, declarations in declarations_by_table.items():
+        for declaration in declarations:
+            clean = re.sub(r"^constraint\s+[^\s]+\s+", "", declaration.strip(), flags=re.I)
+            table_pk = re.match(r"^primary\s+key\s*\(([^)]+)\)", clean, re.I)
+            table_unique = re.match(r"^unique\s*\(([^)]+)\)", clean, re.I)
+            table_fk = re.match(
+                r"^foreign\s+key\s*\(([^)]+)\)\s*references\s+"
+                r"([a-z_][\w$]*)(?:\s*\(([^)]+)\))?",
+                clean, re.I | re.S,
+            )
+            table_check = re.match(r"^check\s*\((.*)\)$", clean, re.I | re.S)
+            if table_pk:
+                columns = tuple(item.strip().strip('"').lower() for item in table_pk.group(1).split(","))
+                signatures.add((table, "p", columns, None, (), None))
+                continue
+            if table_unique:
+                columns = tuple(item.strip().strip('"').lower() for item in table_unique.group(1).split(","))
+                signatures.add((table, "u", columns, None, (), None))
+                continue
+            if table_fk:
+                columns = tuple(item.strip().strip('"').lower() for item in table_fk.group(1).split(","))
+                ref_table = table_fk.group(2).lower()
+                ref_columns = tuple(
+                    item.strip().strip('"').lower() for item in table_fk.group(3).split(",")
+                ) if table_fk.group(3) else primary_keys.get(ref_table, ())
+                signatures.add((table, "f", columns, ref_table, ref_columns, None))
+                continue
+            if table_check:
+                signatures.add((table, "c", (), None, (), _normalize_rule_condition(table_check.group(1))))
+                continue
+            if _CONSTRAINT.match(declaration):
+                continue
+
+            column_match = re.match(r"^([a-z_][\w$]*)\s+(.+)", declaration, re.I | re.S)
+            if not column_match:
+                continue
+            column, definition = column_match.group(1).lower(), column_match.group(2)
+            if re.search(r"\bprimary\s+key\b", definition, re.I):
+                signatures.add((table, "p", (column,), None, (), None))
+            if re.search(r"\bunique\b", definition, re.I):
+                signatures.add((table, "u", (column,), None, (), None))
+            ref_match = re.search(
+                r"\breferences\s+([a-z_][\w$]*)(?:\s*\(([^)]+)\))?",
+                definition, re.I,
+            )
+            if ref_match:
+                ref_table = ref_match.group(1).lower()
+                ref_columns = tuple(
+                    item.strip().strip('"').lower() for item in ref_match.group(2).split(",")
+                ) if ref_match.group(2) else primary_keys.get(ref_table, ())
+                signatures.add((table, "f", (column,), ref_table, ref_columns, None))
+            check_match = re.search(r"\bcheck\s*\((.*)\)", definition, re.I | re.S)
+            if check_match:
+                signatures.add((table, "c", (), None, (), _normalize_rule_condition(check_match.group(1))))
+    return signatures
+
+
 def source_inventory(tables_sql: str, functions_sql: str, initial_sql: str = "") -> dict[str, Any]:
     tables: dict[str, set[str]] = {}
     sequences = {m.group(1).lower() for m in _CREATE_SEQUENCE.finditer(_strip_line_comments(tables_sql))}
@@ -323,7 +402,8 @@ def source_inventory(tables_sql: str, functions_sql: str, initial_sql: str = "")
         for (table, column), spec in column_specs.items() if spec["serial"]
     }
     rules = _source_rules(initial_sql) if initial_sql.strip() else {}
-    return {"tables": tables, "column_specs": column_specs, "indexes": indexes, "sequences": sequences, "functions": functions, "function_signatures": function_signatures, "function_body_sha256": function_body_sha256, "sequence_owners": sequence_owners, "rules": rules}
+    constraint_signatures = _source_constraint_signatures(tables_sql)
+    return {"tables": tables, "column_specs": column_specs, "indexes": indexes, "sequences": sequences, "functions": functions, "function_signatures": function_signatures, "function_body_sha256": function_body_sha256, "sequence_owners": sequence_owners, "constraint_signatures": constraint_signatures, "rules": rules}
 
 
 def _seed_values_equal(expected: Any, actual: Any, column_spec: dict[str, Any] | None = None) -> bool:
@@ -487,10 +567,23 @@ def _target_inventory(conn: psycopg.Connection, schema: str) -> dict[str, Any]:
     ).fetchall()
     constraints = conn.execute(
         """
-        SELECT c.relname, co.conname, co.contype, pg_get_constraintdef(co.oid, true)
+        SELECT c.relname, co.conname, co.contype, pg_get_constraintdef(co.oid, true),
+               ARRAY(
+                 SELECT a.attname FROM unnest(co.conkey) WITH ORDINALITY k(attnum, ord)
+                 JOIN pg_attribute a ON a.attrelid=c.oid AND a.attnum=k.attnum
+                 ORDER BY k.ord
+               ),
+               rt.relname,
+               ARRAY(
+                 SELECT ra.attname FROM unnest(co.confkey) WITH ORDINALITY k(attnum, ord)
+                 JOIN pg_attribute ra ON ra.attrelid=rt.oid AND ra.attnum=k.attnum
+                 ORDER BY k.ord
+               ),
+               pg_get_expr(co.conbin, co.conrelid, true)
         FROM pg_constraint co
         JOIN pg_class c ON c.oid=co.conrelid
         JOIN pg_namespace n ON n.oid=c.relnamespace
+        LEFT JOIN pg_class rt ON rt.oid=co.confrelid
         WHERE n.nspname=%s
         ORDER BY c.relname, co.conname
         """, (schema,)
@@ -562,6 +655,14 @@ def _target_inventory(conn: psycopg.Connection, schema: str) -> dict[str, Any]:
             {"table": row[0], "name": row[1], "type": row[2], "definition": row[3]}
             for row in constraints
         ],
+        "constraint_signatures": {
+            (
+                row[0], row[2], tuple(row[4] or ()),
+                row[5].lower() if row[5] else None, tuple(row[6] or ()),
+                _normalize_rule_condition(str(row[7])) if row[2] == "c" and row[7] is not None else None,
+            )
+            for row in constraints
+        },
         "rules": [
             {"table": row[0], "name": row[1], "definition": row[2],
              "event": row[3], "condition": row[4]}
@@ -696,6 +797,11 @@ def run_preflight(archive_path: str, dsn: str, schema: str = "public") -> dict[s
         sequence_value_drift = _sequence_high_water_drift(
             conn, schema, target_sequence_owners, target["sequence_states"]
         )
+        source_constraints, target_constraints = source["constraint_signatures"], target["constraint_signatures"]
+        constraint_signature_drift = {
+            "missing": sorted(repr(item) for item in source_constraints - target_constraints),
+            "extra": sorted(repr(item) for item in target_constraints - source_constraints),
+        }
         source_rules = source["rules"]
         target_rules = {
             item["name"]: item for item in target["rules"]
@@ -829,6 +935,7 @@ def run_preflight(archive_path: str, dsn: str, schema: str = "public") -> dict[s
             "sequence_owner_drift": sequence_owner_drift,
             "sequence_value_drift": sequence_value_drift,
             "column_definition_drift": column_definition_drift,
+            "constraint_signature_drift": constraint_signature_drift,
             "source_defined_protection_rules": {
                 "missing": sorted(set(source_rules) - set(target_rules)),
                 "extra": sorted(set(item["name"] for item in target["rules"]) - set(source_rules)),
@@ -880,6 +987,8 @@ def run_preflight(archive_path: str, dsn: str, schema: str = "public") -> dict[s
         and not data["system_admin_seed_fields_with_drift"]
         and not data["system_god_permission_seed_fields_with_drift"]
         and not inv["column_definition_drift"]
+        and not inv["constraint_signature_drift"]["missing"]
+        and not inv["constraint_signature_drift"]["extra"]
         and not inv["source_defined_protection_rules"]["missing"]
         and not inv["source_defined_protection_rules"]["extra"]
         and not inv["source_defined_protection_rules"]["definition_drift"]
