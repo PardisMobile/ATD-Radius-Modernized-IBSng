@@ -353,8 +353,6 @@ def _source_index_details(tables_sql: str) -> dict[str, dict[str, Any]]:
             "key_count": len(indexed_items),
             "method": method_match.group(1).lower() if method_match else "btree",
         }
-    if not details:
-        raise ValueError("No explicit indexes found in canonical A1.24 tables.sql")
     return details
 
 
