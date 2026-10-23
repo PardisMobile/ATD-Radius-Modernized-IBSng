@@ -213,7 +213,7 @@ def _normalize_rule_condition(condition: str) -> str:
 def _normalize_check_expression(expression: str) -> str:
     """Normalize spacing/casts while preserving meaningful nested CHECK parentheses."""
     normalized = re.sub(r"\s+", "", expression).lower()
-    normalized = re.sub(r"::(?:text|integer|bigint|smallint|boolean)\b", "", normalized)
+    normalized = re.sub(r"::text\b", "", normalized)
     while normalized.startswith("(") and normalized.endswith(")"):
         depth = 0
         wraps_entire_expression = True
