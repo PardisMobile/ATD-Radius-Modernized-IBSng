@@ -215,7 +215,7 @@ def _source_rules(initial_sql: str) -> dict[str, dict[str, str]]:
         rules[name.lower()] = {
             "event": event.upper(),
             "table": table.lower(),
-            "condition": re.sub(r"\s+", "", condition).lower(),
+            "condition": re.sub(r"[()\s]+", "", condition).lower(),
             "action": "INSTEAD NOTHING",
         }
     if not rules:
@@ -465,7 +465,7 @@ def run_preflight(archive_path: str, dsn: str, schema: str = "public") -> dict[s
             observed = {
                 "event": actual["event"],
                 "table": actual["table"],
-                "condition": re.sub(r"\s+", "", str(actual["condition"] or "")).lower(),
+                "condition": re.sub(r"[()\s]+", "", str(actual["condition"] or "")).lower(),
             }
             for field in ("event", "table", "condition"):
                 if observed[field] != expected[field]:
