@@ -769,3 +769,8 @@ The read-only preflight now compares source-defined serial ownership mappings wi
 ## Complete initial IBS state seed parity — 2026-10-23
 
 The preflight now parses every ibs_states seed from canonical A1.24 initial.sql (currently seven rows) and compares exact values in the target database. Missing or drifted seed values are included in the JSON report and fail --fail-on-drift. Unit tests cover the full seed set and duplicate-source-row rejection. This complements the existing exact defs baseline and admin/GOD guards; it is still not a full data importer or complete parity of all application/plugin rows.
+
+
+## Exact initial administrator seed parity — 2026-10-23
+
+The preflight now parses the complete positional system-admin seed row using the canonical source table column order and compares every field with the target. It also compares all fields of the explicit GOD permission seed row. Reports expose only drifted field names, not target values or password material. Unit tests cover numeric/string parsing and exact seed shape. This supplements the seven-state-value and defs checks; it does not validate all runtime data or plugin-owned rows.
