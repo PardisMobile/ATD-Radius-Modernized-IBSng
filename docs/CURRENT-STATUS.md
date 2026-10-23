@@ -749,3 +749,8 @@ This is an adoption-readiness checkpoint, **not** a lossless importer and not pe
 ## A1.24 semantic-object inventory expansion — 2026-10-23
 
 The read-only adoption preflight now captures target-side PostgreSQL constraint definitions, non-internal trigger definitions, rewrite-rule definitions, and sequence configuration/current-value evidence in its JSON report. Added a PostgreSQL-backed acceptance test that creates an isolated schema with primary/unique/check/foreign-key constraints, functions, a trigger, and a standalone sequence, then verifies the inventory output. This is evidence collection only: semantic comparison with canonical source definitions, function-body parity, sequence ownership/data consistency, complete row-data parity, and backup/restore proof remain release gates. No target database is modified by the preflight command itself.
+
+
+## A1.24 source-rule parity check — 2026-10-23
+
+Extended the read-only preflight to parse the canonical initial.sql protection rules and compare both native deletion guards against target catalog evidence for presence, event type, target table, and normalized predicate. The check participates in passes_audited_checks, so missing or drifted guards fail --fail-on-drift. Unit coverage covers both A1.24 rule definitions and the parser's fail-closed behavior. This is a narrow semantic comparison, not full constraint/trigger/function parity or approval for adoption.
