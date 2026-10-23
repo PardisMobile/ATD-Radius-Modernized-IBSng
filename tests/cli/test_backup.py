@@ -15,6 +15,7 @@ def test_verify_backup_checks_manifest_digest_and_archive_listing(tmp_path, monk
     archive.write_bytes(b"valid fixture archive")
     (tmp_path / "db.dump.json").write_text(json.dumps({
         "format": "postgresql-custom",
+        "backup_file": archive.name,
         "sha256": hashlib.sha256(archive.read_bytes()).hexdigest(),
         "size_bytes": archive.stat().st_size,
     }), encoding="utf-8")
@@ -30,7 +31,7 @@ def test_verify_backup_rejects_modified_archive(tmp_path, monkeypatch):
     archive = tmp_path / "db.dump"
     archive.write_bytes(b"changed")
     (tmp_path / "db.dump.json").write_text(json.dumps({
-        "format": "postgresql-custom", "sha256": "0" * 64, "size_bytes": archive.stat().st_size,
+        "format": "postgresql-custom", "backup_file": archive.name, "sha256": "0" * 64, "size_bytes": archive.stat().st_size,
     }), encoding="utf-8")
     monkeypatch.setattr(backup, "_tool", lambda name: f"/usr/bin/{name}")
     with pytest.raises(backup.BackupError, match="checksum"):
@@ -141,3 +142,26 @@ def test_create_backup_manifest_is_private(tmp_path, monkeypatch):
     backup.create_backup(output)
     assert output.stat().st_mode & 0o077 == 0
     assert output.with_suffix(".dump.json").stat().st_mode & 0o077 == 0
+
+
+def test_verify_backup_rejects_non_object_manifest(tmp_path, monkeypatch):
+    archive = tmp_path / "db.dump"
+    archive.write_bytes(b"archive")
+    archive.with_suffix(".dump.json").write_text("[]", encoding="utf-8")
+    with pytest.raises(backup.BackupError, match="expected a JSON object"):
+        backup.verify_backup(archive)
+
+
+def test_verify_backup_rejects_manifest_for_different_filename(tmp_path, monkeypatch):
+    archive = tmp_path / "db.dump"
+    archive.write_bytes(b"archive")
+    (tmp_path / "db.dump.json").write_text(json.dumps({
+        "format": "postgresql-custom",
+        "backup_file": "other.dump",
+        "sha256": hashlib.sha256(archive.read_bytes()).hexdigest(),
+        "size_bytes": archive.stat().st_size,
+    }), encoding="utf-8")
+    monkeypatch.setattr(backup, "_tool", lambda name: f"/usr/bin/{name}")
+    monkeypatch.setattr(backup, "_run", lambda args, **kwargs: None)
+    with pytest.raises(backup.BackupError, match="filename"):
+        backup.verify_backup(archive)
