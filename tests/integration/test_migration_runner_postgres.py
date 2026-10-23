@@ -92,3 +92,23 @@ def test_real_postgres_gapped_ledger_refuses_to_replay_missing_migration(
         ).fetchone()[0] == 7
         assert conn.execute("SELECT to_regclass('public.admins')").fetchone()[0] is not None
         assert conn.execute("SELECT to_regclass('public.atd_radius_live_sessions')").fetchone()[0] is not None
+
+
+
+def test_real_postgres_empty_ledger_on_populated_schema_refuses_clean_install(
+    isolated_migration_database,
+):
+    target_dsn, _ = isolated_migration_database
+    migrations_dir = Path(__file__).resolve().parents[2] / "migrations"
+
+    with psycopg.connect(target_dsn) as conn:
+        run_migrations(conn, migrations_dir, apply=True)
+        conn.execute("DELETE FROM public.atd_schema_migrations")
+
+        with pytest.raises(MigrationError, match="ledger exists but is empty"):
+            run_migrations(conn, migrations_dir, apply=True)
+
+        assert conn.execute(
+            "SELECT count(*) FROM public.atd_schema_migrations"
+        ).fetchone()[0] == 0
+        assert conn.execute("SELECT to_regclass('public.admins')").fetchone()[0] is not None
