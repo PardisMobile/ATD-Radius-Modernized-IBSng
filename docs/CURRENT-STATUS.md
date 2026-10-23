@@ -764,3 +764,8 @@ The preflight now decodes the quoted function bodies from the canonical A1.24 fu
 ## A1.24 sequence safety validation — 2026-10-23
 
 The read-only preflight now compares source-defined serial ownership mappings with PostgreSQL ownership metadata and checks each target-owned sequence's current value against MAX(owning_column). A sequence that has not been advanced, or is behind explicitly inserted IDs, is reported as drift and blocks passes_audited_checks. Added PostgreSQL acceptance coverage that first verifies a generated identity value is consistent, then inserts an explicit high ID and verifies the mismatch is detected. Manually advanced or unowned sequences and full sequence/data migration semantics still require separate review.
+
+
+## Complete initial IBS state seed parity — 2026-10-23
+
+The preflight now parses every ibs_states seed from canonical A1.24 initial.sql (currently seven rows) and compares exact values in the target database. Missing or drifted seed values are included in the JSON report and fail --fail-on-drift. Unit tests cover the full seed set and duplicate-source-row rejection. This complements the existing exact defs baseline and admin/GOD guards; it is still not a full data importer or complete parity of all application/plugin rows.
