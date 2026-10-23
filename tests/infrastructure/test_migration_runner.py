@@ -143,6 +143,17 @@ def test_untracked_existing_database_is_refused_without_mutation(tmp_path):
     assert conn.executed_sql == []
 
 
+
+def test_empty_ledger_with_application_tables_fails_closed(tmp_path):
+    root = write_migrations(tmp_path / "migrations", ("001_initial.sql", "SELECT 1;"))
+    conn = FakeConnection(existing_tables=True)
+    conn.ledger_exists = True
+    with pytest.raises(MigrationError, match="ledger exists but is empty"):
+        run_migrations(conn, root, apply=True)
+    assert conn.executed_sql == []
+    assert conn.ledger == []
+
+
 def test_gapped_ledger_fails_closed_before_replaying_migrations(tmp_path):
     root = write_migrations(tmp_path / "migrations",
         ("001_initial.sql", "SELECT 1;"),
