@@ -789,3 +789,8 @@ The preflight now compares each explicit source index's table, uniqueness, acces
 ## Explicit index expression/predicate parity — 2026-10-23
 
 Extended source and PostgreSQL catalog index inventories to compare normalized expression SQL and partial-predicate SQL in addition to index table, uniqueness, access method, key count, and expression/partial flags. Normalization covers the canonical A1.24 CAST-to-bigint expression and PostgreSQL's IN-list-to-ANY predicate display for user_attrs_abs_exp_date. Any expression/predicate drift now contributes to index_definition_drift and blocks passes_audited_checks. Parser tests cover both canonical and PostgreSQL-rendered forms. This is conservative normalization for the source's current index forms, not a general SQL equivalence engine.
+
+
+## Preflight partial-schema robustness — 2026-10-23
+
+PR #17 adds guards around all source-seed and marker probes (`defs`, `ibs_states`, system-admin row, GOD permission row, and seed markers). If a target table exists but lacks required columns, the preflight skips the unsafe query and reports the existing missing/drift evidence rather than crashing with a database undefined-column error. Regression tests cover incomplete seed schemas. CI result for this increment: pending at time of note; do not claim verified until both matrix workflows pass.
