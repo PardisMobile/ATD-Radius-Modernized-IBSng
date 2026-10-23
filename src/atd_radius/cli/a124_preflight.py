@@ -684,6 +684,7 @@ def run_preflight(archive_path: str, dsn: str, schema: str = "public") -> dict[s
             "rules": target["rules"],
             "triggers": target["triggers"],
             "sequence_states": target["sequence_states"],
+            "sequence_owners": target["sequence_owners"],
             "note": (
                 "Read-only target-side evidence for review; these objects are inventoried "
                 "but are not yet semantically compared with canonical A1.24 definitions."
@@ -698,7 +699,7 @@ def run_preflight(archive_path: str, dsn: str, schema: str = "public") -> dict[s
         },
         "scope": (
             "Read-only readiness evidence only. Does not compare every column type/default, "
-            "constraint/rule/trigger parity (target-side evidence is included), function bodies, plugin objects, all data, "
+            "constraint/trigger parity (target-side evidence is included), plugin objects, all data, "
             "sequence values, backup/restore fidelity, or runtime behavior. A clean result "
             "does not authorize migration-ledger stamping or production cutover."
         ),
