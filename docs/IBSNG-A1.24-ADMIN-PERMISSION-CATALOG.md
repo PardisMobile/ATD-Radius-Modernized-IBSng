@@ -1,6 +1,6 @@
 # IBSng A1.24 Administrator Permission Inventory
 
-**Authority:** the canonical archive at `Source of Truth/IBSng-A1.24.tar.bz2` (SHA-256 `c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839614bb9349d18a8`).
+**Authority:** the canonical archive at `Source of Truth/IBSng-A1.24.tar.bz2` (SHA-256 `c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839bb9349d18a8`).
 
 This is a source-derived structural inventory of all 51 modules under `IBSng/core/admin/perms/`. The source-audit workflow extracts each module's registered permission name, value-type base, declared dependencies and whether it overrides `check()`. Structural inventory is not a substitute for tracing each permission's consumers or claiming complete RBAC parity.
 
@@ -38,7 +38,7 @@ Value types:
 | CLEAR USER | All/Restricted | SEE ONLINE USERS | Not implemented |
 | DELETE ADMIN | No value | SEE ADMIN INFO | Implemented for native admin deletion with full A1.24 side effects, system-account protection, IAS type-6 event and same-transaction operational audit |
 | DELETE REPORTS | No value | — | Not implemented |
-| DELETE USER | All/Restricted | GET USER INFORMATION | Registered; delete API not implemented |
+| DELETE USER | All/Restricted | GET USER INFORMATION | Partial: native transactional deletion/refund/IAS/audit and online/login-in-progress guard implemented; mailbox cleanup transport remains unconfigured and is reported as pending |
 | GET RAS INFORMATION | No value | LIST RAS | Implemented for RAS API |
 | GET USER INFORMATION | All/Restricted | — | Implemented for user list/detail owner scope |
 | GOD | No value | — | Implemented as source-style bypass within registered evaluators |

@@ -1,6 +1,6 @@
 # LATEST HANDOFF — 2026-10-23
 
-Active work branch: `feat/a124-semantic-object-inventory`; current documentation head at the time of this note is `72d6fc8e068d01a919664b7f83f5bf29280ab1a3`. The latest code checkpoint, `3cb3faac5cb07f771fc9e49a160971199ec0f245`, passed Python-only CI and PostgreSQL-backed CI on Python 3.11 and 3.12. Documentation-only commits followed; their CI must be checked separately. Do not treat the older `main` / 2026-10-22 opening checkpoint below as the current branch/head.
+Active work branch: `feat/a124-semantic-object-inventory`; latest code checkpoint: `e73b146bfc4434a58d2f257a81b1879b4f9c89fe`. Python-only and full PostgreSQL-backed CI both passed on this checkpoint (Python 3.11 and 3.12). It adds exact-request cleanup for rejected Access-Requests so a rejection cannot leave that request's login reservation consuming MultiLogin capacity. Do not treat the older `main` / 2026-10-22 opening checkpoint below as the current branch/head.
 
 The complete 71-file Markdown content review is in `docs/MARKDOWN-CONTENT-AUDIT-2026-10-23.md`. Key recent code work: A1.24-compatible MS-CHAPv2 AuthenticatorResponse password conversion with non-ASCII regression coverage; MultiLogin user-limit precedence and incoming/existing RAS capability semantics with false-like value normalization. This is not full A1.24 parity and does not establish live NAS interoperability.
 
@@ -21,6 +21,10 @@ The charge-limit enforcement path now acquires the durable session advisory lock
 
 This improves cross-worker idempotency but does **not** prove the NAS/VoIP provider has removed the session. Provider interoperability, reconciliation after a provider timeout/ambiguous result, and full end-to-end A1.24 parity remain release gates.
 
+## Reservation lifecycle note — 2026-10-23
+
+A rejected Access-Request now deletes only its exact packet-derived login reservation. Regression coverage checks the repository delete key and the runtime rejection path. This does not solve accepted reservations that never receive Accounting-Start/Interim/Stop; those still require a safe reconciliation strategy that cannot mistakenly evict a genuinely online user.
+
 ## Remaining release blockers
 
 1. Complete the source-to-implementation-to-test compatibility matrix across all A1.24 subsystems; do not infer parity from API/model presence.
@@ -35,7 +39,7 @@ This improves cross-worker idempotency but does **not** prove the NAS/VoIP provi
 - Administrator permission editing and native administrator deletion are implemented. Administrator deletion code/test commit `3177193269ce94b36ae29e336b0f790820d6af17` passed full CI on Python 3.11 and 3.12: **636 passed, 2 warnings** per matrix job; compile, Ruff, PHP syntax and PostgreSQL integration all passed. Python-only workflow passed **634 passed, 2 skipped, 2 warnings**; its two skips are UDP/PostgreSQL integration tests not configured in that workflow. Full CI: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38062380412 ; Python-only: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38062380419.
 
 - Canonical behavior source: `Source of Truth/IBSng-A1.24.tar.bz2`
-- SHA-256: `c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839614bb9349d18a8`
+- SHA-256: `c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839bb9349d18a8`
 - Main CI passed on Python 3.11 and 3.12: **607 passed, 2 warnings** per matrix job. This includes compile, Ruff, PHP syntax and PostgreSQL-backed integration tests.
 - Main CI run: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38003678498
 - Lightweight Python run: **605 passed, 2 skipped, 2 warnings**. Its two skips are live UDP/PostgreSQL integration tests because `ATD_TEST_DATABASE_URL` is not configured in that workflow. https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38003678515
