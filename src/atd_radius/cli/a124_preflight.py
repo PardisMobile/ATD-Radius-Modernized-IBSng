@@ -296,6 +296,44 @@ def _target_inventory(conn: psycopg.Connection, schema: str) -> dict[str, Any]:
         WHERE n.nspname=%s
         """, (schema,)
     ).fetchall()
+    constraints = conn.execute(
+        """
+        SELECT c.relname, co.conname, co.contype, pg_get_constraintdef(co.oid, true)
+        FROM pg_constraint co
+        JOIN pg_class c ON c.oid=co.conrelid
+        JOIN pg_namespace n ON n.oid=c.relnamespace
+        WHERE n.nspname=%s
+        ORDER BY c.relname, co.conname
+        """, (schema,)
+    ).fetchall()
+    rules = conn.execute(
+        """
+        SELECT c.relname, r.rulename, pg_get_ruledef(r.oid, true)
+        FROM pg_rewrite r
+        JOIN pg_class c ON c.oid=r.ev_class
+        JOIN pg_namespace n ON n.oid=c.relnamespace
+        WHERE n.nspname=%s AND r.rulename <> '_RETURN'
+        ORDER BY c.relname, r.rulename
+        """, (schema,)
+    ).fetchall()
+    triggers = conn.execute(
+        """
+        SELECT c.relname, t.tgname, pg_get_triggerdef(t.oid, true)
+        FROM pg_trigger t
+        JOIN pg_class c ON c.oid=t.tgrelid
+        JOIN pg_namespace n ON n.oid=c.relnamespace
+        WHERE n.nspname=%s AND NOT t.tgisinternal
+        ORDER BY c.relname, t.tgname
+        """, (schema,)
+    ).fetchall()
+    sequence_states = conn.execute(
+        """
+        SELECT sequencename, start_value, min_value, max_value, increment_by,
+               cycle, cache_size, last_value
+        FROM pg_sequences WHERE schemaname=%s
+        ORDER BY sequencename
+        """, (schema,)
+    ).fetchall()
     return {
         "tables": {row[0]: set() for row in tables},
         "columns": {(row[0], row[1]) for row in columns},
@@ -307,6 +345,23 @@ def _target_inventory(conn: psycopg.Connection, schema: str) -> dict[str, Any]:
         "sequences": {row[0] for row in sequences},
         "functions": {row[0] for row in functions},
         "function_signatures": {(row[0], tuple(_normalize_type(arg) for arg in _split_top_level(row[1]) if arg.strip())) for row in functions},
+        "constraints": [
+            {"table": row[0], "name": row[1], "type": row[2], "definition": row[3]}
+            for row in constraints
+        ],
+        "rules": [
+            {"table": row[0], "name": row[1], "definition": row[2]}
+            for row in rules
+        ],
+        "triggers": [
+            {"table": row[0], "name": row[1], "definition": row[2]}
+            for row in triggers
+        ],
+        "sequence_states": [
+            {"name": row[0], "start": row[1], "minimum": row[2], "maximum": row[3],
+             "increment": row[4], "cycle": row[5], "cache": row[6], "last_value": row[7]}
+            for row in sequence_states
+        ],
     }
 
 
@@ -432,6 +487,16 @@ def run_preflight(archive_path: str, dsn: str, schema: str = "public") -> dict[s
             },
             "column_definition_drift": column_definition_drift,
         },
+        "target_semantic_objects": {
+            "constraints": target["constraints"],
+            "rules": target["rules"],
+            "triggers": target["triggers"],
+            "sequence_states": target["sequence_states"],
+            "note": (
+                "Read-only target-side evidence for review; these objects are inventoried "
+                "but are not yet semantically compared with canonical A1.24 definitions."
+            ),
+        },
         "native_data": {
             "definition_count_expected": len(expected_defs),
             "definition_count_found": len(actual_defs),
@@ -441,7 +506,7 @@ def run_preflight(archive_path: str, dsn: str, schema: str = "public") -> dict[s
         },
         "scope": (
             "Read-only readiness evidence only. Does not compare every column type/default, "
-            "constraint or rule definition, function body/signature, plugin object, all data, "
+            "constraint/rule/trigger parity (target-side evidence is included), function bodies, plugin objects, all data, "
             "sequence values, backup/restore fidelity, or runtime behavior. A clean result "
             "does not authorize migration-ledger stamping or production cutover."
         ),
