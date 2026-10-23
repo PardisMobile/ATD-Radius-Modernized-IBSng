@@ -326,6 +326,18 @@ def source_inventory(tables_sql: str, functions_sql: str, initial_sql: str = "")
     return {"tables": tables, "column_specs": column_specs, "indexes": indexes, "sequences": sequences, "functions": functions, "function_signatures": function_signatures, "function_body_sha256": function_body_sha256, "sequence_owners": sequence_owners, "rules": rules}
 
 
+def _seed_values_equal(expected: Any, actual: Any, column_spec: dict[str, Any] | None = None) -> bool:
+    # PostgreSQL CHAR(n) blank-pads values; compare the logical fixed-char value.
+    if (
+        column_spec
+        and str(column_spec.get("type", "")).startswith("character(")
+        and isinstance(expected, str)
+        and isinstance(actual, str)
+    ):
+        return expected.rstrip() == actual.rstrip()
+    return expected == actual
+
+
 def _sql_literal_value(value: str) -> Any:
     token = value.strip()
     if len(token) >= 2 and token[0] == "'" and token[-1] == "'":
@@ -755,7 +767,10 @@ def run_preflight(archive_path: str, dsn: str, schema: str = "public") -> dict[s
         actual_admin_seed = dict(zip(admin_columns, admin_row, strict=True)) if admin_row is not None else {}
         admin_seed_drift = sorted(
             column for column, expected in expected_admin_seed.items()
-            if column not in actual_admin_seed or actual_admin_seed[column] != expected
+            if column not in actual_admin_seed
+            or not _seed_values_equal(
+                expected, actual_admin_seed[column], source["column_specs"].get(("admins", column))
+            )
         )
         god_columns = list(expected_god_seed)
         god_row = conn.execute(
