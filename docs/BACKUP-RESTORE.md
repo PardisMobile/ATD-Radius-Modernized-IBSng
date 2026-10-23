@@ -1,6 +1,6 @@
 # PostgreSQL backup and restore
 
-`atd-radius-backup` is an operator-invoked backup tool. It uses PostgreSQL's `pg_dump` custom archive format and validates the archive with `pg_restore --list`. It writes a SHA-256 manifest beside the archive and refuses to overwrite an existing backup.
+`atd-radius-backup` is an operator-invoked backup tool. It uses PostgreSQL's `pg_dump` custom archive format and validates the archive with `pg_restore --list`. It writes a SHA-256 manifest beside the archive and refuses to overwrite an existing backup. Both files are staged with private permissions and published without replacing paths that appear concurrently; a failed sidecar publication removes the archive created by that attempt.
 
 ## Create and verify
 
