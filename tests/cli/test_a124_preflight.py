@@ -6,6 +6,8 @@ import pytest
 from atd_radius.cli.a124_preflight import (
     CANONICAL_A124_SHA256,
     _defs_expected,
+    _normalize_default,
+    _source_column_spec,
     source_inventory,
 )
 
@@ -60,3 +62,29 @@ def test_defs_parser_handles_full_native_shape():
     sql = """INSERT INTO defs (name,value) VALUES ('A','S''iptables''\np0\n.') ;
 INSERT INTO defs (name,value) VALUES ('B','S\\'tc\\'\np0\n.') ;"""
     assert _defs_expected(sql) == {"A": "S'iptables'\np0\n.", "B": "S'tc'\np0\n."}
+
+
+
+def test_source_column_spec_covers_type_default_nullability_and_serial():
+    assert _source_column_spec("integer primary key") == {
+        "type": "integer", "nullable": False, "default": None, "serial": False
+    }
+    assert _source_column_spec("boolean DEFAULT 't'") == {
+        "type": "boolean", "nullable": True, "default": "true", "serial": False
+    }
+    assert _source_column_spec("numeric(12,2) default 0") == {
+        "type": "numeric(12,2)", "nullable": True, "default": "0", "serial": False
+    }
+    assert _source_column_spec("serial primary key") == {
+        "type": "integer", "nullable": False, "default": None, "serial": True
+    }
+    assert _normalize_default("'t'::boolean") == "true"
+
+
+def test_source_inventory_captures_table_level_primary_key():
+    result = source_inventory(
+        "CREATE TABLE composite (left_id integer, right_id integer, PRIMARY KEY (left_id, right_id));",
+        "CREATE FUNCTION f() RETURNS integer AS 'x';",
+    )
+    assert result["column_specs"][("composite", "left_id")]["nullable"] is False
+    assert result["column_specs"][("composite", "right_id")]["nullable"] is False
