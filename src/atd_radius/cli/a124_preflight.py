@@ -492,6 +492,10 @@ def source_inventory(tables_sql: str, functions_sql: str, initial_sql: str = "")
         key: hashlib.sha256(body.encode("utf-8")).hexdigest()
         for key, body in function_definitions.items()
     }
+    function_body_semantic_sha256 = {
+        key: hashlib.sha256(re.sub(r"\s+", "", body).lower().encode("utf-8")).hexdigest()
+        for key, body in function_definitions.items()
+    }
     sequence_owners = {
         f"{table}_{column}_seq": {"table": table, "column": column}
         for (table, column), spec in column_specs.items() if spec["serial"]
@@ -499,7 +503,7 @@ def source_inventory(tables_sql: str, functions_sql: str, initial_sql: str = "")
     rules = _source_rules(initial_sql) if initial_sql.strip() else {}
     constraint_signatures = _source_constraint_signatures(tables_sql)
     index_details = _source_index_details(tables_sql)
-    return {"tables": tables, "column_specs": column_specs, "indexes": indexes, "index_details": index_details, "sequences": sequences, "functions": functions, "function_signatures": function_signatures, "function_body_sha256": function_body_sha256, "sequence_owners": sequence_owners, "constraint_signatures": constraint_signatures, "rules": rules}
+    return {"tables": tables, "column_specs": column_specs, "indexes": indexes, "index_details": index_details, "sequences": sequences, "functions": functions, "function_signatures": function_signatures, "function_body_sha256": function_body_sha256, "function_body_semantic_sha256": function_body_semantic_sha256, "sequence_owners": sequence_owners, "constraint_signatures": constraint_signatures, "rules": rules}
 
 
 def _seed_values_equal(expected: Any, actual: Any, column_spec: dict[str, Any] | None = None) -> bool:
@@ -835,13 +839,7 @@ def _sequence_high_water_drift(
     return drift
 
 
-def run_preflight(
-    archive_path: str,
-    dsn: str | None = None,
-    schema: str = "public",
-    *,
-    connection: psycopg.Connection | None = None,
-) -> dict[str, Any]:
+def _read_canonical_archive(archive_path: str) -> tuple[str, dict[str, str]]:
     digest = hashlib.sha256(Path(archive_path).read_bytes()).hexdigest()
     if digest != CANONICAL_A124_SHA256:
         raise ValueError(
@@ -860,6 +858,17 @@ def run_preflight(
             if stream is None:
                 raise ValueError(f"Cannot read archive member {filename}")
             contents[filename] = stream.read().decode("utf-8")
+    return digest, contents
+
+
+def run_preflight(
+    archive_path: str,
+    dsn: str | None = None,
+    schema: str = "public",
+    *,
+    connection: psycopg.Connection | None = None,
+) -> dict[str, Any]:
+    digest, contents = _read_canonical_archive(archive_path)
 
     source = source_inventory(
         contents["IBSng/db/tables.sql"],
