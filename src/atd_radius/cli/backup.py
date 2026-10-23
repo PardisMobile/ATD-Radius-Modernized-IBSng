@@ -81,6 +81,7 @@ def create_backup(output: Path) -> dict[str, object]:
         }
         manifest_tmp = manifest_path.with_suffix(manifest_path.suffix + ".tmp")
         manifest_tmp.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+        manifest_tmp.chmod(0o600)
         os.replace(manifest_tmp, manifest_path)
         return manifest
     finally:
