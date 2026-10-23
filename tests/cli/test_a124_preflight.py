@@ -288,3 +288,16 @@ def test_index_sql_normalization_matches_cast_and_postgresql_any_rewrites():
     assert _normalize_index_sql("attr_name IN ('abs_exp_date', 'first_login')") == (
         "attr_name=any(array['abs_exp_date','first_login'])"
     )
+
+
+
+def test_source_index_inventory_normalizes_canonical_cast_and_partial_predicate():
+    indexes = _source_index_details("""
+      CREATE INDEX user_attrs_abs_exp_date
+      ON user_attrs (attr_name, (cast(attr_value as bigint)))
+      WHERE attr_name IN ('abs_exp_date', 'first_login');
+    """)
+    assert indexes["user_attrs_abs_exp_date"]["expression_sql"] == "attr_value"
+    assert indexes["user_attrs_abs_exp_date"]["predicate_sql"] == (
+        "attr_name=any(array['abs_exp_date','first_login'])"
+    )
