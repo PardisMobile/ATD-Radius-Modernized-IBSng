@@ -22,6 +22,7 @@ from atd_radius.cli.a124_preflight import (
     _normalize_check_expression,
     _normalize_index_sql,
     _has_required_columns,
+    _native_table_trigger_drift,
 )
 
 
@@ -323,3 +324,14 @@ def test_source_index_inventory_normalizes_canonical_cast_and_partial_predicate(
     assert indexes["user_attrs_abs_exp_date"]["predicate_sql"] == (
         "attr_name=any(array['abs_exp_date','first_login'])"
     )
+
+
+def test_native_table_trigger_drift_flags_only_triggers_on_a124_tables():
+    triggers = [
+        {"table": "users", "name": "audit_users", "definition": "CREATE TRIGGER audit_users ..."},
+        {"table": "atd_radius_live_sessions", "name": "extension_trigger", "definition": "CREATE TRIGGER extension_trigger ..."},
+    ]
+    assert _native_table_trigger_drift({"users", "admins"}, triggers) == [
+        {"table": "users", "name": "audit_users", "definition": "CREATE TRIGGER audit_users ..."}
+    ]
+    assert _native_table_trigger_drift({"users", "admins"}, []) == []
