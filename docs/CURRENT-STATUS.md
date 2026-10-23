@@ -779,3 +779,8 @@ The preflight now parses the complete positional system-admin seed row using the
 ## Relational constraint signature parity — 2026-10-23
 
 Added source-derived PK, UNIQUE, FK, and CHECK constraint signatures from canonical A1.24 tables.sql and compares them with PostgreSQL catalog semantics, including ordered local/referenced columns and normalized check expressions. Missing or extra signatures now block passes_audited_checks. Unit tests cover inline and table-level constraints; PostgreSQL acceptance tests compare a representative schema against the catalog. Full index-definition and trigger-body parity remain open.
+
+
+## Explicit index shape parity — 2026-10-23
+
+The preflight now compares each explicit source index's table, uniqueness, access method, key count, expression-index presence, and partial-predicate presence against PostgreSQL catalog metadata. This detects shape drift even when index names match. Full expression and predicate text comparison remains open because PostgreSQL canonicalizes some A1.24 expressions differently from their source SQL; it must be normalized conservatively and tested against the canonical schema before being used as an adoption gate.
