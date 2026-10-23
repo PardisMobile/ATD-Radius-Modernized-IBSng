@@ -29,3 +29,8 @@ This is the master parity checklist. Implemented means ATD code exists; Verified
 
 ## Completion rule
 The project is complete only when every required subsystem reaches Verified and the database parity suite demonstrates that a representative A1.24 backup can be imported without loss of required behavior or data.
+
+
+## Current migration status reconciliation — 2026-10-23
+
+This matrix contains earlier status snapshots; later dated implementation records and `docs/CURRENT-STATUS.md` supersede old “pending” descriptions where a later verified increment exists. The operator-controlled `atd-radius-migrate` runner and read-only `atd-radius-a124-preflight` are implemented, but neither is a lossless importer. Import/adoption still requires full data/plugin parity, manually managed/unowned sequence review, representative verified restore drills, and an explicitly reviewed transactional ledger-baseline procedure. Do not stamp a migration ledger or cut over production from a clean preflight alone. See `docs/MIGRATION-RUNNER.md`, `docs/A1.24-ADOPTION-PREFLIGHT.md`, `docs/BACKUP-RESTORE.md`, and `docs/MARKDOWN-CONTENT-AUDIT-2026-10-23.md`.
