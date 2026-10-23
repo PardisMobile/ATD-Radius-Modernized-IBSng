@@ -8,6 +8,7 @@ prove backup/restore fidelity.
 from __future__ import annotations
 
 import argparse
+from contextlib import nullcontext
 import hashlib
 import json
 import re
@@ -834,7 +835,13 @@ def _sequence_high_water_drift(
     return drift
 
 
-def run_preflight(archive_path: str, dsn: str, schema: str = "public") -> dict[str, Any]:
+def run_preflight(
+    archive_path: str,
+    dsn: str | None = None,
+    schema: str = "public",
+    *,
+    connection: psycopg.Connection | None = None,
+) -> dict[str, Any]:
     digest = hashlib.sha256(Path(archive_path).read_bytes()).hexdigest()
     if digest != CANONICAL_A124_SHA256:
         raise ValueError(
@@ -865,7 +872,13 @@ def run_preflight(archive_path: str, dsn: str, schema: str = "public") -> dict[s
         contents["IBSng/db/initial.sql"], contents["IBSng/db/tables.sql"]
     )
     expected_god_seed = _initial_god_permission_seed(contents["IBSng/db/initial.sql"])
-    with psycopg.connect(dsn) as conn:
+    if connection is None:
+        if dsn is None:
+            raise ValueError("A PostgreSQL DSN or existing connection is required")
+        connection_context = psycopg.connect(dsn)
+    else:
+        connection_context = nullcontext(connection)
+    with connection_context as conn:
         target = _target_inventory(conn, schema)
         source_table_names = set(source["tables"])
         target_table_names = set(target["tables"])
