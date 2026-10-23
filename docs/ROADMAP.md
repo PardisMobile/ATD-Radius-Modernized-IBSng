@@ -493,5 +493,5 @@ Added the operator-controlled `atd-radius-migrate` CLI for clean installs. It va
 
 - [x] Add read-only target-side evidence for constraints, non-internal triggers, rewrite rules, and sequence configuration/current values.
 - [x] Add PostgreSQL acceptance coverage using an isolated schema with representative native object types.
-- [x] Compare the two canonical A1.24 deletion-protection rules against target catalog metadata; compare source-defined stored-function body hashes by identity signature; compare serial sequence ownership and verify owned-sequence high-water marks against MAX(column); compare all seven canonical initial IBS state seed values.
+- [x] Compare the two canonical A1.24 deletion-protection rules against target catalog metadata; compare source-defined stored-function body hashes by identity signature; compare serial sequence ownership and verify owned-sequence high-water marks against MAX(column); compare all seven canonical initial IBS state seed values and every field of the system-admin/GOD seed rows.
 - [ ] Compare remaining constraint/trigger definitions, validate manually managed/unowned sequences and all required data/plugin objects; implement and validate a lossless import/adoption procedure with backup/restore verification before any migration-ledger baseline can be approved.
