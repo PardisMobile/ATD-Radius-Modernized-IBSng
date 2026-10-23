@@ -84,21 +84,28 @@ class MultiLoginPolicy:
             user_id = request.attributes.get("__user_id")
             if user_id not in (None, ""):
                 sessions = tuple(self.active_sessions_provider(int(user_id)))
-        # IBSng increments instances before USER_LOGIN hooks: evaluate the
-        # user limit first, then the RAS capability for an additional session.
-        d=session_policy(_attrs(request),sessions)
-        if not d.allowed and d.reason=="multi_login":
-            return AAAResult(AAAAction.REJECT,reason="MAX_CONCURRENT")
-        ras_multi_login = request.attributes.get("__ras_multi_login_allowed",
-            request.attributes.get("ras_multi_login"))
-        current_ras_disallows = ras_multi_login in (False, "0", "false", "False")
-        # A1.24 checks False in the per-user list of all instance RAS flags,
-        # not only the flag on the incoming request.
-        existing_ras_disallows = any(
-            session.ras_multi_login_allowed is False for session in sessions
+        # A1.24 increments instances before USER_LOGIN hooks and checks the
+        # configured user limit before the accumulated RAS capability list.
+        raw_ras_multi_login = request.attributes.get(
+            "__ras_multi_login_allowed", request.attributes.get("ras_multi_login")
         )
-        if len(sessions) > 0 and (current_ras_disallows or existing_ras_disallows):
-            return AAAResult(AAAAction.REJECT, reason="RAS_DOESNT_ALLOW_MULTILOGIN")
+        current_ras_allowed = None
+        if raw_ras_multi_login is not None:
+            current_ras_allowed = not (
+                raw_ras_multi_login is False
+                or str(raw_ras_multi_login).strip().lower() in {"0", "false"}
+            )
+        decision = session_policy(
+            _attrs(request),
+            sessions,
+            current_ras_multi_login_allowed=current_ras_allowed,
+        )
+        if not decision.allowed:
+            reason = {
+                "multi_login": "MAX_CONCURRENT",
+                "ras_doesnt_allow_multilogin": "RAS_DOESNT_ALLOW_MULTILOGIN",
+            }.get(decision.reason, decision.reason or "POLICY_REJECTED")
+            return AAAResult(AAAAction.REJECT, reason=reason)
         return None
 
 @dataclass(frozen=True,slots=True)
