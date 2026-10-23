@@ -325,6 +325,25 @@ def source_inventory(tables_sql: str, functions_sql: str, initial_sql: str = "")
     return {"tables": tables, "column_specs": column_specs, "indexes": indexes, "sequences": sequences, "functions": functions, "function_signatures": function_signatures, "function_body_sha256": function_body_sha256, "sequence_owners": sequence_owners, "rules": rules}
 
 
+def _initial_state_expectations(initial_sql: str) -> dict[str, str]:
+    """Read every canonical IBS state seed from A1.24 initial.sql."""
+    pattern = re.compile(
+        r"insert\s+into\s+ibs_states\s+values\s*"
+        r"\(\s*'((?:''|\\\\'|[^'])*)'\s*,\s*'((?:''|\\\\'|[^'])*)'\s*\)",
+        re.I | re.S,
+    )
+    values: dict[str, str] = {}
+    for match in pattern.finditer(_strip_line_comments(initial_sql)):
+        name = match.group(1).replace("\\'", "'").replace("''", "'")
+        value = match.group(2).replace("\\'", "'").replace("''", "'")
+        if name in values:
+            raise ValueError(f"Duplicate initial IBS state in canonical initial.sql: {name}")
+        values[name] = value
+    if not values:
+        raise ValueError("No IBS state seeds found in canonical A1.24 initial.sql")
+    return values
+
+
 def _defs_expected(defs_sql: str) -> dict[str, str]:
     # SQL string literals support doubled apostrophes and embedded newlines.
     pattern = re.compile(
@@ -544,6 +563,7 @@ def run_preflight(archive_path: str, dsn: str, schema: str = "public") -> dict[s
         contents["IBSng/db/initial.sql"],
     )
     expected_defs = _defs_expected(contents["IBSng/db/defs.sql"])
+    expected_states = _initial_state_expectations(contents["IBSng/db/initial.sql"])
     with psycopg.connect(dsn) as conn:
         target = _target_inventory(conn, schema)
         source_table_names = set(source["tables"])
@@ -641,6 +661,21 @@ def run_preflight(archive_path: str, dsn: str, schema: str = "public") -> dict[s
             actual_defs = {}
         missing_defs = sorted(set(expected_defs) - set(actual_defs))
         wrong_defs = sorted(name for name in set(expected_defs) & set(actual_defs) if expected_defs[name] != actual_defs[name])
+        if "ibs_states" in target["tables"]:
+            actual_state_rows = conn.execute(
+                sql.SQL("SELECT name, value FROM {} WHERE name = ANY(%s)").format(
+                    sql.Identifier(schema, "ibs_states")
+                ),
+                (list(expected_states),),
+            ).fetchall()
+            actual_states = dict(actual_state_rows)
+        else:
+            actual_states = {}
+        missing_states = sorted(set(expected_states) - set(actual_states))
+        wrong_states = sorted(
+            name for name in set(expected_states) & set(actual_states)
+            if expected_states[name] != actual_states[name]
+        )
         marker_queries = {
             "system_admin": ("admins", "SELECT EXISTS (SELECT 1 FROM {} WHERE admin_id=0 AND username='system')"),
             "system_god_permission": ("admin_perms", "SELECT EXISTS (SELECT 1 FROM {} WHERE admin_id=0 AND perm_name='GOD')"),
@@ -708,6 +743,10 @@ def run_preflight(archive_path: str, dsn: str, schema: str = "public") -> dict[s
             "definition_count_found": len(actual_defs),
             "missing_definitions": missing_defs,
             "definitions_with_value_drift": wrong_defs,
+            "initial_state_count_expected": len(expected_states),
+            "initial_state_count_found": len(actual_states),
+            "missing_initial_states": missing_states,
+            "initial_states_with_value_drift": wrong_states,
             "required_seed_markers": seed_markers,
         },
         "scope": (
@@ -726,6 +765,8 @@ def run_preflight(archive_path: str, dsn: str, schema: str = "public") -> dict[s
         and not inv["sequence_value_drift"]
         and not data["missing_definitions"]
         and not data["definitions_with_value_drift"]
+        and not data["missing_initial_states"]
+        and not data["initial_states_with_value_drift"]
         and not inv["column_definition_drift"]
         and not inv["source_defined_protection_rules"]["missing"]
         and not inv["source_defined_protection_rules"]["extra"]
