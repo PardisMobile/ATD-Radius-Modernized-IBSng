@@ -260,7 +260,11 @@ def _target_inventory(conn: psycopg.Connection, schema: str) -> dict[str, Any]:
     ).fetchall()
     return {
         "tables": {row[0]: set() for row in tables},
-        "columns": {(table, column) for table, column in columns},
+        "columns": {(row[0], row[1]) for row in columns},
+        "column_details": [
+            {"table": row[0], "column": row[1], "type": row[2], "nullable": row[3], "default": row[4]}
+            for row in columns
+        ],
         "indexes": {row[0] for row in indexes},
         "sequences": {row[0] for row in sequences},
         "functions": {row[0] for row in functions},
