@@ -19,7 +19,8 @@ dependencies = [
 
 [project.scripts]
 atd-radius-migrate = "atd_radius.cli.migrate:main"
-atd-radius-a124-preflight = "atd_radius.cli.a124_preflight:main"\natd-radius-backup = "atd_radius.cli.backup:main"
+atd-radius-a124-preflight = "atd_radius.cli.a124_preflight:main"
+atd-radius-backup = "atd_radius.cli.backup:main"
 
 [project.optional-dependencies]
 test = [
