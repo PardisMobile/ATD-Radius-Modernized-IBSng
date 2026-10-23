@@ -11,6 +11,7 @@ from atd_radius.cli.a124_preflight import (
     _source_column_spec,
     source_inventory,
     _source_rules,
+    _function_definitions,
 )
 
 
@@ -121,3 +122,26 @@ def test_source_rule_parser_extracts_native_protection_rules_and_detects_missing
     assert rules["system_admin_god"]["condition"] == "admin_id=0andperm_name='god'"
     with pytest.raises(ValueError, match="No supported source protection rules"):
         _source_rules("SELECT 1;")
+
+
+
+def test_function_body_parser_decodes_postgres_quoted_literals_and_hashes_stably():
+    functions = """
+      CREATE OR REPLACE FUNCTION get_label(text) RETURNS text AS '
+      BEGIN
+        RETURN ''hello '' || $1;
+      END;
+      ' LANGUAGE plpgsql;
+    """
+    bodies = _function_definitions(functions)
+    key = ("get_label", ("text",))
+    assert "RETURN 'hello ' || $1;" in bodies[key]
+    from hashlib import sha256
+    assert len(sha256(bodies[key].encode("utf-8")).hexdigest()) == 64
+
+
+def test_function_body_parser_fails_closed_on_missing_or_unterminated_body():
+    with pytest.raises(ValueError, match="Missing quoted function body"):
+        _function_definitions("CREATE FUNCTION f(integer) RETURNS integer;")
+    with pytest.raises(ValueError, match="Unterminated quoted function body"):
+        _function_definitions("CREATE FUNCTION f(integer) RETURNS integer AS 'BEGIN RETURN $1;")
