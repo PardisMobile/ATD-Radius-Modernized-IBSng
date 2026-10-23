@@ -27,8 +27,8 @@ def isolated_inventory_schema():
             "CONSTRAINT sample_parent_fk FOREIGN KEY (parent_id) REFERENCES {}.sample(id))"
         ).format(sql.Identifier(schema), sql.Identifier(schema)))
         conn.execute(sql.SQL("CREATE SEQUENCE {}.standalone_seq START 7 INCREMENT 3").format(sql.Identifier(schema)))
-        conn.execute(sql.SQL("CREATE FUNCTION {}.sample_fn(value integer) RETURNS integer "
-                             "LANGUAGE SQL IMMUTABLE AS 'SELECT value + 1'").format(sql.Identifier(schema)))
+        conn.execute(sql.SQL("CREATE FUNCTION {}.sample_fn(integer) RETURNS integer "
+                             "LANGUAGE SQL IMMUTABLE AS 'SELECT $1 + 1'").format(sql.Identifier(schema)))
         conn.execute(sql.SQL("CREATE FUNCTION {}.sample_trigger_fn() RETURNS trigger "
                              "LANGUAGE plpgsql AS $$ BEGIN RETURN NEW; END $$").format(sql.Identifier(schema)))
         conn.execute(sql.SQL("CREATE TRIGGER sample_touch BEFORE INSERT ON {}.sample "
