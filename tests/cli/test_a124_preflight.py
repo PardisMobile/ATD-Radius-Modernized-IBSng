@@ -18,6 +18,7 @@ from atd_radius.cli.a124_preflight import (
     _initial_god_permission_seed,
     _seed_values_equal,
     _source_constraint_signatures,
+    _source_index_details,
     _normalize_check_expression,
 )
 
@@ -251,3 +252,24 @@ def test_check_expression_normalization_preserves_meaningful_grouping():
     assert _normalize_check_expression("(quantity > 0 AND quantity < 99)") != (
         _normalize_check_expression("quantity > 0 OR quantity < 99")
     )
+
+
+
+def test_source_index_details_captures_unique_partial_expression_and_key_count():
+    indexes = _source_index_details("""
+      CREATE UNIQUE INDEX users_name_idx ON users (username);
+      CREATE INDEX users_active_idx ON users (active, user_id) WHERE active = true;
+      CREATE INDEX users_lower_name_idx ON users ((lower(username)));
+    """)
+    assert indexes["users_name_idx"] == {
+        "table": "users", "unique": True, "partial": False,
+        "expression": False, "key_count": 1, "method": "btree",
+    }
+    assert indexes["users_active_idx"] == {
+        "table": "users", "unique": False, "partial": True,
+        "expression": False, "key_count": 2, "method": "btree",
+    }
+    assert indexes["users_lower_name_idx"] == {
+        "table": "users", "unique": False, "partial": False,
+        "expression": True, "key_count": 1, "method": "btree",
+    }
