@@ -201,6 +201,14 @@ def _function_signatures(functions_sql: str) -> set[tuple[str, tuple[str, ...]]]
         raise ValueError("No function signatures found in canonical A1.24 functions.sql")
     return signatures
 
+def _normalize_rule_condition(condition: str) -> str:
+    """Normalize PostgreSQL's display-only parentheses, whitespace, and common type casts."""
+    normalized = re.sub(r"\s+", "", condition).lower()
+    normalized = re.sub(r"\)::(?:text|integer|bigint|smallint|boolean)\b", ")", normalized)
+    normalized = re.sub(r"::(?:text|integer|bigint|smallint|boolean)\b", "", normalized)
+    return normalized.replace("(", "").replace(")", "")
+
+
 def _source_rules(initial_sql: str) -> dict[str, dict[str, str]]:
     """Extract the two simple, source-defined A1.24 protection rules."""
     cleaned = _strip_line_comments(initial_sql)
@@ -215,7 +223,7 @@ def _source_rules(initial_sql: str) -> dict[str, dict[str, str]]:
         rules[name.lower()] = {
             "event": event.upper(),
             "table": table.lower(),
-            "condition": re.sub(r"[()\s]+", "", condition).lower(),
+            "condition": _normalize_rule_condition(condition),
             "action": "INSTEAD NOTHING",
         }
     if not rules:
@@ -539,7 +547,7 @@ def run_preflight(archive_path: str, dsn: str, schema: str = "public") -> dict[s
             observed = {
                 "event": actual["event"],
                 "table": actual["table"],
-                "condition": re.sub(r"[()\s]+", "", str(actual["condition"] or "")).lower(),
+                "condition": _normalize_rule_condition(str(actual["condition"] or "")),
             }
             for field in ("event", "table", "condition"):
                 if observed[field] != expected[field]:
