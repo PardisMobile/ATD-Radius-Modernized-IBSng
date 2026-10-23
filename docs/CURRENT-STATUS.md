@@ -754,3 +754,8 @@ The read-only adoption preflight now captures target-side PostgreSQL constraint 
 ## A1.24 source-rule parity check — 2026-10-23
 
 Extended the read-only preflight to parse the canonical initial.sql protection rules and compare both native deletion guards against target catalog evidence for presence, event type, target table, and normalized predicate. The check participates in passes_audited_checks, so missing or drifted guards fail --fail-on-drift. Unit coverage covers both A1.24 rule definitions and the parser's fail-closed behavior. This is a narrow semantic comparison, not full constraint/trigger/function parity or approval for adoption.
+
+
+## A1.24 stored-function body parity — 2026-10-23
+
+The preflight now decodes the quoted function bodies from the canonical A1.24 functions.sql, hashes each body, collects PostgreSQL prosrc hashes keyed by function name and identity argument types, and reports body drift for matching signatures. Body drift is included in passes_audited_checks and therefore fails --fail-on-drift. Parser tests cover doubled SQL quotes and malformed/missing bodies. This closes the function-body comparison gap for the source-defined native function set, but not plugin-specific functions, all data parity, sequence ownership/current-value consistency, or backup/restore validation.
