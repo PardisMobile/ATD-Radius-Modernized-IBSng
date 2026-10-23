@@ -487,3 +487,11 @@ Validation: full PostgreSQL CI passed **954 tests, 2 warnings** on Python 3.11 a
 ## Explicit migration runner foundation — 2026-10-23
 
 Added the operator-controlled `atd-radius-migrate` CLI for clean installs. It validates numbered/contiguous migrations, verifies recorded SHA-256 checksums, serializes operators with a PostgreSQL advisory lock, applies pending SQL and ledger records in one transaction, and refuses untracked non-empty databases. Added unit tests for checksum drift, idempotence, rollback, and safe refusal, plus a real PostgreSQL acceptance test applying all eight migrations to an isolated database and verifying rollback of a failed ninth migration. Full CI passed on Python 3.11 and 3.12 (**962 passed, 2 warnings each**); Python-only passed **952 passed, 9 skipped, 2 warnings**. This is not the A1.24 backup importer or rollback automation; the lossless import/adoption and representative backup restore gates remain open.
+
+
+### A1.24 adoption evidence — semantic object inventory
+
+- [x] Add read-only target-side evidence for constraints, non-internal triggers, rewrite rules, and sequence configuration/current values.
+- [x] Add PostgreSQL acceptance coverage using an isolated schema with representative native object types.
+- [ ] Compare these objects semantically against canonical A1.24 source definitions; collect function bodies and verify sequence ownership/current values against data.
+- [ ] Implement and validate a lossless import/adoption procedure with backup/restore verification before any migration-ledger baseline can be approved.
