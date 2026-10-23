@@ -311,7 +311,7 @@ def _normalize_index_sql(expression: str | None) -> str:
         return ""
     normalized = re.sub(r"\s+", "", expression).lower()
     normalized = re.sub(
-        r"cast\(([^()]+)\s+as\s+(smallint|integer|bigint|text|boolean)\)",
+        r"cast\((.+?)as(smallint|integer|bigint|text|boolean)\)",
         r"(\1)::\2",
         normalized,
     )
