@@ -784,3 +784,8 @@ Added source-derived PK, UNIQUE, FK, and CHECK constraint signatures from canoni
 ## Explicit index shape parity — 2026-10-23
 
 The preflight now compares each explicit source index's table, uniqueness, access method, key count, expression-index presence, and partial-predicate presence against PostgreSQL catalog metadata. This detects shape drift even when index names match. Full expression and predicate text comparison remains open because PostgreSQL canonicalizes some A1.24 expressions differently from their source SQL; it must be normalized conservatively and tested against the canonical schema before being used as an adoption gate.
+
+
+## Explicit index expression/predicate parity — 2026-10-23
+
+Extended source and PostgreSQL catalog index inventories to compare normalized expression SQL and partial-predicate SQL in addition to index table, uniqueness, access method, key count, and expression/partial flags. Normalization covers the canonical A1.24 CAST-to-bigint expression and PostgreSQL's IN-list-to-ANY predicate display for user_attrs_abs_exp_date. Any expression/predicate drift now contributes to index_definition_drift and blocks passes_audited_checks. Parser tests cover both canonical and PostgreSQL-rendered forms. This is conservative normalization for the source's current index forms, not a general SQL equivalence engine.
