@@ -21,6 +21,7 @@ from atd_radius.cli.a124_preflight import (
     _source_index_details,
     _normalize_check_expression,
     _normalize_index_sql,
+    _has_required_columns,
 )
 
 
@@ -56,6 +57,14 @@ p0
 INSERT INTO defs (name,value) VALUES ('B','I60
 .') ;"""
     assert _defs_expected(sql) == {"A": "S'iptables'\np0\n.", "B": "I60\n."}
+
+
+def test_seed_queries_fail_closed_when_target_table_columns_are_missing():
+    available = {("admins", "admin_id"), ("admins", "username"), ("admin_perms", "admin_id")}
+    assert _has_required_columns(available, "admins", ["admin_id", "username"])
+    assert not _has_required_columns(available, "admins", ["admin_id", "password"])
+    assert not _has_required_columns(available, "admin_perms", ["admin_id", "perm_name"])
+    assert not _has_required_columns(available, "missing_table", ["id"])
 
 
 def test_canonical_archive_hash_is_pinned():
