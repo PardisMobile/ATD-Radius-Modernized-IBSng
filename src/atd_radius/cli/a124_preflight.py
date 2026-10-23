@@ -13,6 +13,7 @@ import json
 import re
 import sys
 import tarfile
+from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
@@ -325,6 +326,70 @@ def source_inventory(tables_sql: str, functions_sql: str, initial_sql: str = "")
     return {"tables": tables, "column_specs": column_specs, "indexes": indexes, "sequences": sequences, "functions": functions, "function_signatures": function_signatures, "function_body_sha256": function_body_sha256, "sequence_owners": sequence_owners, "rules": rules}
 
 
+def _sql_literal_value(value: str) -> Any:
+    token = value.strip()
+    if len(token) >= 2 and token[0] == "'" and token[-1] == "'":
+        return token[1:-1].replace("\\'", "'").replace("''", "'")
+    if token.upper() == "NULL":
+        return None
+    if token.lower() in {"true", "false"}:
+        return token.lower() == "true"
+    if re.fullmatch(r"[+-]?\d+", token):
+        return int(token)
+    if re.fullmatch(r"[+-]?(?:\d+\.\d*|\d*\.\d+)", token):
+        return Decimal(token)
+    raise ValueError(f"Unsupported literal in canonical A1.24 seed: {token!r}")
+
+
+def _source_table_column_order(tables_sql: str, target_table: str) -> list[str]:
+    for table, body in _table_bodies(tables_sql):
+        if table != target_table:
+            continue
+        columns: list[str] = []
+        for declaration in _split_top_level(body):
+            if not declaration or _CONSTRAINT.match(declaration):
+                continue
+            match = re.match(r"^([a-z_][A-Za-z0-9_$]*)\s+(.+)", declaration, re.I | re.S)
+            if not match:
+                raise ValueError(f"Cannot parse A1.24 column in {table}: {declaration!r}")
+            columns.append(match.group(1).lower())
+        return columns
+    raise ValueError(f"Missing canonical A1.24 table: {target_table}")
+
+
+def _initial_admin_seed(initial_sql: str, tables_sql: str) -> dict[str, Any]:
+    matches = list(re.finditer(
+        r"insert\s+into\s+admins\s+values\s*\((.*?)\)\s*;",
+        _strip_line_comments(initial_sql), re.I | re.S,
+    ))
+    if len(matches) != 1:
+        raise ValueError(f"Expected exactly one canonical admins seed row, found {len(matches)}")
+    columns = _source_table_column_order(tables_sql, "admins")
+    values = [_sql_literal_value(value) for value in _split_top_level(matches[0].group(1))]
+    if len(columns) != len(values):
+        raise ValueError(
+            f"Canonical admins seed has {len(values)} values for {len(columns)} source columns"
+        )
+    return dict(zip(columns, values, strict=True))
+
+
+def _initial_god_permission_seed(initial_sql: str) -> dict[str, Any]:
+    match = re.search(
+        r"insert\s+into\s+admin_perms\s*\(([^)]*)\)\s*values\s*\((.*?)\)\s*;",
+        _strip_line_comments(initial_sql), re.I | re.S,
+    )
+    if match is None:
+        raise ValueError("Missing canonical GOD permission seed in initial.sql")
+    columns = [column.strip().lower() for column in match.group(1).split(",")]
+    values = [_sql_literal_value(value) for value in _split_top_level(match.group(2))]
+    if len(columns) != len(values) or "perm_name" not in columns:
+        raise ValueError("Malformed canonical GOD permission seed in initial.sql")
+    result = dict(zip(columns, values, strict=True))
+    if result["perm_name"] != "GOD":
+        raise ValueError("Canonical admin permission seed is not GOD")
+    return result
+
+
 def _initial_state_expectations(initial_sql: str) -> dict[str, str]:
     """Read every canonical IBS state seed from A1.24 initial.sql."""
     pattern = re.compile(
@@ -564,6 +629,10 @@ def run_preflight(archive_path: str, dsn: str, schema: str = "public") -> dict[s
     )
     expected_defs = _defs_expected(contents["IBSng/db/defs.sql"])
     expected_states = _initial_state_expectations(contents["IBSng/db/initial.sql"])
+    expected_admin_seed = _initial_admin_seed(
+        contents["IBSng/db/initial.sql"], contents["IBSng/db/tables.sql"]
+    )
+    expected_god_seed = _initial_god_permission_seed(contents["IBSng/db/initial.sql"])
     with psycopg.connect(dsn) as conn:
         target = _target_inventory(conn, schema)
         source_table_names = set(source["tables"])
@@ -676,6 +745,30 @@ def run_preflight(archive_path: str, dsn: str, schema: str = "public") -> dict[s
             name for name in set(expected_states) & set(actual_states)
             if expected_states[name] != actual_states[name]
         )
+        admin_columns = list(expected_admin_seed)
+        admin_row = conn.execute(
+            sql.SQL("SELECT {} FROM {} WHERE admin_id=0").format(
+                sql.SQL(", ").join(sql.Identifier(column) for column in admin_columns),
+                sql.Identifier(schema, "admins"),
+            )
+        ).fetchone() if "admins" in target["tables"] else None
+        actual_admin_seed = dict(zip(admin_columns, admin_row, strict=True)) if admin_row is not None else {}
+        admin_seed_drift = sorted(
+            column for column, expected in expected_admin_seed.items()
+            if column not in actual_admin_seed or actual_admin_seed[column] != expected
+        )
+        god_columns = list(expected_god_seed)
+        god_row = conn.execute(
+            sql.SQL("SELECT {} FROM {} WHERE admin_id=0 AND perm_name='GOD'").format(
+                sql.SQL(", ").join(sql.Identifier(column) for column in god_columns),
+                sql.Identifier(schema, "admin_perms"),
+            )
+        ).fetchone() if "admin_perms" in target["tables"] else None
+        actual_god_seed = dict(zip(god_columns, god_row, strict=True)) if god_row is not None else {}
+        god_seed_drift = sorted(
+            column for column, expected in expected_god_seed.items()
+            if column not in actual_god_seed or actual_god_seed[column] != expected
+        )
         marker_queries = {
             "system_admin": ("admins", "SELECT EXISTS (SELECT 1 FROM {} WHERE admin_id=0 AND username='system')"),
             "system_god_permission": ("admin_perms", "SELECT EXISTS (SELECT 1 FROM {} WHERE admin_id=0 AND perm_name='GOD')"),
@@ -747,6 +840,8 @@ def run_preflight(archive_path: str, dsn: str, schema: str = "public") -> dict[s
             "initial_state_count_found": len(actual_states),
             "missing_initial_states": missing_states,
             "initial_states_with_value_drift": wrong_states,
+            "system_admin_seed_fields_with_drift": admin_seed_drift,
+            "system_god_permission_seed_fields_with_drift": god_seed_drift,
             "required_seed_markers": seed_markers,
         },
         "scope": (
@@ -767,6 +862,8 @@ def run_preflight(archive_path: str, dsn: str, schema: str = "public") -> dict[s
         and not data["definitions_with_value_drift"]
         and not data["missing_initial_states"]
         and not data["initial_states_with_value_drift"]
+        and not data["system_admin_seed_fields_with_drift"]
+        and not data["system_god_permission_seed_fields_with_drift"]
         and not inv["column_definition_drift"]
         and not inv["source_defined_protection_rules"]["missing"]
         and not inv["source_defined_protection_rules"]["extra"]
