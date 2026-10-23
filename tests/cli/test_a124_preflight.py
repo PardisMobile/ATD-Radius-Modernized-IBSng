@@ -13,6 +13,7 @@ from atd_radius.cli.a124_preflight import (
     _source_rules,
     _normalize_rule_condition,
     _function_definitions,
+    _initial_state_expectations,
 )
 
 
@@ -154,3 +155,24 @@ def test_rule_condition_normalization_handles_catalog_parentheses_and_type_casts
     assert _normalize_rule_condition("((admin_id = 0) AND (perm_name = 'GOD'::text))") == (
         "admin_id=0andperm_name='god'"
     )
+
+
+
+def test_initial_state_parser_captures_every_canonical_state_seed():
+    initial_sql = """
+      INSERT INTO ibs_states VALUES ('MIDNIGHT_JOBS','0');
+      INSERT INTO ibs_states VALUES ('LOWLOAD_JOBS','0');
+      INSERT INTO ibs_states VALUES ('AUTO_CLEAN_CONNECTION_LOG','0');
+      INSERT INTO ibs_states VALUES ('AUTO_CLEAN_CREDIT_CHANGE','0');
+      INSERT INTO ibs_states VALUES ('AUTO_CLEAN_USER_AUDIT_LOG','0');
+      INSERT INTO ibs_states VALUES ('AUTO_CLEAN_SNAPSHOTS','0');
+      INSERT INTO ibs_states VALUES ('AUTO_CLEAN_WEB_ANALYZER_LOG','1209600'); -- days
+    """
+    states = _initial_state_expectations(initial_sql)
+    assert len(states) == 7
+    assert states["AUTO_CLEAN_WEB_ANALYZER_LOG"] == "1209600"
+    with pytest.raises(ValueError, match="Duplicate initial IBS state"):
+        _initial_state_expectations(
+            "INSERT INTO ibs_states VALUES ('MIDNIGHT_JOBS','0'); "
+            "INSERT INTO ibs_states VALUES ('MIDNIGHT_JOBS','1');"
+        )
