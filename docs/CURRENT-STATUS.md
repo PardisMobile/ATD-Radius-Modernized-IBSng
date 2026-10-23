@@ -736,3 +736,11 @@ A clean-install migration CLI is now implemented on PR branch `feat/safe-migrati
 - Never runs automatically at service startup; documented in `docs/MIGRATION-RUNNER.md`.
 
 This closes the missing operator-controlled migration-runner mechanism for clean installs, **not** the lossless A1.24 data importer/adoption workflow, backup/restore automation, or verified rollback. Tests cover ordering, checksums, idempotence, unsafe adoption refusal, and rollback after a failed migration. A real PostgreSQL acceptance test applies all eight migrations in an isolated database, verifies the ledger and idempotence, then confirms a deliberately failing ninth migration leaves no schema or ledger residue. Full CI passed on Python 3.11 and 3.12 with **962 passed, 2 warnings per version**; Python-only passed **952 passed, 9 skipped, 2 warnings**. Ruff, compilation, and PHP syntax checks passed. See PR #14.
+
+
+
+## Migration-ledger corruption safety — 2026-10-23
+
+The explicit migration runner now fails closed if the recorded versions are not a contiguous prefix from `001`, or if the ledger is empty while application tables exist. This prevents replaying an old migration into a later schema after ledger damage. Added unit and real PostgreSQL acceptance tests for both cases; the acceptance tests use an isolated disposable database and verify no schema/ledger mutation on refusal.
+
+Full PostgreSQL CI passed on Python 3.11 and 3.12: **966 passed, 2 warnings per version** (run [39939341755](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/39939341755)). Python-only CI passed **954 passed, 12 skipped, 2 warnings** (run [39939341712](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/39939341712)). This is still not the A1.24 data importer/adoption workflow.
