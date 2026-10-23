@@ -162,6 +162,45 @@ def _source_column_spec(declaration: str, table_primary_key: bool = False) -> di
         "serial": serial_type,
     }
 
+
+def _normalize_type(value: str) -> str:
+    normalized = re.sub(r"\s+", " ", value.strip().lower())
+    aliases = {
+        "int": "integer", "int4": "integer", "int8": "bigint", "int2": "smallint",
+        "bool": "boolean", "timestamp": "timestamp without time zone",
+        "time": "time without time zone",
+    }
+    return aliases.get(normalized, normalized)
+
+
+def _function_signatures(functions_sql: str) -> set[tuple[str, tuple[str, ...]]]:
+    cleaned = _strip_line_comments(functions_sql)
+    signatures: set[tuple[str, tuple[str, ...]]] = set()
+    for match in _CREATE_FUNCTION.finditer(cleaned):
+        depth, quote, i, start = 1, None, match.end(), match.end()
+        while i < len(cleaned) and depth:
+            ch = cleaned[i]
+            if quote:
+                if ch == quote:
+                    if i + 1 < len(cleaned) and cleaned[i + 1] == quote:
+                        i += 1
+                    else:
+                        quote = None
+            elif ch == "'":
+                quote = ch
+            elif ch == "(":
+                depth += 1
+            elif ch == ")":
+                depth -= 1
+            i += 1
+        if depth:
+            raise ValueError(f"Unterminated function argument list for {match.group(1)}")
+        args = tuple(_normalize_type(arg) for arg in _split_top_level(cleaned[start:i - 1]) if arg.strip())
+        signatures.add((match.group(1).lower(), args))
+    if not signatures:
+        raise ValueError("No function signatures found in canonical A1.24 functions.sql")
+    return signatures
+
 def source_inventory(tables_sql: str, functions_sql: str) -> dict[str, Any]:
     tables: dict[str, set[str]] = {}
     sequences = {m.group(1).lower() for m in _CREATE_SEQUENCE.finditer(_strip_line_comments(tables_sql))}
@@ -189,10 +228,9 @@ def source_inventory(tables_sql: str, functions_sql: str) -> dict[str, Any]:
             if _SERIAL.match(definition):
                 sequences.add(f"{table}_{name}_seq")
         tables[table] = columns
-    functions = {m.group(1).lower() for m in _CREATE_FUNCTION.finditer(_strip_line_comments(functions_sql))}
-    if not functions:
-        raise ValueError("No functions found in canonical A1.24 functions.sql")
-    return {"tables": tables, "column_specs": column_specs, "indexes": indexes, "sequences": sequences, "functions": functions}
+    function_signatures = _function_signatures(functions_sql)
+    functions = {name for name, _ in function_signatures}
+    return {"tables": tables, "column_specs": column_specs, "indexes": indexes, "sequences": sequences, "functions": functions, "function_signatures": function_signatures}
 
 
 def _defs_expected(defs_sql: str) -> dict[str, str]:
@@ -253,7 +291,7 @@ def _target_inventory(conn: psycopg.Connection, schema: str) -> dict[str, Any]:
     ).fetchall()
     functions = conn.execute(
         """
-        SELECT DISTINCT p.proname
+        SELECT DISTINCT p.proname, pg_get_function_identity_arguments(p.oid)
         FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
         WHERE n.nspname=%s
         """, (schema,)
@@ -268,6 +306,7 @@ def _target_inventory(conn: psycopg.Connection, schema: str) -> dict[str, Any]:
         "indexes": {row[0] for row in indexes},
         "sequences": {row[0] for row in sequences},
         "functions": {row[0] for row in functions},
+        "function_signatures": {(row[0], tuple(_normalize_type(arg) for arg in _split_top_level(row[1]) if arg.strip())) for row in functions},
     }
 
 
@@ -325,6 +364,7 @@ def run_preflight(archive_path: str, dsn: str, schema: str = "public") -> dict[s
         source_indexes, target_indexes = set(source["indexes"]), target["indexes"]
         source_sequences, target_sequences = set(source["sequences"]), target["sequences"]
         source_functions, target_functions = set(source["functions"]), target["functions"]
+        source_function_signatures, target_function_signatures = source["function_signatures"], target["function_signatures"]
         required_data_tables = {"defs", "admins", "admin_perms", "ibs_states"}
         present_data_tables = set()
         for table_name in required_data_tables:
@@ -386,6 +426,10 @@ def run_preflight(archive_path: str, dsn: str, schema: str = "public") -> dict[s
             "explicit_indexes": _set_diff(source_indexes, target_indexes),
             "sequences": _set_diff(source_sequences, target_sequences),
             "function_names": _set_diff(source_functions, target_functions),
+            "function_signatures": {
+                "missing": sorted(f"{name}({', '.join(args)})" for name, args in source_function_signatures - target_function_signatures),
+                "extra": sorted(f"{name}({', '.join(args)})" for name, args in target_function_signatures - source_function_signatures),
+            },
             "column_definition_drift": column_definition_drift,
         },
         "native_data": {
@@ -405,7 +449,7 @@ def run_preflight(archive_path: str, dsn: str, schema: str = "public") -> dict[s
     inv = report["inventory"]
     data = report["native_data"]
     report["passes_audited_checks"] = (
-        not any(inv[key]["missing"] or inv[key]["extra"] for key in ("tables", "columns", "explicit_indexes", "sequences", "function_names"))
+        not any(inv[key]["missing"] or inv[key]["extra"] for key in ("tables", "columns", "explicit_indexes", "sequences", "function_names", "function_signatures"))
         and not data["missing_definitions"]
         and not data["definitions_with_value_drift"]
         and not inv["column_definition_drift"]
