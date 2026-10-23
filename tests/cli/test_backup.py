@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -68,7 +69,6 @@ def test_connection_credentials_are_scoped_to_child_environment(monkeypatch):
     assert env["PGUSER"] == "backup_user"
     assert env["PGPASSWORD"] == "top-secret"
     assert env["PGSSLMODE"] == "require"
-    import os
     assert "PGPASSWORD" not in os.environ
 
 
