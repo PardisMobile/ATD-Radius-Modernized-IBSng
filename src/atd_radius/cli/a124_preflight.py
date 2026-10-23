@@ -210,6 +210,27 @@ def _normalize_rule_condition(condition: str) -> str:
     return normalized.replace("(", "").replace(")", "")
 
 
+def _normalize_check_expression(expression: str) -> str:
+    """Normalize spacing/casts while preserving meaningful nested CHECK parentheses."""
+    normalized = re.sub(r"\s+", "", expression).lower()
+    normalized = re.sub(r"::(?:text|integer|bigint|smallint|boolean)\b", "", normalized)
+    while normalized.startswith("(") and normalized.endswith(")"):
+        depth = 0
+        wraps_entire_expression = True
+        for index, char in enumerate(normalized):
+            if char == "(":
+                depth += 1
+            elif char == ")":
+                depth -= 1
+                if depth == 0 and index != len(normalized) - 1:
+                    wraps_entire_expression = False
+                    break
+        if not wraps_entire_expression:
+            break
+        normalized = normalized[1:-1]
+    return normalized
+
+
 def _source_rules(initial_sql: str) -> dict[str, dict[str, str]]:
     """Extract the two simple, source-defined A1.24 protection rules."""
     cleaned = _strip_line_comments(initial_sql)
@@ -334,7 +355,7 @@ def _source_constraint_signatures(tables_sql: str) -> set[tuple[Any, ...]]:
                 signatures.add((table, "f", columns, ref_table, ref_columns, None))
                 continue
             if table_check:
-                signatures.add((table, "c", (), None, (), _normalize_rule_condition(table_check.group(1))))
+                signatures.add((table, "c", (), None, (), _normalize_check_expression(table_check.group(1))))
                 continue
             if _CONSTRAINT.match(declaration):
                 continue
@@ -359,7 +380,7 @@ def _source_constraint_signatures(tables_sql: str) -> set[tuple[Any, ...]]:
                 signatures.add((table, "f", (column,), ref_table, ref_columns, None))
             check_match = re.search(r"\bcheck\s*\((.*)\)", definition, re.I | re.S)
             if check_match:
-                signatures.add((table, "c", (), None, (), _normalize_rule_condition(check_match.group(1))))
+                signatures.add((table, "c", (), None, (), _normalize_check_expression(check_match.group(1))))
     return signatures
 
 
@@ -659,7 +680,7 @@ def _target_inventory(conn: psycopg.Connection, schema: str) -> dict[str, Any]:
             (
                 row[0], row[2], tuple(row[4] or ()) if row[2] != "c" else (),
                 row[5].lower() if row[5] else None, tuple(row[6] or ()),
-                _normalize_rule_condition(str(row[7])) if row[2] == "c" and row[7] is not None else None,
+                _normalize_check_expression(str(row[7])) if row[2] == "c" and row[7] is not None else None,
             )
             for row in constraints
         },
