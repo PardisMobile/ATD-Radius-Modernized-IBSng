@@ -11,7 +11,7 @@ from psycopg import sql
 from psycopg.conninfo import make_conninfo
 import pytest
 
-from atd_radius.infrastructure.migration_runner import run_migrations
+from atd_radius.infrastructure.migration_runner import MigrationError, run_migrations
 
 
 @pytest.fixture
@@ -70,3 +70,25 @@ def test_real_postgres_clean_install_is_idempotent_and_failed_migration_rolls_ba
         assert conn.execute(
             "SELECT count(*) FROM public.atd_schema_migrations"
         ).fetchone()[0] == 8
+
+
+
+def test_real_postgres_gapped_ledger_refuses_to_replay_missing_migration(
+    isolated_migration_database,
+):
+    target_dsn, _ = isolated_migration_database
+    migrations_dir = Path(__file__).resolve().parents[2] / "migrations"
+
+    with psycopg.connect(target_dsn) as conn:
+        run_migrations(conn, migrations_dir, apply=True)
+        conn.execute("DELETE FROM public.atd_schema_migrations WHERE version = 4")
+
+        with pytest.raises(MigrationError, match="not a contiguous prefix"):
+            run_migrations(conn, migrations_dir, apply=True)
+
+        # The migration SQL was not replayed and the existing schema remains intact.
+        assert conn.execute(
+            "SELECT count(*) FROM public.atd_schema_migrations"
+        ).fetchone()[0] == 7
+        assert conn.execute("SELECT to_regclass('public.admins')").fetchone()[0] is not None
+        assert conn.execute("SELECT to_regclass('public.atd_radius_live_sessions')").fetchone()[0] is not None
