@@ -68,3 +68,43 @@ def test_connection_credentials_are_scoped_to_child_environment(monkeypatch):
     assert env["PGSSLMODE"] == "require"
     import os
     assert "PGPASSWORD" not in os.environ
+
+
+def test_create_backup_validates_then_atomically_publishes_archive(tmp_path, monkeypatch):
+    output = tmp_path / "new.dump"
+    invocations = []
+    monkeypatch.setattr(backup, "_tool", lambda name: f"/usr/bin/{name}")
+
+    def fake_run(args, *, env=None):
+        invocations.append((args, env))
+        if args[0].endswith("pg_dump"):
+            target = Path(args[args.index("--file") + 1])
+            target.write_bytes(b"custom archive fixture")
+        return None
+
+    monkeypatch.setattr(backup, "_run", fake_run)
+    result = backup.create_backup(output)
+    assert output.read_bytes() == b"custom archive fixture"
+    assert result["verified_archive_listing"] is True
+    assert result["sha256"] == hashlib.sha256(output.read_bytes()).hexdigest()
+    assert output.with_suffix(".dump.json").is_file()
+    assert len(invocations) == 2
+    assert invocations[0][0][1] == "--format=custom"
+    assert invocations[1][0][1] == "--list"
+
+
+def test_restore_invokes_pg_restore_only_after_verified_confirmation(tmp_path, monkeypatch):
+    archive = tmp_path / "backup.dump"
+    archive.write_bytes(b"fixture")
+    monkeypatch.setattr(backup.settings, "database_url", "postgresql://user:pw@localhost/production_db")
+    monkeypatch.setattr(backup, "verify_backup", lambda path: {"verified": True})
+    monkeypatch.setattr(backup, "_tool", lambda name: f"/usr/bin/{name}")
+    seen = {}
+    monkeypatch.setattr(backup, "_run", lambda args, **kwargs: seen.update(args=args, kwargs=kwargs))
+    result = backup.restore_backup(archive, "production_db")
+    assert result["restored"] is True
+    assert seen["args"] == [
+        "/usr/bin/pg_restore", "--exit-on-error", "--no-owner", "--no-privileges",
+        "--clean", "--if-exists", "--dbname", "production_db", str(archive),
+    ]
+    assert seen["kwargs"]["env"]["PGPASSWORD"] == "pw"
