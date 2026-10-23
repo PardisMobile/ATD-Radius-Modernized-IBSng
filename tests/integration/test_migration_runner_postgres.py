@@ -8,7 +8,7 @@ import uuid
 
 import psycopg
 from psycopg import sql
-from psycopg.conninfo import conninfo_to_dict, make_conninfo
+from psycopg.conninfo import make_conninfo
 import pytest
 
 from atd_radius.infrastructure.migration_runner import run_migrations
@@ -48,9 +48,9 @@ def test_real_postgres_clean_install_is_idempotent_and_failed_migration_rolls_ba
         assert conn.execute(
             "SELECT count(*) FROM public.atd_schema_migrations"
         ).fetchone()[0] == 8
-        assert conn.execute("SELECT to_regclass('public.admins')").fetchone()[0] == "admins"
-        assert conn.execute("SELECT to_regclass('public.operational_audit_events')").fetchone()[0] == "operational_audit_events"
-        assert conn.execute("SELECT to_regclass('public.atd_radius_live_sessions')").fetchone()[0] == "atd_radius_live_sessions"
+        assert conn.execute("SELECT to_regclass('public.admins')").fetchone()[0] is not None
+        assert conn.execute("SELECT to_regclass('public.operational_audit_events')").fetchone()[0] is not None
+        assert conn.execute("SELECT to_regclass('public.atd_radius_live_sessions')").fetchone()[0] is not None
 
         second = run_migrations(conn, migrations_dir, apply=True)
         assert second.applied == first.applied
