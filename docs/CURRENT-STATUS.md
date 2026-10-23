@@ -759,3 +759,8 @@ Extended the read-only preflight to parse the canonical initial.sql protection r
 ## A1.24 stored-function body parity — 2026-10-23
 
 The preflight now decodes the quoted function bodies from the canonical A1.24 functions.sql, hashes each body, collects PostgreSQL prosrc hashes keyed by function name and identity argument types, and reports body drift for matching signatures. Body drift is included in passes_audited_checks and therefore fails --fail-on-drift. Parser tests cover doubled SQL quotes and malformed/missing bodies. This closes the function-body comparison gap for the source-defined native function set, but not plugin-specific functions, all data parity, sequence ownership/current-value consistency, or backup/restore validation.
+
+
+## A1.24 sequence safety validation — 2026-10-23
+
+The read-only preflight now compares source-defined serial ownership mappings with PostgreSQL ownership metadata and checks each target-owned sequence's current value against MAX(owning_column). A sequence that has not been advanced, or is behind explicitly inserted IDs, is reported as drift and blocks passes_audited_checks. Added PostgreSQL acceptance coverage that first verifies a generated identity value is consistent, then inserts an explicit high ID and verifies the mismatch is detected. Manually advanced or unowned sequences and full sequence/data migration semantics still require separate review.
