@@ -20,6 +20,7 @@ from atd_radius.cli.a124_preflight import (
     _source_constraint_signatures,
     _source_index_details,
     _normalize_check_expression,
+    _normalize_index_sql,
 )
 
 
@@ -264,12 +265,26 @@ def test_source_index_details_captures_unique_partial_expression_and_key_count()
     assert indexes["users_name_idx"] == {
         "table": "users", "unique": True, "partial": False,
         "expression": False, "key_count": 1, "method": "btree",
+        "expression_sql": "", "predicate_sql": "",
     }
     assert indexes["users_active_idx"] == {
         "table": "users", "unique": False, "partial": True,
         "expression": False, "key_count": 2, "method": "btree",
+        "expression_sql": "", "predicate_sql": "active=any(array[true])",
     }
     assert indexes["users_lower_name_idx"] == {
         "table": "users", "unique": False, "partial": False,
         "expression": True, "key_count": 1, "method": "btree",
+        "expression_sql": "lower(username)", "predicate_sql": "",
     }
+
+
+
+def test_index_sql_normalization_matches_cast_and_postgresql_any_rewrites():
+    assert _normalize_index_sql("CAST(attr_value AS bigint)") == "attr_value"
+    assert _normalize_index_sql("((attr_name = ANY (ARRAY['abs_exp_date'::text, 'first_login'::text])))") == (
+        "attr_name=any(array['abs_exp_date','first_login'])"
+    )
+    assert _normalize_index_sql("attr_name IN ('abs_exp_date', 'first_login')") == (
+        "attr_name=any(array['abs_exp_date','first_login'])"
+    )
