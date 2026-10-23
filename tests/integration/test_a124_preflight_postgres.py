@@ -3,12 +3,19 @@ from __future__ import annotations
 
 import os
 import uuid
+from pathlib import Path
 
 import psycopg
 from psycopg import sql
 import pytest
 
-from atd_radius.cli.a124_preflight import _sequence_high_water_drift, _source_constraint_signatures, _source_index_details, _target_inventory
+from atd_radius.cli.a124_preflight import (
+    _sequence_high_water_drift,
+    _source_constraint_signatures,
+    _source_index_details,
+    _target_inventory,
+    run_preflight,
+)
 
 
 @pytest.fixture
@@ -126,3 +133,31 @@ def test_source_explicit_index_shape_matches_postgres_catalog(isolated_inventory
     with psycopg.connect(dsn) as conn:
         actual = _target_inventory(conn, schema)["index_details"]
     assert actual == expected
+
+
+
+def test_preflight_reports_partial_seed_tables_without_query_crash():
+    base_dsn = os.environ.get("ATD_TEST_DATABASE_URL")
+    if not base_dsn:
+        pytest.skip("ATD_TEST_DATABASE_URL is required for PostgreSQL inventory acceptance")
+    schema = "atd_partial_seed_" + uuid.uuid4().hex[:12]
+    with psycopg.connect(base_dsn) as conn:
+        conn.execute(sql.SQL("CREATE SCHEMA {}").format(sql.Identifier(schema)))
+        conn.execute(sql.SQL("CREATE TABLE {}.defs (name TEXT)").format(sql.Identifier(schema)))
+        conn.execute(sql.SQL("CREATE TABLE {}.ibs_states (name TEXT)").format(sql.Identifier(schema)))
+        conn.execute(sql.SQL("CREATE TABLE {}.admins (admin_id INTEGER)").format(sql.Identifier(schema)))
+        conn.execute(sql.SQL("CREATE TABLE {}.admin_perms (admin_id INTEGER)").format(sql.Identifier(schema)))
+        conn.commit()
+    archive = Path(__file__).resolve().parents[2] / "Source of Truth" / "IBSng-A1.24.tar.bz2"
+    try:
+        report = run_preflight(str(archive), base_dsn, schema)
+        assert report["passes_audited_checks"] is False
+        assert report["native_data"]["missing_definitions"]
+        assert report["native_data"]["missing_initial_states"]
+        assert report["native_data"]["system_admin_seed_fields_with_drift"]
+        assert report["native_data"]["system_god_permission_seed_fields_with_drift"]
+        assert not any(report["native_data"]["required_seed_markers"].values())
+    finally:
+        with psycopg.connect(base_dsn) as conn:
+            conn.execute(sql.SQL("DROP SCHEMA IF EXISTS {} CASCADE").format(sql.Identifier(schema)))
+            conn.commit()
