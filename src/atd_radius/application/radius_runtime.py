@@ -409,6 +409,15 @@ class RadiusRuntimeHandler:
                     conf_id = provider_session_id("Cisco", packet.attributes, "voip")
                     if conf_id:
                         self.cisco_voip_auth_h323_ids.setdefault(ras_record.ras_id, set()).add(conf_id)
+        if (
+            response.code is RadiusCode.ACCESS_REJECT
+            and self.login_reservations is not None
+            and reservation_request_key is not None
+        ):
+            # A rejected retry/policy re-evaluation must not leave a phantom
+            # login consuming the user's MultiLogin capacity. Release only the
+            # reservation for this exact RADIUS request, never all user rows.
+            self.login_reservations.release(reservation_request_key)
         if self.ip_pool_sessions and response.code is RadiusCode.ACCESS_REJECT:
             # A later policy may reject after an IP allocation policy ran.
             # Release only an explicitly pending allocation; never release an

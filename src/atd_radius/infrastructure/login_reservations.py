@@ -75,6 +75,17 @@ class PostgresLoginReservationRepository:
             if str(row[0]) != exclude_request_key
         )
 
+    def release(self, request_key: str) -> None:
+        """Remove a reservation for an Access-Request that did not remain accepted.
+
+        This is deliberately keyed by the full packet-derived request key: a
+        rejection must never clear another concurrent login for the same user.
+        """
+        self.conn.execute(
+            "DELETE FROM atd_radius_login_reservations WHERE request_key=%s",
+            (request_key,),
+        )
+
     def consume_one(self, user_id: int, ras_id: int) -> None:
         """Transfer one accepted login reservation to its newly-accounted session."""
         self.conn.execute(
