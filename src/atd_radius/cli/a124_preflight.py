@@ -865,6 +865,27 @@ def _native_table_trigger_drift(
     ]
 
 
+def _sequence_definition_drift(
+    source_specs: dict[str, dict[str, Any]], target_states: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Compare source-defined sequence settings without conflating them with live values."""
+    target_by_name = {item["name"]: item for item in target_states}
+    fields = (
+        ("start", "start"), ("minimum", "minimum"), ("maximum", "maximum"),
+        ("increment", "increment"), ("cycle", "cycle"), ("cache", "cache"),
+    )
+    return [
+        {
+            "sequence": name, "field": field,
+            "source": expected[field], "target": target_by_name[name].get(target_field),
+        }
+        for name, expected in source_specs.items()
+        if name in target_by_name
+        for field, target_field in fields
+        if expected[field] != target_by_name[name].get(target_field)
+    ]
+
+
 def _sequence_high_water_drift(
     conn: psycopg.Connection,
     schema: str,
@@ -995,20 +1016,9 @@ def run_preflight(archive_path: str, dsn: str, schema: str = "public") -> dict[s
         sequence_value_drift = _sequence_high_water_drift(
             conn, schema, target_sequence_owners, target["sequence_states"]
         )
-        target_sequence_states = {item["name"]: item for item in target["sequence_states"]}
-        sequence_definition_drift = [
-            {
-                "sequence": name, "field": field,
-                "source": expected[field], "target": target_sequence_states.get(name, {}).get(target_field),
-            }
-            for name, expected in source["sequence_specs"].items()
-            for field, target_field in (
-                ("start", "start"), ("minimum", "minimum"), ("maximum", "maximum"),
-                ("increment", "increment"), ("cycle", "cycle"), ("cache", "cache"),
-            )
-            if name in target_sequence_states
-            and expected[field] != target_sequence_states[name].get(target_field)
-        ]
+        sequence_definition_drift = _sequence_definition_drift(
+            source["sequence_specs"], target["sequence_states"]
+        )
         source_constraints, target_constraints = source["constraint_signatures"], target["constraint_signatures"]
         constraint_signature_drift = {
             "missing": sorted(repr(item) for item in source_constraints - target_constraints),
