@@ -10,6 +10,7 @@ from atd_radius.cli.a124_preflight import (
     _normalize_default,
     _source_column_spec,
     source_inventory,
+    _source_rules,
 )
 
 
@@ -102,3 +103,21 @@ def test_function_signature_parser_handles_nested_types_and_overloads():
     assert ("charge_user", ("bigint", "numeric(12,2)")) in signatures
     assert ("charge_user", ("bigint", "text[]")) in signatures
     assert ("report_user", ("timestamp without time zone", "inet")) in signatures
+
+
+
+def test_source_rule_parser_extracts_native_protection_rules_and_detects_missing_source():
+    source = """
+      CREATE rule system_admin as on delete to admins where admin_id=0 do instead nothing;
+      CREATE rule system_admin_god as on delete to admin_perms
+        where admin_id=0 and perm_name='GOD' do instead nothing;
+    """
+    rules = _source_rules(source)
+    assert rules["system_admin"] == {
+        "event": "DELETE", "table": "admins", "condition": "admin_id=0",
+        "action": "INSTEAD NOTHING",
+    }
+    assert rules["system_admin_god"]["table"] == "admin_perms"
+    assert rules["system_admin_god"]["condition"] == "admin_id=0andperm_name='god'"
+    with pytest.raises(ValueError, match="No supported source protection rules"):
+        _source_rules("SELECT 1;")
