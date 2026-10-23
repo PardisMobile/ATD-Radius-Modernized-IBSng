@@ -342,3 +342,10 @@ The user-deletion API is source-traced to A1.24 and includes owner-scoped DELETE
 `GET /api/v1/online-sessions` reports durable active sessions and accepted login-in-progress reservations under `SEE ONLINE USERS` scope. `POST /api/v1/online-sessions/disconnect` uses owner-scoped `KILL USER`, the existing source-traced provider termination adapters, and operational audit. It does not claim that the remote RAS session disappeared until Accounting-Stop confirms closure. The stale local termination marker retry path is covered by regression tests.
 
 Full CI passed **954 tests on Python 3.11 and 3.12, 2 warnings each**; Python-only passed **945 tests, 9 skipped, 2 warnings**. `CLEAR USER`, live RAS interoperability and the final UI workflow remain incomplete.
+
+
+## Credential and MultiLogin regression status — 2026-10-23
+
+The current PR head has passing Python-only CI and passing PostgreSQL-backed CI jobs for Python 3.11 and 3.12. MS-CHAPv2 AuthenticatorResponse now shares the source-compatible A1.24 password-byte conversion with NT-response and MPPE derivation, with regression coverage for non-ASCII strings. MultiLogin admission checks the configured user limit first, then rejects a second instance if the incoming RAS or any existing session disallows MultiLogin. False-like capability normalization and established AAA rejection reasons are covered by tests.
+
+**Not verified:** live NAS interoperability, non-ASCII database/client charset parity, stale-reservation reconciliation when Accounting is absent, or overall A1.24 runtime parity.
