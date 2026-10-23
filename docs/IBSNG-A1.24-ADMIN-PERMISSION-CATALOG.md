@@ -1,6 +1,6 @@
 # IBSng A1.24 Administrator Permission Inventory
 
-**Authority:** the canonical archive at `Source of Truth/IBSng-A1.24.tar.bz2` (SHA-256 `c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839bb9349d18a8`).
+**Authority:** the canonical archive at `Source of Truth/IBSng-A1.24.tar.bz2` (SHA-256 `c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839614bb9349d18a8`).
 
 This is a source-derived structural inventory of all 51 modules under `IBSng/core/admin/perms/`. The source-audit workflow extracts each module's registered permission name, value-type base, declared dependencies and whether it overrides `check()`. Structural inventory is not a substitute for tracing each permission's consumers or claiming complete RBAC parity.
 

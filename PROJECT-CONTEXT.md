@@ -2,7 +2,7 @@
 
 **Read this section first.** Active work branch: `feat/a124-semantic-object-inventory`. Latest verified code head before the Markdown audit follow-up: `3cb3faac5cb07f771fc9e49a160971199ec0f245`; Python-only CI and PostgreSQL-backed CI on Python 3.11/3.12 passed. The following docs-only commits then updated the status, roadmap, compatibility matrix and added `docs/MARKDOWN-CONTENT-AUDIT-2026-10-23.md`; check their CI separately before calling the current branch head green.
 
-- Canonical archive SHA-256 is `c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839bb9349d18a8`.
+- Canonical archive SHA-256 is `c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839614bb9349d18a8`.
 - The full repository Markdown set has been reviewed. Historical checkpoints remain useful records but several opening blocks/status tables are stale; consult the new content-audit report and latest dated entries rather than treating old “pending/not implemented” statements as current.
 - Current source-backed code increment: MS-CHAPv2 AuthenticatorResponse uses A1.24-compatible password-byte conversion with non-ASCII regression coverage; MultiLogin enforces user limit before incoming/existing RAS capability restrictions. These are narrow verified increments, not full A1.24 parity.
 - Keep frozen/tested work frozen. Continue large, cohesive source → implementation → regression/integration tests → full CI → docs batches. Update current status, both roadmaps where relevant, compatibility matrix and subsystem audit; do not redo completed work or claim live NAS parity without live evidence.
@@ -33,7 +33,7 @@ Canonical archive:
 `Source of Truth/IBSng-A1.24.tar.bz2`
 
 SHA-256:
-`c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839bb9349d18a8`
+`c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839614bb9349d18a8`
 
 Parity docs, inventories, matrices, notes, tests, and current ATD code are guides/records/validation artifacts only. They must never override or substitute for the actual IBSng source when the source is available. If any parity document conflicts with the source archive, **the source archive wins**.
 
@@ -562,7 +562,7 @@ Do not mark a subsystem Complete merely because its classes exist. Completion re
 - A behavior is marked **Verified** only when implementation/test evidence is traceable to the A1.24 source (and integration evidence where required).
 - If any Markdown document conflicts with A1.24 source, the source wins and the documentation must be corrected.
 - Current repository HEAD before this checkpoint: `806ae8f112691807f597fb3475fb25615c616b0e`.
-- The canonical archive is present in the repository at `Source of Truth/IBSng-A1.24.tar.bz2`; its recorded SHA-256 is `c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839bb9349d18a8`.
+- The canonical archive is present in the repository at `Source of Truth/IBSng-A1.24.tar.bz2`; its recorded SHA-256 is `c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839614bb9349d18a8`.
 - Repository documentation inventory has been re-checked at this checkpoint; future work must read the relevant Markdown records before changing an already-audited subsystem.
 
 
@@ -1007,7 +1007,7 @@ No frozen A1.24 authentication, CHAP/MS-CHAPv2, MPPE, MultiLogin, attribute inhe
 
 ## Concrete RAS SNMP request-construction checkpoint — 2026-10-09
 
-- Re-extracted the canonical Source of Truth archive in an isolated audit branch and verified SHA-256 c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839bb9349d18a8 before inspecting source call paths.
+- Re-extracted the canonical Source of Truth archive in an isolated audit branch and verified SHA-256 c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839614bb9349d18a8 before inspecting source call paths.
 - PortMaster killUser() is now represented by a concrete transport-neutral SNMP request builder: NAS-Port maps to ifIndex int(port) + 2; IF-MIB ifAdminStatus is set to integer 2; source defaults are SNMP v1, UDP/161, community public, timeout 10, retries 3.
 - Total Control killUser() is now represented by a concrete transport-neutral SNMP request builder: the source-derived interface_index receives two ordered IF-MIB ifAdminStatus SETs, integer 2 then integer 1, using source defaults community public, timeout 10, retries 3, UDP/161, SNMP version 1.
 - The request builders are wired through PortMaster and Total Control provider adapter objects and have tests for exact OIDs, offsets, operation ordering, defaults and invalid inputs.
@@ -1039,7 +1039,7 @@ The estimate must be revised as complete milestones land; do not promise a calen
 
 A fresh GitHub Actions runner independently calculated the SHA-256 of the checked-in canonical archive at `Source of Truth/IBSng-A1.24.tar.bz2`. The measured digest is:
 
-`c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839bb9349d18a8`
+`c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839614bb9349d18a8`
 
 Earlier copies of this handoff contained a mistyped digest (`...839bb934...`). The checked-in archive was not modified; this corrects the recorded checksum to match the bytes currently in the repository. Future source audits must compare against the corrected digest.
 
@@ -1263,7 +1263,7 @@ Remaining: wait for current CI; expand user permission coverage for owner transf
 
 ### Source-parity correction — independent report permissions — 2026-10-10
 
-Canonical archive verified in the active workspace: SHA-256 `c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839bb9349d18a8`; extracted tree contains 2,295 files. This confirms integrity/inventory only, not exhaustive manual review.
+Canonical archive verified in the active workspace: SHA-256 `c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839614bb9349d18a8`; extracted tree contains 2,295 files. This confirms integrity/inventory only, not exhaustive manual review.
 
 Direct source review:
 - `IBSng/core/report/report_handler.py:63-75` gates connection history with `SEE CONNECTION LOGS`.

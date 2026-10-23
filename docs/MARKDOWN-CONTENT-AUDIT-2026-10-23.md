@@ -7,7 +7,7 @@ Reviewed all 71 Markdown files in the repository tree on branch `feat/a124-seman
 ## Authority and frozen-work rules
 
 - Canonical source: `Source of Truth/IBSng-A1.24.tar.bz2`.
-- Correct SHA-256: `c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839bb9349d18a8`.
+- Correct SHA-256: `c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839614bb9349d18a8`.
 - Source-first workflow: inspect the actual source and consumers; implement; test; verify CI; update the relevant ledgers.
 - Do not repeat completed/frozen source-verified work without contradictory evidence.
 - A migration/preflight inventory is not a lossless importer or production cutover approval.

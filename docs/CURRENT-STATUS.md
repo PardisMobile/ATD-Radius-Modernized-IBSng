@@ -39,7 +39,7 @@ A rejected Access-Request now deletes only its exact packet-derived login reserv
 - Administrator permission editing and native administrator deletion are implemented. Administrator deletion code/test commit `3177193269ce94b36ae29e336b0f790820d6af17` passed full CI on Python 3.11 and 3.12: **636 passed, 2 warnings** per matrix job; compile, Ruff, PHP syntax and PostgreSQL integration all passed. Python-only workflow passed **634 passed, 2 skipped, 2 warnings**; its two skips are UDP/PostgreSQL integration tests not configured in that workflow. Full CI: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38062380412 ; Python-only: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38062380419.
 
 - Canonical behavior source: `Source of Truth/IBSng-A1.24.tar.bz2`
-- SHA-256: `c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839bb9349d18a8`
+- SHA-256: `c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839614bb9349d18a8`
 - Main CI passed on Python 3.11 and 3.12: **607 passed, 2 warnings** per matrix job. This includes compile, Ruff, PHP syntax and PostgreSQL-backed integration tests.
 - Main CI run: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38003678498
 - Lightweight Python run: **605 passed, 2 skipped, 2 warnings**. Its two skips are live UDP/PostgreSQL integration tests because `ATD_TEST_DATABASE_URL` is not configured in that workflow. https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38003678515
@@ -155,7 +155,7 @@ Enabled `fast_dial` in the generic user-attribute mutation API after tracing `IB
 
 - Current main HEAD at review start: `b1b1b698c0c349e6053fe340accf08d91bb699da` (documentation-only fast_dial CI record).
 - Fast-dial code/test checkpoint: `2daa63380a2e9109cb950a057e0e1261bf38dc69`; full CI passed on Python 3.11 and 3.12 with **667 passed, 2 warnings** per matrix job (compile, Ruff, PHP syntax and PostgreSQL integration): https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38126347300. Python-only workflow also succeeded: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38126347240. Latest HEAD's Python workflow succeeded: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38126437021.
-- The uploaded A1.24 archive was checksum-verified in this work session against the required SHA-256: `c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839bb9349d18a8`.
+- The uploaded A1.24 archive was checksum-verified in this work session against the required SHA-256: `c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839614bb9349d18a8`.
 - Source audit `docs/A1.24-FAST-DIAL-RUNTIME-AUDIT.md` traces the A1.24 fast-dial plugin and Asterisk/XML-RPC action flow. It confirms the plugin rewrites `called_number`, calls the RAS redirect-reply method, records `fast_dial_index` in instance metadata, and exposes add/get destination actions. ATD still implements mutation/storage only; runtime redirection, instance metadata lifecycle and actions-manager compatibility remain open. Do not mark fast_dial runtime complete.
 
 
