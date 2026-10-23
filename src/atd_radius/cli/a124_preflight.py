@@ -178,7 +178,21 @@ def source_inventory(tables_sql: str, functions_sql: str) -> dict[str, Any]:
         for declaration in declarations:
             if not declaration or _CONSTRAINT.match(declaration):
                 continue
-            match = re.match(r'^"?([a-z_][\w$]*)"?\s+(.+)
+            match = re.match(r"^([a-z_][A-Za-z0-9_$]*)\s+(.+)", declaration, re.I | re.S)
+            if not match:
+                raise ValueError(f"Cannot parse A1.24 column in {table}: {declaration!r}")
+            name, definition = match.group(1).lower(), match.group(2)
+            if name in columns:
+                raise ValueError(f"Duplicate column {table}.{name}")
+            columns.add(name)
+            column_specs[(table, name)] = _source_column_spec(definition, name in table_primary_keys)
+            if _SERIAL.match(definition):
+                sequences.add(f"{table}_{name}_seq")
+        tables[table] = columns
+    functions = {m.group(1).lower() for m in _CREATE_FUNCTION.finditer(_strip_line_comments(functions_sql))}
+    if not functions:
+        raise ValueError("No functions found in canonical A1.24 functions.sql")
+    return {"tables": tables, "column_specs": column_specs, "indexes": indexes, "sequences": sequences, "functions": functions}
 
 
 def _defs_expected(defs_sql: str) -> dict[str, str]:
