@@ -305,6 +305,40 @@ def _function_definitions(functions_sql: str) -> dict[tuple[str, tuple[str, ...]
     return definitions
 
 
+def _normalize_index_sql(expression: str | None) -> str:
+    """Normalize the limited expression/predicate forms used by canonical A1.24 indexes."""
+    if not expression:
+        return ""
+    normalized = re.sub(r"\s+", "", expression).lower()
+    normalized = re.sub(
+        r"cast\(([^()]+)\s+as\s+(smallint|integer|bigint|text|boolean)\)",
+        r"(\1)::\2",
+        normalized,
+    )
+    normalized = re.sub(r"::(?:text|integer|bigint|smallint|boolean)\b", "", normalized)
+    normalized = re.sub(
+        r"([a-z_][\w$]*)in\(([^()]*)\)",
+        r"\1=any(array[\2])",
+        normalized,
+    )
+    normalized = re.sub(r"\)::(?:text|integer|bigint|smallint|boolean)\[\]", ")", normalized)
+    while normalized.startswith("(") and normalized.endswith(")"):
+        depth = 0
+        wraps_all = True
+        for index, char in enumerate(normalized):
+            if char == "(":
+                depth += 1
+            elif char == ")":
+                depth -= 1
+                if depth == 0 and index != len(normalized) - 1:
+                    wraps_all = False
+                    break
+        if not wraps_all:
+            break
+        normalized = normalized[1:-1]
+    return normalized
+
+
 def _source_index_details(tables_sql: str) -> dict[str, dict[str, Any]]:
     """Inventory source explicit-index shape without pretending to compare expression text."""
     cleaned = _strip_line_comments(tables_sql)
@@ -352,6 +386,13 @@ def _source_index_details(tables_sql: str) -> dict[str, dict[str, Any]]:
             "expression": any("(" in item for item in indexed_items),
             "key_count": len(indexed_items),
             "method": method_match.group(1).lower() if method_match else "btree",
+            "expression_sql": _normalize_index_sql(
+                ", ".join(item for item in indexed_items if "(" in item)
+            ),
+            "predicate_sql": _normalize_index_sql(
+                re.search(r"\bwhere\s+(.+)$", tail, re.I | re.S).group(1)
+                if re.search(r"\bwhere\s+(.+)$", tail, re.I | re.S) else ""
+            ),
         }
     return details
 
@@ -630,7 +671,9 @@ def _target_inventory(conn: psycopg.Connection, schema: str) -> dict[str, Any]:
     index_details = conn.execute(
         """
         SELECT ic.relname, tc.relname, i.indisunique, i.indpred IS NOT NULL,
-               i.indexprs IS NOT NULL, am.amname, i.indnkeyatts
+               i.indexprs IS NOT NULL, am.amname, i.indnkeyatts,
+               pg_get_expr(i.indexprs, i.indrelid, true),
+               pg_get_expr(i.indpred, i.indrelid, true)
         FROM pg_class tc JOIN pg_namespace n ON n.oid=tc.relnamespace
         JOIN pg_index i ON i.indrelid=tc.oid
         JOIN pg_class ic ON ic.oid=i.indexrelid
@@ -733,6 +776,8 @@ def _target_inventory(conn: psycopg.Connection, schema: str) -> dict[str, Any]:
             row[0]: {
                 "table": row[1], "unique": bool(row[2]), "partial": bool(row[3]),
                 "expression": bool(row[4]), "method": row[5], "key_count": int(row[6]),
+                "expression_sql": _normalize_index_sql(row[7]),
+                "predicate_sql": _normalize_index_sql(row[8]),
             }
             for row in index_details
         },
