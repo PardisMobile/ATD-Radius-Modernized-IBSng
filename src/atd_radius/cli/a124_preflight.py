@@ -305,6 +305,59 @@ def _function_definitions(functions_sql: str) -> dict[tuple[str, tuple[str, ...]
     return definitions
 
 
+def _source_index_details(tables_sql: str) -> dict[str, dict[str, Any]]:
+    """Inventory source explicit-index shape without pretending to compare expression text."""
+    cleaned = _strip_line_comments(tables_sql)
+    pattern = re.compile(
+        r"\bcreate\s+(?P<unique>unique\s+)?index\s+(?P<name>[a-z_][\w$]*)\s+"
+        r"on\s+(?P<table>[a-z_][\w$]*)\b",
+        re.I,
+    )
+    details: dict[str, dict[str, Any]] = {}
+    for match in pattern.finditer(cleaned):
+        open_paren = cleaned.find("(", match.end())
+        if open_paren < 0:
+            raise ValueError(f"Missing index column list for {match.group('name')}")
+        depth, quote, i = 1, None, open_paren + 1
+        while i < len(cleaned) and depth:
+            char = cleaned[i]
+            if quote:
+                if char == quote:
+                    if i + 1 < len(cleaned) and cleaned[i + 1] == quote:
+                        i += 1
+                    else:
+                        quote = None
+            elif char == "'":
+                quote = char
+            elif char == "(":
+                depth += 1
+            elif char == ")":
+                depth -= 1
+            i += 1
+        if depth:
+            raise ValueError(f"Unterminated index column list for {match.group('name')}")
+        indexed_items = _split_top_level(cleaned[open_paren + 1:i - 1])
+        prefix = cleaned[match.end():open_paren]
+        method_match = re.search(r"\busing\s+([a-z_][\w$]*)", prefix, re.I)
+        tail_end = cleaned.find(";", i)
+        if tail_end < 0:
+            tail_end = len(cleaned)
+        tail = cleaned[i:tail_end]
+        if match.group("name").lower() in details:
+            raise ValueError(f"Duplicate explicit index in canonical A1.24 schema: {match.group('name')}")
+        details[match.group("name").lower()] = {
+            "table": match.group("table").lower(),
+            "unique": bool(match.group("unique")),
+            "partial": bool(re.search(r"\bwhere\b", tail, re.I)),
+            "expression": any("(" in item for item in indexed_items),
+            "key_count": len(indexed_items),
+            "method": method_match.group(1).lower() if method_match else "btree",
+        }
+    if not details:
+        raise ValueError("No explicit indexes found in canonical A1.24 tables.sql")
+    return details
+
+
 def _source_constraint_signatures(tables_sql: str) -> set[tuple[Any, ...]]:
     """Extract table-level and inline PK/UNIQUE/FK/CHECK semantics from A1.24 DDL."""
     table_bodies = _table_bodies(tables_sql)
@@ -424,7 +477,8 @@ def source_inventory(tables_sql: str, functions_sql: str, initial_sql: str = "")
     }
     rules = _source_rules(initial_sql) if initial_sql.strip() else {}
     constraint_signatures = _source_constraint_signatures(tables_sql)
-    return {"tables": tables, "column_specs": column_specs, "indexes": indexes, "sequences": sequences, "functions": functions, "function_signatures": function_signatures, "function_body_sha256": function_body_sha256, "sequence_owners": sequence_owners, "constraint_signatures": constraint_signatures, "rules": rules}
+    index_details = _source_index_details(tables_sql)
+    return {"tables": tables, "column_specs": column_specs, "indexes": indexes, "index_details": index_details, "sequences": sequences, "functions": functions, "function_signatures": function_signatures, "function_body_sha256": function_body_sha256, "sequence_owners": sequence_owners, "constraint_signatures": constraint_signatures, "rules": rules}
 
 
 def _seed_values_equal(expected: Any, actual: Any, column_spec: dict[str, Any] | None = None) -> bool:
@@ -575,6 +629,19 @@ def _target_inventory(conn: psycopg.Connection, schema: str) -> dict[str, Any]:
         WHERE n.nspname=%s AND tc.relkind IN ('r','p') AND co.oid IS NULL
         """, (schema,)
     ).fetchall()
+    index_details = conn.execute(
+        """
+        SELECT ic.relname, tc.relname, i.indisunique, i.indpred IS NOT NULL,
+               i.indexprs IS NOT NULL, am.amname, i.indnkeyatts
+        FROM pg_class tc JOIN pg_namespace n ON n.oid=tc.relnamespace
+        JOIN pg_index i ON i.indrelid=tc.oid
+        JOIN pg_class ic ON ic.oid=i.indexrelid
+        JOIN pg_am am ON am.oid=ic.relam
+        LEFT JOIN pg_constraint co ON co.conindid=i.indexrelid
+        WHERE n.nspname=%s AND tc.relkind IN ('r','p') AND co.oid IS NULL
+        ORDER BY ic.relname
+        """, (schema,)
+    ).fetchall()
     sequences = conn.execute(
         "SELECT sequencename FROM pg_sequences WHERE schemaname=%s", (schema,)
     ).fetchall()
@@ -664,6 +731,13 @@ def _target_inventory(conn: psycopg.Connection, schema: str) -> dict[str, Any]:
             for row in columns
         ],
         "indexes": {row[0] for row in indexes},
+        "index_details": {
+            row[0]: {
+                "table": row[1], "unique": bool(row[2]), "partial": bool(row[3]),
+                "expression": bool(row[4]), "method": row[5], "key_count": int(row[6]),
+            }
+            for row in index_details
+        },
         "sequences": {row[0] for row in sequences},
         "functions": {row[0] for row in functions},
         "function_signatures": {(row[0], tuple(_normalize_type(arg) for arg in _split_top_level(row[1]) if arg.strip())) for row in functions},
@@ -793,6 +867,16 @@ def run_preflight(archive_path: str, dsn: str, schema: str = "public") -> dict[s
                     "target": _normalize_default(str(target_row["default"]) if target_row["default"] is not None else None),
                 })
         source_indexes, target_indexes = set(source["indexes"]), target["indexes"]
+        source_index_details, target_index_details = source["index_details"], target["index_details"]
+        index_definition_drift = [
+            {
+                "name": name,
+                "source": source_index_details[name],
+                "target": target_index_details.get(name),
+            }
+            for name in sorted(set(source_index_details) & set(target_index_details))
+            if source_index_details[name] != target_index_details[name]
+        ]
         source_sequences, target_sequences = set(source["sequences"]), target["sequences"]
         source_functions, target_functions = set(source["functions"]), target["functions"]
         source_function_signatures, target_function_signatures = source["function_signatures"], target["function_signatures"]
@@ -946,6 +1030,7 @@ def run_preflight(archive_path: str, dsn: str, schema: str = "public") -> dict[s
             "columns": {"missing": sorted(f"{t}.{c}" for t, c in source_columns - target_columns),
                         "extra": sorted(f"{t}.{c}" for t, c in target_columns - source_columns)},
             "explicit_indexes": _set_diff(source_indexes, target_indexes),
+            "index_definition_drift": index_definition_drift,
             "sequences": _set_diff(source_sequences, target_sequences),
             "function_names": _set_diff(source_functions, target_functions),
             "function_signatures": {
@@ -1000,6 +1085,7 @@ def run_preflight(archive_path: str, dsn: str, schema: str = "public") -> dict[s
         and not inv["function_body_drift"]
         and not inv["sequence_owner_drift"]
         and not inv["sequence_value_drift"]
+        and not inv["index_definition_drift"]
         and not data["missing_definitions"]
         and not data["definitions_with_value_drift"]
         and not data["missing_initial_states"]
