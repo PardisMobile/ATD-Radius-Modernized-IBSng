@@ -123,11 +123,18 @@ def verify_backup(backup: Path) -> dict[str, object]:
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         raise BackupError(f"invalid backup manifest: {exc}") from exc
+    if not isinstance(manifest, dict):
+        raise BackupError("invalid backup manifest: expected a JSON object")
     actual = _sha256(backup)
-    if (manifest.get("format") != "postgresql-custom"
-            or manifest.get("sha256") != actual
-            or manifest.get("size_bytes") != backup.stat().st_size):
-        raise BackupError("backup checksum, size, or format does not match its manifest")
+    if (
+        manifest.get("format") != "postgresql-custom"
+        or manifest.get("backup_file") != backup.name
+        or manifest.get("sha256") != actual
+        or not isinstance(manifest.get("size_bytes"), int)
+        or isinstance(manifest.get("size_bytes"), bool)
+        or manifest.get("size_bytes") != backup.stat().st_size
+    ):
+        raise BackupError("backup filename, checksum, size, or format does not match its manifest")
     _run([_tool("pg_restore"), "--list", str(backup)], env=_connection_env())
     return {"verified": True, "sha256": actual, "size_bytes": backup.stat().st_size}
 
