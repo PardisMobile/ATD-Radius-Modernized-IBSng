@@ -305,6 +305,24 @@ def _function_definitions(functions_sql: str) -> dict[tuple[str, tuple[str, ...]
     return definitions
 
 
+def _normalize_index_sql(value: str) -> str:
+    """Normalize PostgreSQL index expressions for the canonical A1.24 forms."""
+    normalized = value.strip().lower()
+    normalized = re.sub(
+        r"\bcast\s*\(\s*([a-z_][\w$.]*)\s+as\s+([a-z_][\w$]*)\s*\)",
+        r"(\1)::\2",
+        normalized,
+    )
+    normalized = re.sub(r"\s+", "", normalized)
+    normalized = re.sub(
+        r"([a-z_][\w$]*)in\(([^()]*)\)",
+        r"\1=any(array[\2])",
+        normalized,
+    )
+    normalized = re.sub(r"::(?:text|integer|bigint|smallint|boolean)\b", "", normalized)
+    return normalized.replace("(", "").replace(")", "")
+
+
 def _source_index_details(tables_sql: str) -> dict[str, dict[str, Any]]:
     """Inventory source explicit-index shape without pretending to compare expression text."""
     cleaned = _strip_line_comments(tables_sql)
@@ -345,13 +363,17 @@ def _source_index_details(tables_sql: str) -> dict[str, dict[str, Any]]:
         tail = cleaned[i:tail_end]
         if match.group("name").lower() in details:
             raise ValueError(f"Duplicate explicit index in canonical A1.24 schema: {match.group('name')}")
+        expression_items = [item for item in indexed_items if "(" in item]
+        predicate_match = re.search(r"\bwhere\b(.*)", tail, re.I | re.S)
         details[match.group("name").lower()] = {
             "table": match.group("table").lower(),
             "unique": bool(match.group("unique")),
-            "partial": bool(re.search(r"\bwhere\b", tail, re.I)),
-            "expression": any("(" in item for item in indexed_items),
+            "partial": predicate_match is not None,
+            "expression": bool(expression_items),
             "key_count": len(indexed_items),
             "method": method_match.group(1).lower() if method_match else "btree",
+            "expression_text": _normalize_index_sql(", ".join(expression_items)) if expression_items else None,
+            "predicate_text": _normalize_index_sql(predicate_match.group(1)) if predicate_match else None,
         }
     return details
 
@@ -630,7 +652,9 @@ def _target_inventory(conn: psycopg.Connection, schema: str) -> dict[str, Any]:
     index_details = conn.execute(
         """
         SELECT ic.relname, tc.relname, i.indisunique, i.indpred IS NOT NULL,
-               i.indexprs IS NOT NULL, am.amname, i.indnkeyatts
+               i.indexprs IS NOT NULL, am.amname, i.indnkeyatts,
+               pg_get_expr(i.indexprs, tc.oid, true),
+               pg_get_expr(i.indpred, tc.oid, true)
         FROM pg_class tc JOIN pg_namespace n ON n.oid=tc.relnamespace
         JOIN pg_index i ON i.indrelid=tc.oid
         JOIN pg_class ic ON ic.oid=i.indexrelid
@@ -733,6 +757,8 @@ def _target_inventory(conn: psycopg.Connection, schema: str) -> dict[str, Any]:
             row[0]: {
                 "table": row[1], "unique": bool(row[2]), "partial": bool(row[3]),
                 "expression": bool(row[4]), "method": row[5], "key_count": int(row[6]),
+                "expression_text": _normalize_index_sql(str(row[7])) if row[7] is not None else None,
+                "predicate_text": _normalize_index_sql(str(row[8])) if row[8] is not None else None,
             }
             for row in index_details
         },
@@ -1040,6 +1066,8 @@ def run_preflight(archive_path: str, dsn: str, schema: str = "public") -> dict[s
             "sequence_value_drift": sequence_value_drift,
             "column_definition_drift": column_definition_drift,
             "constraint_signature_drift": constraint_signature_drift,
+            "index_definition_drift": index_definition_drift,
+            "unexpected_triggers": sorted(item["name"] for item in target["triggers"]),
             "source_defined_protection_rules": {
                 "missing": sorted(set(source_rules) - set(target_rules)),
                 "extra": sorted(set(item["name"] for item in target["rules"]) - set(source_rules)),
@@ -1084,6 +1112,7 @@ def run_preflight(archive_path: str, dsn: str, schema: str = "public") -> dict[s
         and not inv["sequence_owner_drift"]
         and not inv["sequence_value_drift"]
         and not inv["index_definition_drift"]
+        and not inv["unexpected_triggers"]
         and not data["missing_definitions"]
         and not data["definitions_with_value_drift"]
         and not data["missing_initial_states"]
