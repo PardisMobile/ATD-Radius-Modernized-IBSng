@@ -495,3 +495,15 @@ Added the operator-controlled `atd-radius-migrate` CLI for clean installs. It va
 - [x] Add PostgreSQL acceptance coverage using an isolated schema with representative native object types.
 - [x] Compare source-derived PK/UNIQUE/FK/CHECK signatures and both canonical A1.24 deletion-protection rules; compare stored-function body hashes by identity signature; compare serial sequence ownership/high-water marks; compare all seven initial IBS state seeds and every field of the system-admin/GOD seed rows.
 - [ ] Validate manually managed/unowned sequence semantics and all required data/plugin objects; design and validate a lossless import/adoption procedure with representative backup/restore verification before any migration-ledger baseline can be approved. Canonical A1.24 schema SQL defines no native CREATE TRIGGER statements; source-defined stored-function bodies and target trigger definitions are inventoried separately.
+
+
+## Verified regression batch — 2026-10-23
+
+- [x] Correct MS-CHAPv2 AuthenticatorResponse password conversion to use the source-compatible A1.24 helper.
+- [x] Add non-ASCII MS-CHAPv2 regression coverage while retaining the ASCII/RFC vector.
+- [x] Centralize MultiLogin limit and RAS-capability ordering in the domain session policy.
+- [x] Normalize false-like RAS capability values and preserve established AAA rejection codes.
+- [x] Update source-parity notes and regression coverage.
+- [x] Verify latest head `3cb3faac5cb07f771fc9e49a160971199ec0f245`: Python-only workflow and PostgreSQL-backed CI on Python 3.11 and 3.12 both passed.
+
+Remaining release blockers include live NAS PAP/CHAP/MS-CHAPv1/v2 and MPPE interoperability, authoritative recovery/reconciliation for stale accepted-login reservations, full A1.24 data import/adoption and restore drills, remaining billing/plugin/XML-RPC parity, and complete UI/deployment/upgrade workflows.
