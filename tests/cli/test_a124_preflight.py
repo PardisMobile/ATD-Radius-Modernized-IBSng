@@ -264,12 +264,15 @@ def test_source_index_details_captures_unique_partial_expression_and_key_count()
     assert indexes["users_name_idx"] == {
         "table": "users", "unique": True, "partial": False,
         "expression": False, "key_count": 1, "method": "btree",
+        "expression_text": None, "predicate_text": None,
     }
     assert indexes["users_active_idx"] == {
         "table": "users", "unique": False, "partial": True,
         "expression": False, "key_count": 2, "method": "btree",
+        "expression_text": None, "predicate_text": "active=true",
     }
     assert indexes["users_lower_name_idx"] == {
         "table": "users", "unique": False, "partial": False,
         "expression": True, "key_count": 1, "method": "btree",
+        "expression_text": "lowerusername", "predicate_text": None,
     }
