@@ -27,9 +27,9 @@ def _tool(name: str) -> str:
     return path
 
 
-def _run(args: list[str]) -> subprocess.CompletedProcess[str]:
+def _run(args: list[str], *, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
     try:
-        return subprocess.run(args, check=True, text=True, capture_output=True)
+        return subprocess.run(args, check=True, text=True, capture_output=True, env=env)
     except subprocess.CalledProcessError as exc:
         detail = (exc.stderr or exc.stdout or "").strip()
         raise BackupError(f"{Path(args[0]).name} failed" + (f": {detail}" if detail else "")) from exc
@@ -43,18 +43,17 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def _connection_args() -> list[str]:
+def _connection_env() -> dict[str, str]:
     info = conninfo_to_dict(settings.database_url)
-    args: list[str] = []
-    # Avoid exposing credentials in process arguments: use libpq environment variables.
+    env = os.environ.copy()
+    # Keep credentials out of process arguments and avoid mutating the parent environment.
     mapping = {"host": "PGHOST", "port": "PGPORT", "user": "PGUSER",
-               "password": "PGPASSWORD", "dbname": "PGDATABASE", "sslmode": "PGSSLMODE"}
+               "password": "PGPASSWORD", "dbname": "PGDATABASE", "sslmode": "PGSSLMODE",
+               "connect_timeout": "PGCONNECT_TIMEOUT", "application_name": "PGAPPNAME"}
     for key, env_name in mapping.items():
         if info.get(key) is not None:
-            os.environ[env_name] = info[key]
-    if info.get("connect_timeout") is not None:
-        os.environ["PGCONNECT_TIMEOUT"] = info["connect_timeout"]
-    return args
+            env[env_name] = info[key]
+    return env
 
 
 def create_backup(output: Path) -> dict[str, object]:
@@ -62,15 +61,15 @@ def create_backup(output: Path) -> dict[str, object]:
     if output.exists() or manifest_path.exists():
         raise BackupError(f"refusing to overwrite existing backup or manifest: {output}")
     output.parent.mkdir(parents=True, exist_ok=True)
-    _connection_args()
+    env = _connection_env()
     pg_dump = _tool("pg_dump")
     pg_restore = _tool("pg_restore")
     fd, temp_name = tempfile.mkstemp(prefix=f".{output.name}.", suffix=".tmp", dir=output.parent)
     os.close(fd)
     temp_path = Path(temp_name)
     try:
-        _run([pg_dump, "--format=custom", "--no-owner", "--no-privileges", "--file", str(temp_path)])
-        _run([pg_restore, "--list", str(temp_path)])
+        _run([pg_dump, "--format=custom", "--no-owner", "--no-privileges", "--file", str(temp_path)], env=env)
+        _run([pg_restore, "--list", str(temp_path)], env=env)
         digest = _sha256(temp_path)
         os.replace(temp_path, output)
         manifest = {
@@ -99,7 +98,7 @@ def verify_backup(backup: Path) -> dict[str, object]:
     actual = _sha256(backup)
     if manifest.get("format") != "postgresql-custom" or manifest.get("sha256") != actual:
         raise BackupError("backup checksum/format does not match its manifest")
-    _run([_tool("pg_restore"), "--list", str(backup)])
+    _run([_tool("pg_restore"), "--list", str(backup)], env=_connection_env())
     return {"verified": True, "sha256": actual, "size_bytes": backup.stat().st_size}
 
 
@@ -112,11 +111,11 @@ def restore_backup(backup: Path, confirmed_database: str) -> dict[str, object]:
     if not target.replace("_", "").replace("-", "").isalnum():
         raise BackupError("restore refused: configured database name is not a safe confirmation token")
     verify_backup(backup)
-    _connection_args()
+    env = _connection_env()
     _run([
         _tool("pg_restore"), "--exit-on-error", "--no-owner", "--no-privileges",
         "--clean", "--if-exists", "--dbname", target, str(backup),
-    ])
+    ], env=env)
     return {"restored": True, "target_database": target, "sha256": _sha256(backup)}
 
 
