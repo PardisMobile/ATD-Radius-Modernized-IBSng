@@ -110,3 +110,34 @@ def test_restore_invokes_pg_restore_only_after_verified_confirmation(tmp_path, m
         "--clean", "--if-exists", "--dbname", "production_db", str(archive),
     ]
     assert seen["kwargs"]["env"]["PGPASSWORD"] == "pw"
+
+
+def test_create_backup_does_not_overwrite_archive_created_during_dump(tmp_path, monkeypatch):
+    output = tmp_path / "raced.dump"
+    monkeypatch.setattr(backup, "_tool", lambda name: f"/usr/bin/{name}")
+
+    def fake_run(args, *, env=None):
+        if args[0].endswith("pg_dump"):
+            target = Path(args[args.index("--file") + 1])
+            target.write_bytes(b"our temporary archive")
+            output.write_bytes(b"operator file created concurrently")
+
+    monkeypatch.setattr(backup, "_run", fake_run)
+    with pytest.raises(FileExistsError):
+        backup.create_backup(output)
+    assert output.read_bytes() == b"operator file created concurrently"
+    assert not output.with_suffix(".dump.json").exists()
+
+
+def test_create_backup_manifest_is_private(tmp_path, monkeypatch):
+    output = tmp_path / "private.dump"
+    monkeypatch.setattr(backup, "_tool", lambda name: f"/usr/bin/{name}")
+
+    def fake_run(args, *, env=None):
+        if args[0].endswith("pg_dump"):
+            Path(args[args.index("--file") + 1]).write_bytes(b"custom archive")
+
+    monkeypatch.setattr(backup, "_run", fake_run)
+    backup.create_backup(output)
+    assert output.stat().st_mode & 0o077 == 0
+    assert output.with_suffix(".dump.json").stat().st_mode & 0o077 == 0
