@@ -206,7 +206,7 @@ def _normalize_rule_condition(condition: str) -> str:
     """Normalize PostgreSQL's display-only parentheses, whitespace, and common type casts."""
     normalized = re.sub(r"\s+", "", condition).lower()
     normalized = re.sub(r"\)::(?:text|integer|bigint|smallint|boolean)\b", ")", normalized)
-    normalized = re.sub(r"::(?:text|integer|bigint|smallint|boolean)\b", "", normalized)
+    normalized = re.sub(r"::text\b", "", normalized)
     return normalized.replace("(", "").replace(")", "")
 
 
