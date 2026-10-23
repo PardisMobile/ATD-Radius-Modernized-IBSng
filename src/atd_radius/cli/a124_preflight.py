@@ -853,6 +853,13 @@ def _sequence_high_water_drift(
     return drift
 
 
+def _has_required_columns(
+    available_columns: set[tuple[str, str]], table: str, required: list[str]
+) -> bool:
+    """Return whether a target table has every column needed for a seed query."""
+    return all((table, column) in available_columns for column in required)
+
+
 def run_preflight(archive_path: str, dsn: str, schema: str = "public") -> dict[str, Any]:
     digest = hashlib.sha256(Path(archive_path).read_bytes()).hexdigest()
     if digest != CANONICAL_A124_SHA256:
@@ -1017,7 +1024,7 @@ def run_preflight(archive_path: str, dsn: str, schema: str = "public") -> dict[s
                 sql.SQL(", ").join(sql.Identifier(column) for column in admin_columns),
                 sql.Identifier(schema, "admins"),
             )
-        ).fetchone() if "admins" in target["tables"] else None
+        ).fetchone() if "admins" in target["tables"] and _has_required_columns(target["columns"], "admins", admin_columns) else None
         actual_admin_seed = dict(zip(admin_columns, admin_row, strict=True)) if admin_row is not None else {}
         admin_seed_drift = sorted(
             column for column, expected in expected_admin_seed.items()
@@ -1032,7 +1039,7 @@ def run_preflight(archive_path: str, dsn: str, schema: str = "public") -> dict[s
                 sql.SQL(", ").join(sql.Identifier(column) for column in god_columns),
                 sql.Identifier(schema, "admin_perms"),
             )
-        ).fetchone() if "admin_perms" in target["tables"] else None
+        ).fetchone() if "admin_perms" in target["tables"] and _has_required_columns(target["columns"], "admin_perms", god_columns) else None
         actual_god_seed = dict(zip(god_columns, god_row, strict=True)) if god_row is not None else {}
         god_seed_drift = sorted(
             column for column, expected in expected_god_seed.items()
