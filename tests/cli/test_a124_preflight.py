@@ -1,15 +1,11 @@
 from __future__ import annotations
 
 import re
-from pathlib import Path
-
 import pytest
 
 from atd_radius.cli.a124_preflight import (
     CANONICAL_A124_SHA256,
     _defs_expected,
-    _split_top_level,
-    _table_bodies,
     source_inventory,
 )
 
