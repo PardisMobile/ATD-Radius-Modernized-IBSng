@@ -825,6 +825,18 @@ def _set_diff(expected: set[str], actual: set[str]) -> dict[str, list[str]]:
     return {"missing": sorted(expected - actual), "extra": sorted(actual - expected)}
 
 
+def _native_table_trigger_drift(
+    source_tables: set[str], target_triggers: list[dict[str, Any]],
+) -> list[dict[str, str]]:
+    """Flag triggers on native A1.24 tables; canonical A1.24 DDL defines none."""
+    return [
+        {"table": str(trigger["table"]), "name": str(trigger["name"]),
+         "definition": str(trigger["definition"])}
+        for trigger in target_triggers
+        if trigger["table"] in source_tables
+    ]
+
+
 def _sequence_high_water_drift(
     conn: psycopg.Connection,
     schema: str,
@@ -895,6 +907,9 @@ def run_preflight(archive_path: str, dsn: str, schema: str = "public") -> dict[s
         target = _target_inventory(conn, schema)
         source_table_names = set(source["tables"])
         target_table_names = set(target["tables"])
+        native_table_trigger_drift = _native_table_trigger_drift(
+            source_table_names, target["triggers"]
+        )
         source_columns = {(table, col) for table, cols in source["tables"].items() for col in cols}
         target_columns = target["columns"]
         target_details = {(row["table"], row["column"]): row for row in target["column_details"]}
@@ -1092,6 +1107,7 @@ def run_preflight(archive_path: str, dsn: str, schema: str = "public") -> dict[s
             "sequence_value_drift": sequence_value_drift,
             "column_definition_drift": column_definition_drift,
             "constraint_signature_drift": constraint_signature_drift,
+            "unexpected_native_table_triggers": native_table_trigger_drift,
             "source_defined_protection_rules": {
                 "missing": sorted(set(source_rules) - set(target_rules)),
                 "extra": sorted(set(item["name"] for item in target["rules"]) - set(source_rules)),
@@ -1123,7 +1139,7 @@ def run_preflight(archive_path: str, dsn: str, schema: str = "public") -> dict[s
             "required_seed_markers": seed_markers,
         },
         "scope": (
-            "Read-only readiness evidence only. Compares source-derived PK/UNIQUE/FK/CHECK signatures, but not every index definition or trigger body; plugin objects, all data, "
+            "Read-only readiness evidence only. Compares source-derived PK/UNIQUE/FK/CHECK signatures and flags any trigger attached to a native A1.24 table (canonical DDL defines none), but does not compare all trigger definitions on extension tables; plugin objects, all data, "
             "manually advanced/unowned sequence values, backup/restore fidelity, and runtime behavior remain outside scope. A clean result "
             "does not authorize migration-ledger stamping or production cutover."
         ),
@@ -1148,6 +1164,7 @@ def run_preflight(archive_path: str, dsn: str, schema: str = "public") -> dict[s
         and not inv["source_defined_protection_rules"]["missing"]
         and not inv["source_defined_protection_rules"]["extra"]
         and not inv["source_defined_protection_rules"]["definition_drift"]
+        and not inv["unexpected_native_table_triggers"]
         and all(data["required_seed_markers"].values())
     )
     return report
