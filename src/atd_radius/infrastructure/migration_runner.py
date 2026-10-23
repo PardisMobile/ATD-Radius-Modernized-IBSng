@@ -119,6 +119,17 @@ def run_migrations(
                 "SELECT version, name, checksum FROM public.atd_schema_migrations ORDER BY version"
             ).fetchall()
             existing = {int(version): (str(name), str(checksum).strip()) for version, name, checksum in rows}
+            if not existing:
+                has_untracked_relations = bool(conn.execute(
+                    "SELECT EXISTS (SELECT 1 FROM information_schema.tables "
+                    "WHERE table_schema='public' AND table_type='BASE TABLE' "
+                    "AND table_name <> 'atd_schema_migrations')"
+                ).fetchone()[0])
+                if has_untracked_relations:
+                    raise MigrationError(
+                        "migration ledger exists but is empty while application tables exist; "
+                        "refusing to replay clean-install migrations against an untracked schema"
+                    )
 
         # The ledger must represent a contiguous prefix of this release's
         # ordered migrations. Without this guard, a damaged ledger such as
