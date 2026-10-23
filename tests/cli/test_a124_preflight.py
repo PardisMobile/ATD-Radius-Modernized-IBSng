@@ -23,6 +23,8 @@ from atd_radius.cli.a124_preflight import (
     _normalize_index_sql,
     _has_required_columns,
     _native_table_trigger_drift,
+    _source_sequence_specs,
+    _sequence_definition_drift,
 )
 
 
@@ -335,3 +337,39 @@ def test_native_table_trigger_drift_flags_only_triggers_on_a124_tables():
         {"table": "users", "name": "audit_users", "definition": "CREATE TRIGGER audit_users ..."}
     ]
     assert _native_table_trigger_drift({"users", "admins"}, []) == []
+
+
+def test_source_sequence_specs_include_native_serial_and_explicit_sequence_defaults():
+    specs = _source_sequence_specs(
+        """
+        CREATE SEQUENCE credit_change_id;
+        CREATE TABLE sample (id serial PRIMARY KEY);
+        """,
+        {("sample", "id"): {"serial": True}},
+    )
+    assert specs["credit_change_id"] == {
+        "start": 1, "minimum": 1, "maximum": 9223372036854775807,
+        "increment": 1, "cycle": False, "cache": 1,
+    }
+    assert specs["sample_id_seq"] == {
+        "start": 1, "minimum": 1, "maximum": 2147483647,
+        "increment": 1, "cycle": False, "cache": 1,
+    }
+
+
+def test_sequence_definition_drift_reports_each_mismatched_setting():
+    source = {
+        "sample_id_seq": {
+            "start": 1, "minimum": 1, "maximum": 2147483647,
+            "increment": 1, "cycle": False, "cache": 1,
+        }
+    }
+    target = [{
+        "name": "sample_id_seq", "start": 1, "minimum": 1, "maximum": 999,
+        "increment": 2, "cycle": False, "cache": 1, "last_value": 17,
+    }]
+    assert _sequence_definition_drift(source, target) == [
+        {"sequence": "sample_id_seq", "field": "maximum", "source": 2147483647, "target": 999},
+        {"sequence": "sample_id_seq", "field": "increment", "source": 1, "target": 2},
+    ]
+    assert _sequence_definition_drift(source, []) == []
