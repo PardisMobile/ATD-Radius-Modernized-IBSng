@@ -17,6 +17,7 @@ The default path is the package checkout's `migrations/` directory. `--migration
 - Acquires a PostgreSQL transaction-scoped advisory lock so two operators cannot apply the same migration set concurrently.
 - Uses a ledger with migration version, filename, SHA-256 checksum and timestamp.
 - Verifies all recorded checksums before running pending migrations; changed or removed applied migrations fail closed.
+- Requires the recorded versions to be a contiguous prefix beginning at `001`. A damaged ledger such as `001, 003` is rejected instead of replaying migration `002` against a later schema.
 - Applies pending SQL and ledger entries in one transaction. Any failure rolls back the entire batch, including the ledger.
 - Refuses to initialize an untracked database that already has public tables. This prevents accidentally running the clean-install schema on an existing IBSng installation.
 - Does not automatically migrate or adopt a production A1.24 database. That requires the separately reviewed lossless import/adoption workflow and a verified backup/restore.
