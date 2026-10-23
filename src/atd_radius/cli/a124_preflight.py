@@ -223,6 +223,58 @@ def _source_rules(initial_sql: str) -> dict[str, dict[str, str]]:
     return rules
 
 
+def _function_definitions(functions_sql: str) -> dict[tuple[str, tuple[str, ...]], str]:
+    """Extract decoded SQL-language function bodies from the canonical A1.24 file."""
+    cleaned = _strip_line_comments(functions_sql)
+    definitions: dict[tuple[str, tuple[str, ...]], str] = {}
+    for match in _CREATE_FUNCTION.finditer(cleaned):
+        depth, quote, i, start = 1, None, match.end(), match.end()
+        while i < len(cleaned) and depth:
+            ch = cleaned[i]
+            if quote:
+                if ch == quote:
+                    if i + 1 < len(cleaned) and cleaned[i + 1] == quote:
+                        i += 1
+                    else:
+                        quote = None
+            elif ch == "'":
+                quote = ch
+            elif ch == "(":
+                depth += 1
+            elif ch == ")":
+                depth -= 1
+            i += 1
+        if depth:
+            raise ValueError(f"Unterminated function argument list for {match.group(1)}")
+        args = tuple(
+            _normalize_type(arg) for arg in _split_top_level(cleaned[start:i - 1]) if arg.strip()
+        )
+        body_match = re.search(r"\bas\s*'", cleaned[i:], re.I)
+        if body_match is None:
+            raise ValueError(f"Missing quoted function body for {match.group(1)}")
+        body_start = i + body_match.end()
+        j = body_start
+        body_chars: list[str] = []
+        while j < len(cleaned):
+            if cleaned[j] == "'":
+                if j + 1 < len(cleaned) and cleaned[j + 1] == "'":
+                    body_chars.append("'")
+                    j += 2
+                    continue
+                break
+            body_chars.append(cleaned[j])
+            j += 1
+        if j >= len(cleaned):
+            raise ValueError(f"Unterminated quoted function body for {match.group(1)}")
+        key = (match.group(1).lower(), args)
+        if key in definitions:
+            raise ValueError(f"Duplicate function definition: {key[0]}{key[1]}")
+        definitions[key] = "".join(body_chars).strip()
+    if not definitions:
+        raise ValueError("No function bodies found in canonical A1.24 functions.sql")
+    return definitions
+
+
 def source_inventory(tables_sql: str, functions_sql: str, initial_sql: str = "") -> dict[str, Any]:
     tables: dict[str, set[str]] = {}
     sequences = {m.group(1).lower() for m in _CREATE_SEQUENCE.finditer(_strip_line_comments(tables_sql))}
@@ -250,10 +302,15 @@ def source_inventory(tables_sql: str, functions_sql: str, initial_sql: str = "")
             if _SERIAL.match(definition):
                 sequences.add(f"{table}_{name}_seq")
         tables[table] = columns
-    function_signatures = _function_signatures(functions_sql)
+    function_definitions = _function_definitions(functions_sql)
+    function_signatures = set(function_definitions)
     functions = {name for name, _ in function_signatures}
+    function_body_sha256 = {
+        key: hashlib.sha256(body.encode("utf-8")).hexdigest()
+        for key, body in function_definitions.items()
+    }
     rules = _source_rules(initial_sql) if initial_sql.strip() else {}
-    return {"tables": tables, "column_specs": column_specs, "indexes": indexes, "sequences": sequences, "functions": functions, "function_signatures": function_signatures, "rules": rules}
+    return {"tables": tables, "column_specs": column_specs, "indexes": indexes, "sequences": sequences, "functions": functions, "function_signatures": function_signatures, "function_body_sha256": function_body_sha256, "rules": rules}
 
 
 def _defs_expected(defs_sql: str) -> dict[str, str]:
@@ -314,7 +371,8 @@ def _target_inventory(conn: psycopg.Connection, schema: str) -> dict[str, Any]:
     ).fetchall()
     functions = conn.execute(
         """
-        SELECT DISTINCT p.proname, pg_get_function_identity_arguments(p.oid)
+        SELECT DISTINCT p.proname, pg_get_function_identity_arguments(p.oid),
+               p.prosrc
         FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
         WHERE n.nspname=%s
         """, (schema,)
@@ -371,6 +429,11 @@ def _target_inventory(conn: psycopg.Connection, schema: str) -> dict[str, Any]:
         "sequences": {row[0] for row in sequences},
         "functions": {row[0] for row in functions},
         "function_signatures": {(row[0], tuple(_normalize_type(arg) for arg in _split_top_level(row[1]) if arg.strip())) for row in functions},
+        "function_body_sha256": {
+            (row[0], tuple(_normalize_type(arg) for arg in _split_top_level(row[1]) if arg.strip())):
+                hashlib.sha256(str(row[2]).strip().encode("utf-8")).hexdigest()
+            for row in functions
+        },
         "constraints": [
             {"table": row[0], "name": row[1], "type": row[2], "definition": row[3]}
             for row in constraints
@@ -451,6 +514,17 @@ def run_preflight(archive_path: str, dsn: str, schema: str = "public") -> dict[s
         source_sequences, target_sequences = set(source["sequences"]), target["sequences"]
         source_functions, target_functions = set(source["functions"]), target["functions"]
         source_function_signatures, target_function_signatures = source["function_signatures"], target["function_signatures"]
+        source_function_bodies, target_function_bodies = source["function_body_sha256"], target["function_body_sha256"]
+        function_body_drift = [
+            {
+                "function": name, "arguments": list(args),
+                "source_sha256": source_function_bodies[(name, args)],
+                "target_sha256": target_function_bodies.get((name, args)),
+            }
+            for name, args in sorted(source_function_bodies)
+            if (name, args) in target_function_signatures
+            and source_function_bodies[(name, args)] != target_function_bodies.get((name, args))
+        ]
         source_rules = source["rules"]
         target_rules = {
             item["name"]: item for item in target["rules"]
@@ -538,6 +612,7 @@ def run_preflight(archive_path: str, dsn: str, schema: str = "public") -> dict[s
                 "missing": sorted(f"{name}({', '.join(args)})" for name, args in source_function_signatures - target_function_signatures),
                 "extra": sorted(f"{name}({', '.join(args)})" for name, args in target_function_signatures - source_function_signatures),
             },
+            "function_body_drift": function_body_drift,
             "column_definition_drift": column_definition_drift,
             "source_defined_protection_rules": {
                 "missing": sorted(set(source_rules) - set(target_rules)),
@@ -573,6 +648,7 @@ def run_preflight(archive_path: str, dsn: str, schema: str = "public") -> dict[s
     data = report["native_data"]
     report["passes_audited_checks"] = (
         not any(inv[key]["missing"] or inv[key]["extra"] for key in ("tables", "columns", "explicit_indexes", "sequences", "function_names", "function_signatures"))
+        and not inv["function_body_drift"]
         and not data["missing_definitions"]
         and not data["definitions_with_value_drift"]
         and not inv["column_definition_drift"]
