@@ -476,6 +476,33 @@ def _source_constraint_signatures(tables_sql: str) -> set[tuple[Any, ...]]:
     return signatures
 
 
+def _source_sequence_specs(
+    tables_sql: str, column_specs: dict[tuple[str, str], dict[str, Any]],
+) -> dict[str, dict[str, Any]]:
+    """Extract canonical sequence settings; all A1.24 explicit sequences use PostgreSQL defaults."""
+    cleaned = _strip_line_comments(tables_sql)
+    specs: dict[str, dict[str, Any]] = {}
+    for match in _CREATE_SEQUENCE.finditer(cleaned):
+        name = match.group(1).lower()
+        # Canonical A1.24 declares explicit sequences without options (bigint defaults).
+        tail = cleaned[match.end():]
+        statement_end = tail.find(";")
+        declaration = tail[:statement_end] if statement_end >= 0 else ""
+        if re.search(r"\\b(?:as|increment|start|minvalue|maxvalue|cache|cycle)\\b", declaration, re.I):
+            raise ValueError(f"Unsupported non-default canonical sequence declaration: {name}")
+        specs[name] = {
+            "start": 1, "minimum": 1, "maximum": 9223372036854775807,
+            "increment": 1, "cycle": False, "cache": 1,
+        }
+    for (table, column), spec in column_specs.items():
+        if spec["serial"]:
+            specs[f"{table}_{column}_seq"] = {
+                "start": 1, "minimum": 1, "maximum": 2147483647,
+                "increment": 1, "cycle": False, "cache": 1,
+            }
+    return specs
+
+
 def source_inventory(tables_sql: str, functions_sql: str, initial_sql: str = "") -> dict[str, Any]:
     tables: dict[str, set[str]] = {}
     sequences = {m.group(1).lower() for m in _CREATE_SEQUENCE.finditer(_strip_line_comments(tables_sql))}
@@ -517,7 +544,8 @@ def source_inventory(tables_sql: str, functions_sql: str, initial_sql: str = "")
     rules = _source_rules(initial_sql) if initial_sql.strip() else {}
     constraint_signatures = _source_constraint_signatures(tables_sql)
     index_details = _source_index_details(tables_sql)
-    return {"tables": tables, "column_specs": column_specs, "indexes": indexes, "index_details": index_details, "sequences": sequences, "functions": functions, "function_signatures": function_signatures, "function_body_sha256": function_body_sha256, "sequence_owners": sequence_owners, "constraint_signatures": constraint_signatures, "rules": rules}
+    sequence_specs = _source_sequence_specs(tables_sql, column_specs)
+    return {"tables": tables, "column_specs": column_specs, "indexes": indexes, "index_details": index_details, "sequences": sequences, "sequence_specs": sequence_specs, "functions": functions, "function_signatures": function_signatures, "function_body_sha256": function_body_sha256, "sequence_owners": sequence_owners, "constraint_signatures": constraint_signatures, "rules": rules}
 
 
 def _seed_values_equal(expected: Any, actual: Any, column_spec: dict[str, Any] | None = None) -> bool:
@@ -967,6 +995,20 @@ def run_preflight(archive_path: str, dsn: str, schema: str = "public") -> dict[s
         sequence_value_drift = _sequence_high_water_drift(
             conn, schema, target_sequence_owners, target["sequence_states"]
         )
+        target_sequence_states = {item["name"]: item for item in target["sequence_states"]}
+        sequence_definition_drift = [
+            {
+                "sequence": name, "field": field,
+                "source": expected[field], "target": target_sequence_states.get(name, {}).get(target_field),
+            }
+            for name, expected in source["sequence_specs"].items()
+            for field, target_field in (
+                ("start", "start"), ("minimum", "minimum"), ("maximum", "maximum"),
+                ("increment", "increment"), ("cycle", "cycle"), ("cache", "cache"),
+            )
+            if name in target_sequence_states
+            and expected[field] != target_sequence_states[name].get(target_field)
+        ]
         source_constraints, target_constraints = source["constraint_signatures"], target["constraint_signatures"]
         constraint_signature_drift = {
             "missing": sorted(repr(item) for item in source_constraints - target_constraints),
@@ -1105,6 +1147,7 @@ def run_preflight(archive_path: str, dsn: str, schema: str = "public") -> dict[s
             "function_body_drift": function_body_drift,
             "sequence_owner_drift": sequence_owner_drift,
             "sequence_value_drift": sequence_value_drift,
+            "sequence_definition_drift": sequence_definition_drift,
             "column_definition_drift": column_definition_drift,
             "constraint_signature_drift": constraint_signature_drift,
             "unexpected_native_table_triggers": native_table_trigger_drift,
@@ -1151,6 +1194,7 @@ def run_preflight(archive_path: str, dsn: str, schema: str = "public") -> dict[s
         and not inv["function_body_drift"]
         and not inv["sequence_owner_drift"]
         and not inv["sequence_value_drift"]
+        and not inv["sequence_definition_drift"]
         and not inv["index_definition_drift"]
         and not data["missing_definitions"]
         and not data["definitions_with_value_drift"]
