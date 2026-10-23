@@ -992,7 +992,7 @@ def run_preflight(archive_path: str, dsn: str, schema: str = "public") -> dict[s
             ).fetchone()[0]
             if exists:
                 present_data_tables.add(table_name)
-        if "defs" in present_data_tables:
+        if "defs" in present_data_tables and _has_required_columns(target["columns"], "defs", ["name", "value"]):
             defs_table = sql.Identifier(schema, "defs")
             actual_defs_rows = conn.execute(
                 sql.SQL("SELECT name, value FROM {} WHERE name = ANY(%s)").format(defs_table),
@@ -1003,7 +1003,7 @@ def run_preflight(archive_path: str, dsn: str, schema: str = "public") -> dict[s
             actual_defs = {}
         missing_defs = sorted(set(expected_defs) - set(actual_defs))
         wrong_defs = sorted(name for name in set(expected_defs) & set(actual_defs) if expected_defs[name] != actual_defs[name])
-        if "ibs_states" in target["tables"]:
+        if "ibs_states" in target["tables"] and _has_required_columns(target["columns"], "ibs_states", ["name", "value"]):
             actual_state_rows = conn.execute(
                 sql.SQL("SELECT name, value FROM {} WHERE name = ANY(%s)").format(
                     sql.Identifier(schema, "ibs_states")
@@ -1046,14 +1046,14 @@ def run_preflight(archive_path: str, dsn: str, schema: str = "public") -> dict[s
             if column not in actual_god_seed or actual_god_seed[column] != expected
         )
         marker_queries = {
-            "system_admin": ("admins", "SELECT EXISTS (SELECT 1 FROM {} WHERE admin_id=0 AND username='system')"),
-            "system_god_permission": ("admin_perms", "SELECT EXISTS (SELECT 1 FROM {} WHERE admin_id=0 AND perm_name='GOD')"),
-            "midnight_jobs_state": ("ibs_states", "SELECT EXISTS (SELECT 1 FROM {} WHERE name='MIDNIGHT_JOBS' AND value='0')"),
-            "lowload_jobs_state": ("ibs_states", "SELECT EXISTS (SELECT 1 FROM {} WHERE name='LOWLOAD_JOBS' AND value='0')"),
+            "system_admin": ("admins", ["admin_id", "username"], "SELECT EXISTS (SELECT 1 FROM {} WHERE admin_id=0 AND username='system')"),
+            "system_god_permission": ("admin_perms", ["admin_id", "perm_name"], "SELECT EXISTS (SELECT 1 FROM {} WHERE admin_id=0 AND perm_name='GOD')"),
+            "midnight_jobs_state": ("ibs_states", ["name", "value"], "SELECT EXISTS (SELECT 1 FROM {} WHERE name='MIDNIGHT_JOBS' AND value='0')"),
+            "lowload_jobs_state": ("ibs_states", ["name", "value"], "SELECT EXISTS (SELECT 1 FROM {} WHERE name='LOWLOAD_JOBS' AND value='0')"),
         }
         seed_markers: dict[str, bool] = {}
-        for marker, (table_name, query) in marker_queries.items():
-            if table_name not in present_data_tables:
+        for marker, (table_name, required_columns, query) in marker_queries.items():
+            if table_name not in present_data_tables or not _has_required_columns(target["columns"], table_name, required_columns):
                 seed_markers[marker] = False
             else:
                 seed_markers[marker] = bool(conn.execute(
