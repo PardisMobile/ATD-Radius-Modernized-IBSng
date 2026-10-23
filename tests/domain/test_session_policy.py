@@ -36,3 +36,46 @@ def test_user_multilogin_overrides_group_multilogin():
     decision = session_policy(attrs, [ActiveSessionView("s1")])
     assert not decision.allowed
     assert decision.reason == "multi_login"
+
+
+def test_multilogin_ras_capability_is_checked_after_user_limit():
+    attrs = AttributeSet({"multi_login": "1"})
+    decision = session_policy(
+        attrs,
+        [ActiveSessionView("s1", ras_multi_login_allowed=False)],
+        current_ras_multi_login_allowed=False,
+    )
+    assert not decision.allowed
+    assert decision.reason == "multi_login"
+
+
+def test_multilogin_rejects_when_existing_ras_disallows_second_instance():
+    attrs = AttributeSet({"multi_login": "2"})
+    decision = session_policy(
+        attrs,
+        [ActiveSessionView("s1", ras_multi_login_allowed=False)],
+        current_ras_multi_login_allowed=True,
+    )
+    assert not decision.allowed
+    assert decision.reason == "ras_doesnt_allow_multilogin"
+
+
+def test_multilogin_rejects_when_incoming_ras_disallows_second_instance():
+    attrs = AttributeSet({"multi_login": "2"})
+    decision = session_policy(
+        attrs,
+        [ActiveSessionView("s1", ras_multi_login_allowed=True)],
+        current_ras_multi_login_allowed=False,
+    )
+    assert not decision.allowed
+    assert decision.reason == "ras_doesnt_allow_multilogin"
+
+
+def test_multilogin_allows_second_instance_when_all_ras_allow_it():
+    attrs = AttributeSet({"multi_login": "2"})
+    decision = session_policy(
+        attrs,
+        [ActiveSessionView("s1", ras_multi_login_allowed=True)],
+        current_ras_multi_login_allowed=True,
+    )
+    assert decision.allowed
