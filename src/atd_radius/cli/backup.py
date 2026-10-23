@@ -49,7 +49,7 @@ def _connection_env() -> dict[str, str]:
     # Keep credentials out of process arguments and avoid mutating the parent environment.
     mapping = {"host": "PGHOST", "port": "PGPORT", "user": "PGUSER",
                "password": "PGPASSWORD", "dbname": "PGDATABASE", "sslmode": "PGSSLMODE",
-               "connect_timeout": "PGCONNECT_TIMEOUT", "application_name": "PGAPPNAME"}
+               "connect_timeout": "PGCONNECT_TIMEOUT", "application_name": "PGAPPNAME",\n               "hostaddr": "PGHOSTADDR", "sslcert": "PGSSLCERT", "sslkey": "PGSSLKEY",\n               "sslrootcert": "PGSSLROOTCERT", "sslcrl": "PGSSLCRL", "sslcrldir": "PGSSLCRLDIR",\n               "gssencmode": "PGGSSENCMODE", "channel_binding": "PGCHANNELBINDING",\n               "target_session_attrs": "PGTARGETSESSIONATTRS", "options": "PGOPTIONS", "service": "PGSERVICE"}
     for key, env_name in mapping.items():
         if info.get(key) is not None:
             env[env_name] = info[key]
