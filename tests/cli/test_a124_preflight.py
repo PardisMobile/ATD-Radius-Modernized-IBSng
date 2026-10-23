@@ -30,6 +30,7 @@ def test_source_inventory_reads_canonical_a124_schema_objects():
     assert result["tables"]["admins"] == {"admin_id", "username", "note"}
     assert result["indexes"] == {"admins_name_idx"}
     assert result["sequences"] == {"admins_id_seq", "serials_id_seq"}
+    assert result["sequence_owners"] == {"serials_id_seq": {"table": "serials", "column": "id"}}
     assert result["functions"] == {"insert_user_attr"}
 
 
