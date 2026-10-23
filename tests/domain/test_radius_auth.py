@@ -102,3 +102,21 @@ def test_mschapv2_rfc2759_vector_remains_valid_after_source_password_conversion(
     nt_response = bytes.fromhex("82309ECD8D708B5EA08FAA3981CD83544233114A3D85D6DF")
     response = b"\x01\x00" + peer_challenge + b"\x00" * 8 + nt_response
     assert verify_mschapv2(response, "clientPass", "User", auth_challenge)
+
+
+def test_mschapv2_authenticator_response_uses_a124_bytewise_password_conversion():
+    from atd_radius.domain.radius_auth import _a124_str2unicode, _md4
+
+    password = "é"
+    nt_response = bytes.fromhex("82309ECD8D708B5EA08FAA3981CD83544233114A3D85D6DF")
+    peer_challenge = bytes.fromhex("21402324255E262A28295F2B3A337C7E")
+    auth_challenge = bytes.fromhex("5B5D7C7D7B3F2F3E3C2C602132262628")
+    password_hash_hash = _md4(_md4(_a124_str2unicode(password)))
+    magic1 = b"Magic server to client signing constant"
+    digest = __import__("hashlib").sha1(password_hash_hash + nt_response + magic1).digest()
+    challenge = __import__("hashlib").sha1(peer_challenge + auth_challenge + b"User").digest()[:8]
+    magic2 = b"Pad to make it do more than one iteration"
+    expected = "S=" + __import__("hashlib").sha1(digest + challenge + magic2).hexdigest().upper()
+    assert generate_mschapv2_authenticator_response(
+        password, nt_response, peer_challenge, auth_challenge, "User"
+    ) == expected
