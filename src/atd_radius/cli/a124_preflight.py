@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any
 
 import psycopg
+from psycopg import sql
 
 CANONICAL_A124_SHA256 = "c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839614bb9349d18a8"
 _REQUIRED_FILES = (
@@ -147,13 +148,13 @@ def _defs_expected(defs_sql: str) -> dict[str, str]:
     # SQL string literals support doubled apostrophes and embedded newlines.
     pattern = re.compile(
         r"insert\s+into\s+defs\s*\(\s*name\s*,\s*value\s*\)\s*values\s*"
-        r"\(\s*'((?:''|[^'])*)'\s*,\s*'((?:''|[^'])*)'\s*\)",
+        r"\(\s*'((?:''|\\'|[^'])*)'\s*,\s*'((?:''|\\'|[^'])*)'\s*\)",
         re.I | re.S,
     )
     values: dict[str, str] = {}
     for match in pattern.finditer(defs_sql):
-        name = match.group(1).replace("''", "'")
-        value = match.group(2).replace("''", "'")
+        name = match.group(1).replace("\\'", "'").replace("''", "'")
+        value = match.group(2).replace("\\'", "'").replace("''", "'")
         if name in values:
             raise ValueError(f"Duplicate definition in canonical defs.sql: {name}")
         values[name] = value
@@ -238,21 +239,57 @@ def run_preflight(archive_path: str, dsn: str, schema: str = "public") -> dict[s
         source_indexes, target_indexes = set(source["indexes"]), target["indexes"]
         source_sequences, target_sequences = set(source["sequences"]), target["sequences"]
         source_functions, target_functions = set(source["functions"]), target["functions"]
-        actual_defs_rows = conn.execute(
-            "SELECT name, value FROM defs WHERE name = ANY(%s)", (list(expected_defs),)
-        ).fetchall()
-        actual_defs = dict(actual_defs_rows)
+        required_data_tables = {"defs", "admins", "admin_perms", "ibs_states"}
+        present_data_tables = set()
+        for table_name in required_data_tables:
+            exists = conn.execute(
+                """
+                SELECT EXISTS (
+                  SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+                  WHERE n.nspname=%s AND c.relname=%s AND c.relkind IN ('r','p')
+                )
+                """, (schema, table_name)
+            ).fetchone()[0]
+            if exists:
+                present_data_tables.add(table_name)
+        if "defs" in present_data_tables:
+            defs_table = sql.Identifier(schema, "defs")
+            actual_defs_rows = conn.execute(
+                sql.SQL("SELECT name, value FROM {} WHERE name = ANY(%s)").format(defs_table),
+                (list(expected_defs),),
+            ).fetchall()
+            actual_defs = dict(actual_defs_rows)
+        else:
+            actual_defs = {}
         missing_defs = sorted(set(expected_defs) - set(actual_defs))
         wrong_defs = sorted(name for name in set(expected_defs) & set(actual_defs) if expected_defs[name] != actual_defs[name])
-        unexpected_seed = conn.execute(
-            """
-            SELECT
-              EXISTS (SELECT 1 FROM admins WHERE admin_id=0 AND username='system') AS system_admin,
-              EXISTS (SELECT 1 FROM admin_perms WHERE admin_id=0 AND perm_name='GOD') AS system_god,
-              EXISTS (SELECT 1 FROM ibs_states WHERE name='MIDNIGHT_JOBS') AS midnight_state,
-              EXISTS (SELECT 1 FROM ibs_states WHERE name='LOWLOAD_JOBS') AS lowload_state
-            """
-        ).fetchone()
+        marker_queries = {
+            "system_admin": ("admins", "SELECT EXISTS (SELECT 1 FROM {} WHERE admin_id=0 AND username='system')"),
+            "system_god_permission": ("admin_perms", "SELECT EXISTS (SELECT 1 FROM {} WHERE admin_id=0 AND perm_name='GOD')"),
+            "midnight_jobs_state": ("ibs_states", "SELECT EXISTS (SELECT 1 FROM {} WHERE name='MIDNIGHT_JOBS' AND value='0')"),
+            "lowload_jobs_state": ("ibs_states", "SELECT EXISTS (SELECT 1 FROM {} WHERE name='LOWLOAD_JOBS' AND value='0')"),
+        }
+        seed_markers: dict[str, bool] = {}
+        for marker, (table_name, query) in marker_queries.items():
+            if table_name not in present_data_tables:
+                seed_markers[marker] = False
+            else:
+                seed_markers[marker] = bool(conn.execute(
+                    sql.SQL(query).format(sql.Identifier(schema, table_name))
+                ).fetchone()[0])
+        present_rules = {
+            row[0] for row in conn.execute(
+                """
+                SELECT r.rulename
+                FROM pg_rewrite r
+                JOIN pg_class c ON c.oid=r.ev_class
+                JOIN pg_namespace n ON n.oid=c.relnamespace
+                WHERE n.nspname=%s AND r.rulename IN ('system_admin','system_admin_god')
+                """, (schema,)
+            ).fetchall()
+        }
+        seed_markers["system_admin_delete_rule"] = "system_admin" in present_rules
+        seed_markers["system_god_delete_rule"] = "system_admin_god" in present_rules
     report = {
         "source_archive_sha256": digest,
         "target_schema": schema,
@@ -269,12 +306,7 @@ def run_preflight(archive_path: str, dsn: str, schema: str = "public") -> dict[s
             "definition_count_found": len(actual_defs),
             "missing_definitions": missing_defs,
             "definitions_with_value_drift": wrong_defs,
-            "required_seed_markers": {
-                "system_admin": bool(unexpected_seed[0]),
-                "system_god_permission": bool(unexpected_seed[1]),
-                "midnight_jobs_state": bool(unexpected_seed[2]),
-                "lowload_jobs_state": bool(unexpected_seed[3]),
-            },
+            "required_seed_markers": seed_markers,
         },
         "scope": (
             "Read-only readiness evidence only. Does not compare every column type/default, "
