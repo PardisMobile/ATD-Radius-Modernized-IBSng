@@ -1,4 +1,4 @@
-from hashlib import md5
+from hashlib import md5, sha1
 
 from atd_radius.domain.radius_auth import (
     RadiusAuthMethod,
@@ -113,10 +113,10 @@ def test_mschapv2_authenticator_response_uses_a124_bytewise_password_conversion(
     auth_challenge = bytes.fromhex("5B5D7C7D7B3F2F3E3C2C602132262628")
     password_hash_hash = _md4(_md4(_a124_str2unicode(password)))
     magic1 = b"Magic server to client signing constant"
-    digest = __import__("hashlib").sha1(password_hash_hash + nt_response + magic1).digest()
-    challenge = __import__("hashlib").sha1(peer_challenge + auth_challenge + b"User").digest()[:8]
+    digest = sha1(password_hash_hash + nt_response + magic1).digest()
+    challenge = sha1(peer_challenge + auth_challenge + b"User").digest()[:8]
     magic2 = b"Pad to make it do more than one iteration"
-    expected = "S=" + __import__("hashlib").sha1(digest + challenge + magic2).hexdigest().upper()
+    expected = "S=" + sha1(digest + challenge + magic2).hexdigest().upper()
     assert generate_mschapv2_authenticator_response(
         password, nt_response, peer_challenge, auth_challenge, "User"
     ) == expected
