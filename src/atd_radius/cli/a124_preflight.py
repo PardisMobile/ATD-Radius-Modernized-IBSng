@@ -490,6 +490,34 @@ def _set_diff(expected: set[str], actual: set[str]) -> dict[str, list[str]]:
     return {"missing": sorted(expected - actual), "extra": sorted(actual - expected)}
 
 
+def _sequence_high_water_drift(
+    conn: psycopg.Connection,
+    schema: str,
+    owners: dict[str, dict[str, str]],
+    states: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Detect owned sequences whose stored value is behind the owning column's maximum."""
+    state_by_name = {item["name"]: item for item in states}
+    drift: list[dict[str, Any]] = []
+    for sequence_name, owner in owners.items():
+        state = state_by_name.get(sequence_name, {})
+        max_value = conn.execute(
+            sql.SQL("SELECT max({}) FROM {}.{}").format(
+                sql.Identifier(owner["column"]),
+                sql.Identifier(schema),
+                sql.Identifier(owner["table"]),
+            )
+        ).fetchone()[0]
+        last_value = state.get("last_value")
+        if max_value is not None and (last_value is None or int(last_value) < int(max_value)):
+            drift.append({
+                "sequence": sequence_name, "table": owner["table"], "column": owner["column"],
+                "max_column_value": int(max_value),
+                "last_value": int(last_value) if last_value is not None else None,
+            })
+    return drift
+
+
 def run_preflight(archive_path: str, dsn: str, schema: str = "public") -> dict[str, Any]:
     digest = hashlib.sha256(Path(archive_path).read_bytes()).hexdigest()
     if digest != CANONICAL_A124_SHA256:
@@ -564,24 +592,9 @@ def run_preflight(archive_path: str, dsn: str, schema: str = "public") -> dict[s
                 sequence_owner_drift.append({
                     "sequence": sequence_name, "source": expected_owner, "target": actual_owner,
                 })
-        target_sequence_states = {item["name"]: item for item in target["sequence_states"]}
-        sequence_value_drift = []
-        for sequence_name, owner in target_sequence_owners.items():
-            state = target_sequence_states.get(sequence_name, {})
-            max_value = conn.execute(
-                sql.SQL("SELECT max({}) FROM {}.{}").format(
-                    sql.Identifier(owner["column"]),
-                    sql.Identifier(schema),
-                    sql.Identifier(owner["table"]),
-                )
-            ).fetchone()[0]
-            last_value = state.get("last_value")
-            if max_value is not None and (last_value is None or int(last_value) < int(max_value)):
-                sequence_value_drift.append({
-                    "sequence": sequence_name, "table": owner["table"], "column": owner["column"],
-                    "max_column_value": int(max_value),
-                    "last_value": int(last_value) if last_value is not None else None,
-                })
+        sequence_value_drift = _sequence_high_water_drift(
+            conn, schema, target_sequence_owners, target["sequence_states"]
+        )
         source_rules = source["rules"]
         target_rules = {
             item["name"]: item for item in target["rules"]
@@ -700,7 +713,7 @@ def run_preflight(archive_path: str, dsn: str, schema: str = "public") -> dict[s
         "scope": (
             "Read-only readiness evidence only. Does not compare every column type/default, "
             "constraint/trigger parity (target-side evidence is included), plugin objects, all data, "
-            "sequence values, backup/restore fidelity, or runtime behavior. A clean result "
+            "manually advanced/unowned sequence values, backup/restore fidelity, or runtime behavior. A clean result "
             "does not authorize migration-ledger stamping or production cutover."
         ),
     }
