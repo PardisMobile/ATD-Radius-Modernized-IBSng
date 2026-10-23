@@ -373,3 +373,11 @@ def test_sequence_definition_drift_reports_each_mismatched_setting():
         {"sequence": "sample_id_seq", "field": "increment", "source": 1, "target": 2},
     ]
     assert _sequence_definition_drift(source, []) == []
+
+
+def test_sequence_parser_fails_closed_on_nondefault_explicit_sequence_options():
+    with pytest.raises(ValueError, match="Unsupported non-default canonical sequence"):
+        _source_sequence_specs(
+            "CREATE SEQUENCE custom_seq INCREMENT BY 2;",
+            {},
+        )
