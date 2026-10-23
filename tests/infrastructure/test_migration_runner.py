@@ -143,6 +143,25 @@ def test_untracked_existing_database_is_refused_without_mutation(tmp_path):
     assert conn.executed_sql == []
 
 
+def test_gapped_ledger_fails_closed_before_replaying_migrations(tmp_path):
+    root = write_migrations(tmp_path / "migrations",
+        ("001_initial.sql", "SELECT 1;"),
+        ("002_defs.sql", "SELECT 2;"),
+        ("003_rules.sql", "SELECT 3;"),
+    )
+    conn = FakeConnection()
+    run_migrations(conn, root, apply=True)
+    # Simulate ledger damage: migration 003 remains recorded while 002 is missing.
+    conn.ledger = [row for row in conn.ledger if row[0] != 2]
+    executed_before = list(conn.executed_sql)
+
+    with pytest.raises(MigrationError, match="not a contiguous prefix"):
+        run_migrations(conn, root, apply=True)
+
+    assert conn.executed_sql == executed_before
+    assert [row[0] for row in conn.ledger] == [1, 3]
+
+
 def test_failed_migration_rolls_back_ledger_and_earlier_migration(tmp_path):
     root = write_migrations(tmp_path / "migrations",
         ("001_initial.sql", "SELECT 1;"),
