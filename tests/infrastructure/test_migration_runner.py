@@ -50,7 +50,7 @@ class FakeConnection:
             return Result([("atd_schema_migrations",)] if self.ledger_exists else [(None,)])
         if "FROM information_schema.tables" in normalized:
             return Result([(self.existing_tables,)])
-        if normalized.startswith("CREATE TABLE atd_schema_migrations"):
+        if normalized.startswith("CREATE TABLE public.atd_schema_migrations"):
             self.ledger_exists = True
             return Result([])
         if normalized.startswith("SELECT version, name, checksum FROM atd_schema_migrations"):
