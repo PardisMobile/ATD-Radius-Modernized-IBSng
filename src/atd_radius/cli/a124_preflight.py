@@ -317,8 +317,12 @@ def source_inventory(tables_sql: str, functions_sql: str, initial_sql: str = "")
         key: hashlib.sha256(body.encode("utf-8")).hexdigest()
         for key, body in function_definitions.items()
     }
+    sequence_owners = {
+        f"{table}_{column}_seq": {"table": table, "column": column}
+        for (table, column), spec in column_specs.items() if spec["serial"]
+    }
     rules = _source_rules(initial_sql) if initial_sql.strip() else {}
-    return {"tables": tables, "column_specs": column_specs, "indexes": indexes, "sequences": sequences, "functions": functions, "function_signatures": function_signatures, "function_body_sha256": function_body_sha256, "rules": rules}
+    return {"tables": tables, "column_specs": column_specs, "indexes": indexes, "sequences": sequences, "functions": functions, "function_signatures": function_signatures, "function_body_sha256": function_body_sha256, "sequence_owners": sequence_owners, "rules": rules}
 
 
 def _defs_expected(defs_sql: str) -> dict[str, str]:
@@ -426,6 +430,22 @@ def _target_inventory(conn: psycopg.Connection, schema: str) -> dict[str, Any]:
         ORDER BY sequencename
         """, (schema,)
     ).fetchall()
+    sequence_owners = conn.execute(
+        """
+        SELECT seq.relname, tbl.relname, att.attname
+        FROM pg_class seq
+        JOIN pg_namespace sn ON sn.oid=seq.relnamespace
+        JOIN pg_depend d ON d.objid=seq.oid
+          AND d.classid='pg_class'::regclass
+          AND d.refclassid='pg_class'::regclass
+          AND d.deptype IN ('a','i')
+        JOIN pg_class tbl ON tbl.oid=d.refobjid
+        JOIN pg_namespace tn ON tn.oid=tbl.relnamespace
+        JOIN pg_attribute att ON att.attrelid=tbl.oid AND att.attnum=d.refobjsubid
+        WHERE sn.nspname=%s AND tn.nspname=%s AND seq.relkind='S'
+        ORDER BY seq.relname
+        """, (schema, schema)
+    ).fetchall()
     return {
         "tables": {row[0]: set() for row in tables},
         "columns": {(row[0], row[1]) for row in columns},
@@ -460,6 +480,9 @@ def _target_inventory(conn: psycopg.Connection, schema: str) -> dict[str, Any]:
              "increment": row[4], "cycle": row[5], "cache": row[6], "last_value": row[7]}
             for row in sequence_states
         ],
+        "sequence_owners": {
+            row[0]: {"table": row[1], "column": row[2]} for row in sequence_owners
+        },
     }
 
 
@@ -533,6 +556,32 @@ def run_preflight(archive_path: str, dsn: str, schema: str = "public") -> dict[s
             if (name, args) in target_function_signatures
             and source_function_bodies[(name, args)] != target_function_bodies.get((name, args))
         ]
+        source_sequence_owners, target_sequence_owners = source["sequence_owners"], target["sequence_owners"]
+        sequence_owner_drift = []
+        for sequence_name, expected_owner in source_sequence_owners.items():
+            actual_owner = target_sequence_owners.get(sequence_name)
+            if actual_owner != expected_owner:
+                sequence_owner_drift.append({
+                    "sequence": sequence_name, "source": expected_owner, "target": actual_owner,
+                })
+        target_sequence_states = {item["name"]: item for item in target["sequence_states"]}
+        sequence_value_drift = []
+        for sequence_name, owner in target_sequence_owners.items():
+            state = target_sequence_states.get(sequence_name, {})
+            max_value = conn.execute(
+                sql.SQL("SELECT max({}) FROM {}.{}").format(
+                    sql.Identifier(owner["column"]),
+                    sql.Identifier(schema),
+                    sql.Identifier(owner["table"]),
+                )
+            ).fetchone()[0]
+            last_value = state.get("last_value")
+            if max_value is not None and (last_value is None or int(last_value) < int(max_value)):
+                sequence_value_drift.append({
+                    "sequence": sequence_name, "table": owner["table"], "column": owner["column"],
+                    "max_column_value": int(max_value),
+                    "last_value": int(last_value) if last_value is not None else None,
+                })
         source_rules = source["rules"]
         target_rules = {
             item["name"]: item for item in target["rules"]
@@ -621,6 +670,8 @@ def run_preflight(archive_path: str, dsn: str, schema: str = "public") -> dict[s
                 "extra": sorted(f"{name}({', '.join(args)})" for name, args in target_function_signatures - source_function_signatures),
             },
             "function_body_drift": function_body_drift,
+            "sequence_owner_drift": sequence_owner_drift,
+            "sequence_value_drift": sequence_value_drift,
             "column_definition_drift": column_definition_drift,
             "source_defined_protection_rules": {
                 "missing": sorted(set(source_rules) - set(target_rules)),
@@ -657,6 +708,8 @@ def run_preflight(archive_path: str, dsn: str, schema: str = "public") -> dict[s
     report["passes_audited_checks"] = (
         not any(inv[key]["missing"] or inv[key]["extra"] for key in ("tables", "columns", "explicit_indexes", "sequences", "function_names", "function_signatures"))
         and not inv["function_body_drift"]
+        and not inv["sequence_owner_drift"]
+        and not inv["sequence_value_drift"]
         and not data["missing_definitions"]
         and not data["definitions_with_value_drift"]
         and not inv["column_definition_drift"]
