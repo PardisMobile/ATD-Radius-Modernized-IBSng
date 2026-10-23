@@ -794,3 +794,10 @@ Extended source and PostgreSQL catalog index inventories to compare normalized e
 ## Preflight partial-schema robustness — 2026-10-23
 
 PR #17 adds guards around all source-seed and marker probes (`defs`, `ibs_states`, system-admin row, GOD permission row, and seed markers). If a target table exists but lacks required columns, the preflight skips the unsafe query and reports the existing missing/drift evidence rather than crashing with a database undefined-column error. Regression tests cover incomplete seed schemas. CI result for this increment: pending at time of note; do not claim verified until both matrix workflows pass.
+
+
+## Operator backup/restore batch — 2026-10-23
+
+Added the explicit `atd-radius-backup` command: custom-format `pg_dump`, archive-list validation with `pg_restore --list`, SHA-256 sidecar manifest, overwrite protection, manifest-based verification, and restore guarded by an exact configured database-name confirmation. Added unit tests for checksum tampering, archive verification, overwrite refusal and restore confirmation; documented the destructive restore boundary in `docs/BACKUP-RESTORE.md`.
+
+This is operator tooling, not proof of disaster-recovery readiness. Production readiness still requires isolated real-PostgreSQL restore drills, data/application acceptance checks, scheduled off-host retention and monitoring. CI for this batch is running; do not call it verified until both workflows pass.
