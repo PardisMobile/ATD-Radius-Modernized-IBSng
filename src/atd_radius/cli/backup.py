@@ -58,8 +58,9 @@ def _connection_args() -> list[str]:
 
 
 def create_backup(output: Path) -> dict[str, object]:
-    if output.exists():
-        raise BackupError(f"refusing to overwrite existing backup: {output}")
+    manifest_path = output.with_suffix(output.suffix + ".json")
+    if output.exists() or manifest_path.exists():
+        raise BackupError(f"refusing to overwrite existing backup or manifest: {output}")
     output.parent.mkdir(parents=True, exist_ok=True)
     _connection_args()
     pg_dump = _tool("pg_dump")
@@ -79,10 +80,7 @@ def create_backup(output: Path) -> dict[str, object]:
             "backup_file": output.name,
             "verified_archive_listing": True,
         }
-        manifest_path = output.with_suffix(output.suffix + ".json")
         manifest_tmp = manifest_path.with_suffix(manifest_path.suffix + ".tmp")
-        if manifest_path.exists():
-            raise BackupError(f"refusing to overwrite backup manifest: {manifest_path}")
         manifest_tmp.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
         os.replace(manifest_tmp, manifest_path)
         return manifest
