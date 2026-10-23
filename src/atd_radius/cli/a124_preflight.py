@@ -657,7 +657,7 @@ def _target_inventory(conn: psycopg.Connection, schema: str) -> dict[str, Any]:
         ],
         "constraint_signatures": {
             (
-                row[0], row[2], tuple(row[4] or ()),
+                row[0], row[2], tuple(row[4] or ()) if row[2] != "c" else (),
                 row[5].lower() if row[5] else None, tuple(row[6] or ()),
                 _normalize_rule_condition(str(row[7])) if row[2] == "c" and row[7] is not None else None,
             )
