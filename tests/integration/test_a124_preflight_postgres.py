@@ -57,3 +57,4 @@ def test_target_inventory_reports_constraints_triggers_functions_and_sequence_st
     assert ("sample_fn", ("integer",)) in inventory["function_signatures"]
     assert any(item["name"] == "standalone_seq" and item["increment"] == 3
                for item in inventory["sequence_states"])
+    assert inventory["sequence_owners"]["sample_id_seq"] == {"table": "sample", "column": "id"}
