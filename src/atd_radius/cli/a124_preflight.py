@@ -165,6 +165,14 @@ def _defs_expected(defs_sql: str) -> dict[str, str]:
 
 def _target_inventory(conn: psycopg.Connection, schema: str) -> dict[str, Any]:
     conn.execute("SELECT set_config('search_path', %s, true)", (f'"{schema.replace(chr(34), chr(34)*2)}", public',))
+    tables = conn.execute(
+        """
+        SELECT c.relname
+        FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+        WHERE n.nspname=%s AND c.relkind IN ('r','p')
+        ORDER BY c.relname
+        """, (schema,)
+    ).fetchall()
     columns = conn.execute(
         """
         SELECT c.relname, a.attname
@@ -196,7 +204,7 @@ def _target_inventory(conn: psycopg.Connection, schema: str) -> dict[str, Any]:
         """, (schema,)
     ).fetchall()
     return {
-        "tables": {table: set() for table, _ in columns},
+        "tables": {row[0]: set() for row in tables},
         "columns": {(table, column) for table, column in columns},
         "indexes": {row[0] for row in indexes},
         "sequences": {row[0] for row in sequences},
