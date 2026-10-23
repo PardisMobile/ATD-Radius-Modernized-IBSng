@@ -59,6 +59,19 @@ INSERT INTO defs (name,value) VALUES ('B','I60
     assert _defs_expected(sql) == {"A": "S'iptables'\np0\n.", "B": "I60\n."}
 
 
+def test_all_preflight_seed_and_marker_queries_check_required_columns():
+    available = {
+        ("defs", "name"),
+        ("ibs_states", "name"),
+        ("admins", "admin_id"),
+        ("admin_perms", "admin_id"),
+    }
+    assert not _has_required_columns(available, "defs", ["name", "value"])
+    assert not _has_required_columns(available, "ibs_states", ["name", "value"])
+    assert not _has_required_columns(available, "admins", ["admin_id", "username"])
+    assert not _has_required_columns(available, "admin_perms", ["admin_id", "perm_name"])
+
+
 def test_seed_queries_fail_closed_when_target_table_columns_are_missing():
     available = {("admins", "admin_id"), ("admins", "username"), ("admin_perms", "admin_id")}
     assert _has_required_columns(available, "admins", ["admin_id", "username"])
