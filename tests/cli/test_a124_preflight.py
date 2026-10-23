@@ -6,6 +6,7 @@ import pytest
 from atd_radius.cli.a124_preflight import (
     CANONICAL_A124_SHA256,
     _defs_expected,
+    _function_signatures,
     _normalize_default,
     _source_column_spec,
     source_inventory,
@@ -88,3 +89,16 @@ def test_source_inventory_captures_table_level_primary_key():
     )
     assert result["column_specs"][("composite", "left_id")]["nullable"] is False
     assert result["column_specs"][("composite", "right_id")]["nullable"] is False
+
+
+
+def test_function_signature_parser_handles_nested_types_and_overloads():
+    functions = """
+      CREATE OR REPLACE FUNCTION charge_user(bigint, numeric(12,2)) RETURNS integer AS 'x';
+      CREATE FUNCTION charge_user(bigint, text[]) RETURNS integer AS 'x';
+      CREATE FUNCTION report_user(timestamp without time zone, inet) RETURNS text AS 'x';
+    """
+    signatures = _function_signatures(functions)
+    assert ("charge_user", ("bigint", "numeric(12,2)")) in signatures
+    assert ("charge_user", ("bigint", "text[]")) in signatures
+    assert ("report_user", ("timestamp without time zone", "inet")) in signatures
