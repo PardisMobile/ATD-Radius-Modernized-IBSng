@@ -806,3 +806,8 @@ This is operator tooling, not proof of disaster-recovery readiness. Production r
 ## Backup safety and round-trip acceptance — 2026-10-23
 
 Hardened the backup CLI by keeping database credentials in the child-process environment (not command-line arguments or the parent process environment), forwarding common libpq TLS/connection options, restricting manifest permissions, and expanding command-path regression tests. Added a real PostgreSQL acceptance test that creates isolated source/target databases, backs up a table with data, restores it into the target, and compares the restored rows. The acceptance test skips only when the PostgreSQL client utilities are absent; CI status for this latest batch is pending.
+
+
+## A1.24 sequence semantic parity batch — 2026-10-23
+
+The read-only adoption preflight now compares canonical sequence configuration (start/minimum/maximum/increment/cycle/cache) separately from ownership and high-water safety. Explicit A1.24 sequences and serial-generated integer sequences are modeled with their respective PostgreSQL defaults. Regression tests cover extracted defaults, multiple drift fields, missing target-state evidence, and unexpected native-table triggers. CI must be checked against the latest commit before describing this batch as verified; this remains an assessment tool, not an importer or production adoption approval.
