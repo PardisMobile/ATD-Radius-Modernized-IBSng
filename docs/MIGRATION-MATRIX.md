@@ -25,7 +25,7 @@ This is the master parity checklist. Implemented means ATD code exists; Verified
 | Admin UI | legacy web/admin | modern responsive IBSng A1.24 UI | In progress |
 | User UI | legacy user interface | modern responsive IBSng user UI | Partial |
 | Installer | A1.24 legacy install | modern deployment | Planned |
-| Backup/restore | PostgreSQL dump/restore semantics | compatibility importer/exporter | Planned |
+| Backup/restore | PostgreSQL dump/restore semantics | `atd-radius-backup` CLI | Operator backup, archive verification and guarded restore implemented / isolated real-PostgreSQL restore drills, scheduled off-host retention, and A1.24 compatibility import/export pending |
 
 ## Completion rule
 The project is complete only when every required subsystem reaches Verified and the database parity suite demonstrates that a representative A1.24 backup can be imported without loss of required behavior or data.
