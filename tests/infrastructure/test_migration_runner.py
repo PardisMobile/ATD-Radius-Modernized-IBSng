@@ -53,9 +53,9 @@ class FakeConnection:
         if normalized.startswith("CREATE TABLE public.atd_schema_migrations"):
             self.ledger_exists = True
             return Result([])
-        if normalized.startswith("SELECT version, name, checksum FROM atd_schema_migrations"):
+        if normalized.startswith("SELECT version, name, checksum FROM public.atd_schema_migrations"):
             return Result(sorted(self.ledger, key=lambda row: row[0]))
-        if normalized.startswith("INSERT INTO atd_schema_migrations"):
+        if normalized.startswith("INSERT INTO public.atd_schema_migrations"):
             self.ledger.append(tuple(params))
             return Result([])
         if self.fail_on and self.fail_on in query:
