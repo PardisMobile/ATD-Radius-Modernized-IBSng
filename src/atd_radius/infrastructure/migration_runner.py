@@ -109,14 +109,14 @@ def run_migrations(
                 )
             if apply:
                 conn.execute(
-                    "CREATE TABLE atd_schema_migrations ("
+                    "CREATE TABLE public.atd_schema_migrations ("
                     "version INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE, "
                     "checksum CHAR(64) NOT NULL, applied_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP)"
                 )
             existing: dict[int, tuple[str, str]] = {}
         else:
             rows = conn.execute(
-                "SELECT version, name, checksum FROM atd_schema_migrations ORDER BY version"
+                "SELECT version, name, checksum FROM public.atd_schema_migrations ORDER BY version"
             ).fetchall()
             existing = {int(version): (str(name), str(checksum).strip()) for version, name, checksum in rows}
 
@@ -143,7 +143,7 @@ def run_migrations(
         for item in pending:
             conn.execute(item.sql)
             conn.execute(
-                "INSERT INTO atd_schema_migrations (version, name, checksum) VALUES (%s, %s, %s)",
+                "INSERT INTO public.atd_schema_migrations (version, name, checksum) VALUES (%s, %s, %s)",
                 (item.version, item.name, item.checksum),
             )
         return MigrationResult(
