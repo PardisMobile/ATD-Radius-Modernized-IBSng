@@ -8,7 +8,7 @@ import psycopg
 from psycopg import sql
 import pytest
 
-from atd_radius.cli.a124_preflight import _target_inventory
+from atd_radius.cli.a124_preflight import _sequence_high_water_drift, _target_inventory
 
 
 @pytest.fixture
@@ -58,3 +58,29 @@ def test_target_inventory_reports_constraints_triggers_functions_and_sequence_st
     assert any(item["name"] == "standalone_seq" and item["increment"] == 3
                for item in inventory["sequence_states"])
     assert inventory["sequence_owners"]["sample_id_seq"] == {"table": "sample", "column": "id"}
+
+
+
+def test_sequence_high_water_check_detects_explicit_id_ahead_of_owned_sequence(isolated_inventory_schema):
+    dsn, schema = isolated_inventory_schema
+    with psycopg.connect(dsn) as conn:
+        conn.execute(sql.SQL("INSERT INTO {}.sample (name) VALUES ('generated')").format(sql.Identifier(schema)))
+        conn.commit()
+        inventory = _target_inventory(conn, schema)
+        assert _sequence_high_water_drift(
+            conn, schema, inventory["sequence_owners"], inventory["sequence_states"]
+        ) == []
+
+        conn.execute(sql.SQL("INSERT INTO {}.sample (id, name) VALUES (100, 'manual')").format(sql.Identifier(schema)))
+        conn.commit()
+        inventory = _target_inventory(conn, schema)
+        drift = _sequence_high_water_drift(
+            conn, schema, inventory["sequence_owners"], inventory["sequence_states"]
+        )
+    assert drift == [{
+        "sequence": "sample_id_seq",
+        "table": "sample",
+        "column": "id",
+        "max_column_value": 100,
+        "last_value": 1,
+    }]
