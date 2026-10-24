@@ -80,3 +80,25 @@ def test_user_credit_change_contract_uses_two_decimal_precision():
     with pytest.raises(ValidationError):
         UserCreditChange(delta=Decimal("12.501"), comment="invalid precision")
 
+
+def test_nearest_expiration_uses_effective_absolute_and_relative_attributes():
+    from atd_radius.application.online_expiry_loop import nearest_expiration
+    epoch, remaining = nearest_expiration(
+        {"abs_exp_date": "500", "rel_exp_date": "100", "first_login": "350"},
+        now=420,
+    )
+    assert epoch == 450
+    assert remaining == 30
+
+
+def test_nearest_expiration_uses_group_effective_attribute_when_user_override_is_absent():
+    from atd_radius.application.online_expiry_loop import nearest_expiration
+    # UserRepository.policy_attributes provides group defaults overridden by user attributes.
+    epoch, remaining = nearest_expiration({"abs_exp_date": "700"}, now=400)
+    assert epoch == 700
+    assert remaining == 300
+
+
+def test_nearest_expiration_is_absent_without_any_source_deadline():
+    from atd_radius.application.online_expiry_loop import nearest_expiration
+    assert nearest_expiration({"first_login": "100"}, now=200) == (None, None)

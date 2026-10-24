@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ipaddress
+import time
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -30,6 +31,7 @@ from atd_radius.infrastructure.db import connection
 from atd_radius.infrastructure.group import GroupRepository
 from atd_radius.infrastructure.operational_audit import OperationalAuditRepository
 from atd_radius.infrastructure.user_detail import UserDetailRepository
+from atd_radius.application.online_expiry_loop import nearest_expiration
 from atd_radius.infrastructure.user_deletion import (
     UserDeletionError,
     UserDeletionOnlineError,
@@ -212,6 +214,8 @@ class UserDetailView(BaseModel):
     username: str
     locked: bool
     has_password: bool
+    nearest_exp_date_epoch: int | None = None
+    time_to_nearest_exp_date: float | None = None
     groups: list[GroupView]
     attributes: list[AttributeView]
     components: UserComponentsView
@@ -421,6 +425,9 @@ def get_user_detail(username: str, admin: AdminPrincipal = Depends(require_admin
         ).fetchone()
         groups = detail.groups(user.id)
         attributes = detail.attributes(user.id)
+        nearest_exp_date_epoch, time_to_nearest_exp_date = nearest_expiration(
+            dict(repository.policy_attributes(user.id)), time.time()
+        )
         can_see_connections = can_view_connection_logs(admin, user.owner_id)
         can_see_credit_changes = can_view_credit_changes(admin, user.owner_id)
         connection_logs = detail.connection_logs(user.id) if can_see_connections else None
@@ -431,6 +438,8 @@ def get_user_detail(username: str, admin: AdminPrincipal = Depends(require_admin
         username=user.username,
         locked=user.locked,
         has_password=bool(credential[0]) if credential else False,
+        nearest_exp_date_epoch=nearest_exp_date_epoch,
+        time_to_nearest_exp_date=time_to_nearest_exp_date,
         groups=[GroupView(id=g.id, name=g.name, comment=g.comment) for g in groups],
         attributes=[AttributeView(name=a.name, value=a.value) for a in attributes],
         components=components,

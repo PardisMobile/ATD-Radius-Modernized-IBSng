@@ -12,6 +12,25 @@ class OnlineExpiryPlan:
     remaining_seconds: float | None
     kill_reasons: tuple[tuple[SessionKey, str], ...] = ()
 
+def nearest_expiration(attributes: dict[str, str], now: float) -> tuple[int | None, float | None]:
+    """Return A1.24 nearest_exp_date_epoch and time_to_nearest_exp_date."""
+    deadlines: list[float] = []
+    raw_absolute = attributes.get("abs_exp_date")
+    if raw_absolute not in (None, ""):
+        try: deadlines.append(float(raw_absolute))
+        except (TypeError, ValueError): pass
+    raw_duration, raw_first_login = attributes.get("rel_exp_date"), attributes.get("first_login")
+    if raw_duration not in (None, "") and raw_first_login not in (None, ""):
+        try:
+            duration, first_login = float(raw_duration), float(raw_first_login)
+            if duration >= 0: deadlines.append(first_login + duration)
+        except (TypeError, ValueError): pass
+    if not deadlines:
+        return None, None
+    deadline = min(deadlines)
+    return int(deadline), deadline - now
+
+
 def plan_online_expiry(attributes: dict[str, str], sessions: tuple[SessionKey, ...], now: float) -> OnlineExpiryPlan:
     """Calculate the earliest native A1.24 user-expiry deadline."""
     if not sessions:
