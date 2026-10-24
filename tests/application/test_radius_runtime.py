@@ -1928,3 +1928,26 @@ def test_build_radius_dispatcher_does_not_persist_first_login_on_rejection():
 
     assert response.code is RadiusCode.ACCESS_REJECT
     users.set_attribute.assert_not_called()
+
+
+def test_build_radius_dispatcher_initializes_first_login_for_user_without_relative_expiry():
+    users = Mock()
+    users.get_authentication_record.return_value = (8, "secret", False)
+    users.policy_attributes.return_value = []
+    users.attributes.return_value = []
+    dispatcher = build_radius_dispatcher(users)
+
+    response = dispatcher.access(
+        RadiusPacket(
+            RadiusCode.ACCESS_REQUEST,
+            8,
+            {"User-Name": "bob", "User-Password": "secret"},
+            b"0123456789abcdef",
+        )
+    )
+
+    assert response.code is RadiusCode.ACCESS_ACCEPT
+    users.set_attribute_if_absent.assert_called_once()
+    args = users.set_attribute_if_absent.call_args.args
+    assert args[:2] == (8, "first_login")
+    assert "first_login" not in response.attributes

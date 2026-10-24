@@ -110,7 +110,9 @@ class NativeAccessContext:
         attrs["__user_id"] = str(user_id)
         # A1.24 initializes first_login on the first successful login, then
         # commits it as a user attribute. Keep it private to policy evaluation.
-        if attrs.get("rel_exp_date") not in (None, "") and attrs.get("first_login") in (None, ""):
+        if attrs.get("first_login") in (None, ""):
+            # A1.24 initializes first_login on every successful user login,
+            # even when no relative expiry is configured.
             attrs["__first_login_candidate"] = str(int(time.time()))
         attrs["__auth_method"] = method.value
         attrs["__password_ok"] = "1" if password_ok else "0"

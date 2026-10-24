@@ -148,7 +148,9 @@ class RelativeExpiryPolicy:
         if raw in (None,""): return None
         try: duration=float(raw)
         except (TypeError,ValueError): return None
-        first=request.attributes.get("first_login", request.attributes.get("__first_login_candidate"))
+        first=request.attributes.get("first_login")
+        if first in (None, ""):
+            first=request.attributes.get("__first_login_candidate")
         if first in (None,""): return None
         try: deadline=float(first)+duration
         except (TypeError,ValueError): return None
