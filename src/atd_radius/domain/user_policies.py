@@ -142,16 +142,17 @@ class AbsoluteExpiryPolicy:
 
 @dataclass(frozen=True,slots=True)
 class RelativeExpiryPolicy:
-    now: datetime
+    now: datetime | None = None
     def evaluate(self,request):
         raw=request.attributes.get("rel_exp_date")
         if raw in (None,""): return None
         try: duration=float(raw)
         except (TypeError,ValueError): return None
-        first=request.attributes.get("first_login")
-        if first in (None,""): return AAAResult(AAAAction.ACCEPT,{"first_login":str(int(self.now.timestamp()))})
+        first=request.attributes.get("first_login", request.attributes.get("__first_login_candidate"))
+        if first in (None,""): return None
         try: deadline=float(first)+duration
         except (TypeError,ValueError): return None
-        remaining=deadline-self.now.timestamp()
+        now=(self.now or datetime.now(timezone.utc)).timestamp()
+        remaining=deadline-now
         if remaining<=0: return AAAResult(AAAAction.REJECT,reason="REL_EXP_DATE_REACHED")
         return AAAResult(AAAAction.ACCEPT,{"Session-Timeout":str(int(remaining))})
