@@ -48,7 +48,7 @@ class MailboxCleanupRepository:
                     SELECT job_id FROM atd_radius_mailbox_cleanup
                     WHERE status IN ('pending', 'failed')
                        OR (status='running' AND updated_at < CURRENT_TIMESTAMP - INTERVAL '15 minutes')
-                    ORDER BY job_id FOR UPDATE SKIP LOCKED LIMIT %s
+                    ORDER BY job_id LIMIT %s FOR UPDATE SKIP LOCKED
                 )
                 UPDATE atd_radius_mailbox_cleanup AS jobs
                 SET status='running', attempts=jobs.attempts+1,
