@@ -79,3 +79,13 @@ def test_multilogin_accepts_when_every_ras_allows_multiple_sessions():
         "__user_id": "7", "multi_login": "2", "__ras_multi_login_allowed": True
     })
     assert policy.evaluate(request) is None
+
+  
+def test_timeout_policy_does_not_extend_absolute_expiry_deadline():
+    from atd_radius.domain.user_policies import TimeoutPolicy
+
+    result = TimeoutPolicy().evaluate(
+        AAARequest("alice", {"session_timeout": "3600", "Session-Timeout": "45"})
+    )
+
+    assert result.attributes["Session-Timeout"] == "45"
