@@ -1,3 +1,13 @@
+# LATEST PROJECT CONTEXT — VERIFIED 2026-10-25
+
+Main head `7484ea5b0a23f32d4de05cc794ff12d1dc76f5c1` passed full CI on Python 3.11/3.12 (1,073 passed per version, 2 warnings). Python-only: 1,048 passed, 25 skipped, 2 warnings. Runs: [full CI](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/40144748357), [Python-only](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/40144748355).
+
+Project purpose: modernize the **complete IBSng A1.24 product** while preserving source-backed AAA, authentication/accounting, billing, permissions, plugin side effects, database semantics, admin/user workflows and deployment expectations. Do not confuse passing CI or a schema inventory with complete product parity.
+
+Canonical source: `Source of Truth/IBSng-A1.24.tar.bz2`; SHA-256 `c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839614bb9349d18a8`. The unique changes from seven previously open PRs have been ported directly to main; no new PRs were created. Full product blockers remain in `docs/ROADMAP.md` and `docs/COMPATIBILITY-MATRIX.md`.
+
+---
+
 # LATEST PROJECT CONTEXT — 2026-10-25
 
 The project's purpose is to modernize the **complete IBSng A1.24 product**, not just to create a RADIUS server. The checksum-verified A1.24 source is authoritative for behavior, permission semantics, accounting, billing, plugin side effects, session lifecycle, schema, and migration compatibility. Modernization must preserve those semantics while replacing legacy implementation/UI with maintainable, tested components.
@@ -9,7 +19,7 @@ The project's purpose is to modernize the **complete IBSng A1.24 product**, not 
 - Source inventory: 2,295 files; 453 `.py`, 530 `.php`, 284 `.tpl`, 20 `.sql`. Static DDL: 51 tables / 224 columns / 19 explicit indexes / 24 explicit sequences / 3 serial declarations.
 - Modern repository inventory: 373 tracked files at the start of this integration batch, including 276 Python files, 73 Markdown files, and 146 test files.
 
-Do not equate a structural audit with data migration or full compatibility. Every behavior-sensitive slice needs exact source trace, implementation, regression tests, CI, and an honest remaining-gap entry. The latest direct-to-main integration includes the schema inventory CLI, migration-ledger safety, PostgreSQL deletion safety tests, local CLEAR USER, EAP Message-Authenticator enforcement, MPPE VSA decode/signature corrections, and non-ASCII MS-CHAPv2/MPPE coverage. CI verification for the reconciled main head is pending at this checkpoint.
+Do not equate a structural audit with data migration or full compatibility. Every behavior-sensitive slice needs exact source trace, implementation, regression tests, CI, and an honest remaining-gap entry. The latest direct-to-main integration includes the schema inventory CLI, migration-ledger safety, PostgreSQL deletion safety tests, local CLEAR USER, EAP Message-Authenticator enforcement, MPPE VSA decode/signature corrections, and non-ASCII MS-CHAPv2/MPPE coverage. CI passed for the reconciled main head on Python 3.11 and 3.12; live interoperability and full product parity remain open.
 
 ---
 

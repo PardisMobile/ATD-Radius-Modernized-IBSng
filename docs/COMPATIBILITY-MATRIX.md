@@ -1,3 +1,7 @@
+# VERIFIED MAIN COMPATIBILITY UPDATE — 2026-10-25
+
+Main head `7484ea5b0a23f32d4de05cc794ff12d1dc76f5c1` passed full CI on Python 3.11/3.12 (1,073 passed each, 2 warnings); Python-only: 1,048 passed, 25 skipped.
+
 # LATEST COMPATIBILITY RECONCILIATION — 2026-10-25
 
 | Area | Current verified scope | Still not proven |
@@ -34,7 +38,7 @@ This is the master parity ledger. A feature is not considered migrated merely be
 | Service policy | service/plugin behavior | Service policy + resolver | In progress |
 | RAS/NAS | core/ras/*, radius_server/* | RAS registry/adapters | Runtime registry + live packet lookup + source-derived provider profiles implemented / provider-specific behavior parity pending |
 | IP pools | core/ippool/* | Transaction-safe allocator | Native membership repository + A1.24-compatible runtime allocation / claim / release; Access/session lifecycle integration pending |
-| Sessions | session/accounting plugins | Session domain + accounting store + admin online-session API | Durable cross-worker session snapshots, login-in-progress reservations, owner-scoped online-session reporting and audited KILL USER provider action implemented; remote disappearance verification, CLEAR USER, live provider interoperability and full UI parity pending |
+| Sessions | session/accounting plugins | Session domain + accounting store + admin online-session API | Durable cross-worker snapshots/reservations, owner-scoped reporting, audited KILL USER and source-compatible local CLEAR USER implemented; remote disappearance verification, live provider interoperability and full UI parity pending |
 | RADIUS authentication | radius_server/* | Python RADIUS server | Runtime + live UDP wiring implemented / end-to-end parity pending |
 | PAP | IBSng RADIUS auth | RADIUS auth pipeline | Implemented / end-to-end parity pending |
 | CHAP | IBSng RADIUS auth | RADIUS auth pipeline | Implemented / end-to-end parity pending |

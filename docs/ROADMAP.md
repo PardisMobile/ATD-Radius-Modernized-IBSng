@@ -1,9 +1,22 @@
+# VERIFIED MAIN RECONCILIATION — 2026-10-25
+
+Main head `7484ea5b0a23f32d4de05cc794ff12d1dc76f5c1` passed full CI on Python 3.11/3.12 (1,073 passed each, 2 warnings). The seven previously open PRs were reconciled directly into main without opening more PRs.
+
+Next work remains product work, not documentation-only work:
+1. Build and prove lossless A1.24 database import/adoption, plugin-row/object parity, backup restore, rollback and safe migration baseline.
+2. Prove live NAS/provider interoperability for PAP/CHAP/MS-CHAPv1/v2, MPPE, accounting, Disconnect/CoA and remote session disappearance.
+3. Design safe reconciliation for accepted login reservations with no subsequent Accounting packet; do not add arbitrary expiry that could disconnect a genuinely online user.
+4. Complete source-backed billing/expiry, VoIP and bandwidth side effects, specialized plugins and XML-RPC.
+5. Implement admin/user UI, reports/graphs, installer, upgrade/rollback, supported OS and licensing delivery.
+
+---
+
 # MAIN RECONCILIATION — 2026-10-25
 
 Direct-to-main integration (no new PRs): static A1.24 schema inventory audit; contiguous-prefix migration-ledger validation and real PostgreSQL refusal tests; PostgreSQL user-deletion safety tests; source-compatible local `CLEAR USER` without credit deduction or remote RAS kill; EAP Access-Request Message-Authenticator enforcement; MS-MPPE key decode and response integrity; and end-to-end non-ASCII MS-CHAPv2/MPPE regression coverage.
 
 ## Next work in priority order
-1. Wait for and fix any failures in CI for the reconciled main head; do not label these changes verified until green.
+1. Full CI is green on Python 3.11/3.12 (1,073 passed each); preserve this gate for every next batch.
 2. Finish the lossless A1.24 database importer/adoption and rollback workflow, including row-level and plugin-object parity plus representative backup restore.
 3. Complete live NAS/provider interoperability, authentication/accounting end-to-end fixtures, MPPE interoperability, Disconnect/CoA remote-state verification, and safe accepted-reservation reconciliation.
 4. Complete source-backed billing/expiry, bandwidth shaping, VoIP and plugin side effects, and XML-RPC.

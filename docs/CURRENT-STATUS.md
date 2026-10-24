@@ -1,3 +1,18 @@
+# LATEST MAIN VERIFICATION — 2026-10-25
+
+Main head: `7484ea5b0a23f32d4de05cc794ff12d1dc76f5c1`.
+Full CI passed on Python 3.11 and 3.12: **1,073 passed per version, 2 warnings**, including Ruff, Python compilation, PHP syntax, and PostgreSQL-backed tests. Run: [40144748357](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/40144748357).
+Python-only: **1,048 passed, 25 skipped, 2 warnings**. Run: [40144748355](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/40144748355).
+
+Seven previously open PRs were reviewed and their unique changes ported directly to main without creating new PRs: EAP request integrity, MPPE VSA decoding/response integrity, MS-CHAPv2 regression coverage, static schema audit, PostgreSQL deletion safety, local A1.24 CLEAR USER, and migration-ledger gap protection.
+
+Verified source counts: archive SHA-256 `c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839614bb9349d18a8`; 2,295 regular source files (2,477 archive members); `tables.sql` has 51 tables, 224 columns, 19 explicit indexes, 24 explicit sequences and 3 serial declarations.
+Current repo: 376 tracked files, 279 Python files, 73 Markdown files, 10 SQL files, 148 test files, 3 PHP files and 10 UI files.
+
+These are verified compatibility slices, not full IBSng parity. Lossless A1.24 import/adoption, complete row/plugin-object parity, live NAS/provider interoperability, stale reservation reconciliation, billing/expiry/bandwidth side effects, remaining XML-RPC/UI workflows, installer/upgrade/rollback/licensing remain release blockers.
+
+---
+
 # LATEST MAIN RECONCILIATION — 2026-10-25
 
 Repository: `PardisMobile/ATD-Radius-Modernized-IBSng`; integration target: `main`.
@@ -12,7 +27,7 @@ Canonical archive: `Source of Truth/IBSng-A1.24.tar.bz2`; verified SHA-256 `c711
 ## Direct-to-main integration batch
 Integrated onto `main` without creating PRs: read-only static schema audit; damaged migration-ledger fail-closed checks; PostgreSQL user-deletion safety tests (fixture adapted for the current mailbox-cleanup outbox); local A1.24 `CLEAR USER` with no credit deduction or RAS kill; EAP Access-Request Message-Authenticator enforcement; encrypted MS-MPPE VSA decode and response-signature fix; and expanded non-ASCII MS-CHAPv2/MPPE regression coverage. The MS-CHAPv2 AuthenticatorResponse implementation itself was already present on main; its end-to-end regression was added.
 - Source review correction: native A1.24 `CLEAR USER` is owner-scoped and explicitly depends on `SEE ONLINE USERS`; the implementation retains that source-defined dependency.
-- These are focused compatibility slices, not completion of IBSng parity. Current CI for the reconciled head must pass before the batch is treated as verified.
+- These are focused compatibility slices, not completion of IBSng parity. Full CI passed on the reconciled head; live interoperability and the release blockers below remain open.
 
 ## Still release-blocking
 Lossless A1.24 data importer/adoption; representative restore and row/plugin parity; full constraints/functions/plugin-created object parity; live NAS/provider interoperability and remote disappearance proof; stale accepted-login reservation recovery; billing/expiry/bandwidth and remaining plugin side effects; XML-RPC/report/UI completeness; and install/upgrade/rollback/licensing.
