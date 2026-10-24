@@ -5,7 +5,7 @@
 | MS-CHAPv2 AuthenticatorResponse | Main uses A1.24 byte-wise password conversion; non-ASCII end-to-end response and MPPE regression added | Live NAS/supplicant interoperability |
 | EAP request integrity | UDP boundary now rejects Access-Request carrying EAP-Message without Message-Authenticator and rejects invalid HMAC | EAP method support/parity as a whole |
 | Microsoft MPPE VSAs | Codec decodes RFC 2548 Send/Recv keys only with shared secret and original request authenticator; response signing preserves final randomized salts | Full live MPPE interoperability |
-| CLEAR USER | Local session logout, native connection-log closure, IP lease release, usage accounting without credit deduction; no RAS kill is sent | Full runtime/provider integration proof and UI parity |
+| CLEAR USER | Owner-scoped permission with native `SEE ONLINE USERS` dependency; local session logout, native connection-log closure, IP lease release, usage accounting without credit deduction; no RAS kill is sent | Full runtime/provider integration proof and UI parity |
 | Migration ledger | Refuses gaps in the applied version prefix and empty ledger on populated schema; regression tests added | A1.24 data import/adoption and rollback |
 | Static schema inventory | Read-only CLI compares table/column names, explicit indexes/sequences, and column type/nullability/defaults | Constraints, plugin DDL, functions, row data, restore fidelity, runtime behavior |
 

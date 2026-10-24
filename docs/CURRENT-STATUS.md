@@ -11,7 +11,7 @@ Canonical archive: `Source of Truth/IBSng-A1.24.tar.bz2`; verified SHA-256 `c711
 
 ## Direct-to-main integration batch
 Integrated onto `main` without creating PRs: read-only static schema audit; damaged migration-ledger fail-closed checks; PostgreSQL user-deletion safety tests (fixture adapted for the current mailbox-cleanup outbox); local A1.24 `CLEAR USER` with no credit deduction or RAS kill; EAP Access-Request Message-Authenticator enforcement; encrypted MS-MPPE VSA decode and response-signature fix; and expanded non-ASCII MS-CHAPv2/MPPE regression coverage. The MS-CHAPv2 AuthenticatorResponse implementation itself was already present on main; its end-to-end regression was added.
-- Source review correction: native A1.24 `CLEAR USER` checks its own owner-scoped permission; this integration does **not** add an unsupported `SEE ONLINE USERS` dependency.
+- Source review correction: native A1.24 `CLEAR USER` is owner-scoped and explicitly depends on `SEE ONLINE USERS`; the implementation retains that source-defined dependency.
 - These are focused compatibility slices, not completion of IBSng parity. Current CI for the reconciled head must pass before the batch is treated as verified.
 
 ## Still release-blocking

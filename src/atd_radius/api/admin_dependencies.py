@@ -97,6 +97,7 @@ _USER_PERMISSIONS = AdminPermissionEvaluator(
         PermissionSpec(
             "CLEAR USER",
             PermissionKind.CONTEXTUAL,
+            dependencies=("SEE ONLINE USERS",),
             evaluator=_all_or_owner,
         ),
         PermissionSpec("NO DEPOSIT LIMIT", PermissionKind.NO_VALUE),
