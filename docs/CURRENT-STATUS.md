@@ -1,3 +1,13 @@
+# LATEST HANDOFF — 2026-10-23
+
+Active work branch: `feat/a124-semantic-object-inventory`; latest code checkpoint: `e73b146bfc4434a58d2f257a81b1879b4f9c89fe`. Python-only and full PostgreSQL-backed CI both passed on this checkpoint (Python 3.11 and 3.12). It adds exact-request cleanup for rejected Access-Requests so a rejection cannot leave that request's login reservation consuming MultiLogin capacity. Do not treat the older `main` / 2026-10-22 opening checkpoint below as the current branch/head.
+
+The complete 71-file Markdown content review is in `docs/MARKDOWN-CONTENT-AUDIT-2026-10-23.md`. Key recent code work: A1.24-compatible MS-CHAPv2 AuthenticatorResponse password conversion with non-ASCII regression coverage; MultiLogin user-limit precedence and incoming/existing RAS capability semantics with false-like value normalization. This is not full A1.24 parity and does not establish live NAS interoperability.
+
+**Release gates still open:** lossless database import/adoption and restore proof; live RADIUS/NAS/MPPE/provider interoperability and remote-disconnect verification; stale accepted-login reservation reconciliation; full VoIP/billing and bandwidth side effects; remaining specialized attributes/plugin/XML-RPC/UI flows; supported install/upgrade/rollback/licensing. User deletion now records mailbox cleanup in a durable transactional outbox; the external cleanup command remains intentionally unconfigured until an operator supplies a reviewed executable. `CLEAR USER` and final release validation remain open.
+
+---
+
 # Current project status — ATD Radius / Modernized IBSng
 
 Updated: 2026-10-22  
@@ -10,6 +20,14 @@ Latest merged code checkpoint: `3430e1d6f585f630898a18f6649f81c2022770df` — cr
 The charge-limit enforcement path now acquires the durable session advisory lock, reloads authoritative session state, and persists a termination claim before the external RAS provider call. A second worker waits on the same session lock and then observes the durable claim, suppressing duplicate termination commands. Missing/stopped durable sessions are removed from stale local state. Tests cover durable claim persistence and duplicate-claim suppression.
 
 This improves cross-worker idempotency but does **not** prove the NAS/VoIP provider has removed the session. Provider interoperability, reconciliation after a provider timeout/ambiguous result, and full end-to-end A1.24 parity remain release gates.
+
+## Mailbox cleanup outbox — 2026-10-24
+
+User deletion now inserts post-commit mailbox cleanup jobs into the durable outbox in the same transaction as deleting users. The atd-radius-mailbox-cleanup worker processes bounded batches using a configured absolute executable path, argument-vector invocation (no shell), conservative username validation, timeout, attempt/error state and retries for failed/stale-running jobs. Migration 009_mailbox_cleanup_outbox.sql must be applied before deployment. The command is unset by default; external deletion is not claimed complete until an operator configures and runs the worker. See docs/MAILBOX-CLEANUP-OUTBOX.md.
+
+## Reservation lifecycle note — 2026-10-23
+
+A rejected Access-Request now deletes only its exact packet-derived login reservation. Regression coverage checks the repository delete key and the runtime rejection path. This does not solve accepted reservations that never receive Accounting-Start/Interim/Stop; those still require a safe reconciliation strategy that cannot mistakenly evict a genuinely online user.
 
 ## Remaining release blockers
 
@@ -141,7 +159,7 @@ Enabled `fast_dial` in the generic user-attribute mutation API after tracing `IB
 
 - Current main HEAD at review start: `b1b1b698c0c349e6053fe340accf08d91bb699da` (documentation-only fast_dial CI record).
 - Fast-dial code/test checkpoint: `2daa63380a2e9109cb950a057e0e1261bf38dc69`; full CI passed on Python 3.11 and 3.12 with **667 passed, 2 warnings** per matrix job (compile, Ruff, PHP syntax and PostgreSQL integration): https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38126347300. Python-only workflow also succeeded: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38126347240. Latest HEAD's Python workflow succeeded: https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/38126437021.
-- The uploaded A1.24 archive was checksum-verified in this work session against the required SHA-256: `c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839bb9349d18a8`.
+- The uploaded A1.24 archive was checksum-verified in this work session against the required SHA-256: `c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839614bb9349d18a8`.
 - Source audit `docs/A1.24-FAST-DIAL-RUNTIME-AUDIT.md` traces the A1.24 fast-dial plugin and Asterisk/XML-RPC action flow. It confirms the plugin rewrites `called_number`, calls the RAS redirect-reply method, records `fast_dial_index` in instance metadata, and exposes add/get destination actions. ATD still implements mutation/storage only; runtime redirection, instance metadata lifecycle and actions-manager compatibility remain open. Do not mark fast_dial runtime complete.
 
 
@@ -725,3 +743,96 @@ Last completed full CI before this batch passed 936 tests on Python 3.11 and 3.1
 - Fixed stale local termination markers: durable state is now authoritative, so a worker can retry after another worker clears a failed claim; failure cleanup no longer depends on object identity after refreshing the registry snapshot.
 - Latest full CI: **954 passed, 2 warnings** on Python 3.11 and 3.12 (run [39600839533](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/39600839533)). Python-only: **945 passed, 9 skipped, 2 warnings** (run [39600839199](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/39600839199)).
 - Remaining: live RAS interoperability and proof of remote session disappearance; CLEAR USER semantics remain unimplemented. Full UI, schema import/parity, remaining billing/plugins/XML-RPC, and install/upgrade/rollback are still release blockers.
+
+
+## Explicit PostgreSQL migration runner — 2026-10-23
+
+A clean-install migration CLI is now implemented on PR branch `feat/safe-migration-runner`:
+- `atd-radius-migrate --check`, `--dry-run`, and explicit apply mode.
+- Numbered migration validation, SHA-256 ledger, immutable applied-migration checksums, transaction-scoped advisory lock, and all-or-nothing application of pending migrations.
+- Refuses an untracked database with existing public tables instead of accidentally applying the clean-install schema to an existing IBSng installation.
+- Never runs automatically at service startup; documented in `docs/MIGRATION-RUNNER.md`.
+
+This closes the missing operator-controlled migration-runner mechanism for clean installs, **not** the lossless A1.24 data importer/adoption workflow, backup/restore automation, or verified rollback. Tests cover ordering, checksums, idempotence, unsafe adoption refusal, and rollback after a failed migration. A real PostgreSQL acceptance test applies all eight migrations in an isolated database, verifies the ledger and idempotence, then confirms a deliberately failing ninth migration leaves no schema or ledger residue. Full CI passed on Python 3.11 and 3.12 with **962 passed, 2 warnings per version**; Python-only passed **952 passed, 9 skipped, 2 warnings**. Ruff, compilation, and PHP syntax checks passed. See PR #14.
+
+
+
+## Read-only A1.24 adoption preflight — 2026-10-23
+
+Added `atd-radius-a124-preflight` on PR branch `feat/a124-adoption-preflight`. It pins the canonical archive SHA-256 and emits JSON drift evidence for native tables/columns, explicit indexes, sequences, function names and argument signatures, the exact A1.24 `defs` baseline values, the system-admin/GOD seed, core IBS state markers, and the two native deletion-protection rules. It is strictly read-only and supports a nonzero exit with `--fail-on-drift`.
+
+This is an adoption-readiness checkpoint, **not** a lossless importer and not permission to stamp migration versions. Column definition normalization is conservative and can flag equivalent expressions. The report explicitly disclaims constraint semantics, function bodies, plugin objects, all row data, sequence values, backup/restore fidelity, and runtime behavior. These remain release gates. Tests cover schema inventory parsing and both legacy escaped-quote styles in A1.24 `defs.sql`; Latest full PostgreSQL CI passed on Python 3.11 and 3.12 with **971 passed, 2 warnings per version** (run [39939097821](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/39939097821)). Python-only CI passed **961 passed, 10 skipped, 2 warnings** (run [39939097671](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/39939097671)). Ruff, compilation, PHP syntax, and PostgreSQL-backed integration checks passed.
+
+
+## A1.24 semantic-object inventory expansion — 2026-10-23
+
+The read-only adoption preflight now captures target-side PostgreSQL constraint definitions, non-internal trigger definitions, rewrite-rule definitions, and sequence configuration/current-value evidence in its JSON report. Added a PostgreSQL-backed acceptance test that creates an isolated schema with primary/unique/check/foreign-key constraints, functions, a trigger, and a standalone sequence, then verifies the inventory output. This is evidence collection only: semantic comparison with canonical source definitions, function-body parity, sequence ownership/data consistency, complete row-data parity, and backup/restore proof remain release gates. No target database is modified by the preflight command itself.
+
+
+## A1.24 source-rule parity check — 2026-10-23
+
+Extended the read-only preflight to parse the canonical initial.sql protection rules and compare both native deletion guards against target catalog evidence for presence, event type, target table, and normalized predicate. The check participates in passes_audited_checks, so missing or drifted guards fail --fail-on-drift. Unit coverage covers both A1.24 rule definitions and the parser's fail-closed behavior. This is a narrow semantic comparison, not full constraint/trigger/function parity or approval for adoption.
+
+
+## A1.24 stored-function body parity — 2026-10-23
+
+The preflight now decodes the quoted function bodies from the canonical A1.24 functions.sql, hashes each body, collects PostgreSQL prosrc hashes keyed by function name and identity argument types, and reports body drift for matching signatures. Body drift is included in passes_audited_checks and therefore fails --fail-on-drift. Parser tests cover doubled SQL quotes and malformed/missing bodies. This closes the function-body comparison gap for the source-defined native function set, but not plugin-specific functions, all data parity, sequence ownership/current-value consistency, or backup/restore validation.
+
+
+## A1.24 sequence safety validation — 2026-10-23
+
+The read-only preflight now compares source-defined serial ownership mappings with PostgreSQL ownership metadata and checks each target-owned sequence's current value against MAX(owning_column). A sequence that has not been advanced, or is behind explicitly inserted IDs, is reported as drift and blocks passes_audited_checks. Added PostgreSQL acceptance coverage that first verifies a generated identity value is consistent, then inserts an explicit high ID and verifies the mismatch is detected. Manually advanced or unowned sequences and full sequence/data migration semantics still require separate review.
+
+
+## Complete initial IBS state seed parity — 2026-10-23
+
+The preflight now parses every ibs_states seed from canonical A1.24 initial.sql (currently seven rows) and compares exact values in the target database. Missing or drifted seed values are included in the JSON report and fail --fail-on-drift. Unit tests cover the full seed set and duplicate-source-row rejection. This complements the existing exact defs baseline and admin/GOD guards; it is still not a full data importer or complete parity of all application/plugin rows.
+
+
+## Exact initial administrator seed parity — 2026-10-23
+
+The preflight now parses the complete positional system-admin seed row using the canonical source table column order and compares every field with the target. It also compares all fields of the explicit GOD permission seed row. Reports expose only drifted field names, not target values or password material. Unit tests cover numeric/string parsing and exact seed shape. This supplements the seven-state-value and defs checks; it does not validate all runtime data or plugin-owned rows.
+
+
+## Relational constraint signature parity — 2026-10-23
+
+Added source-derived PK, UNIQUE, FK, and CHECK constraint signatures from canonical A1.24 tables.sql and compares them with PostgreSQL catalog semantics, including ordered local/referenced columns and normalized check expressions. Missing or extra signatures now block passes_audited_checks. Unit tests cover inline and table-level constraints; PostgreSQL acceptance tests compare a representative schema against the catalog. Full index-definition and trigger-body parity remain open.
+
+
+## Explicit index shape parity — 2026-10-23
+
+The preflight now compares each explicit source index's table, uniqueness, access method, key count, expression-index presence, and partial-predicate presence against PostgreSQL catalog metadata. This detects shape drift even when index names match. Full expression and predicate text comparison remains open because PostgreSQL canonicalizes some A1.24 expressions differently from their source SQL; it must be normalized conservatively and tested against the canonical schema before being used as an adoption gate.
+
+
+## Explicit index expression/predicate parity — 2026-10-23
+
+Extended source and PostgreSQL catalog index inventories to compare normalized expression SQL and partial-predicate SQL in addition to index table, uniqueness, access method, key count, and expression/partial flags. Normalization covers the canonical A1.24 CAST-to-bigint expression and PostgreSQL's IN-list-to-ANY predicate display for user_attrs_abs_exp_date. Any expression/predicate drift now contributes to index_definition_drift and blocks passes_audited_checks. Parser tests cover both canonical and PostgreSQL-rendered forms. This is conservative normalization for the source's current index forms, not a general SQL equivalence engine.
+
+
+## Preflight partial-schema robustness — 2026-10-23
+
+PR #17 adds guards around all source-seed and marker probes (`defs`, `ibs_states`, system-admin row, GOD permission row, and seed markers). If a target table exists but lacks required columns, the preflight skips the unsafe query and reports the existing missing/drift evidence rather than crashing with a database undefined-column error. Regression tests cover incomplete seed schemas. CI result for this increment: pending at time of note; do not claim verified until both matrix workflows pass.
+
+
+## Operator backup/restore batch — 2026-10-23
+
+Added the explicit `atd-radius-backup` command: custom-format `pg_dump`, archive-list validation with `pg_restore --list`, SHA-256 sidecar manifest, overwrite protection, manifest-based verification, and restore guarded by an exact configured database-name confirmation. Added unit tests for checksum tampering, archive verification, overwrite refusal and restore confirmation; documented the destructive restore boundary in `docs/BACKUP-RESTORE.md`.
+
+This is operator tooling, not proof of disaster-recovery readiness. Production readiness still requires isolated real-PostgreSQL restore drills, data/application acceptance checks, scheduled off-host retention and monitoring. CI for this batch is running; do not call it verified until both workflows pass.
+
+
+## Backup safety and round-trip acceptance — 2026-10-23
+
+Hardened the backup CLI by keeping database credentials in the child-process environment (not command-line arguments or the parent process environment), forwarding common libpq TLS/connection options, restricting manifest permissions, and expanding command-path regression tests. Added a real PostgreSQL acceptance test that creates isolated source/target databases, backs up a table with data, restores it into the target, and compares the restored rows. The acceptance test skips only when the PostgreSQL client utilities are absent; CI status for this latest batch is pending.
+
+
+## A1.24 sequence semantic parity batch — 2026-10-23
+
+The read-only adoption preflight now compares canonical sequence configuration (start/minimum/maximum/increment/cycle/cache) separately from ownership and high-water safety. Explicit A1.24 sequences and serial-generated integer sequences are modeled with their respective PostgreSQL defaults. Regression tests cover extracted defaults, multiple drift fields, missing target-state evidence, and unexpected native-table triggers. CI must be checked against the latest commit before describing this batch as verified; this remains an assessment tool, not an importer or production adoption approval.
+
+
+## MS-CHAPv2 non-ASCII and MultiLogin regression batch — 2026-10-23
+
+Verified on head `3cb3faac5cb07f771fc9e49a160971199ec0f245`: Python-only workflow passed, and the full PostgreSQL-backed CI matrix passed on Python 3.11 and 3.12. The MS-CHAPv2 AuthenticatorResponse now uses the same A1.24 byte-wise password conversion helper as NT-response verification and MPPE derivation; an explicit non-ASCII regression test covers that parity decision while the RFC ASCII vector remains covered. MultiLogin policy now enforces the configured instance limit before checking the incoming and existing RAS MultiLogin capabilities. False-like RAS values are normalized consistently and rejection reasons retain the established AAA/API mapping. Regression tests cover precedence, existing/incoming RAS restrictions, and the all-RAS-allow case.
+
+This does not close live NAS interoperability or establish the source database/client charset for non-ASCII passwords. Durable accepted-login reservations can remain stale when Accounting never arrives and still require an operational reconciliation path. No claim of full A1.24 runtime parity is made.

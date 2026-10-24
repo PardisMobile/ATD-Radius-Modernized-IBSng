@@ -136,3 +136,45 @@ def test_rsh_transport_reports_timeout(monkeypatch):
     with pytest.raises(RSHTransportError) as exc:
         ConfiguredRSHTransport().execute(request)
     assert exc.value.timed_out
+
+
+def test_bsae_rsh_transport_preserves_source_arguments_without_shell(monkeypatch):
+    from atd_radius.domain.ras_external import build_bsae_disconnect_request
+
+    calls = []
+    def fake_run(argv, **kwargs):
+        calls.append((argv, kwargs))
+        return subprocess.CompletedProcess(argv, 0, "user down", "")
+
+    monkeypatch.setattr("atd_radius.infrastructure.rsh_transport.subprocess.run", fake_run)
+    request = build_bsae_disconnect_request(
+        ras_ip="192.0.2.30",
+        wrapper="/opt/ibs-addons/bsae/telnet_wrapper",
+        username="alice_1",
+        telnet_username="manager",
+        telnet_password="secret with spaces",
+        max_concurrent_connections=2,
+    )
+    result = ConfiguredRSHTransport().execute(request)
+    assert result.succeeded
+    assert calls[0][0] == [
+        "/opt/ibs-addons/bsae/telnet_wrapper", "192.0.2.30",
+        "manager", "secret with spaces", "downuser username alice_1",
+    ]
+    assert calls[0][1]["shell"] is False
+
+
+def test_bsae_rsh_rejects_unsafe_username_before_process(monkeypatch):
+    from atd_radius.domain.ras_external import build_bsae_disconnect_request
+    called = False
+    def fake_run(*args, **kwargs):
+        nonlocal called
+        called = True
+        return subprocess.CompletedProcess(args[0], 0, "", "")
+    monkeypatch.setattr("atd_radius.infrastructure.rsh_transport.subprocess.run", fake_run)
+    with pytest.raises(ValueError, match="unsupported CLI characters"):
+        build_bsae_disconnect_request(
+            ras_ip="192.0.2.30", wrapper="/opt/ibs-addons/bsae/telnet_wrapper",
+            username="alice; reboot",
+        )
+    assert called is False

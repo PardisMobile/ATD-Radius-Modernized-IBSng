@@ -21,6 +21,7 @@ from atd_radius.domain.ras_external import (
     build_pppd_disconnect_request,
     build_portslave_disconnect_request,
     build_total_control_disconnect_request,
+    build_bsae_disconnect_request,
 )
 
 
@@ -138,6 +139,25 @@ class SourceRASDisconnectClient:
         provider = ras.ras_type.strip().lower().replace("-", "_").replace(" ", "_")
         unique_id = str(session.key.unique_id)
         try:
+            if provider == "bsae":
+                username = str(
+                    session.attributes.get("username")
+                    or session.attributes.get("User-Name")
+                    or ""
+                ).strip()
+                if not username:
+                    raise PermanentRASTerminationError("BSAE termination requires the source auth RAS username")
+                request = build_bsae_disconnect_request(
+                    ras_ip=ras.ip,
+                    wrapper=str(attrs.get("bsae_telnet_command", "")),
+                    username=username,
+                    telnet_username=str(attrs.get("bsae_telnet_username", "SuperManager")),
+                    telnet_password=str(attrs.get("bsae_telnet_password", "bsae")),
+                    max_concurrent_connections=attrs.get("bsae_telnet_max_concurrent_connections", 3),
+                )
+                result = self._external_service.execute_request(request)
+                self._require_external_success("BSAE", result)
+                return True
             if provider == "asterisk":
                 try:
                     enabled = int(attrs.get("asterisk_use_manager", 0)) == 1
@@ -299,7 +319,7 @@ class SourceRASDisconnectClient:
         if provider in {"gnugk", "gnu_gatekeeper", "gnugatekeeper"}:
             self._terminate_gnugk(ras, session)
             return
-        if provider in {"asterisk", "cisco", "cisco_vpdn", "mikrotik", "portmaster", "total_control", "totalcontrol", "portslave", "pppd"}:
+        if provider in {"bsae", "asterisk", "cisco", "cisco_vpdn", "mikrotik", "portmaster", "total_control", "totalcontrol", "portslave", "pppd"}:
             if self._terminate_source_snmp(ras, session):
                 return
             raise UnsupportedRASTermination(f"A1.24 {ras.ras_type!r} termination action is not implemented")

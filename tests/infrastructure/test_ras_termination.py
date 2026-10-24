@@ -466,3 +466,30 @@ def test_asterisk_termination_fails_closed_when_manager_is_disabled_or_channel_i
             make_session("malformed-channel"), "credit_finished"
         )
     assert external.calls == []
+
+
+def test_bsae_termination_uses_source_telnet_wrapper_and_auth_username():
+    from atd_radius.domain.ras_external import ExternalOperation
+    from atd_radius.infrastructure.ras_termination import SourceRASDisconnectClient
+
+    class External:
+        def __init__(self):
+            self.requests = []
+        def execute_request(self, request):
+            self.requests.append(request)
+            return SimpleNamespace(succeeded=True)
+
+    external = External()
+    ras = make_ras("BSAE", attributes={
+        "bsae_telnet_command": "/opt/ibs-addons/bsae/telnet_wrapper",
+        "bsae_telnet_username": "manager",
+        "bsae_telnet_password": "secret",
+        "bsae_telnet_max_concurrent_connections": "2",
+    })
+    session = make_session("port-7", {"User-Name": "alice_7"})
+    SourceRASDisconnectClient(external_service=external).terminate(ras, session, "absolute_expired")
+
+    request = external.requests[0]
+    assert request.operation is ExternalOperation.RSH
+    assert request.provider == "bsae"
+    assert request.parameters["arguments"] == ("manager", "secret", "downuser username alice_7")

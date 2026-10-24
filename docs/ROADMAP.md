@@ -482,3 +482,28 @@ Validation checkpoint: full CI passed on Python 3.11 and 3.12 with **950 passed,
 The backend now exposes owner-scoped online-session reporting for durable active sessions and login-in-progress reservations, plus an audited `KILL USER` API that delegates to the existing source-traced provider termination adapters. The termination path rechecks durable state under session locks and permits retries when a stale worker-local marker outlives a cleared durable claim. A successful provider request is not treated as proof of remote disappearance; Accounting-Stop remains the confirmation boundary. `CLEAR USER` is not implemented.
 
 Validation: full PostgreSQL CI passed **954 tests, 2 warnings** on Python 3.11 and 3.12; Python-only CI passed **945 tests, 9 skipped, 2 warnings**. Live provider interoperability, full user/admin UI workflows, database import/parity, remaining billing/plugin/XML-RPC behavior and installation/upgrade/rollback remain open.
+
+
+## Explicit migration runner foundation — 2026-10-23
+
+Added the operator-controlled `atd-radius-migrate` CLI for clean installs. It validates numbered/contiguous migrations, verifies recorded SHA-256 checksums, serializes operators with a PostgreSQL advisory lock, applies pending SQL and ledger records in one transaction, and refuses untracked non-empty databases. Added unit tests for checksum drift, idempotence, rollback, and safe refusal, plus a real PostgreSQL acceptance test applying all eight migrations to an isolated database and verifying rollback of a failed ninth migration. Full CI passed on Python 3.11 and 3.12 (**962 passed, 2 warnings each**); Python-only passed **952 passed, 9 skipped, 2 warnings**. This is not the A1.24 backup importer or rollback automation; the lossless import/adoption and representative backup restore gates remain open.
+
+
+### A1.24 adoption evidence — semantic object inventory
+
+- [x] Add read-only target-side evidence for constraints, non-internal triggers, rewrite rules, and sequence configuration/current values.
+- [x] Add PostgreSQL acceptance coverage using an isolated schema with representative native object types.
+- [x] Compare source-derived PK/UNIQUE/FK/CHECK signatures and both canonical A1.24 deletion-protection rules; compare stored-function body hashes by identity signature; compare serial sequence ownership/high-water marks; compare all seven initial IBS state seeds and every field of the system-admin/GOD seed rows.
+- [ ] Validate manually managed/unowned sequence semantics and all required data/plugin objects; design and validate a lossless import/adoption procedure with representative backup/restore verification before any migration-ledger baseline can be approved. Canonical A1.24 schema SQL defines no native CREATE TRIGGER statements; source-defined stored-function bodies and target trigger definitions are inventoried separately.
+
+
+## Verified regression batch — 2026-10-23
+
+- [x] Correct MS-CHAPv2 AuthenticatorResponse password conversion to use the source-compatible A1.24 helper.
+- [x] Add non-ASCII MS-CHAPv2 regression coverage while retaining the ASCII/RFC vector.
+- [x] Centralize MultiLogin limit and RAS-capability ordering in the domain session policy.
+- [x] Normalize false-like RAS capability values and preserve established AAA rejection codes.
+- [x] Update source-parity notes and regression coverage.
+- [x] Verify latest head `3cb3faac5cb07f771fc9e49a160971199ec0f245`: Python-only workflow and PostgreSQL-backed CI on Python 3.11 and 3.12 both passed.
+
+Remaining release blockers include live NAS PAP/CHAP/MS-CHAPv1/v2 and MPPE interoperability, authoritative recovery/reconciliation for stale accepted-login reservations, full A1.24 data import/adoption and restore drills, remaining billing/plugin/XML-RPC parity, and complete UI/deployment/upgrade workflows.

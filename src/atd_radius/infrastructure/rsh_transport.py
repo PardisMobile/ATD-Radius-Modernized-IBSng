@@ -18,7 +18,7 @@ from typing import Mapping
 from atd_radius.domain.ras_external import ExternalOperation, ProviderOperationRequest
 
 
-_ALLOWED_PROVIDERS = {"cisco", "cisco_vpdn", "mikrotik"}
+_ALLOWED_PROVIDERS = {"cisco", "cisco_vpdn", "mikrotik", "bsae"}
 
 
 class RSHTransportError(RuntimeError):
@@ -97,6 +97,10 @@ class ConfiguredRSHTransport:
                 r"show caller user [A-Za-z0-9_.:@+-]+|clear interface [A-Za-z0-9_.:@+-]+",
                 command,
             )
+        elif request.provider == "bsae":
+            if len(arguments) != 3:
+                raise ValueError("BSAE RSH expects telnet username, password and command")
+            valid = re.fullmatch(r"downuser username [A-Za-z0-9_.:@+-]+", command)
         else:
             if len(arguments) != 3:
                 raise ValueError("MikroTik RSH expects username, password and command")

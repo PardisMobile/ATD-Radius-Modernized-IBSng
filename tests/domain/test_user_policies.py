@@ -28,10 +28,13 @@ def test_absolute_expiry_rejects_expired_user():
     r=AbsoluteExpiryPolicy(now).evaluate(AAARequest("u",{"abs_exp_date":"999"}))
     assert r.action is AAAAction.REJECT
 
-def test_relative_expiry_sets_first_login_on_first_login():
+def test_relative_expiry_uses_private_first_login_candidate_without_emitting_it():
     now=datetime.fromtimestamp(1000,tz=timezone.utc)
-    r=RelativeExpiryPolicy(now).evaluate(AAARequest("u",{"rel_exp_date":"3600"}))
-    assert r.attributes["first_login"]=="1000"
+    r=RelativeExpiryPolicy(now).evaluate(
+        AAARequest("u", {"rel_exp_date":"3600", "__first_login_candidate":"1000"})
+    )
+    assert r.attributes == {"Session-Timeout": "3600"}
+    assert "first_login" not in r.attributes
 
 def test_relative_expiry_rejects_after_deadline():
     now=datetime.fromtimestamp(5000,tz=timezone.utc)
@@ -51,3 +54,57 @@ def test_multilogin_live_provider_rejects_second_session_when_ras_disallows():
     p = MultiLoginPolicy(active_sessions_provider=lambda user_id: sessions[user_id])
     request = AAARequest("u", {"__user_id": "7", "multi_login": "2", "ras_multi_login": "false"})
     assert p.evaluate(request).reason == "RAS_DOESNT_ALLOW_MULTILOGIN"
+
+
+def test_multilogin_checks_limit_before_incoming_ras_capability():
+    sessions = {7: (ActiveSessionView("s1", ras_multi_login_allowed=False),)}
+    policy = MultiLoginPolicy(active_sessions_provider=lambda user_id: sessions[user_id])
+    request = AAARequest("u", {
+        "__user_id": "7", "multi_login": "1", "ras_multi_login": "false"
+    })
+    assert policy.evaluate(request).reason == "MAX_CONCURRENT"
+
+
+def test_multilogin_normalizes_false_ras_capability_strings():
+    sessions = {7: (ActiveSessionView("s1", ras_multi_login_allowed=True),)}
+    policy = MultiLoginPolicy(active_sessions_provider=lambda user_id: sessions[user_id])
+    for value in ("false", "FALSE", " false ", "0", False):
+        request = AAARequest("u", {
+            "__user_id": "7", "multi_login": "2", "__ras_multi_login_allowed": value
+        })
+        assert policy.evaluate(request).reason == "RAS_DOESNT_ALLOW_MULTILOGIN"
+
+
+def test_multilogin_accepts_when_every_ras_allows_multiple_sessions():
+    sessions = {7: (ActiveSessionView("s1", ras_multi_login_allowed=True),)}
+    policy = MultiLoginPolicy(active_sessions_provider=lambda user_id: sessions[user_id])
+    request = AAARequest("u", {
+        "__user_id": "7", "multi_login": "2", "__ras_multi_login_allowed": True
+    })
+    assert policy.evaluate(request) is None
+
+  
+def test_timeout_policy_does_not_extend_absolute_expiry_deadline():
+    from atd_radius.domain.user_policies import TimeoutPolicy
+
+    result = TimeoutPolicy().evaluate(
+        AAARequest("alice", {"session_timeout": "3600", "Session-Timeout": "45"})
+    )
+
+    assert result.attributes["Session-Timeout"] == "45"
+
+  
+def test_relative_expiry_does_not_extend_existing_shorter_session_timeout():
+    now = datetime.fromtimestamp(1000, tz=timezone.utc)
+    result = RelativeExpiryPolicy(now).evaluate(
+        AAARequest(
+            "u",
+            {
+                "rel_exp_date": "7200",
+                "first_login": "1000",
+                "Session-Timeout": "30",
+            },
+        )
+    )
+
+    assert result.attributes["Session-Timeout"] == "30"

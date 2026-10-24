@@ -1,7 +1,7 @@
 """IBSng A1.24-compatible user policy adapters."""
 from __future__ import annotations
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from .aaa import AAAAction,AAAResult
 from .session_policy import ActiveSessionView,session_policy
 from .ras_provider import normalize_ras_type, provider_multi_login
@@ -84,21 +84,28 @@ class MultiLoginPolicy:
             user_id = request.attributes.get("__user_id")
             if user_id not in (None, ""):
                 sessions = tuple(self.active_sessions_provider(int(user_id)))
-        # IBSng increments instances before USER_LOGIN hooks: evaluate the
-        # user limit first, then the RAS capability for an additional session.
-        d=session_policy(_attrs(request),sessions)
-        if not d.allowed and d.reason=="multi_login":
-            return AAAResult(AAAAction.REJECT,reason="MAX_CONCURRENT")
-        ras_multi_login = request.attributes.get("__ras_multi_login_allowed",
-            request.attributes.get("ras_multi_login"))
-        current_ras_disallows = ras_multi_login in (False, "0", "false", "False")
-        # A1.24 checks False in the per-user list of all instance RAS flags,
-        # not only the flag on the incoming request.
-        existing_ras_disallows = any(
-            session.ras_multi_login_allowed is False for session in sessions
+        # A1.24 increments instances before USER_LOGIN hooks and checks the
+        # configured user limit before the accumulated RAS capability list.
+        raw_ras_multi_login = request.attributes.get(
+            "__ras_multi_login_allowed", request.attributes.get("ras_multi_login")
         )
-        if len(sessions) > 0 and (current_ras_disallows or existing_ras_disallows):
-            return AAAResult(AAAAction.REJECT, reason="RAS_DOESNT_ALLOW_MULTILOGIN")
+        current_ras_allowed = None
+        if raw_ras_multi_login is not None:
+            current_ras_allowed = not (
+                raw_ras_multi_login is False
+                or str(raw_ras_multi_login).strip().lower() in {"0", "false"}
+            )
+        decision = session_policy(
+            _attrs(request),
+            sessions,
+            current_ras_multi_login_allowed=current_ras_allowed,
+        )
+        if not decision.allowed:
+            reason = {
+                "multi_login": "MAX_CONCURRENT",
+                "ras_doesnt_allow_multilogin": "RAS_DOESNT_ALLOW_MULTILOGIN",
+            }.get(decision.reason, decision.reason or "POLICY_REJECTED")
+            return AAAResult(AAAAction.REJECT, reason=reason)
         return None
 
 @dataclass(frozen=True,slots=True)
@@ -106,34 +113,55 @@ class TimeoutPolicy:
     def evaluate(self,request):
         d=session_policy(_attrs(request))
         out={}
-        if d.session_timeout_seconds is not None: out["Session-Timeout"]=str(d.session_timeout_seconds)
+        if d.session_timeout_seconds is not None:
+            # Expiration policies may already have emitted a shorter remaining
+            # lifetime. Never extend that lifetime with the configured timeout.
+            existing = request.attributes.get("Session-Timeout")
+            try:
+                configured = int(existing) if existing not in (None, "") else None
+            except (TypeError, ValueError):
+                configured = None
+            timeout = d.session_timeout_seconds
+            if configured is not None:
+                timeout = min(timeout, configured)
+            out["Session-Timeout"] = str(timeout)
         if d.idle_timeout_seconds is not None: out["Idle-Timeout"]=str(d.idle_timeout_seconds)
         return AAAResult(AAAAction.ACCEPT,out) if out else None
 
 @dataclass(frozen=True,slots=True)
 class AbsoluteExpiryPolicy:
-    now: datetime
+    now: datetime | None = None
     def evaluate(self,request):
         raw=request.attributes.get("abs_exp_date")
         if raw in (None,""): return None
         try: expiry=float(raw)
         except (TypeError,ValueError): return None
-        now=self.now.timestamp()
+        now=(self.now or datetime.now(timezone.utc)).timestamp()
         if now>=expiry: return AAAResult(AAAAction.REJECT,reason="ABS_EXP_DATE_REACHED")
         return AAAResult(AAAAction.ACCEPT,{"Session-Timeout":str(max(0,int(expiry-now)))})
 
 @dataclass(frozen=True,slots=True)
 class RelativeExpiryPolicy:
-    now: datetime
+    now: datetime | None = None
     def evaluate(self,request):
         raw=request.attributes.get("rel_exp_date")
         if raw in (None,""): return None
         try: duration=float(raw)
         except (TypeError,ValueError): return None
         first=request.attributes.get("first_login")
-        if first in (None,""): return AAAResult(AAAAction.ACCEPT,{"first_login":str(int(self.now.timestamp()))})
+        if first in (None, ""):
+            first=request.attributes.get("__first_login_candidate")
+        if first in (None,""): return None
         try: deadline=float(first)+duration
         except (TypeError,ValueError): return None
-        remaining=deadline-self.now.timestamp()
+        now=(self.now or datetime.now(timezone.utc)).timestamp()
+        remaining=deadline-now
         if remaining<=0: return AAAResult(AAAAction.REJECT,reason="REL_EXP_DATE_REACHED")
-        return AAAResult(AAAAction.ACCEPT,{"Session-Timeout":str(int(remaining))})
+        remaining_seconds = int(remaining)
+        existing_timeout = request.attributes.get("Session-Timeout")
+        try:
+            if existing_timeout not in (None, ""):
+                remaining_seconds = min(remaining_seconds, int(existing_timeout))
+        except (TypeError, ValueError):
+            pass
+        return AAAResult(AAAAction.ACCEPT,{"Session-Timeout":str(remaining_seconds)})
