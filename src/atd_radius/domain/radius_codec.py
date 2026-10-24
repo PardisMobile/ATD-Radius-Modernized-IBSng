@@ -593,23 +593,6 @@ def decode_sip(data: bytes) -> RadiusPacket:
     except KeyError as exc:
         raise RadiusCodecError(f"unsupported RADIUS code: {code_byte}") from exc
     authenticator = data[4:20]
-    response_codes = {
-        RadiusCode.ACCESS_ACCEPT, RadiusCode.ACCESS_REJECT, RadiusCode.ACCESS_CHALLENGE,
-        RadiusCode.ACCOUNTING_RESPONSE, RadiusCode.DISCONNECT_ACK, RadiusCode.DISCONNECT_NAK,
-        RadiusCode.COA_ACK, RadiusCode.COA_NAK,
-    }
-    if request_authenticator is not None and len(request_authenticator) != 16:
-        raise RadiusCodecError("request_authenticator must be exactly 16 bytes")
-    # MPPE VSA decryption uses the original Access-Request authenticator, not
-    # the response authenticator carried on the wire. Without that context,
-    # preserve encrypted VSA bytes instead of returning misleading plaintext.
-    vsa_secret = secret
-    vsa_authenticator = authenticator
-    if code in response_codes:
-        if request_authenticator is None:
-            vsa_secret = None
-        else:
-            vsa_authenticator = request_authenticator
     attrs = {}
     offset = 20
     while offset < length:
@@ -706,6 +689,23 @@ def decode(
     except KeyError as exc:
         raise RadiusCodecError(f"unsupported RADIUS code: {code_byte}") from exc
     authenticator = data[4:20]
+    response_codes = {
+        RadiusCode.ACCESS_ACCEPT, RadiusCode.ACCESS_REJECT, RadiusCode.ACCESS_CHALLENGE,
+        RadiusCode.ACCOUNTING_RESPONSE, RadiusCode.DISCONNECT_ACK, RadiusCode.DISCONNECT_NAK,
+        RadiusCode.COA_ACK, RadiusCode.COA_NAK,
+    }
+    if request_authenticator is not None and len(request_authenticator) != 16:
+        raise RadiusCodecError("request_authenticator must be exactly 16 bytes")
+    # MPPE VSA decryption uses the original Access-Request authenticator, not
+    # the response authenticator carried on the wire. Without that context,
+    # preserve encrypted VSA bytes instead of returning misleading plaintext.
+    vsa_secret = secret
+    vsa_authenticator = authenticator
+    if code in response_codes:
+        if request_authenticator is None:
+            vsa_secret = None
+        else:
+            vsa_authenticator = request_authenticator
     attrs = {}
     offset = 20
     while offset < length:
