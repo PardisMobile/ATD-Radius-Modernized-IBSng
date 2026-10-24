@@ -155,4 +155,11 @@ class RelativeExpiryPolicy:
         now=(self.now or datetime.now(timezone.utc)).timestamp()
         remaining=deadline-now
         if remaining<=0: return AAAResult(AAAAction.REJECT,reason="REL_EXP_DATE_REACHED")
-        return AAAResult(AAAAction.ACCEPT,{"Session-Timeout":str(int(remaining))})
+        remaining_seconds = int(remaining)
+        existing_timeout = request.attributes.get("Session-Timeout")
+        try:
+            if existing_timeout not in (None, ""):
+                remaining_seconds = min(remaining_seconds, int(existing_timeout))
+        except (TypeError, ValueError):
+            pass
+        return AAAResult(AAAAction.ACCEPT,{"Session-Timeout":str(remaining_seconds)})
