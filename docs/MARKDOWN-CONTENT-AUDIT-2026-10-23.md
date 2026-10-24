@@ -1,3 +1,9 @@
+# CONTENT AUDIT RECONCILIATION — 2026-10-25
+
+The current main tree has **73 Markdown files**. The prior audit covered the 71 Markdown files present before the audit document itself; the later `docs/MAILBOX-CLEANUP-OUTBOX.md` was also read in this reconciliation. This pass rechecked root purpose/scope/architecture, current status/context/roadmaps, compatibility matrix, full A1.24 source inventory, UI page inventory, adoption preflight, migration runner, mailbox outbox and backup/restore docs.
+
+Main code head `7484ea5b0a23f32d4de05cc794ff12d1dc76f5c1` passed full CI on Python 3.11/3.12: **1,073 passed each, 2 warnings**; Python-only: **1,048 passed, 25 skipped, 2 warnings**. Runs: [full CI](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/40144748357), [Python-only](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/40144748355).
+
 # Markdown Content Audit — 2026-10-23
 
 ## Scope and method
