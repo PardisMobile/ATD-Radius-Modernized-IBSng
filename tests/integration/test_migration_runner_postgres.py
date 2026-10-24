@@ -53,6 +53,33 @@ def test_real_postgres_clean_install_is_idempotent_and_failed_migration_rolls_ba
         assert conn.execute("SELECT to_regclass('public.atd_radius_live_sessions')").fetchone()[0] is not None
         assert conn.execute("SELECT to_regclass('public.atd_radius_mailbox_cleanup')").fetchone()[0] is not None
 
+        from atd_radius.infrastructure.mailbox_cleanup import MailboxCleanupRepository
+
+        mailbox = MailboxCleanupRepository(conn)
+        job_id = mailbox.enqueue(987654, "integration@example.test")
+        conn.commit()
+        claimed = mailbox.claim_batch(limit=1)
+        assert len(claimed) == 1
+        assert claimed[0].job_id == job_id
+        assert claimed[0].attempts == 1
+        mailbox.finish(job_id, success=False, error="simulated retry")
+        conn.commit()
+        status, attempts = conn.execute(
+            "SELECT status, attempts FROM atd_radius_mailbox_cleanup WHERE job_id=%s", (job_id,)
+        ).fetchone()
+        assert (status, attempts) == ("failed", 1)
+        retry = mailbox.claim_batch(limit=1)
+        assert len(retry) == 1
+        assert retry[0].job_id == job_id
+        assert retry[0].attempts == 2
+        mailbox.finish(job_id, success=True)
+        conn.commit()
+        status, attempts = conn.execute(
+            "SELECT status, attempts FROM atd_radius_mailbox_cleanup WHERE job_id=%s", (job_id,)
+        ).fetchone()
+        assert (status, attempts) == ("succeeded", 2)
+
+
         second = run_migrations(conn, migrations_dir, apply=True)
         assert second.applied == first.applied
         assert second.pending == ()
