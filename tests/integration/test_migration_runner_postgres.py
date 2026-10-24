@@ -70,7 +70,7 @@ def test_real_postgres_clean_install_is_idempotent_and_failed_migration_rolls_ba
         assert conn.execute("SELECT to_regclass('public.should_rollback')").fetchone()[0] is None
         assert conn.execute(
             "SELECT count(*) FROM public.atd_schema_migrations"
-        ).fetchone()[0] == 8
+        ).fetchone()[0] == 9
 
 
 
