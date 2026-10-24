@@ -290,3 +290,11 @@ def test_cisco_voip_does_not_treat_acct_session_id_as_h323_conf_id():
         {"Acct-Session-Id": ["acct-1"], "NAS-Port": ["17"]},
         service="voip",
     ) is None
+
+
+def test_bsae_profile_declares_source_rsh_termination_strategy():
+    from atd_radius.domain.ras_provider import RASProviderRegistry
+    profile = RASProviderRegistry().profile("BSAE")
+    assert profile is not None
+    assert profile.unique_id == "port"
+    assert profile.disconnect_strategy == "rsh-username"

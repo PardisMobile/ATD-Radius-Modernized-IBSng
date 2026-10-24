@@ -690,3 +690,14 @@ def test_asterisk_manager_builder_preserves_source_config_and_rejects_header_inj
             ras_ip="192.0.2.9", manager_port=5038, username="admin",
             secret="secret", timeout=30, channel="PJSIP/alice" + chr(13) + chr(10) + "Action: Login",
         )
+
+
+def test_bsae_disconnect_strategy_is_explicitly_source_mapped_to_rsh():
+    assert disconnect_operations("rsh-username") == (ExternalOperation.RSH,)
+    request = build_disconnect_request(
+        "bsae", "rsh-username",
+        parameters={"host": "192.0.2.30", "username": "alice"},
+    )
+    assert request is not None
+    assert request.provider == "bsae"
+    assert request.operation is ExternalOperation.RSH

@@ -83,6 +83,7 @@ _DISCONNECT_OPERATIONS = {
     "snmp-or-rsh": (ExternalOperation.SNMP, ExternalOperation.RSH),
     "rsh-interface": (ExternalOperation.RSH,),
     "rsh-port": (ExternalOperation.RSH,),
+    "rsh-username": (ExternalOperation.RSH,),
     "snmp-port": (ExternalOperation.SNMP,),
     "launcher": (ExternalOperation.LAUNCHER,),
     "snmp-interface": (ExternalOperation.SNMP,),
