@@ -1879,3 +1879,51 @@ def test_build_radius_dispatcher_enforces_native_absolute_expiry():
     )
 
     assert response.code is RadiusCode.ACCESS_REJECT
+
+  
+def test_build_radius_dispatcher_persists_first_login_only_after_accept():
+    users = Mock()
+    users.get_authentication_record.return_value = (7, "secret", False)
+    users.policy_attributes.return_value = [("rel_exp_date", "3600")]
+    users.attributes.return_value = [("rel_exp_date", "3600")]
+    dispatcher = build_radius_dispatcher(users)
+
+    response = dispatcher.access(
+        RadiusPacket(
+            RadiusCode.ACCESS_REQUEST,
+            6,
+            {"User-Name": "alice", "User-Password": "secret"},
+            b"0123456789abcdef",
+        )
+    )
+
+    assert response.code is RadiusCode.ACCESS_ACCEPT
+    assert 0 < int(response.attributes["Session-Timeout"]) <= 3600
+    assert "first_login" not in response.attributes
+    users.set_attribute.assert_called_once()
+    args = users.set_attribute.call_args.args
+    assert args[:2] == (7, "first_login")
+    assert int(args[2]) > 0
+
+
+def test_build_radius_dispatcher_does_not_persist_first_login_on_rejection():
+    users = Mock()
+    users.get_authentication_record.return_value = (7, "secret", False)
+    users.policy_attributes.return_value = [("rel_exp_date", "1")]
+    users.attributes.return_value = [("rel_exp_date", "1")]
+    dispatcher = build_radius_dispatcher(users)
+
+    # A deliberately expired pre-existing first_login must reject and must not
+    # write a replacement timestamp that would renew the user's subscription.
+    users.policy_attributes.return_value = [("rel_exp_date", "1"), ("first_login", "1")]
+    response = dispatcher.access(
+        RadiusPacket(
+            RadiusCode.ACCESS_REQUEST,
+            7,
+            {"User-Name": "alice", "User-Password": "secret"},
+            b"0123456789abcdef",
+        )
+    )
+
+    assert response.code is RadiusCode.ACCESS_REJECT
+    users.set_attribute.assert_not_called()
