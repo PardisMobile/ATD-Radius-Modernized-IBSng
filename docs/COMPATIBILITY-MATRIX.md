@@ -29,7 +29,7 @@ This is the master parity ledger. A feature is not considered migrated merely be
 | Disconnect | RADIUS/RAS behavior | RADIUS CoA/Disconnect adapter + admin online-session action | Authenticated-RAS-scoped inbound Disconnect/CoA, durable cross-worker target refresh, accounting settlement/IP release, and permission-checked admin termination endpoint implemented; provider disappearance verification and full live RAS interoperability pending |
 | Charging | charge plugins/core | Billing/charge engine | Charge catalog/assignment and Internet/VoIP rule/tariff CRUD implemented; VoIP settlement is wired into accounting Start/Interim/Stop. Bandwidth interface/tree/node/leaf read APIs are implemented. Time-driven VoIP rule/credit events, RAS prefix/min-duration effects, missed-call parity, bandwidth hierarchy/service mutations, live tc shaping and full billing parity remain pending |
 | Credit | credit plugins/core | Credit ledger/policy | Foundation |
-| User deletion | `core/user/user_actions.py::delUser` | Permission-checked transactional `DELETE /users` API | Implemented with native refund/history/IAS and online/login-reservation guard; mailbox cleanup transport and production parity exercise pending |
+| User deletion | `core/user/user_actions.py::delUser` | Permission-checked transactional `DELETE /users` API | Implemented with native refund/history/IAS, online/login-reservation guard, and durable post-commit mailbox-cleanup outbox; actual mailbox execution requires an operator-configured command; production parity exercise pending |
 | Reports | interface/admin/report/* | Report subsystem | Not started |
 | Graphs | interface/admin/graph/* | Metrics/graphs | Not started |
 | Admin permissions | admin/user management | RBAC/permission service | Source-backed evaluator plus selected admin/user/RAS/VoIP-tariff API workflows implemented; remaining feature workflows pending |
@@ -349,3 +349,8 @@ Full CI passed **954 tests on Python 3.11 and 3.12, 2 warnings each**; Python-on
 The current PR head has passing Python-only CI and passing PostgreSQL-backed CI jobs for Python 3.11 and 3.12. MS-CHAPv2 AuthenticatorResponse now shares the source-compatible A1.24 password-byte conversion with NT-response and MPPE derivation, with regression coverage for non-ASCII strings. MultiLogin admission checks the configured user limit first, then rejects a second instance if the incoming RAS or any existing session disallows MultiLogin. False-like capability normalization and established AAA rejection reasons are covered by tests.
 
 **Not verified:** live NAS interoperability, non-ASCII database/client charset parity, stale-reservation reconciliation when Accounting is absent, or overall A1.24 runtime parity.
+
+
+## Mailbox cleanup outbox — 2026-10-24
+
+Migration 009 adds a durable outbox for the A1.24 post-commit mailbox deletion side effect. The user-delete transaction enqueues a job before removing the source user row; the operator-run worker claims jobs with `SKIP LOCKED`, executes only an absolute configured executable with `shell=False`, validates usernames against a conservative allow-list, records success/failure/attempts, retries failed jobs, and reclaims stale running jobs after 60 minutes. Python tests and PostgreSQL migration acceptance cover enqueue, claim, failure, retry and success. The external command is deliberately unset by default; until configured and run, mailbox deletion remains pending rather than falsely reported complete. See `docs/MAILBOX-CLEANUP-OUTBOX.md`.
