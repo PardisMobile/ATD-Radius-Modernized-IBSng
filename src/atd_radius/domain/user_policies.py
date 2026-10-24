@@ -113,7 +113,18 @@ class TimeoutPolicy:
     def evaluate(self,request):
         d=session_policy(_attrs(request))
         out={}
-        if d.session_timeout_seconds is not None: out["Session-Timeout"]=str(d.session_timeout_seconds)
+        if d.session_timeout_seconds is not None:
+            # Expiration policies may already have emitted a shorter remaining
+            # lifetime. Never extend that lifetime with the configured timeout.
+            existing = request.attributes.get("Session-Timeout")
+            try:
+                configured = int(existing) if existing not in (None, "") else None
+            except (TypeError, ValueError):
+                configured = None
+            timeout = d.session_timeout_seconds
+            if configured is not None:
+                timeout = min(timeout, configured)
+            out["Session-Timeout"] = str(timeout)
         if d.idle_timeout_seconds is not None: out["Idle-Timeout"]=str(d.idle_timeout_seconds)
         return AAAResult(AAAAction.ACCEPT,out) if out else None
 
