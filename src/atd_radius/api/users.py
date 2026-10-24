@@ -317,11 +317,7 @@ def delete_users(
             # The legacy post-commit mailbox deletion hook has no configured ATD
             # transport yet. Return the exact names needing that external cleanup
             # rather than silently claiming the side effect was completed.
-            mailbox_cleanup_pending = [
-                target.normal_username
-                for target in result.targets
-                if target.has_mail_quota and target.normal_username
-            ]
+            mailbox_cleanup_pending = list(result.mailbox_cleanup_pending)
             OperationalAuditRepository(conn).append(
                 actor_admin_id=admin.admin_id,
                 actor_username=admin.username,

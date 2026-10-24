@@ -36,6 +36,8 @@ class Connection:
             return Result([row for row in rows if row[0] in requested])
         if "SELECT DISTINCT user_id FROM atd_radius_live_sessions" in normalized:
             return Result(self.online_rows)
+        if "INSERT INTO atd_radius_mailbox_cleanup" in normalized:
+            return Result([(101,)])
         if "SELECT deposit::numeric FROM admins" in normalized:
             return Result([(Decimal("10.00"),)])
         if "nextval('credit_change_id')" in normalized:
@@ -61,6 +63,9 @@ def test_user_deletion_refunds_only_nonnegative_credit_and_preserves_history_by_
 
     assert [target.user_id for target in result.targets] == [1, 2]
     assert result.refunded_credit == Decimal("4.25")
+    assert result.mailbox_cleanup_pending == ("alice",)
+    queued = next((sql, params) for sql, params in conn.statements if "INSERT INTO atd_radius_mailbox_cleanup" in sql)
+    assert queued[1] == (1, "alice")
     credit = next((sql, params) for sql, params in conn.statements if "INSERT INTO credit_change" in sql)
     assert credit[1] == (41, 8, Decimal("-4.25"), "192.0.2.10", "cleanup")
     ias = next((sql, params) for sql, params in conn.statements if "INSERT INTO ias_event" in sql)
