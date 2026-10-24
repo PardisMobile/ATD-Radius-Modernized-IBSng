@@ -115,18 +115,20 @@ def test_no_connection_log_suppresses_native_persistence():
     persistence.start.assert_not_called()
 
 
-def test_no_commit_skips_charge_settlement_and_reports_zero_credit():
+def test_no_commit_uses_usage_preview_without_mutating_credit():
     from unittest.mock import Mock
     charge=Mock()
+    charge.settle_without_commit.return_value = Decimal("12.50")
     persistence=Mock()
     persistence.start.return_value=126
     service=AccountingSessionService(SessionRegistry(), persistence, charge)
     service.apply(event(AccountingStatus.START, "no-commit", 100, 200), 7, 3)
     result=service.apply(event(AccountingStatus.STOP, "no-commit", 150, 260, attributes={"no_commit":"1"}), 7, 3)
-    assert result.credit_used=="0"
+    assert result.credit_used=="12.50"
+    charge.settle_without_commit.assert_called_once()
     charge.settle.assert_not_called()
     persistence.stop.assert_called_once()
-    assert persistence.stop.call_args.args[2]==Decimal("0")
+    assert persistence.stop.call_args.args[2]==Decimal("12.50")
 
 
 def test_accounting_start_keeps_ras_policy_context_outside_accounting_attributes():

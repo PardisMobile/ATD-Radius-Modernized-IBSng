@@ -1,4 +1,5 @@
 from datetime import datetime
+from decimal import Decimal
 from unittest.mock import Mock
 
 from atd_radius.domain.accounting_lifecycle import AccountingEvent, AccountingStatus
@@ -103,3 +104,25 @@ def test_invalid_ras_epoch_time_falls_back_to_existing_accounting_clock():
     persistence.start(event, 11, 3)
 
     assert repository.create.call_args.args[0].login_time == clock_value
+
+
+
+def test_internal_lifecycle_flags_are_not_written_to_native_log_details():
+    repository = Mock()
+    persistence = NativeAccountingPersistence(repository, lambda: datetime(2026, 10, 6, 11, 0))
+    event = AccountingEvent(
+        AccountingStatus.STOP,
+        "alice",
+        "sid-clear",
+        attributes={
+            "NAS-Port": "8",
+            "no_commit": "1",
+            "no_connection_log": "1",
+            "__private_state": "must-not-persist",
+        },
+    )
+
+    persistence.stop(42, event, credit_used=Decimal("12.50"))
+
+    written_names = {call.args[1] for call in repository.upsert_detail.call_args_list}
+    assert written_names == {"NAS-Port", "Acct-Session-Id"}
