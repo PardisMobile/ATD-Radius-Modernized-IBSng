@@ -16,6 +16,7 @@ from atd_radius.domain.session_policy import ActiveSessionView
 from atd_radius.domain.session_control import RegistrySessionControl
 from atd_radius.domain.user_policies import (
     AbsoluteExpiryPolicy,
+    RelativeExpiryPolicy,
     AuthenticationPolicy,
     LockPolicy,
     MultiLoginPolicy,
@@ -872,9 +873,10 @@ def build_radius_dispatcher(
         PluginSpec(3, "multi_login", MultiLoginPolicy(active_sessions_provider=active_sessions_provider)),
     ]
     policies.append(PluginSpec(4, "absolute_expiry", AbsoluteExpiryPolicy()))
+    policies.append(PluginSpec(5, "relative_expiry", RelativeExpiryPolicy()))
     if ip_pools is not None:
-        policies.append(PluginSpec(5, "ip_pool", IPPoolAllocationPolicy(ip_pools)))
-    policies.append(PluginSpec(6, "timeout", TimeoutPolicy()))
+        policies.append(PluginSpec(6, "ip_pool", IPPoolAllocationPolicy(ip_pools)))
+    policies.append(PluginSpec(7, "timeout", TimeoutPolicy()))
     pipeline = PluginPipeline(policies)
     return RadiusDispatcher(pipeline, access_context=NativeAccessContext(users, ras))
 
