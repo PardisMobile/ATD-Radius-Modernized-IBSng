@@ -849,11 +849,13 @@ class NativeRadiusPacketHandler:
             from atd_radius.infrastructure.login_reservations import PostgresLoginReservationRepository
             session_store = PostgresLiveRadiusSessionRepository(conn)
             login_reservations = PostgresLoginReservationRepository(conn)
+            sessions_were_recovered = self.state.sessions_recovered
             recovered_voip_users = self._recover_open_sessions(conn, charge, ras, pools, session_store)
             for recovered_user_id in recovered_voip_users:
                 self._refresh_voip_limit_schedule(recovered_user_id)
-            for recovered_state in session_store.list_active():
-                self._refresh_online_expiry_schedule(recovered_state.key.user_id)
+            if not sessions_were_recovered:
+                for recovered_state in session_store.list_active():
+                    self._refresh_online_expiry_schedule(recovered_state.key.user_id)
             accounting = AccountingSessionService(self.state.sessions, persistence, charge, session_store)
             dispatcher = build_radius_dispatcher(
                 users,
