@@ -28,10 +28,13 @@ def test_absolute_expiry_rejects_expired_user():
     r=AbsoluteExpiryPolicy(now).evaluate(AAARequest("u",{"abs_exp_date":"999"}))
     assert r.action is AAAAction.REJECT
 
-def test_relative_expiry_sets_first_login_on_first_login():
+def test_relative_expiry_uses_private_first_login_candidate_without_emitting_it():
     now=datetime.fromtimestamp(1000,tz=timezone.utc)
-    r=RelativeExpiryPolicy(now).evaluate(AAARequest("u",{"rel_exp_date":"3600"}))
-    assert r.attributes["first_login"]=="1000"
+    r=RelativeExpiryPolicy(now).evaluate(
+        AAARequest("u", {"rel_exp_date":"3600", "__first_login_candidate":"1000"})
+    )
+    assert r.attributes == {"Session-Timeout": "3600"}
+    assert "first_login" not in r.attributes
 
 def test_relative_expiry_rejects_after_deadline():
     now=datetime.fromtimestamp(5000,tz=timezone.utc)
