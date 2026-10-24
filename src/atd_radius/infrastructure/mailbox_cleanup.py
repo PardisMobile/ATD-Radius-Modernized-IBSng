@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
@@ -82,15 +83,10 @@ def _validate_command(command: str) -> Path:
 
 
 def _safe_username(username: str) -> bool:
-    # The legacy shell script interpolates this value into a filesystem path.
-    return (
-        bool(username)
-        and username not in {".", ".."}
-        and "/" not in username
-        and "\\" not in username
-        and ".." not in username.split(".")
-        and all(ord(char) >= 33 and ord(char) != 127 for char in username)
-    )
+    # The legacy shell script expands its positional argument unquoted. A
+    # conservative allow-list prevents path traversal, whitespace splitting,
+    # and shell glob expansion. Other characters remain queued for review.
+    return bool(re.fullmatch(r"[A-Za-z0-9@._+-]{1,255}", username)) and username not in {".", ".."}
 
 
 def process_pending_mailbox_cleanup(

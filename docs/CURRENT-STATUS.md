@@ -4,7 +4,7 @@ Active work branch: `feat/a124-semantic-object-inventory`; latest code checkpoin
 
 The complete 71-file Markdown content review is in `docs/MARKDOWN-CONTENT-AUDIT-2026-10-23.md`. Key recent code work: A1.24-compatible MS-CHAPv2 AuthenticatorResponse password conversion with non-ASCII regression coverage; MultiLogin user-limit precedence and incoming/existing RAS capability semantics with false-like value normalization. This is not full A1.24 parity and does not establish live NAS interoperability.
 
-**Release gates still open:** lossless database import/adoption and restore proof; live RADIUS/NAS/MPPE/provider interoperability and remote-disconnect verification; stale accepted-login reservation reconciliation; full VoIP/billing and bandwidth side effects; remaining specialized attributes/plugin/XML-RPC/UI flows; supported install/upgrade/rollback/licensing. User deletion remains partial while mailbox deletion has no configured transport; `CLEAR USER` and final release validation remain open.
+**Release gates still open:** lossless database import/adoption and restore proof; live RADIUS/NAS/MPPE/provider interoperability and remote-disconnect verification; stale accepted-login reservation reconciliation; full VoIP/billing and bandwidth side effects; remaining specialized attributes/plugin/XML-RPC/UI flows; supported install/upgrade/rollback/licensing. User deletion now records mailbox cleanup in a durable transactional outbox; the external cleanup command remains intentionally unconfigured until an operator supplies a reviewed executable. `CLEAR USER` and final release validation remain open.
 
 ---
 
@@ -20,6 +20,10 @@ Latest merged code checkpoint: `3430e1d6f585f630898a18f6649f81c2022770df` — cr
 The charge-limit enforcement path now acquires the durable session advisory lock, reloads authoritative session state, and persists a termination claim before the external RAS provider call. A second worker waits on the same session lock and then observes the durable claim, suppressing duplicate termination commands. Missing/stopped durable sessions are removed from stale local state. Tests cover durable claim persistence and duplicate-claim suppression.
 
 This improves cross-worker idempotency but does **not** prove the NAS/VoIP provider has removed the session. Provider interoperability, reconciliation after a provider timeout/ambiguous result, and full end-to-end A1.24 parity remain release gates.
+
+## Mailbox cleanup outbox — 2026-10-24
+
+User deletion now inserts post-commit mailbox cleanup jobs into the durable outbox in the same transaction as deleting users. The atd-radius-mailbox-cleanup worker processes bounded batches using a configured absolute executable path, argument-vector invocation (no shell), conservative username validation, timeout, attempt/error state and retries for failed/stale-running jobs. Migration 009_mailbox_cleanup_outbox.sql must be applied before deployment. The command is unset by default; external deletion is not claimed complete until an operator configures and runs the worker. See docs/MAILBOX-CLEANUP-OUTBOX.md.
 
 ## Reservation lifecycle note — 2026-10-23
 
