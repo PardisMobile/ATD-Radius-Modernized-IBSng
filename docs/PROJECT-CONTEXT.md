@@ -1,3 +1,18 @@
+# LATEST PROJECT CONTEXT — 2026-10-25
+
+The project's purpose is to modernize the **complete IBSng A1.24 product**, not just to create a RADIUS server. The checksum-verified A1.24 source is authoritative for behavior, permission semantics, accounting, billing, plugin side effects, session lifecycle, schema, and migration compatibility. Modernization must preserve those semantics while replacing legacy implementation/UI with maintainable, tested components.
+
+- Repository: `PardisMobile/ATD-Radius-Modernized-IBSng`
+- Work directly on `main`; do not create more PRs as the normal workflow.
+- Canonical source: `Source of Truth/IBSng-A1.24.tar.bz2`
+- SHA-256: `c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839614bb9349d18a8`
+- Source inventory: 2,295 files; 453 `.py`, 530 `.php`, 284 `.tpl`, 20 `.sql`. Static DDL: 51 tables / 224 columns / 19 explicit indexes / 24 explicit sequences / 3 serial declarations.
+- Modern repository inventory: 373 tracked files at the start of this integration batch, including 276 Python files, 73 Markdown files, and 146 test files.
+
+Do not equate a structural audit with data migration or full compatibility. Every behavior-sensitive slice needs exact source trace, implementation, regression tests, CI, and an honest remaining-gap entry. The latest direct-to-main integration includes the schema inventory CLI, migration-ledger safety, PostgreSQL deletion safety tests, local CLEAR USER, EAP Message-Authenticator enforcement, MPPE VSA decode/signature corrections, and non-ASCII MS-CHAPv2/MPPE coverage. CI verification for the reconciled main head is pending at this checkpoint.
+
+---
+
 # LATEST HANDOFF — 2026-10-25
 
 Repository: `PardisMobile/ATD-Radius-Modernized-IBSng`. Active integration branch and `main` are synchronized at `1b9d2aabac13a346447cff29c857d3807ff4888b`. The previously reported feature checkpoint `e73b146bfc4434a58d2f257a81b1879b4f9c89fe` was 40 commits behind main; the feature ref was fast-forwarded to main without rewriting history. No PR was created for this synchronization. The merge checkpoint includes reviewed A1.24 semantic-object inventory, safe migration-runner, read-only adoption preflight, and backup/restore acceptance work. CI runs are confirmed green on the prior feature checkpoint; a fresh CI result for the synchronized merge HEAD has not yet been verified.

@@ -1,3 +1,18 @@
+# LATEST COMPATIBILITY RECONCILIATION — 2026-10-25
+
+| Area | Current verified scope | Still not proven |
+|---|---|---|
+| MS-CHAPv2 AuthenticatorResponse | Main uses A1.24 byte-wise password conversion; non-ASCII end-to-end response and MPPE regression added | Live NAS/supplicant interoperability |
+| EAP request integrity | UDP boundary now rejects Access-Request carrying EAP-Message without Message-Authenticator and rejects invalid HMAC | EAP method support/parity as a whole |
+| Microsoft MPPE VSAs | Codec decodes RFC 2548 Send/Recv keys only with shared secret and original request authenticator; response signing preserves final randomized salts | Full live MPPE interoperability |
+| CLEAR USER | Local session logout, native connection-log closure, IP lease release, usage accounting without credit deduction; no RAS kill is sent | Full runtime/provider integration proof and UI parity |
+| Migration ledger | Refuses gaps in the applied version prefix and empty ledger on populated schema; regression tests added | A1.24 data import/adoption and rollback |
+| Static schema inventory | Read-only CLI compares table/column names, explicit indexes/sequences, and column type/nullability/defaults | Constraints, plugin DDL, functions, row data, restore fidelity, runtime behavior |
+
+All claims above are bounded to the listed behavior and tests. A green unit suite alone does not establish complete IBSng A1.24 compatibility.
+
+---
+
 # IBSng A1.24 → ATD Compatibility Matrix
 
 This is the master parity ledger. A feature is not considered migrated merely because a similarly named model or endpoint exists. The implementation must preserve behavior, data, permissions and operator workflow.

@@ -1,3 +1,24 @@
+# LATEST MAIN RECONCILIATION — 2026-10-25
+
+Repository: `PardisMobile/ATD-Radius-Modernized-IBSng`; integration target: `main`.
+Canonical archive: `Source of Truth/IBSng-A1.24.tar.bz2`; verified SHA-256 `c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839614bb9349d18a8`.
+
+## Verified inventory
+- Canonical archive contains **2,295 files** (the tar stream has additional directory entries): 453 Python source files, 530 PHP files, 284 Smarty templates, and 20 SQL files; it also includes legacy compiled Python artifacts and static assets.
+- Canonical `IBSng/db/tables.sql`: **51 tables, 224 columns, 19 explicit indexes, 24 explicit sequences, and 3 serial declarations**. Sequence names are compared as a deduplicated inventory; this DDL-only count is not full DB/plugin/data parity.
+- Current `main` repository inventory before this reconciliation: **373 tracked files**, including 276 Python files, 73 Markdown files, 10 SQL migrations, 146 test files, 63 files under `docs/`, and 10 under `ui/`.
+- The repository had **7 open PRs** based on an older main checkpoint. Their branches report merge conflicts; their changes must be reconciled against current files, not merged blindly.
+
+## Direct-to-main integration batch
+Integrated onto `main` without creating PRs: read-only static schema audit; damaged migration-ledger fail-closed checks; PostgreSQL user-deletion safety tests (fixture adapted for the current mailbox-cleanup outbox); local A1.24 `CLEAR USER` with no credit deduction or RAS kill; EAP Access-Request Message-Authenticator enforcement; encrypted MS-MPPE VSA decode and response-signature fix; and expanded non-ASCII MS-CHAPv2/MPPE regression coverage. The MS-CHAPv2 AuthenticatorResponse implementation itself was already present on main; its end-to-end regression was added.
+- Source review correction: native A1.24 `CLEAR USER` checks its own owner-scoped permission; this integration does **not** add an unsupported `SEE ONLINE USERS` dependency.
+- These are focused compatibility slices, not completion of IBSng parity. Current CI for the reconciled head must pass before the batch is treated as verified.
+
+## Still release-blocking
+Lossless A1.24 data importer/adoption; representative restore and row/plugin parity; full constraints/functions/plugin-created object parity; live NAS/provider interoperability and remote disappearance proof; stale accepted-login reservation recovery; billing/expiry/bandwidth and remaining plugin side effects; XML-RPC/report/UI completeness; and install/upgrade/rollback/licensing.
+
+---
+
 # LATEST HANDOFF — 2026-10-25
 
 Repository: `PardisMobile/ATD-Radius-Modernized-IBSng`. Active integration branch and `main` are synchronized at `1b9d2aabac13a346447cff29c857d3807ff4888b`. The previously reported feature checkpoint `e73b146bfc4434a58d2f257a81b1879b4f9c89fe` was 40 commits behind main; the feature ref was fast-forwarded to main without rewriting history. No PR was created for this synchronization. The merge checkpoint includes reviewed A1.24 semantic-object inventory, safe migration-runner, read-only adoption preflight, and backup/restore acceptance work. CI runs are confirmed green on the prior feature checkpoint; a fresh CI result for the synchronized merge HEAD has not yet been verified.

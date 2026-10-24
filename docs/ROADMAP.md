@@ -1,3 +1,17 @@
+# MAIN RECONCILIATION — 2026-10-25
+
+Direct-to-main integration (no new PRs): static A1.24 schema inventory audit; contiguous-prefix migration-ledger validation and real PostgreSQL refusal tests; PostgreSQL user-deletion safety tests; source-compatible local `CLEAR USER` without credit deduction or remote RAS kill; EAP Access-Request Message-Authenticator enforcement; MS-MPPE key decode and response integrity; and end-to-end non-ASCII MS-CHAPv2/MPPE regression coverage.
+
+## Next work in priority order
+1. Wait for and fix any failures in CI for the reconciled main head; do not label these changes verified until green.
+2. Finish the lossless A1.24 database importer/adoption and rollback workflow, including row-level and plugin-object parity plus representative backup restore.
+3. Complete live NAS/provider interoperability, authentication/accounting end-to-end fixtures, MPPE interoperability, Disconnect/CoA remote-state verification, and safe accepted-reservation reconciliation.
+4. Complete source-backed billing/expiry, bandwidth shaping, VoIP and plugin side effects, and XML-RPC.
+5. Finish admin/user workflows, reports, graphs, responsive UI, installer/upgrade/rollback, supported OS, and licensing.
+6. Close remaining source-to-implementation gaps only after tests and CI prove them. The static schema audit compares only the fields documented in its scope and is not full parity.
+
+---
+
 # ATD Radius Modernized IBSng — Roadmap
 
 ## Verified checkpoint — 2026-10-10
