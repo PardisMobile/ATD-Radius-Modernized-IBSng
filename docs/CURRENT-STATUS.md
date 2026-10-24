@@ -1,10 +1,10 @@
-# LATEST HANDOFF — 2026-10-23
+# LATEST HANDOFF — 2026-10-25
 
-Active work branch: `feat/a124-semantic-object-inventory`; latest code checkpoint: `e73b146bfc4434a58d2f257a81b1879b4f9c89fe`. Python-only and full PostgreSQL-backed CI both passed on this checkpoint (Python 3.11 and 3.12). It adds exact-request cleanup for rejected Access-Requests so a rejection cannot leave that request's login reservation consuming MultiLogin capacity. Do not treat the older `main` / 2026-10-22 opening checkpoint below as the current branch/head.
+Repository: `PardisMobile/ATD-Radius-Modernized-IBSng`. Active integration branch and `main` are synchronized at `1b9d2aabac13a346447cff29c857d3807ff4888b`. The previously reported feature checkpoint `e73b146bfc4434a58d2f257a81b1879b4f9c89fe` was 40 commits behind main; the feature ref was fast-forwarded to main without rewriting history. No PR was created for this synchronization. The merge checkpoint includes reviewed A1.24 semantic-object inventory, safe migration-runner, read-only adoption preflight, and backup/restore acceptance work. CI runs are confirmed green on the prior feature checkpoint; a fresh CI result for the synchronized merge HEAD has not yet been verified.
 
-The complete 71-file Markdown content review is in `docs/MARKDOWN-CONTENT-AUDIT-2026-10-23.md`. Key recent code work: A1.24-compatible MS-CHAPv2 AuthenticatorResponse password conversion with non-ASCII regression coverage; MultiLogin user-limit precedence and incoming/existing RAS capability semantics with false-like value normalization. This is not full A1.24 parity and does not establish live NAS interoperability.
+Canonical source SHA-256: `c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839614bb9349d18a8`.
 
-**Release gates still open:** lossless database import/adoption and restore proof; live RADIUS/NAS/MPPE/provider interoperability and remote-disconnect verification; stale accepted-login reservation reconciliation; full VoIP/billing and bandwidth side effects; remaining specialized attributes/plugin/XML-RPC/UI flows; supported install/upgrade/rollback/licensing. User deletion now records mailbox cleanup in a durable transactional outbox; the external cleanup command remains intentionally unconfigured until an operator supplies a reviewed executable. `CLEAR USER` and final release validation remain open.
+Do not claim overall completion based on CI. Major unfinished deliverables remain: a lossless A1.24 database importer/adoption and rollback workflow; representative real backup restore and full data parity; live NAS/provider RADIUS/MPPE and disconnect verification; stale accepted-login reservation recovery; remaining billing/bandwidth/plugin/XML-RPC/report/UI workflows; and supported install/upgrade/licensing. Continue implementation on `main` in substantial tested batches; avoid redoing completed/frozen slices. The semantic preflight is assessment-only and must not be represented as an importer.
 
 ---
 
