@@ -507,3 +507,8 @@ Added the operator-controlled `atd-radius-migrate` CLI for clean installs. It va
 - [x] Verify latest head `3cb3faac5cb07f771fc9e49a160971199ec0f245`: Python-only workflow and PostgreSQL-backed CI on Python 3.11 and 3.12 both passed.
 
 Remaining release blockers include live NAS PAP/CHAP/MS-CHAPv1/v2 and MPPE interoperability, authoritative recovery/reconciliation for stale accepted-login reservations, full A1.24 data import/adoption and restore drills, remaining billing/plugin/XML-RPC parity, and complete UI/deployment/upgrade workflows.
+
+
+## Main synchronization and current release gates — 2026-10-25
+
+The working feature ref was fast-forwarded to the existing `main` integration head `1b9d2aabac13a346447cff29c857d3807ff4888b` after confirming it was 40 commits behind. This was a ref synchronization, not a new feature implementation. The merged tree includes the semantic-object inventory expansion, migration runner, read-only A1.24 preflight, and backup/restore tooling. CI is green on the earlier reviewed feature checkpoint; fresh CI on this exact merge head remains unverified. Highest-value unfinished implementation remains the lossless A1.24 data importer with row/sequence/object parity and transactional rollback, followed by live protocol/provider validation and the remaining billing/plugin/UI/deployment workflows. Do not report adoption preflight as migration completion.
