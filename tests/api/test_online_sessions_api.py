@@ -119,3 +119,29 @@ def test_kill_online_session_checks_permission_and_audits_provider_request(monke
     )
     audit.append.assert_called_once()
     assert audit.append.call_args.kwargs["outcome"] == "success"
+
+
+
+def test_clear_online_session_uses_local_no_debit_path_and_audits(monkeypatch):
+    conn = Connection()
+    clear_method = Mock()
+    handler = SimpleNamespace(clear_user_session=clear_method)
+    request = SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(radius_packet_handler=handler)))
+    audit = Mock()
+    monkeypatch.setattr(api, "connection", lambda: ConnectionContext(conn))
+    monkeypatch.setattr(api, "can_clear_user", lambda _admin, owner_id: owner_id == 8)
+    monkeypatch.setattr(api, "OperationalAuditRepository", lambda _conn: audit)
+
+    result = api.clear_online_session(
+        api.KillOnlineSessionPayload(user_id=7, ras_id=3, unique_id="sid-7"),
+        request,
+        _admin(),
+    )
+
+    assert result.cleared_locally is True
+    assert result.credit_deducted is False
+    assert result.ras_disconnect_sent is False
+    clear_method.assert_called_once_with(SessionKey(7, 3, "sid-7"))
+    audit.append.assert_called_once()
+    assert audit.append.call_args.kwargs["action"] == "user.session.clear"
+    assert audit.append.call_args.kwargs["details"]["credit_deducted"] is False
