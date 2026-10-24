@@ -1900,8 +1900,9 @@ def test_build_radius_dispatcher_persists_first_login_only_after_accept():
     assert response.code is RadiusCode.ACCESS_ACCEPT
     assert 0 < int(response.attributes["Session-Timeout"]) <= 3600
     assert "first_login" not in response.attributes
-    users.set_attribute.assert_called_once()
-    args = users.set_attribute.call_args.args
+    users.set_attribute_if_absent.assert_called_once()
+    users.set_attribute.assert_not_called()
+    args = users.set_attribute_if_absent.call_args.args
     assert args[:2] == (7, "first_login")
     assert int(args[2]) > 0
 
