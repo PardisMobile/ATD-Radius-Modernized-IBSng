@@ -92,3 +92,19 @@ def test_timeout_policy_does_not_extend_absolute_expiry_deadline():
     )
 
     assert result.attributes["Session-Timeout"] == "45"
+
+  
+def test_relative_expiry_does_not_extend_existing_shorter_session_timeout():
+    now = datetime.fromtimestamp(1000, tz=timezone.utc)
+    result = RelativeExpiryPolicy(now).evaluate(
+        AAARequest(
+            "u",
+            {
+                "rel_exp_date": "7200",
+                "first_login": "1000",
+                "Session-Timeout": "30",
+            },
+        )
+    )
+
+    assert result.attributes["Session-Timeout"] == "30"
