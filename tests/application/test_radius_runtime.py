@@ -1860,3 +1860,22 @@ def test_stale_local_termination_marker_does_not_block_durable_retry(monkeypatch
         assert durable.termination_requested_reason == "credit_finished"
     finally:
         handler.close()
+
+  
+def test_build_radius_dispatcher_enforces_native_absolute_expiry():
+    users = Mock()
+    users.get_authentication_record.return_value = (7, "secret", False)
+    users.policy_attributes.return_value = [("abs_exp_date", "1")]
+    users.attributes.return_value = [("abs_exp_date", "1")]
+    dispatcher = build_radius_dispatcher(users)
+
+    response = dispatcher.access(
+        RadiusPacket(
+            RadiusCode.ACCESS_REQUEST,
+            5,
+            {"User-Name": "alice", "User-Password": "secret"},
+            b"0123456789abcdef",
+        )
+    )
+
+    assert response.code is RadiusCode.ACCESS_REJECT
