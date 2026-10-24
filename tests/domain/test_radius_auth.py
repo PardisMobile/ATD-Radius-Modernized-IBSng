@@ -104,6 +104,58 @@ def test_mschapv2_rfc2759_vector_remains_valid_after_source_password_conversion(
     assert verify_mschapv2(response, "clientPass", "User", auth_challenge)
 
 
+def test_a124_non_ascii_mschapv2_pipeline_uses_one_source_password_hash():
+    from hashlib import sha1
+    from atd_radius.domain.radius_auth import (
+        _a124_str2unicode,
+        _challenge_hash,
+        _md4,
+        _nt_response,
+    )
+
+    password = "päss-é"
+    username = "normalized-user"
+    auth_challenge = bytes.fromhex("5B5D7C7D7B3F2F3E3C2C602132262628")
+    peer_challenge = bytes.fromhex("21402324255E262A28295F2B3A337C7E")
+    challenge = _challenge_hash(peer_challenge, auth_challenge, username)
+    nt_response = _nt_response(challenge, password)
+    response = b"\x01\x00" + peer_challenge + b"\x00" * 8 + nt_response
+
+    # The complete non-ASCII response must verify against A1.24's byte-wise
+    # password conversion, not Python's Unicode-code-point UTF-16LE encoding.
+    assert _a124_str2unicode(password) != password.encode("utf-16le")
+    assert verify_mschapv2(response, password, username, auth_challenge)
+
+    password_hash_hash = _md4(_md4(_a124_str2unicode(password)))
+    digest = sha1(
+        password_hash_hash + nt_response + b"Magic server to client signing constant"
+    ).digest()
+    digest = sha1(
+        digest + challenge + b"Pad to make it do more than one iteration"
+    ).digest()
+    expected_authenticator_response = "S=" + digest.hex().upper()
+    assert generate_mschapv2_authenticator_response(
+        password, nt_response, peer_challenge, auth_challenge, username
+    ) == expected_authenticator_response
+
+    master_key = sha1(
+        password_hash_hash + nt_response + b"This is the MPPE Master Key"
+    ).digest()[:16]
+    pad1 = b"\x00" * 40
+    pad2 = b"\xf2" * 40
+    expected_send = sha1(
+        master_key + pad1
+        + b"On the client side, this is the receive key; on the server side, it is the send key."
+        + pad2
+    ).digest()[:16]
+    expected_recv = sha1(
+        master_key + pad1
+        + b"On the client side, this is the send key; on the server side, it is the receive key."
+        + pad2
+    ).digest()[:16]
+    assert derive_mschapv2_mppe_keys(password, nt_response) == (expected_send, expected_recv)
+
+
 def test_mschapv2_authenticator_response_uses_a124_bytewise_password_conversion():
     from atd_radius.domain.radius_auth import _a124_str2unicode, _md4
 
