@@ -142,6 +142,8 @@ class NativeAccessContext:
         user_id = attributes.get("__user_id")
         if candidate in (None, "") or user_id in (None, ""):
             return
-        persist = getattr(self.users, "set_attribute", None)
+        # Multiple first Access-Requests can race; the first committed timestamp
+        # must win so concurrent requests cannot renew a relative-expiry deadline.
+        persist = getattr(self.users, "set_attribute_if_absent", None)
         if callable(persist):
             persist(int(user_id), "first_login", str(candidate))
