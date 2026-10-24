@@ -8,7 +8,7 @@ User deletion follows A1.24's two-phase behavior: database changes commit first,
 2. Set ATD_MAILBOX_CLEANUP_COMMAND to an absolute path to an executable that accepts exactly one username argument and returns exit status zero only on success.
 3. Run atd-radius-mailbox-cleanup periodically under the service account with only the filesystem permissions needed for mailbox cleanup.
 
-The worker uses an argument vector (shell=False), has a bounded timeout and batch size, records attempts and failure status, and retries failed jobs. Jobs stuck in running for more than 15 minutes can be reclaimed after a worker crash. The worker does not infer success from a missing mailbox or swallow a non-zero exit status.
+The worker uses an argument vector (shell=False), has a bounded timeout and batch size, records attempts and failure status, and retries failed jobs. Jobs stuck in running for more than 60 minutes can be reclaimed after a worker crash. The worker does not infer success from a missing mailbox or swallow a non-zero exit status.
 
 ## Safety boundary
 

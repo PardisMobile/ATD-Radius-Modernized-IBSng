@@ -43,14 +43,15 @@ def test_real_postgres_clean_install_is_idempotent_and_failed_migration_rolls_ba
 
     with psycopg.connect(target_dsn) as conn:
         first = run_migrations(conn, migrations_dir, apply=True)
-        assert len(first.applied) == 8
+        assert len(first.applied) == 9
         assert first.pending == ()
         assert conn.execute(
             "SELECT count(*) FROM public.atd_schema_migrations"
-        ).fetchone()[0] == 8
+        ).fetchone()[0] == 9
         assert conn.execute("SELECT to_regclass('public.admins')").fetchone()[0] is not None
         assert conn.execute("SELECT to_regclass('public.operational_audit_events')").fetchone()[0] is not None
         assert conn.execute("SELECT to_regclass('public.atd_radius_live_sessions')").fetchone()[0] is not None
+        assert conn.execute("SELECT to_regclass('public.atd_radius_mailbox_cleanup')").fetchone()[0] is not None
 
         second = run_migrations(conn, migrations_dir, apply=True)
         assert second.applied == first.applied
@@ -58,7 +59,7 @@ def test_real_postgres_clean_install_is_idempotent_and_failed_migration_rolls_ba
 
         changed_migrations = tmp_path / "changed-migrations"
         shutil.copytree(migrations_dir, changed_migrations)
-        (changed_migrations / "009_test_rollback.sql").write_text(
+        (changed_migrations / "010_test_rollback.sql").write_text(
             "CREATE TABLE public.should_rollback (id INTEGER);\n"
             "SELECT * FROM public.atd_migration_table_that_does_not_exist;\n",
             encoding="utf-8",
@@ -69,4 +70,4 @@ def test_real_postgres_clean_install_is_idempotent_and_failed_migration_rolls_ba
         assert conn.execute("SELECT to_regclass('public.should_rollback')").fetchone()[0] is None
         assert conn.execute(
             "SELECT count(*) FROM public.atd_schema_migrations"
-        ).fetchone()[0] == 8
+        ).fetchone()[0] == 9

@@ -11,7 +11,7 @@ from atd_radius.infrastructure.mailbox_cleanup import process_pending_mailbox_cl
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Process pending ATD Radius mailbox cleanup jobs")
-    parser.add_argument("--limit", type=int, default=25, help="maximum jobs to process (1-500)")
+    parser.add_argument("--limit", type=int, default=25, help="maximum jobs to process (1-25)")
     parser.add_argument("--timeout", type=int, default=15, help="per-command timeout in seconds (1-120)")
     args = parser.parse_args()
     try:
