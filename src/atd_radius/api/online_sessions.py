@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 from atd_radius.api.admin_dependencies import (
     AdminPrincipal,
     can_kill_user,
+    can_clear_user,
     can_see_online_users,
     require_admin_session,
 )
@@ -60,6 +61,16 @@ class KillOnlineSessionView(BaseModel):
     ras_id: int
     unique_id: str
     termination_requested: bool
+    note: str
+
+
+class ClearOnlineSessionView(BaseModel):
+    user_id: int
+    ras_id: int
+    unique_id: str
+    cleared_locally: bool
+    credit_deducted: bool
+    ras_disconnect_sent: bool
     note: str
 
 
@@ -221,4 +232,78 @@ def kill_online_session(
         unique_id=payload.unique_id,
         termination_requested=True,
         note="Provider termination was requested; final session removal is confirmed by Accounting-Stop.",
+    )
+
+
+@router.post("/clear", response_model=ClearOnlineSessionView)
+def clear_online_session(
+    payload: KillOnlineSessionPayload,
+    request: Request,
+    admin: AdminPrincipal = Depends(require_admin_session),
+) -> ClearOnlineSessionView:
+    """Mirror A1.24 CLEAR USER: local logout only, without credit deduction or RAS kill."""
+    if admin.remote_addr is None:
+        raise HTTPException(status_code=400, detail="A valid administrator remote address is required")
+    try:
+        remote_addr = str(ipaddress.ip_address(admin.remote_addr))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="A valid administrator remote address is required") from exc
+
+    handler = getattr(request.app.state, "radius_packet_handler", None)
+    clear_method = getattr(handler, "clear_user_session", None)
+    if not callable(clear_method):
+        raise HTTPException(status_code=503, detail="RADIUS runtime does not support CLEAR USER")
+
+    key = SessionKey(payload.user_id, payload.ras_id, payload.unique_id)
+    with connection() as conn:
+        row = conn.execute("SELECT owner_id FROM users WHERE user_id=%s", (payload.user_id,)).fetchone()
+        if row is None:
+            raise HTTPException(status_code=404, detail="user not found")
+        owner_id = int(row[0]) if row[0] is not None else None
+        if not can_clear_user(admin, owner_id):
+            raise HTTPException(status_code=403, detail="CLEAR USER permission denied")
+
+    try:
+        clear_method(key)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail="online session not found") from exc
+    except Exception as exc:
+        try:
+            with connection() as audit_conn:
+                OperationalAuditRepository(audit_conn).append(
+                    actor_admin_id=admin.admin_id,
+                    actor_username=admin.username,
+                    action="user.session.clear",
+                    outcome="failed",
+                    target_type="radius_session",
+                    target_id=f"{payload.user_id}:{payload.ras_id}:{payload.unique_id}",
+                    remote_addr=remote_addr,
+                    details={"credit_deducted": False, "ras_disconnect_sent": False, "error_type": type(exc).__name__},
+                )
+                audit_conn.commit()
+        except Exception:
+            pass
+        raise HTTPException(status_code=409, detail="Local session clear failed") from exc
+
+    with connection() as audit_conn:
+        OperationalAuditRepository(audit_conn).append(
+            actor_admin_id=admin.admin_id,
+            actor_username=admin.username,
+            action="user.session.clear",
+            outcome="success",
+            target_type="radius_session",
+            target_id=f"{payload.user_id}:{payload.ras_id}:{payload.unique_id}",
+            remote_addr=remote_addr,
+            details={"credit_deducted": False, "ras_disconnect_sent": False},
+        )
+        audit_conn.commit()
+
+    return ClearOnlineSessionView(
+        user_id=payload.user_id,
+        ras_id=payload.ras_id,
+        unique_id=payload.unique_id,
+        cleared_locally=True,
+        credit_deducted=False,
+        ras_disconnect_sent=False,
+        note="Local IBSng session state was cleared; no RAS disconnect command was sent and no user credit was deducted.",
     )

@@ -94,6 +94,11 @@ _USER_PERMISSIONS = AdminPermissionEvaluator(
             dependencies=("SEE ONLINE USERS",),
             evaluator=_all_or_owner,
         ),
+        PermissionSpec(
+            "CLEAR USER",
+            PermissionKind.CONTEXTUAL,
+            evaluator=_all_or_owner,
+        ),
         PermissionSpec("NO DEPOSIT LIMIT", PermissionKind.NO_VALUE),
     ]
 )
@@ -229,7 +234,7 @@ def require_admin_permission(permission_name: str):
     ) -> AdminPrincipal:
         if permission_name in {"LIST RAS", "GET RAS INFORMATION", "CHANGE RAS"}:
             evaluator = _RAS_PERMISSIONS
-        elif permission_name in {"ADD NEW USER", "GET USER INFORMATION", "CHANGE USER ATTRIBUTES", "DELETE USER", "CHANGE USER CREDIT", "CHANGE VOIP USER ATTRIBUTES", "NO DEPOSIT LIMIT"}:
+        elif permission_name in {"ADD NEW USER", "GET USER INFORMATION", "CHANGE USER ATTRIBUTES", "DELETE USER", "CHANGE USER CREDIT", "CHANGE VOIP USER ATTRIBUTES", "NO DEPOSIT LIMIT", "CLEAR USER"}:
             evaluator = _USER_PERMISSIONS
         elif permission_name in {"SEE CONNECTION LOGS", "SEE CREDIT CHANGES"}:
             evaluator = _REPORT_PERMISSIONS
@@ -297,6 +302,14 @@ def can_kill_user(principal: AdminPrincipal, owner_id: int | None) -> bool:
     return _USER_PERMISSIONS.can_do(
         principal.permissions,
         "KILL USER",
+        context={"admin_id": principal.admin_id, "owner_id": owner_id},
+    )
+
+
+def can_clear_user(principal: AdminPrincipal, owner_id: int | None) -> bool:
+    return _USER_PERMISSIONS.can_do(
+        principal.permissions,
+        "CLEAR USER",
         context={"admin_id": principal.admin_id, "owner_id": owner_id},
     )
 
@@ -378,6 +391,7 @@ __all__ = [
     "can_access_user",
     "can_change_user",
     "can_delete_user",
+    "can_clear_user",
     "can_change_user_credit",
     "can_change_voip_user_attributes",
     "can_view_connection_logs",
