@@ -1,7 +1,7 @@
 """IBSng A1.24-compatible user policy adapters."""
 from __future__ import annotations
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from .aaa import AAAAction,AAAResult
 from .session_policy import ActiveSessionView,session_policy
 from .ras_provider import normalize_ras_type, provider_multi_login
@@ -119,13 +119,13 @@ class TimeoutPolicy:
 
 @dataclass(frozen=True,slots=True)
 class AbsoluteExpiryPolicy:
-    now: datetime
+    now: datetime | None = None
     def evaluate(self,request):
         raw=request.attributes.get("abs_exp_date")
         if raw in (None,""): return None
         try: expiry=float(raw)
         except (TypeError,ValueError): return None
-        now=self.now.timestamp()
+        now=(self.now or datetime.now(timezone.utc)).timestamp()
         if now>=expiry: return AAAResult(AAAAction.REJECT,reason="ABS_EXP_DATE_REACHED")
         return AAAResult(AAAAction.ACCEPT,{"Session-Timeout":str(max(0,int(expiry-now)))})
 
