@@ -140,7 +140,11 @@ class SourceRASDisconnectClient:
         unique_id = str(session.key.unique_id)
         try:
             if provider == "bsae":
-                username = str(session.attributes.get("User-Name", "")).strip()
+                username = str(
+                    session.attributes.get("username")
+                    or session.attributes.get("User-Name")
+                    or ""
+                ).strip()
                 if not username:
                     raise PermanentRASTerminationError("BSAE termination requires the source auth RAS username")
                 request = build_bsae_disconnect_request(
