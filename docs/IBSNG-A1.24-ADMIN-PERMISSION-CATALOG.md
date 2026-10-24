@@ -43,7 +43,7 @@ Value types:
 | GET USER INFORMATION | All/Restricted | — | Implemented for user list/detail owner scope |
 | GOD | No value | — | Implemented as source-style bypass within registered evaluators |
 | GROUP ACCESS | Multi-value | — | Implemented for group visibility |
-| KILL USER | All/Restricted | SEE ONLINE USERS | Not implemented; disconnect remains unmounted |
+| KILL USER | All/Restricted | SEE ONLINE USERS | Partial: native online-session listing and permission-gated disconnect request are implemented; provider coverage and verified remote session disappearance remain release gates |
 | LIMIT LOGIN ADDR | Multi-value | — | Implemented in native admin authentication |
 | LIMIT MAIL DOMAIN | Multi-value | CHANGE MAILBOX | Not implemented |
 | LIST IPPOOL | No value | — | Not implemented |
@@ -56,7 +56,7 @@ Value types:
 | SEE CONNECTION LOGS | All/Restricted | — | Implemented for user-detail connection-history field |
 | SEE CREDIT CHANGES | All/Restricted | — | Implemented for user-detail credit-history field |
 | SEE ONLINE SNAPSHOTS | No value | — | Not implemented |
-| SEE ONLINE USERS | All/Restricted | — | Not implemented |
+| SEE ONLINE USERS | All/Restricted | — | Partial: durable online-session and login-in-progress listing with owner-scope filtering; live runtime/process-topology limits remain |
 | SEE REALTIME SNAPSHOTS | No value | — | Not implemented |
 | SEE SAVED USERNAME PASSWORDS | All/Restricted | GET USER INFORMATION | Not implemented |
 | SEE USER AUDIT LOGS | All/Restricted | — | Not implemented |

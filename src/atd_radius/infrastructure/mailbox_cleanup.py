@@ -39,15 +39,15 @@ class MailboxCleanupRepository:
         return int(row[0])
 
     def claim_batch(self, limit: int = 25) -> tuple[MailboxCleanupJob, ...]:
-        if not 1 <= limit <= 500:
-            raise ValueError("mailbox cleanup batch limit must be between 1 and 500")
+        if not 1 <= limit <= 25:
+            raise ValueError("mailbox cleanup batch limit must be between 1 and 25")
         with self.conn.transaction():
             rows = self.conn.execute(
                 """
                 WITH candidates AS (
                     SELECT job_id FROM atd_radius_mailbox_cleanup
                     WHERE status IN ('pending', 'failed')
-                       OR (status='running' AND updated_at < CURRENT_TIMESTAMP - INTERVAL '15 minutes')
+                       OR (status='running' AND updated_at < CURRENT_TIMESTAMP - INTERVAL '60 minutes')
                     ORDER BY job_id LIMIT %s FOR UPDATE SKIP LOCKED
                 )
                 UPDATE atd_radius_mailbox_cleanup AS jobs
