@@ -14,7 +14,14 @@ from atd_radius.domain.radius import RadiusCode, RadiusPacket
 from atd_radius.domain.radius_dispatch import DispatchResult, RadiusDispatcher
 from atd_radius.domain.session_policy import ActiveSessionView
 from atd_radius.domain.session_control import RegistrySessionControl
-from atd_radius.domain.user_policies import AuthenticationPolicy, LockPolicy, MultiLoginPolicy, TimeoutPolicy
+from atd_radius.domain.user_policies import (
+    AbsoluteExpiryPolicy,
+    RelativeExpiryPolicy,
+    AuthenticationPolicy,
+    LockPolicy,
+    MultiLoginPolicy,
+    TimeoutPolicy,
+)
 from atd_radius.domain.ras import RASRuntimeRegistry
 from atd_radius.domain.ip_pool import IPPoolRuntimeRegistry
 from atd_radius.domain.ip_pool_policy import IPPoolAllocationPolicy
@@ -409,6 +416,15 @@ class RadiusRuntimeHandler:
                     conf_id = provider_session_id("Cisco", packet.attributes, "voip")
                     if conf_id:
                         self.cisco_voip_auth_h323_ids.setdefault(ras_record.ras_id, set()).add(conf_id)
+        if (
+            response.code is RadiusCode.ACCESS_REJECT
+            and self.login_reservations is not None
+            and reservation_request_key is not None
+        ):
+            # A rejected retry/policy re-evaluation must not leave a phantom
+            # login consuming the user's MultiLogin capacity. Release only the
+            # reservation for this exact RADIUS request, never all user rows.
+            self.login_reservations.release(reservation_request_key)
         if self.ip_pool_sessions and response.code is RadiusCode.ACCESS_REJECT:
             # A later policy may reject after an IP allocation policy ran.
             # Release only an explicitly pending allocation; never release an
@@ -856,9 +872,11 @@ def build_radius_dispatcher(
         PluginSpec(2, "lock", LockPolicy()),
         PluginSpec(3, "multi_login", MultiLoginPolicy(active_sessions_provider=active_sessions_provider)),
     ]
+    policies.append(PluginSpec(4, "absolute_expiry", AbsoluteExpiryPolicy()))
+    policies.append(PluginSpec(5, "relative_expiry", RelativeExpiryPolicy()))
     if ip_pools is not None:
-        policies.append(PluginSpec(4, "ip_pool", IPPoolAllocationPolicy(ip_pools)))
-    policies.append(PluginSpec(5, "timeout", TimeoutPolicy()))
+        policies.append(PluginSpec(6, "ip_pool", IPPoolAllocationPolicy(ip_pools)))
+    policies.append(PluginSpec(7, "timeout", TimeoutPolicy()))
     pipeline = PluginPipeline(policies)
     return RadiusDispatcher(pipeline, access_context=NativeAccessContext(users, ras))
 

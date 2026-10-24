@@ -48,6 +48,17 @@ def test_user_admission_lock_reservation_and_start_handoff_are_database_scoped()
     assert conn.calls[-1][1] == (7, 3)
 
 
+def test_release_removes_only_the_exact_rejected_request_reservation():
+    conn = Connection()
+    repo = PostgresLoginReservationRepository(conn)
+
+    repo.release("rejected-request-key")
+
+    sql, params = conn.calls[-1]
+    assert "DELETE FROM atd_radius_login_reservations WHERE request_key=%s" in sql
+    assert params == ("rejected-request-key",)
+
+
 def test_reservation_provider_excludes_only_the_current_retransmitted_request():
     from atd_radius.application.radius_runtime import session_views
     from atd_radius.domain.radius_runtime import SessionRegistry

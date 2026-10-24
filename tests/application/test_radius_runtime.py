@@ -1503,6 +1503,52 @@ def test_access_accept_persists_login_reservation_under_user_lock():
     assert reservations.calls[1][1:5] == (7, 3, "r" * 64, "alice")
 
 
+def test_access_reject_releases_only_the_current_login_reservation():
+    from types import SimpleNamespace
+    from unittest.mock import Mock
+    from atd_radius.application.radius_runtime import RadiusRuntimeHandler
+    from atd_radius.domain.accounting_session import AccountingSessionService
+    from atd_radius.domain.aaa import PluginPipeline
+    from atd_radius.domain.radius import RadiusCode, RadiusPacket
+    from atd_radius.domain.radius_dispatch import RadiusDispatcher
+    from atd_radius.domain.radius_runtime import SessionRegistry
+
+    class SessionStore:
+        def list_active(self): return []
+        def lock(self, _key): pass
+        def get(self, _key): return None
+        def save(self, _state): pass
+
+    class Reservations:
+        def __init__(self): self.calls = []
+        def request_key(self, _packet, _peer): return "r" * 64
+        def lock_user(self, user_id): self.calls.append(("lock", user_id))
+        def list_active(self, _user_id, _exclude=None): return ()
+        def release(self, request_key): self.calls.append(("release", request_key))
+
+    dispatcher = RadiusDispatcher(PluginPipeline([]))
+    dispatcher.access = Mock(return_value=RadiusPacket(RadiusCode.ACCESS_REJECT, 5, {}, bytes(16)))
+    identities = Mock()
+    identities.users.get_authentication_record.return_value = (7, "secret", False)
+    identities.ras_id.return_value = 3
+    identities.ras.get_by_ip.return_value = SimpleNamespace(ras_id=3, ras_type="MikroTik")
+    reservations = Reservations()
+    handler = RadiusRuntimeHandler(
+        dispatcher,
+        AccountingSessionService(SessionRegistry(), state_store=SessionStore()),
+        identities,
+        login_reservations=reservations,
+    )
+
+    response = handler(
+        RadiusPacket(RadiusCode.ACCESS_REQUEST, 5, {"User-Name": "alice"}, bytes(range(16))),
+        ("192.0.2.1", 1812),
+    )
+
+    assert response.code is RadiusCode.ACCESS_REJECT
+    assert ("release", "r" * 64) in reservations.calls
+
+
 def test_new_accounting_start_consumes_one_reservation_only_once():
     from datetime import datetime, timezone
     from unittest.mock import Mock
@@ -1814,3 +1860,94 @@ def test_stale_local_termination_marker_does_not_block_durable_retry(monkeypatch
         assert durable.termination_requested_reason == "credit_finished"
     finally:
         handler.close()
+
+  
+def test_build_radius_dispatcher_enforces_native_absolute_expiry():
+    users = Mock()
+    users.get_authentication_record.return_value = (7, "secret", False)
+    users.policy_attributes.return_value = [("abs_exp_date", "1")]
+    users.attributes.return_value = [("abs_exp_date", "1")]
+    dispatcher = build_radius_dispatcher(users)
+
+    response = dispatcher.access(
+        RadiusPacket(
+            RadiusCode.ACCESS_REQUEST,
+            5,
+            {"User-Name": "alice", "User-Password": "secret"},
+            b"0123456789abcdef",
+        )
+    )
+
+    assert response.code is RadiusCode.ACCESS_REJECT
+
+  
+def test_build_radius_dispatcher_persists_first_login_only_after_accept():
+    users = Mock()
+    users.get_authentication_record.return_value = (7, "secret", False)
+    users.policy_attributes.return_value = [("rel_exp_date", "3600")]
+    users.attributes.return_value = [("rel_exp_date", "3600")]
+    dispatcher = build_radius_dispatcher(users)
+
+    response = dispatcher.access(
+        RadiusPacket(
+            RadiusCode.ACCESS_REQUEST,
+            6,
+            {"User-Name": "alice", "User-Password": "secret"},
+            b"0123456789abcdef",
+        )
+    )
+
+    assert response.code is RadiusCode.ACCESS_ACCEPT
+    assert 0 < int(response.attributes["Session-Timeout"]) <= 3600
+    assert "first_login" not in response.attributes
+    users.set_attribute_if_absent.assert_called_once()
+    users.set_attribute.assert_not_called()
+    args = users.set_attribute_if_absent.call_args.args
+    assert args[:2] == (7, "first_login")
+    assert int(args[2]) > 0
+
+
+def test_build_radius_dispatcher_does_not_persist_first_login_on_rejection():
+    users = Mock()
+    users.get_authentication_record.return_value = (7, "secret", False)
+    users.policy_attributes.return_value = [("rel_exp_date", "1")]
+    users.attributes.return_value = [("rel_exp_date", "1")]
+    dispatcher = build_radius_dispatcher(users)
+
+    # A deliberately expired pre-existing first_login must reject and must not
+    # write a replacement timestamp that would renew the user's subscription.
+    users.policy_attributes.return_value = [("rel_exp_date", "1"), ("first_login", "1")]
+    response = dispatcher.access(
+        RadiusPacket(
+            RadiusCode.ACCESS_REQUEST,
+            7,
+            {"User-Name": "alice", "User-Password": "secret"},
+            b"0123456789abcdef",
+        )
+    )
+
+    assert response.code is RadiusCode.ACCESS_REJECT
+    users.set_attribute.assert_not_called()
+
+
+def test_build_radius_dispatcher_initializes_first_login_for_user_without_relative_expiry():
+    users = Mock()
+    users.get_authentication_record.return_value = (8, "secret", False)
+    users.policy_attributes.return_value = []
+    users.attributes.return_value = []
+    dispatcher = build_radius_dispatcher(users)
+
+    response = dispatcher.access(
+        RadiusPacket(
+            RadiusCode.ACCESS_REQUEST,
+            8,
+            {"User-Name": "bob", "User-Password": "secret"},
+            b"0123456789abcdef",
+        )
+    )
+
+    assert response.code is RadiusCode.ACCESS_ACCEPT
+    users.set_attribute_if_absent.assert_called_once()
+    args = users.set_attribute_if_absent.call_args.args
+    assert args[:2] == (8, "first_login")
+    assert "first_login" not in response.attributes

@@ -1,5 +1,14 @@
 # Roadmap
 
+## Current continuation note — 2026-10-23
+
+The phase checklist below is an older high-level roadmap; dated later checkpoints and `docs/CURRENT-STATUS.md` supersede earlier “pending/not implemented” snapshots where they record a later verified implementation. Full Markdown reconciliation: `docs/MARKDOWN-CONTENT-AUDIT-2026-10-23.md`.
+
+Latest verified code checkpoint: `3cb3faac5cb07f771fc9e49a160971199ec0f245` passed Python-only CI and PostgreSQL-backed CI on Python 3.11/3.12. Follow-on commits updated documentation and require their own CI confirmation. Current work is on `feat/a124-semantic-object-inventory`, not `main`.
+
+Continue source-first, cohesive implementation batches and do not redo frozen/tested work. Remaining release gates include lossless A1.24 import/adoption and restore drills, live RADIUS/NAS/MPPE/provider interoperability, stale accepted-login reservation reconciliation, complete VoIP/billing and bandwidth side effects, remaining specialized attributes/plugins/XML-RPC/UI, and install/upgrade/rollback/licensing. User deletion remains partial until mailbox cleanup is supported; `CLEAR USER` remains open.
+
+
 ## Phase 0 — Reference and specification
 - [x] Inventory IBSng A1.24 source tree
 - [x] Inspect all 22 IBSng reference documents

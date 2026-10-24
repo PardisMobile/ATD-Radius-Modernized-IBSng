@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 
 from atd_radius.infrastructure.ias_events import is_ias_enabled
+from atd_radius.infrastructure.mailbox_cleanup import MailboxCleanupRepository
 
 
 class UserDeletionError(ValueError):
@@ -32,6 +33,7 @@ class DeletionTarget:
 class UserDeletionResult:
     targets: tuple[DeletionTarget, ...]
     refunded_credit: Decimal
+    mailbox_cleanup_pending: tuple[str, ...] = ()
 
 
 class UserDeletionRepository:
@@ -168,6 +170,15 @@ class UserDeletionRepository:
                 (event_id, admin_username, ",".join(str(user_id) for user_id in ids)),
             )
 
+        # Persist post-commit mailbox cleanup in the same transaction as deletion.
+        # The operator worker can retry after process restart without user rows.
+        mailbox_names: list[str] = []
+        mailbox_outbox = MailboxCleanupRepository(self.conn)
+        for target in targets:
+            if target.has_mail_quota and target.normal_username:
+                mailbox_outbox.enqueue(target.user_id, target.normal_username)
+                mailbox_names.append(target.normal_username)
+
         self.conn.execute("DELETE FROM user_attrs WHERE user_id = ANY(%s)", (ids,))
         self.conn.execute("DELETE FROM normal_users WHERE user_id = ANY(%s)", (ids,))
         self.conn.execute("DELETE FROM persistent_lan_users WHERE user_id = ANY(%s)", (ids,))
@@ -191,4 +202,4 @@ class UserDeletionRepository:
             self.conn.execute("DELETE FROM user_audit_log WHERE is_user = 't' AND object_id = ANY(%s)", (ids,))
 
         self.conn.execute("DELETE FROM users WHERE user_id = ANY(%s)", (ids,))
-        return UserDeletionResult(tuple(targets), refund)
+        return UserDeletionResult(tuple(targets), refund, tuple(mailbox_names))

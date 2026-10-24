@@ -222,6 +222,22 @@ class UserRepository:
         ).fetchall()
         return [(str(row[0]), str(row[1]), int(row[2]) if row[2] is not None else None) for row in rows]
 
+    def set_attribute(self, user_id: int, name: str, value: str) -> None:
+        """Upsert a native user_attrs value without changing its string semantics."""
+        self.conn.execute(
+            "INSERT INTO user_attrs (user_id, attr_name, attr_value) VALUES (%s,%s,%s) "
+            "ON CONFLICT (user_id, attr_name) DO UPDATE SET attr_value=EXCLUDED.attr_value",
+            (user_id, name, value),
+        )
+
+    def set_attribute_if_absent(self, user_id: int, name: str, value: str) -> None:
+        """Insert a native attribute only if it is still absent (first-login race safety)."""
+        self.conn.execute(
+            "INSERT INTO user_attrs (user_id, attr_name, attr_value) VALUES (%s,%s,%s) "
+            "ON CONFLICT (user_id, attr_name) DO NOTHING",
+            (user_id, name, value),
+        )
+
     def set_password(self, user_id: int, password: str) -> None:
         self.conn.execute(
             "UPDATE normal_users SET normal_password=%s WHERE user_id=%s",

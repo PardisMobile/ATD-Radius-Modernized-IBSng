@@ -38,12 +38,12 @@ Value types:
 | CLEAR USER | All/Restricted | SEE ONLINE USERS | Not implemented |
 | DELETE ADMIN | No value | SEE ADMIN INFO | Implemented for native admin deletion with full A1.24 side effects, system-account protection, IAS type-6 event and same-transaction operational audit |
 | DELETE REPORTS | No value | — | Not implemented |
-| DELETE USER | All/Restricted | GET USER INFORMATION | Registered; delete API not implemented |
+| DELETE USER | All/Restricted | GET USER INFORMATION | Partial: native transactional deletion/refund/IAS/audit and online/login-in-progress guard implemented; mailbox cleanup transport remains unconfigured and is reported as pending |
 | GET RAS INFORMATION | No value | LIST RAS | Implemented for RAS API |
 | GET USER INFORMATION | All/Restricted | — | Implemented for user list/detail owner scope |
 | GOD | No value | — | Implemented as source-style bypass within registered evaluators |
 | GROUP ACCESS | Multi-value | — | Implemented for group visibility |
-| KILL USER | All/Restricted | SEE ONLINE USERS | Not implemented; disconnect remains unmounted |
+| KILL USER | All/Restricted | SEE ONLINE USERS | Partial: native online-session listing and permission-gated disconnect request are implemented; provider coverage and verified remote session disappearance remain release gates |
 | LIMIT LOGIN ADDR | Multi-value | — | Implemented in native admin authentication |
 | LIMIT MAIL DOMAIN | Multi-value | CHANGE MAILBOX | Not implemented |
 | LIST IPPOOL | No value | — | Not implemented |
@@ -56,7 +56,7 @@ Value types:
 | SEE CONNECTION LOGS | All/Restricted | — | Implemented for user-detail connection-history field |
 | SEE CREDIT CHANGES | All/Restricted | — | Implemented for user-detail credit-history field |
 | SEE ONLINE SNAPSHOTS | No value | — | Not implemented |
-| SEE ONLINE USERS | All/Restricted | — | Not implemented |
+| SEE ONLINE USERS | All/Restricted | — | Partial: durable online-session and login-in-progress listing with owner-scope filtering; live runtime/process-topology limits remain |
 | SEE REALTIME SNAPSHOTS | No value | — | Not implemented |
 | SEE SAVED USERNAME PASSWORDS | All/Restricted | GET USER INFORMATION | Not implemented |
 | SEE USER AUDIT LOGS | All/Restricted | — | Not implemented |
@@ -146,3 +146,8 @@ The API now exposes native tariff/prefix read and mutation workflows. The depend
 - `CHANGE VOIP TARIFF` requires `CHANGE CHARGE`.
 
 The ATD evaluator enforces that chain instead of treating tariff permissions as standalone grants. Read routes require `SEE VOIP TARIFF`; create/update/delete tariff and prefix routes require `CHANGE VOIP TARIFF`. Operational audit entries are committed with each successful mutation. Full CI on code HEAD `057b69789e9c353a8531d927129e09fafaf3105d` passed both Python 3.11 and 3.12 (720 passed, 2 warnings per job). This is not a claim that all charge-management workflows are complete.
+
+
+## Current-status reconciliation — 2026-10-23
+
+The permission/status table above is a historical inventory snapshot and contains entries that were stale by later implementation checkpoints. Do not use its older “Not implemented” cells as the current release status without checking `docs/CURRENT-STATUS.md` and the latest dated audit sections. Later verified slices include transactional user deletion (with mailbox cleanup still pending), owner/group workflows, selected user-attribute and credit APIs, and owner-scoped online-session reporting plus audited KILL USER action. `CLEAR USER`, complete permission-consumer coverage, mailbox transport, live provider interoperability, and full UI parity remain open. The complete stale-document reconciliation is recorded in `docs/MARKDOWN-CONTENT-AUDIT-2026-10-23.md`.

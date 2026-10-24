@@ -29,7 +29,12 @@ def _positive_int(attributes:AttributeSet,name:str)->int|None:
     except (TypeError,ValueError): return None
     return parsed if parsed>0 else None
 
-def session_policy(attributes:AttributeSet,active_sessions:Iterable[ActiveSessionView]=())->SessionPolicyDecision:
+def session_policy(
+    attributes: AttributeSet,
+    active_sessions: Iterable[ActiveSessionView] = (),
+    *,
+    current_ras_multi_login_allowed: bool | None = None,
+) -> SessionPolicyDecision:
     if "lock" in attributes.values:
         return SessionPolicyDecision(False,SessionAdmissionReason.LOCKED)
     sessions=list(active_sessions)
@@ -42,8 +47,19 @@ def session_policy(attributes:AttributeSet,active_sessions:Iterable[ActiveSessio
     # A1.24 counts the incoming instance before USER_LOGIN hooks run.
     # Therefore an existing count equal to the configured limit rejects the new login.
     if len(sessions) + 1 > limit:
-        return SessionPolicyDecision(False,SessionAdmissionReason.MULTI_LOGIN)
-    return SessionPolicyDecision(True,session_timeout_seconds=_positive_int(attributes,"session_timeout"),idle_timeout_seconds=_positive_int(attributes,"idle_timeout"))
+        return SessionPolicyDecision(False, SessionAdmissionReason.MULTI_LOGIN)
+    # A1.24 checks the accumulated per-instance RAS capability list only after
+    # the configured user MultiLogin limit has passed.
+    if sessions and (
+        current_ras_multi_login_allowed is False
+        or any(session.ras_multi_login_allowed is False for session in sessions)
+    ):
+        return SessionPolicyDecision(False, "ras_doesnt_allow_multilogin")
+    return SessionPolicyDecision(
+        True,
+        session_timeout_seconds=_positive_int(attributes, "session_timeout"),
+        idle_timeout_seconds=_positive_int(attributes, "idle_timeout"),
+    )
 
 def session_deadline(started_at:datetime,timeout_seconds:int|None)->datetime|None:
     return None if timeout_seconds is None else started_at+timedelta(seconds=timeout_seconds)

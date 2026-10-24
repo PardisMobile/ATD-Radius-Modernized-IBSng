@@ -1,5 +1,6 @@
 """Native A1.24 Access-Request context enrichment."""
 from __future__ import annotations
+import time
 from typing import Mapping, Protocol
 from atd_radius.domain.radius import RadiusPacket
 from atd_radius.domain.radius_auth import (
@@ -107,6 +108,12 @@ class NativeAccessContext:
 
         attrs["__user_found"] = "1"
         attrs["__user_id"] = str(user_id)
+        # A1.24 initializes first_login on the first successful login, then
+        # commits it as a user attribute. Keep it private to policy evaluation.
+        if attrs.get("first_login") in (None, ""):
+            # A1.24 initializes first_login on every successful user login,
+            # even when no relative expiry is configured.
+            attrs["__first_login_candidate"] = str(int(time.time()))
         attrs["__auth_method"] = method.value
         attrs["__password_ok"] = "1" if password_ok else "0"
         if self.ras is not None and source_ip:
@@ -130,3 +137,15 @@ class NativeAccessContext:
                 if ras_record.ippool_ids and ip_assignment is not False:
                     attrs["__ras_ippool_ids"] = ",".join(str(pool_id) for pool_id in ras_record.ippool_ids)
         return attrs
+
+    def commit_login_effects(self, attributes: Mapping[str, str]) -> None:
+        """Persist A1.24 login-hook state only after the request is accepted."""
+        candidate = attributes.get("__first_login_candidate")
+        user_id = attributes.get("__user_id")
+        if candidate in (None, "") or user_id in (None, ""):
+            return
+        # Multiple first Access-Requests can race; the first committed timestamp
+        # must win so concurrent requests cannot renew a relative-expiry deadline.
+        persist = getattr(self.users, "set_attribute_if_absent", None)
+        if callable(persist):
+            persist(int(user_id), "first_login", str(candidate))

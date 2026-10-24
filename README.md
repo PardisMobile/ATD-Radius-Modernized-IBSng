@@ -20,6 +20,10 @@ ATD uses the exact IBSng A1.24 terminology and PostgreSQL schema for existing IB
 
 This is a clean repository. Nothing from the previous Go-based `ATD-Radius` repository is imported here. The IBSng archive, production databases, credentials and generated legacy binaries are not committed to this public repository.
 
+## Database migrations
+
+Numbered SQL migrations can be checked and applied explicitly with `atd-radius-migrate`; see [`docs/MIGRATION-RUNNER.md`](docs/MIGRATION-RUNNER.md). The command verifies checksums, serializes concurrent operators, applies a batch transactionally, and refuses untracked non-empty databases. It is not an A1.24 data importer and is never run automatically at service startup. The read-only `atd-radius-a124-preflight` command reports native schema/function/definition/seed drift against the pinned archive; see [`docs/A1.24-ADOPTION-PREFLIGHT.md`](docs/A1.24-ADOPTION-PREFLIGHT.md). It does not authorize migration-ledger stamping. User deletion writes mailbox cleanup to a durable outbox; configure `ATD_MAILBOX_CLEANUP_COMMAND` and run `atd-radius-mailbox-cleanup` to execute that post-commit side effect safely. See [`docs/MAILBOX-CLEANUP-OUTBOX.md`](docs/MAILBOX-CLEANUP-OUTBOX.md). Operator-controlled PostgreSQL backup, archive verification and guarded restore are documented in [`docs/BACKUP-RESTORE.md`](docs/BACKUP-RESTORE.md) and exposed as `atd-radius-backup`.
+
 ## Current status
 
 The project foundation is now live:

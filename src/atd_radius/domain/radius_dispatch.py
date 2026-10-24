@@ -32,6 +32,10 @@ class RadiusDispatcher:
         if self.access_context is not None:
             attributes.update(self.access_context.enrich(packet, source_ip))
         result=self.pipeline.evaluate(AAARequest(attributes.get("User-Name",""),attributes))
+        if result.action.value == "accept" and self.access_context is not None:
+            commit_effects = getattr(self.access_context, "commit_login_effects", None)
+            if callable(commit_effects):
+                commit_effects(attributes)
         return response_for_access(packet,result.action.value,result.attributes)
     def accounting(self,packet:RadiusPacket)->DispatchResult:
         if packet.code is not RadiusCode.ACCOUNTING_REQUEST: raise ValueError("expected Accounting-Request")
