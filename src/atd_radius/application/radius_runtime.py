@@ -46,6 +46,7 @@ from atd_radius.infrastructure.ras import RASRepository
 from atd_radius.infrastructure import UserRepository
 from atd_radius.application.voip_limit_scheduler import VoipLimitScheduler
 from atd_radius.application.voip_limit_loop import VoipLimitCheckLoop
+from atd_radius.application.online_expiry_loop import OnlineSessionExpiryLoop, plan_online_expiry
 from atd_radius.infrastructure.ras_termination import SourceRASDisconnectClient, PermanentRASTerminationError
 
 
@@ -474,6 +475,12 @@ class NativeRadiusPacketHandler:
             on_error=self._limit_error,
         )
         self.voip_limit_loop.start()
+        expiry_scheduler = VoipLimitScheduler(on_error=self._expiry_scheduler_error, name="atd-online-expiry")
+        self.online_expiry_loop = OnlineSessionExpiryLoop(
+            expiry_scheduler, self._check_online_expiry, self._terminate_voip_session,
+            on_error=self._expiry_error,
+        )
+        self.online_expiry_loop.start()
 
     def _scheduler_error(self, key, exc: Exception) -> None:
         self._logger.error("VoIP timer callback failed for %r: %s", key, exc)
@@ -481,9 +488,42 @@ class NativeRadiusPacketHandler:
     def _limit_error(self, user_id: int, exc: Exception) -> None:
         self._logger.error("VoIP limit enforcement failed for user %s: %s", user_id, exc)
 
+    def _expiry_scheduler_error(self, key, exc: Exception) -> None:
+        self._logger.error("Online-expiry timer callback failed for %r: %s", key, exc)
+
+    def _expiry_error(self, user_id: int, exc: Exception) -> None:
+        self._logger.error("A1.24 expiry enforcement failed for user %s: %s", user_id, exc)
+
     def close(self) -> None:
-        """Stop the timer worker during normal process shutdown."""
+        """Stop timer workers during normal process shutdown."""
         self.voip_limit_loop.close()
+        self.online_expiry_loop.close()
+
+    def _refresh_online_expiry_schedule(self, user_id: int) -> None:
+        with self.state.sessions.synchronized():
+            active = self.state.sessions.active_for_user(user_id)
+        if active:
+            self.online_expiry_loop.schedule(user_id, 1)
+        else:
+            self.online_expiry_loop.cancel(user_id)
+
+    def _check_online_expiry(self, user_id: int):
+        with self.connection_factory() as conn:
+            self._refresh_durable_user_sessions(conn, user_id)
+            users = UserRepository(conn)
+            attrs = dict(users.policy_attributes(user_id))
+            with self.state.sessions.synchronized():
+                active = tuple(self.state.sessions.active_for_user(user_id))
+            plan = plan_online_expiry(
+                attrs, tuple(state.key for state in active),
+                datetime.now(timezone.utc).timestamp(),
+            )
+            if plan.kill_reasons:
+                self._logger.warning(
+                    "A1.24 expiry reached for user %s; requesting termination of %s live sessions",
+                    user_id, len(plan.kill_reasons),
+                )
+            return plan
 
     def _refresh_voip_limit_schedule(self, user_id: int) -> None:
         ras_registry = self.state.ras
@@ -812,6 +852,8 @@ class NativeRadiusPacketHandler:
             recovered_voip_users = self._recover_open_sessions(conn, charge, ras, pools, session_store)
             for recovered_user_id in recovered_voip_users:
                 self._refresh_voip_limit_schedule(recovered_user_id)
+            for recovered_state in session_store.list_active():
+                self._refresh_online_expiry_schedule(recovered_state.key.user_id)
             accounting = AccountingSessionService(self.state.sessions, persistence, charge, session_store)
             dispatcher = build_radius_dispatcher(
                 users,
@@ -844,6 +886,7 @@ class NativeRadiusPacketHandler:
                 user_id = identities.user_id(event.username)
                 if user_id is not None:
                     self._refresh_voip_limit_schedule(user_id)
+                    self._refresh_online_expiry_schedule(user_id)
             return response
 
 
