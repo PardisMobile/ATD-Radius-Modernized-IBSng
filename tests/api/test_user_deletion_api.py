@@ -29,7 +29,7 @@ def test_delete_users_api_checks_permission_audits_and_reports_mailbox_cleanup(m
     target = DeletionTarget(7, 8, Decimal("4.25"), "alice", True)
     repository = Mock()
     repository.lock_targets.return_value = [target]
-    repository.delete.return_value = UserDeletionResult((target,), Decimal("4.25"))
+    repository.delete.return_value = UserDeletionResult((target,), Decimal("4.25"), ("alice",))
     audit = Mock()
 
     monkeypatch.setattr(users_api, "connection", lambda: ConnectionContext(conn))
