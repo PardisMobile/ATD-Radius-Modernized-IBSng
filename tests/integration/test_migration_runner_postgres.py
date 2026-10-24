@@ -59,7 +59,7 @@ def test_real_postgres_clean_install_is_idempotent_and_failed_migration_rolls_ba
 
         changed_migrations = tmp_path / "changed-migrations"
         shutil.copytree(migrations_dir, changed_migrations)
-        (changed_migrations / "009_test_rollback.sql").write_text(
+        (changed_migrations / "010_test_rollback.sql").write_text(
             "CREATE TABLE public.should_rollback (id INTEGER);\n"
             "SELECT * FROM public.atd_migration_table_that_does_not_exist;\n",
             encoding="utf-8",
