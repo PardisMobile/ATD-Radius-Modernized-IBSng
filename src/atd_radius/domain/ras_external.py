@@ -738,3 +738,38 @@ def build_asterisk_manager_hangup_request(
         action="hangup",
         parameters={"host": host, "port": port, "username": username, "secret": secret, "timeout": timeout_value, "channel": channel},
     )
+
+
+def build_bsae_disconnect_request(
+    *,
+    ras_ip: str,
+    wrapper: str,
+    username: str,
+    telnet_username: str = "SuperManager",
+    telnet_password: str = "bsae",
+    max_concurrent_connections: object = 3,
+) -> ProviderOperationRequest:
+    """Build BSAE's A1.24 RSH wrapper call: downuser username <username>."""
+    host = _source_ipv4(ras_ip)
+    target_username = _source_cli_token(username, "BSAE username")
+    wrapper = _source_nonempty_text(wrapper, "BSAE telnet wrapper")
+    manager = _source_nonempty_text(telnet_username, "BSAE telnet username")
+    password = _source_nonempty_text(telnet_password, "BSAE telnet password")
+    concurrency = _source_integer(
+        max_concurrent_connections, "bsae_telnet_max_concurrent_connections", minimum=1
+    )
+    if concurrency > 64:
+        raise ValueError("BSAE max concurrent connections must not exceed 64")
+    command = f"downuser username {target_username}"
+    return ProviderOperationRequest(
+        provider="bsae",
+        operation=ExternalOperation.RSH,
+        action="disconnect",
+        parameters={
+            "host": host,
+            "wrapper": wrapper,
+            "arguments": (manager, password, command),
+            "command": command,
+            "max_concurrent_connections": concurrency,
+        },
+    )
