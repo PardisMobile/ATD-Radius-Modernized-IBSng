@@ -1,15 +1,10 @@
-# LATEST HANDOFF — 2026-10-23
+# LATEST HANDOFF — 2026-10-25
 
-Active branch: `feat/a124-semantic-object-inventory`. Latest verified code checkpoint is `3cb3faac5cb07f771fc9e49a160971199ec0f245`: Python-only and PostgreSQL-backed CI on Python 3.11/3.12 passed. Subsequent commits are documentation-only updates; check their own CI before calling the current branch head green.
+Repository: `PardisMobile/ATD-Radius-Modernized-IBSng`. Active integration branch and `main` are synchronized at `1b9d2aabac13a346447cff29c857d3807ff4888b`. The previously reported feature checkpoint `e73b146bfc4434a58d2f257a81b1879b4f9c89fe` was 40 commits behind main; the feature ref was fast-forwarded to main without rewriting history. No PR was created for this synchronization. The merge checkpoint includes reviewed A1.24 semantic-object inventory, safe migration-runner, read-only adoption preflight, and backup/restore acceptance work. CI runs are confirmed green on the prior feature checkpoint; a fresh CI result for the synchronized merge HEAD has not yet been verified.
 
-The complete 71-file Markdown review and stale-status reconciliation is recorded in `docs/MARKDOWN-CONTENT-AUDIT-2026-10-23.md`. Treat the older 2026-10-14 checkpoint below as historical, not as the current repository state. Canonical source archive SHA-256: `c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839614bb9349d18a8`.
+Canonical source SHA-256: `c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839614bb9349d18a8`.
 
-Recent verified code increment:
-- MS-CHAPv2 AuthenticatorResponse uses the A1.24 byte-wise password conversion helper, with non-ASCII regression coverage.
-- MultiLogin checks the effective user limit before the incoming/existing RAS MultiLogin capabilities; false-like capability values and established rejection reasons are covered.
-- This does not establish live NAS interoperability, non-ASCII DB/client charset parity, or full A1.24 runtime parity.
-
-Continue large cohesive batches. Preserve frozen/tested work; trace the canonical source and consumers, implement behavior plus persistence/side effects, add tests, run full CI, and update `docs/CURRENT-STATUS.md`, `ROADMAP.md`, `docs/ROADMAP.md`, `docs/COMPATIBILITY-MATRIX.md`, and the relevant subsystem audit. Major blockers remain lossless import/adoption and restore proof, live RADIUS/NAS/MPPE/provider interoperability, stale reservation reconciliation, complete billing/VoIP and bandwidth effects, remaining specialized attributes/plugins/XML-RPC/UI, and install/upgrade/rollback/licensing. User deletion still has a mailbox side-effect gap; `CLEAR USER` remains open.
+Do not claim overall completion based on CI. Major unfinished deliverables remain: a lossless A1.24 database importer/adoption and rollback workflow; representative real backup restore and full data parity; live NAS/provider RADIUS/MPPE and disconnect verification; stale accepted-login reservation recovery; remaining billing/bandwidth/plugin/XML-RPC/report/UI workflows; and supported install/upgrade/licensing. Continue implementation on `main` in substantial tested batches; avoid redoing completed/frozen slices. The semantic preflight is assessment-only and must not be represented as an importer.
 
 ---
 
