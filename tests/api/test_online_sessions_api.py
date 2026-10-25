@@ -69,7 +69,7 @@ def test_list_online_sessions_returns_safe_session_fields_and_login_reservations
     created_at = datetime(2026, 10, 21, 12, 1, tzinfo=timezone.utc)
     conn = Connection(
         session_rows=[(7, 3, "sid-7", state, 8, "alice")],
-        reservation_rows=[(7, 3, "alice", created_at, True, 8, "alice")],
+        reservation_rows=[(7, 3, "alice", created_at, True, 8, "alice", "a" * 64)],
     )
     monkeypatch.setattr(api, "connection", lambda: ConnectionContext(conn))
     monkeypatch.setattr(api, "can_see_online_users", lambda _admin, _owner_id: True)
@@ -145,3 +145,102 @@ def test_clear_online_session_uses_local_no_debit_path_and_audits(monkeypatch):
     audit.append.assert_called_once()
     assert audit.append.call_args.kwargs["action"] == "user.session.clear"
     assert audit.append.call_args.kwargs["details"]["credit_deducted"] is False
+
+
+class ReconcileConnection(Connection):
+    def __init__(self, *, online=False, reservation_exists=True, owner_row=(8,)):
+        super().__init__(owner_row=owner_row)
+        self.online = online
+        self.reservation_exists = reservation_exists
+        self.statements = []
+
+    def execute(self, statement, params=()):
+        self.statements.append((statement, params))
+        if "SELECT owner_id FROM users" in statement:
+            return Result([self.owner_row] if self.owner_row is not None else [])
+        if "SELECT ras_id FROM atd_radius_login_reservations" in statement:
+            return Result([(3,)] if self.reservation_exists else [])
+        if "SELECT EXISTS (" in statement:
+            return Result([(self.online,)])
+        if "DELETE FROM atd_radius_login_reservations" in statement:
+            return Result([(1,)] if self.reservation_exists else [])
+        return Result([])
+
+
+def test_reconcile_reservation_requires_explicit_offline_confirmation_and_audits(monkeypatch):
+    conn = ReconcileConnection()
+    audit = Mock()
+    monkeypatch.setattr(api, "connection", lambda: ConnectionContext(conn))
+    monkeypatch.setattr(api, "can_clear_user", lambda _admin, owner_id: owner_id == 8)
+    monkeypatch.setattr(api, "OperationalAuditRepository", lambda _conn: audit)
+    key = "a" * 64
+
+    result = api.reconcile_login_reservation(
+        key,
+        api.ReconcileLoginReservationPayload(
+            user_id=7, reason="NAS checked; no active session", confirm_offline=True
+        ),
+        _admin(),
+    )
+
+    assert result.removed is True
+    assert result.ras_id == 3
+    assert any("pg_advisory_xact_lock" in statement for statement, _ in conn.statements)
+    assert any("DELETE FROM atd_radius_login_reservations" in statement for statement, _ in conn.statements)
+    assert conn.committed is True
+    audit.append.assert_called_once()
+    assert audit.append.call_args.kwargs["action"] == "user.login_reservation.reconcile"
+    assert audit.append.call_args.kwargs["details"]["operator_confirmed_offline"] is True
+
+
+def test_reconcile_reservation_refuses_when_durable_session_is_online(monkeypatch):
+    conn = ReconcileConnection(online=True)
+    monkeypatch.setattr(api, "connection", lambda: ConnectionContext(conn))
+    monkeypatch.setattr(api, "can_clear_user", lambda _admin, _owner_id: True)
+
+    try:
+        api.reconcile_login_reservation(
+            "a" * 64,
+            api.ReconcileLoginReservationPayload(
+                user_id=7, reason="Provider confirms offline", confirm_offline=True
+            ),
+            _admin(),
+        )
+    except api.HTTPException as exc:
+        assert exc.status_code == 409
+    else:
+        raise AssertionError("active sessions must block reservation reconciliation")
+
+    assert not any("DELETE FROM atd_radius_login_reservations" in statement for statement, _ in conn.statements)
+
+
+def test_reconcile_reservation_requires_valid_key_and_clear_permission(monkeypatch):
+    conn = ReconcileConnection()
+    monkeypatch.setattr(api, "connection", lambda: ConnectionContext(conn))
+    monkeypatch.setattr(api, "can_clear_user", lambda _admin, _owner_id: False)
+
+    try:
+        api.reconcile_login_reservation(
+            "not-a-digest",
+            api.ReconcileLoginReservationPayload(
+                user_id=7, reason="Provider confirms offline", confirm_offline=True
+            ),
+            _admin(),
+        )
+    except api.HTTPException as exc:
+        assert exc.status_code == 422
+    else:
+        raise AssertionError("invalid reservation key must be rejected")
+
+    try:
+        api.reconcile_login_reservation(
+            "a" * 64,
+            api.ReconcileLoginReservationPayload(
+                user_id=7, reason="Provider confirms offline", confirm_offline=True
+            ),
+            _admin(),
+        )
+    except api.HTTPException as exc:
+        assert exc.status_code == 403
+    else:
+        raise AssertionError("CLEAR USER permission is required")
