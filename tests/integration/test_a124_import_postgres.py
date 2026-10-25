@@ -65,6 +65,12 @@ def test_apply_merges_rows_in_fk_order_and_reconciles_sequences(import_schemas):
         )
         assert report["mode"] == "apply"
         assert report["rows_verified_total"] == 3
+        assert report["target_rows_after_total"] == 4
+        assert report["target_only_rows_after_total"] == 1
+        parent_report = next(item for item in report["tables"] if item["table"] == "parent")
+        assert parent_report["target_rows_before"] == 2
+        assert parent_report["target_rows_after"] == 3
+        assert parent_report["target_only_rows_after"] == 1
         assert target.execute(sql.SQL("SELECT label FROM {}.parent WHERE id=1").format(sql.Identifier(target_schema))).fetchone()[0] == "source row"
         assert target.execute(sql.SQL("SELECT parent_id, value FROM {}.child WHERE id=10").format(sql.Identifier(target_schema))).fetchone() == (2, "child")
         assert target.execute(sql.SQL("SELECT nextval({}::regclass)").format(sql.Literal(f'"{target_schema}"."parent_id_seq"'))).fetchone()[0] == 101
