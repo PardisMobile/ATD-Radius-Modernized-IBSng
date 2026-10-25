@@ -221,6 +221,8 @@ def provider_login_identity(
         if len(compact) != 12:
             return {}
         return {"mac": ":".join(compact[index:index + 2] for index in range(0, 12, 2))}
+    if provider in {"cisco", "gnugk", "mvts", "tenor"}:
+        return {"caller_id": station}
     return {}
 
 
