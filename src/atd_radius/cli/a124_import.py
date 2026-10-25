@@ -544,6 +544,9 @@ def main(argv: list[str] | None = None) -> int:
             )
         target_dsn = args.target_dsn or settings.database_url
         with psycopg.connect(args.source_dsn) as source_conn, psycopg.connect(target_dsn) as target_conn:
+            # One repeatable, read-only source snapshot prevents mixed versions
+            # of a table set while the operator is importing a live database.
+            source_conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY")
             source_identity = _database_identity(source_conn)
             target_identity = _database_identity(target_conn)
             if source_identity == target_identity:

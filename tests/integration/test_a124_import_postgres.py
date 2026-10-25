@@ -26,16 +26,14 @@ def import_schemas():
         conn.execute(sql.SQL("CREATE TABLE {}.child (id integer PRIMARY KEY, parent_id integer REFERENCES {}.parent(id), value text)").format(sql.Identifier(source_schema), sql.Identifier(source_schema)))
         conn.execute(sql.SQL("CREATE SEQUENCE {}.parent_id_seq").format(sql.Identifier(source_schema)))
         conn.execute(sql.SQL("ALTER SEQUENCE {}.parent_id_seq OWNED BY {}.parent.id").format(sql.Identifier(source_schema), sql.Identifier(source_schema)))
-        conn.execute(sql.SQL("ALTER TABLE {}.parent ALTER COLUMN id SET DEFAULT nextval(%s::regclass)").format(sql.Identifier(source_schema)), (f"{source_schema}.parent_id_seq",))
         conn.execute(sql.SQL("CREATE TABLE {}.parent (id integer PRIMARY KEY, label text NOT NULL)").format(sql.Identifier(target_schema)))
         conn.execute(sql.SQL("CREATE TABLE {}.child (id integer PRIMARY KEY, parent_id integer REFERENCES {}.parent(id), value text)").format(sql.Identifier(target_schema), sql.Identifier(target_schema)))
         conn.execute(sql.SQL("CREATE SEQUENCE {}.parent_id_seq").format(sql.Identifier(target_schema)))
         conn.execute(sql.SQL("ALTER SEQUENCE {}.parent_id_seq OWNED BY {}.parent.id").format(sql.Identifier(target_schema), sql.Identifier(target_schema)))
-        conn.execute(sql.SQL("ALTER TABLE {}.parent ALTER COLUMN id SET DEFAULT nextval(%s::regclass)").format(sql.Identifier(target_schema)), (f"{target_schema}.parent_id_seq",))
         conn.execute(sql.SQL("INSERT INTO {}.parent VALUES (1, 'old target')").format(sql.Identifier(target_schema)))
         conn.execute(sql.SQL("INSERT INTO {}.parent VALUES (1, 'source row'), (2, 'parent')").format(sql.Identifier(source_schema)))
         conn.execute(sql.SQL("INSERT INTO {}.child VALUES (10, 2, 'child')").format(sql.Identifier(source_schema)))
-        conn.execute(sql.SQL("SELECT setval(%s::regclass, 2, true)").format(), (f"{source_schema}.parent_id_seq",))
+        conn.execute(sql.SQL("SELECT setval({}::regclass, 2, true)").format(sql.Literal(f'"{source_schema}"."parent_id_seq"')))
     try:
         yield base_dsn, source_schema, target_schema
     finally:
@@ -67,7 +65,7 @@ def test_apply_merges_rows_in_fk_order_and_reconciles_sequences(import_schemas):
         assert report["mode"] == "apply"
         assert target.execute(sql.SQL("SELECT label FROM {}.parent WHERE id=1").format(sql.Identifier(target_schema))).fetchone()[0] == "source row"
         assert target.execute(sql.SQL("SELECT parent_id, value FROM {}.child WHERE id=10").format(sql.Identifier(target_schema))).fetchone() == (2, "child")
-        assert target.execute(sql.SQL("SELECT nextval(%s::regclass)").format(), (f"{target_schema}.parent_id_seq",)).fetchone()[0] == 3
+        assert target.execute(sql.SQL("SELECT nextval({}::regclass)").format(sql.Literal(f'"{target_schema}"."parent_id_seq"'))).fetchone()[0] == 3
 
 
 def test_import_refuses_unmapped_source_tables(import_schemas):
