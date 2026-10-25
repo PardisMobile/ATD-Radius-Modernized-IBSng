@@ -38,6 +38,8 @@ from atd_radius.domain.ras_provider import (
  )
 from atd_radius.domain.user_policies import ras_allows_multi_login
 from atd_radius.infrastructure.accounting_persistence import NativeAccountingPersistence
+from atd_radius.application.periodic_accounting import PeriodicAccountingCoordinator
+from atd_radius.infrastructure.periodic_accounting_attributes import NativePeriodicAccountingAttributes
 from atd_radius.infrastructure.connection_log_repository import ConnectionLogRepository
 from atd_radius.infrastructure.bandwidth_snapshot_repository import PostgresBandwidthSnapshotRepository
 from atd_radius.infrastructure.billing_rules import PostgresInternetChargeRuleRepository
@@ -134,6 +136,7 @@ class RadiusRuntimeHandler:
         cisco_voip_auth_h323_ids: dict[int, set[str]] | None = None,
         cisco_online_status: dict[int, dict[str, dict[str, object]]] | None = None,
         login_reservations=None,
+        periodic_accounting: PeriodicAccountingCoordinator | None = None,
     ) -> None:
         self.dispatcher = dispatcher
         self.accounting_sessions = (
@@ -143,6 +146,7 @@ class RadiusRuntimeHandler:
         )
         self.identities = identities
         self.login_reservations = login_reservations
+        self.periodic_accounting = periodic_accounting
         self.ip_pool_sessions = ip_pool_sessions
         self.bandwidth_snapshots = bandwidth_snapshots
         # A1.24 keeps successful Cisco VoIP authorization IDs in RAS-local
@@ -338,6 +342,28 @@ class RadiusRuntimeHandler:
                             # from inverting the registry/session-lock order.
                             self.login_reservations.lock_user(user_id)
                         accounting_result = self.accounting_sessions.apply(event, user_id, ras_id)
+                        if self.periodic_accounting is not None:
+                            # Mirror A1.24 login/update/logout hooks against the
+                            # same native session identity used by the registry.
+                            # Prefix RAS ID to avoid collisions across NAS devices.
+                            instance = f"{ras_id}:{event.session_id}"
+                            if event.status is AccountingStatus.START:
+                                decision = self.periodic_accounting.login(
+                                    user_id, instance,
+                                    start_accounting="start_accounting" in event.attributes,
+                                )
+                                if not decision.allowed:
+                                    logging.getLogger(__name__).warning(
+                                        "Periodic quota already exhausted for user %s: %s",
+                                        user_id, ",".join(decision.exhausted_keys),
+                                    )
+                            elif event.status in (AccountingStatus.INTERIM, AccountingStatus.ALIVE):
+                                self.periodic_accounting.update(
+                                    user_id, instance,
+                                    start_accounting="start_accounting" in event.attributes,
+                                )
+                            elif event.status is AccountingStatus.STOP:
+                                self.periodic_accounting.logout(user_id, instance)
                         if (
                             self.login_reservations is not None
                             and accounting_result.created
@@ -1103,6 +1129,24 @@ def build_native_radius_runtime(
     )
     charge = UserChargeSettlement(users, internet_charge, voip_charge)
     accounting = AccountingSessionService(state.sessions, persistence, charge)
+
+    def periodic_traffic_counter(user_id: int, instance: str) -> int:
+        try:
+            ras_text, session_id = instance.split(":", 1)
+            ras_id = int(ras_text)
+        except (ValueError, AttributeError):
+            return 0
+        session = state.sessions.get(SessionKey(user_id, ras_id, session_id))
+        if session is None:
+            return 0
+        return int(session.input_octets) + int(session.output_octets)
+
+    periodic_accounting = PeriodicAccountingCoordinator(
+        NativePeriodicAccountingAttributes(users),
+        clock=lambda: datetime.now().timestamp(),
+        traffic_counters=periodic_traffic_counter,
+        is_normal_user=users.is_normal_user,
+    )
     dispatcher = build_radius_dispatcher(
         users,
         active_sessions_provider=session_views(state.sessions),
@@ -1116,4 +1160,5 @@ def build_native_radius_runtime(
         identities,
         ip_pool_sessions=IPPoolSessionManager(state.pools, state.ras),
         bandwidth_snapshots=PostgresBandwidthSnapshotRepository(conn),
+        periodic_accounting=periodic_accounting,
     )
