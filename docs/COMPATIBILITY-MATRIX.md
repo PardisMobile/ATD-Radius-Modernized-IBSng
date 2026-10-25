@@ -390,3 +390,15 @@ Migration 009 adds a durable outbox for the A1.24 post-commit mailbox deletion s
 
 The two policies are now wired into the actual AAA pipeline, not just tested as standalone domain objects. Unknown RAS providers do not receive invented MAC/IP mappings. Empty or malformed configured restrictions fail closed when the corresponding provider field is present. This is a bounded core increment; the overall compatibility matrix remains incomplete.
 
+
+
+## Periodic accounting — arithmetic foundation added 2026-10-26
+
+| Capability | Current verified scope | Still not proven |
+|---|---|---|
+| Time quota calculations | Initial/committed usage plus active per-instance wall-clock usage; remaining quota and remaining-time calculation | Live Access/Accounting hooks, persistence, canStayOnline termination and reload semantics |
+| Traffic quota calculations | Per-instance total-octet baselines, non-negative deltas, accumulated usage and assumed-KPS remaining-time estimate | Live RAS counters, VoIP exclusion in runtime, charging-rule integration and persistence |
+| Daily reset | Saved-epoch interval advancement and active-session baseline rebasing | Production timezone/configuration parity under deployed service settings |
+| Monthly reset | Explicit Gregorian/Jalali helper injection; no guessed month length | Exact A1.24 calendar helper wired into runtime |
+
+This is an arithmetic/domain increment only. Do not mark the periodic-accounting plugin complete until all four plugin classes, persistence and hook lifecycles are integrated and tested against the canonical source.
