@@ -62,12 +62,14 @@ class PeriodicAccountingState:
     """
     config: PeriodicQuotaConfig
     initial_usage: int = 0
-    committed_usage: int = 0
+    committed_usage: int | None = None
     next_reset: float | None = None
     starts: dict[int, float | int] = field(default_factory=dict)
     pending_reset_persist: bool = False
 
     def __post_init__(self) -> None:
+        if self.committed_usage is None:
+            self.committed_usage = self.config.accumulated_usage
         if self.initial_usage < 0 or self.committed_usage < 0:
             raise ValueError("usage values must be non-negative")
         self.next_reset = self.config.next_reset if self.next_reset is None else self.next_reset
@@ -130,12 +132,20 @@ class PeriodicAccountingState:
         self.committed_usage += used
         return used
 
-    def reset(self, next_reset: float) -> None:
+    def reset(
+        self, next_reset: float, now: float, counters: Mapping[int, int] | None = None
+    ) -> None:
         if next_reset <= 0:
             raise ValueError("next reset must be a positive epoch timestamp")
+        counters = counters or {}
+        # A1.24 resets accumulated usage but immediately rebases every active
+        # instance, so its post-reset traffic/time is charged to the new period.
+        self.starts = {
+            instance: (now if self.kind is PeriodicQuotaKind.TIME else int(counters.get(instance, 0)))
+            for instance in self.starts
+        }
         self.initial_usage = 0
         self.committed_usage = 0
-        self.starts.clear()
         self.next_reset = float(next_reset)
         self.pending_reset_persist = True
 
@@ -143,6 +153,7 @@ class PeriodicAccountingState:
         self,
         now: float,
         next_month_reset: Callable[[str], float] | None = None,
+        counters: Mapping[int, int] | None = None,
     ) -> bool:
         """Reset usage when due; return True when a reset was performed.
 
@@ -162,7 +173,7 @@ class PeriodicAccountingState:
                 if next_month_reset is None:
                     raise ValueError("monthly reset requires source-compatible calendar helper")
                 next_reset = next_month_reset(self.config.value)
-            self.reset(next_reset)
+            self.reset(next_reset, now, counters)
             return True
         if self.next_reset > now:
             return False
@@ -175,7 +186,7 @@ class PeriodicAccountingState:
             if next_month_reset is None:
                 raise ValueError("monthly reset requires source-compatible calendar helper")
             next_reset = next_month_reset(self.config.value)
-        self.reset(next_reset)
+        self.reset(next_reset, now, counters)
         return True
 
     def remaining_time(
