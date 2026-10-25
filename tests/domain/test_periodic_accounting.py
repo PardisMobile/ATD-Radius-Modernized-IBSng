@@ -110,3 +110,10 @@ def test_time_usage_keeps_fractional_seconds_until_persistence_boundary():
     state.starts = {1: 10.25}
     assert state.current_usage(10.75) == 0.5
     assert state.logout(1, 10.75) == 0.5
+
+
+def test_native_session_string_is_valid_for_periodic_baselines():
+    state = PeriodicAccountingState(config())
+    assert not state.login("42:session-A", now=1000)
+    assert state.starts["42:session-A"] == 1000
+    assert state.logout("42:session-A", now=1030) == 30
