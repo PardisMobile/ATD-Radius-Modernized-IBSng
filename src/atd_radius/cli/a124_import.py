@@ -9,8 +9,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sys
+from datetime import datetime, timezone
 from collections import defaultdict, deque
 from pathlib import Path
 from typing import Any
@@ -619,8 +621,17 @@ def import_data(source_conn, target_conn, source_schema: str, target_schema: str
                 raise A124ImportError(
                     f"post-merge row parity failed for {table}: {mismatches} source rows differ from target"
                 )
+            target_rows_after = int(target_conn.execute(
+                sql.SQL("SELECT count(*) FROM {}.{}").format(
+                    sql.Identifier(target_schema), sql.Identifier(table)
+                )
+            ).fetchone()[0])
             table_results.append({
-                "table": table, "source_rows": copied,
+                "table": table,
+                "source_rows": copied,
+                "target_rows_before": table_plan["target_rows_before"],
+                "target_rows_after": target_rows_after,
+                "target_only_rows_after": target_rows_after - copied,
                 "rows_inserted_or_updated": int(result.rowcount),
                 "rows_verified": copied - mismatches,
                 "key_columns": key_columns,
@@ -659,7 +670,28 @@ def import_data(source_conn, target_conn, source_schema: str, target_schema: str
     plan["sequences_reconciled"] = len(source_sequences)
     plan["rows_inserted_or_updated_total"] = sum(item["rows_inserted_or_updated"] for item in table_results)
     plan["rows_verified_total"] = sum(item["rows_verified"] for item in table_results)
+    plan["target_rows_after_total"] = sum(item["target_rows_after"] for item in table_results)
+    plan["target_only_rows_after_total"] = sum(item["target_only_rows_after"] for item in table_results)
     return plan
+
+
+def _write_report(path: Path, report: dict[str, Any]) -> None:
+    """Create a private JSON evidence file without overwriting an earlier report."""
+    payload = json.dumps(report, indent=2, sort_keys=True) + "\n"
+    try:
+        with path.open("x", encoding="utf-8") as handle:
+            os.chmod(path, 0o600)
+            handle.write(payload)
+            handle.flush()
+            os.fsync(handle.fileno())
+    except FileExistsError as exc:
+        raise A124ImportError(f"report file already exists; refusing to overwrite: {path}") from exc
+    except OSError:
+        try:
+            path.unlink(missing_ok=True)
+        except OSError:
+            pass
+        raise
 
 
 def _database_identity(conn) -> tuple[str, str, str]:
@@ -681,6 +713,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--target-schema", default="public")
     parser.add_argument("--apply", action="store_true", help="apply the import; default is a read-only dry run")
     parser.add_argument("--confirm-target", help="must exactly equal the target database name when --apply is used")
+    parser.add_argument(
+        "--report-file", type=Path,
+        help="write a private JSON audit report to a new file (existing files are never overwritten)",
+    )
     args = parser.parse_args(argv)
 
     try:
@@ -706,13 +742,22 @@ def main(argv: list[str] | None = None) -> int:
                 canonical_primary_keys=source_inventory.get("primary_keys"),
             )
             report["canonical_archive_sha256"] = digest
+            report["generated_at_utc"] = datetime.now(timezone.utc).isoformat()
             report["source_database"] = source_identity[0]
+            report["source_server_address"] = source_identity[1]
+            report["source_server_port"] = source_identity[2]
             report["target_database"] = target_identity[0]
+            report["target_server_address"] = target_identity[1]
+            report["target_server_port"] = target_identity[2]
             report["warning"] = (
                 "Row data only. Legacy DDL, functions, rules, triggers, roles, and unmapped objects are not imported. "
                 "Stop writes to the source and target for the maintenance window; take verified backups first."
             )
-        print(json.dumps(report, indent=2, sort_keys=True))
+        rendered = json.dumps(report, indent=2, sort_keys=True)
+        if args.report_file is not None:
+            _write_report(args.report_file, report)
+            print(f"Audit report written: {args.report_file}")
+        print(rendered)
         return 0
     except (A124ImportError, psycopg.Error, OSError, ValueError, KeyError) as exc:
         print(f"A1.24 import refused/failed: {exc}", file=sys.stderr)
