@@ -922,3 +922,10 @@ Added provider normalization, domain policy, access-context and actual dispatche
 
 This is not completion of all IBSng core behavior. The user-specified sequence is now recorded as a strict gate: finish core parity first, then UI, then installer/upgrade/rollback, then end-to-end capability testing. No UI/installer work is being substituted for core parity.
 
+
+
+## Core-first periodic-accounting foundation — 2026-10-26
+
+Added a new domain engine and regression tests for A1.24 periodic-accounting arithmetic: time and traffic usage across active instances, persisted/committed usage, quota checks, per-instance start baselines, logout accumulation, daily reset scheduling, reset-time baseline rebasing, and estimated remaining time. Monthly reset calculation explicitly requires an injected Gregorian/Jalali-compatible helper; the implementation does not substitute a guessed 30-day month.
+
+This is a meaningful foundation, **not a completed plugin migration**: runtime hook integration, persistent attribute updates, _reload semantics, exact calendar helper wiring and end-to-end quota termination remain open. Full CI for the new commits is running; no result is claimed until GitHub Actions completes.
