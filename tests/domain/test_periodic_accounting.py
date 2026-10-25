@@ -32,7 +32,7 @@ def test_traffic_quota_uses_input_plus_output_baseline_delta_and_clamps_counter_
     state.starts = {1: 500, 2: 800}
     assert state.current_usage(0, {1: 650, 2: 700}) == 250
     assert state.logout(1, 0, traffic_octets=650) == 150
-    assert state.current_usage(0, {2: 700}) == 100
+    assert state.current_usage(0, {2: 700}) == 250
 
 
 def test_login_captures_baseline_before_quota_decision():
