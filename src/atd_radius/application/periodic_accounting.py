@@ -54,7 +54,7 @@ class PeriodicAccountingCoordinator:
         attributes: PeriodicAccountingAttributes,
         *,
         clock: Callable[[], float],
-        traffic_counters: Callable[[int, int], int] | None = None,
+        traffic_counters: Callable[[int, int | str], int] | None = None,
         request_termination: Callable[[int, str], None] | None = None,
         is_normal_user: Callable[[int], bool] | None = None,
     ) -> None:
@@ -110,7 +110,7 @@ class PeriodicAccountingCoordinator:
             self.attributes.save(user_id, values)
 
     def login(
-        self, user_id: int, instance: int, *, start_accounting: bool = False
+        self, user_id: int, instance: int | str, *, start_accounting: bool = False
     ) -> PeriodicQuotaDecision:
         now = self.clock()
         user = self._load_user(user_id)
@@ -129,7 +129,7 @@ class PeriodicAccountingCoordinator:
         self._persist(user_id, user)
         return PeriodicQuotaDecision(not exhausted, tuple(exhausted))
 
-    def update(self, user_id: int, instance: int, *, start_accounting: bool = False) -> PeriodicQuotaDecision:
+    def update(self, user_id: int, instance: int | str, *, start_accounting: bool = False) -> PeriodicQuotaDecision:
         now = self.clock()
         user = self._load_user(user_id)
         counters = {
@@ -144,7 +144,7 @@ class PeriodicAccountingCoordinator:
         self._persist(user_id, user)
         return self.can_stay_online(user_id, instance, counters=counters)
 
-    def logout(self, user_id: int, instance: int) -> Mapping[str, int | float]:
+    def logout(self, user_id: int, instance: int | str) -> Mapping[str, int | float]:
         now = self.clock()
         user = self._load_user(user_id)
         committed: dict[str, int | float] = {}
@@ -157,9 +157,9 @@ class PeriodicAccountingCoordinator:
     def can_stay_online(
         self,
         user_id: int,
-        instance: int,
+        instance: int | str,
         *,
-        counters: Mapping[int, int] | None = None,
+        counters: Mapping[int | str, int] | None = None,
     ) -> PeriodicQuotaDecision:
         now = self.clock()
         user = self._load_user(user_id)
