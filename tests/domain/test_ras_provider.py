@@ -304,6 +304,10 @@ def test_source_login_identity_normalization_is_provider_specific():
     ) == {"station_ip": "192.0.2.25"}
     assert provider_login_identity(
         "Mikrotik",
+        {"NAS-Port-Type": "5", "Calling-Station-Id": "192.0.2.26"},
+    ) == {"station_ip": "192.0.2.26"}
+    assert provider_login_identity(
+        "Mikrotik",
         {"NAS-Port-Type": "Wireless-802.11", "Calling-Station-Id": "AA:BB"},
     ) == {"mac": "AA:BB"}
     assert provider_login_identity(
