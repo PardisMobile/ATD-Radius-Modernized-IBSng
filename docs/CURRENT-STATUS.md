@@ -934,3 +934,6 @@ This is a meaningful foundation, **not a completed plugin migration**: runtime h
 ## Periodic-accounting lifecycle increment — 2026-10-26
 
 Added an application coordinator for the four A1.24 daily/monthly time/traffic quota attributes. It exposes login, update (only rebases when `start_accounting` is explicitly set), logout usage commit, reset processing, quota decisions, remaining-time estimates, and termination callbacks. Added application-level tests for usage persistence and quota exhaustion. This coordinator is an adapter foundation and is not yet wired to the live RADIUS runtime/native attribute repository; parity is not complete until that wiring and multi-worker durability are proven.
+
+
+The periodic-accounting lifecycle adapter was tightened against the original `periodic_accounting.py`: instance baselines are recorded only when the RAS message carries `start_accounting`; absent baselines contribute zero; update rebases only when that signal is explicit; tests cover both paths. Latest full CI at the preceding checkpoint `26bbd5c` passed on Python 3.11 and 3.12; validation for the newer lifecycle changes is running and is not yet claimed green.
