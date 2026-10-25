@@ -3,8 +3,9 @@ from __future__ import annotations
 
 import ipaddress
 import json
+import re
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -43,6 +44,7 @@ class LoginInProgressView(BaseModel):
     ras_id: int
     created_at: str
     ras_multi_login_allowed: bool | None
+    request_key: str
 
 
 class OnlineSessionsView(BaseModel):
@@ -71,6 +73,20 @@ class ClearOnlineSessionView(BaseModel):
     cleared_locally: bool
     credit_deducted: bool
     ras_disconnect_sent: bool
+    note: str
+
+
+class ReconcileLoginReservationPayload(BaseModel):
+    user_id: int = Field(gt=0)
+    reason: str = Field(min_length=12, max_length=500)
+    confirm_offline: Literal[True]
+
+
+class ReconcileLoginReservationView(BaseModel):
+    user_id: int
+    ras_id: int
+    request_key: str
+    removed: bool
     note: str
 
 
@@ -112,7 +128,7 @@ def list_online_sessions(
             """
             SELECT r.user_id, r.ras_id, r.username, r.created_at,
                    r.ras_multi_login_allowed, u.owner_id,
-                   COALESCE(nu.normal_username, vu.voip_username)
+                   COALESCE(nu.normal_username, vu.voip_username), r.request_key
             FROM atd_radius_login_reservations r
             JOIN users u ON u.user_id=r.user_id
             LEFT JOIN normal_users nu ON nu.user_id=r.user_id
@@ -150,6 +166,7 @@ def list_online_sessions(
             ras_id=int(row[1]),
             created_at=_iso(row[3]) or "",
             ras_multi_login_allowed=bool(row[4]) if row[4] is not None else None,
+            request_key=str(row[7]),
         )
         for row in reservations
         if can_see_online_users(admin, int(row[5]) if row[5] is not None else None)
@@ -232,6 +249,115 @@ def kill_online_session(
         unique_id=payload.unique_id,
         termination_requested=True,
         note="Provider termination was requested; final session removal is confirmed by Accounting-Stop.",
+    )
+
+
+
+
+@router.post(
+    "/login-in-progress/{request_key}/reconcile",
+    response_model=ReconcileLoginReservationView,
+)
+def reconcile_login_reservation(
+    request_key: str,
+    payload: ReconcileLoginReservationPayload,
+    admin: AdminPrincipal = Depends(require_admin_session),
+) -> ReconcileLoginReservationView:
+    """Remove one stale reservation only after an explicit, audited offline confirmation.
+
+    There is intentionally no age-based expiry: an accepted Access-Request can
+    still be completing authentication even when Accounting-Start has not arrived.
+    """
+    if not re.fullmatch(r"[0-9a-f]{64}", request_key):
+        raise HTTPException(status_code=422, detail="invalid login reservation key")
+    if admin.remote_addr is None:
+        raise HTTPException(status_code=400, detail="A valid administrator remote address is required")
+    try:
+        remote_addr = str(ipaddress.ip_address(admin.remote_addr))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="A valid administrator remote address is required") from exc
+
+    with connection() as conn:
+        owner = conn.execute(
+            "SELECT owner_id FROM users WHERE user_id=%s",
+            (payload.user_id,),
+        ).fetchone()
+        if owner is None:
+            raise HTTPException(status_code=404, detail="user not found")
+        owner_id = int(owner[0]) if owner[0] is not None else None
+        if not can_clear_user(admin, owner_id):
+            raise HTTPException(status_code=403, detail="CLEAR USER permission denied")
+
+        # Use the same per-user lock as Access admission, Accounting handoff and deletion.
+        conn.execute(
+            "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))",
+            (f"login:{payload.user_id}",),
+        )
+        reservation = conn.execute(
+            """
+            SELECT ras_id FROM atd_radius_login_reservations
+            WHERE user_id=%s AND request_key=%s
+            FOR UPDATE
+            """,
+            (payload.user_id, request_key),
+        ).fetchone()
+        if reservation is None:
+            raise HTTPException(status_code=404, detail="login reservation not found")
+        ras_id = int(reservation[0])
+
+        online = conn.execute(
+            """
+            SELECT EXISTS (
+                SELECT 1 FROM atd_radius_live_sessions
+                WHERE user_id=%s AND state->>'started'='true' AND state->>'stopped'='false'
+                UNION ALL
+                SELECT 1 FROM connection_log
+                WHERE user_id=%s AND logout_time IS NULL AND successful IS TRUE
+            )
+            """,
+            (payload.user_id, payload.user_id),
+        ).fetchone()
+        if online and bool(online[0]):
+            raise HTTPException(
+                status_code=409,
+                detail="active durable session or open connection log exists; reservation was not changed",
+            )
+
+        deleted = conn.execute(
+            """
+            DELETE FROM atd_radius_login_reservations
+            WHERE user_id=%s AND request_key=%s
+            RETURNING reservation_id
+            """,
+            (payload.user_id, request_key),
+        ).fetchone()
+        if deleted is None:
+            raise HTTPException(status_code=409, detail="login reservation changed concurrently; retry after review")
+
+        OperationalAuditRepository(conn).append(
+            actor_admin_id=admin.admin_id,
+            actor_username=admin.username,
+            action="user.login_reservation.reconcile",
+            outcome="success",
+            target_type="login_reservation",
+            target_id=request_key,
+            remote_addr=remote_addr,
+            details={
+                "user_id": payload.user_id,
+                "ras_id": ras_id,
+                "reason": payload.reason.strip(),
+                "operator_confirmed_offline": True,
+                "active_session_check_passed": True,
+            },
+        )
+        conn.commit()
+
+    return ReconcileLoginReservationView(
+        user_id=payload.user_id,
+        ras_id=ras_id,
+        request_key=request_key,
+        removed=True,
+        note="Reservation removed after explicit offline confirmation; no automatic expiry was applied.",
     )
 
 
