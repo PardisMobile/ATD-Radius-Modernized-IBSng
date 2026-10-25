@@ -183,6 +183,44 @@ def provider_multi_login(ras_type: str | None, service: str = "internet") -> boo
     return profile.voip_multi_login if service == "voip" else profile.internet_multi_login
 
 
+def provider_login_identity(
+    ras_type: str | None, attributes: Mapping[str, object],
+) -> dict[str, str]:
+    """Translate source-defined Access-Request identity fields used by login plugins."""
+    def value(name: str) -> str | None:
+        raw = attributes.get(name)
+        if isinstance(raw, (list, tuple)):
+            raw = raw[0] if raw else None
+        if raw is None:
+            return None
+        text = str(raw).strip()
+        return text or None
+
+    provider = normalize_ras_type(ras_type)
+    station = value("Calling-Station-Id")
+    if station is None:
+        return {}
+
+    if provider == "chilli_spot":
+        return {"mac": station}
+    if provider == "mikrotik":
+        port_type = value("NAS-Port-Type")
+        if port_type in {"Ethernet", "Wireless-802.11"}:
+            return {"mac": station}
+        if port_type == "Virtual":
+            return {"station_ip": station}
+        return {}
+    if provider == "pppd":
+        return {"station_ip": station}
+    if provider == "bsae":
+        # BSAE formats the first 12 hex characters into colon-separated octets.
+        compact = station[:12]
+        if len(compact) != 12:
+            return {}
+        return {"mac": ":".join(compact[index:index + 2] for index in range(0, 12, 2))}
+    return {}
+
+
 def provider_ip_assignment(ras_type: str | None) -> bool | None:
     profile = provider_profile(ras_type)
     return profile.ip_assignment if profile else None
