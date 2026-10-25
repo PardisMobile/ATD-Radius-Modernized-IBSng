@@ -1,3 +1,13 @@
+# LATEST MAIN INCREMENT — A1.24 DATA IMPORT FOUNDATION — 2026-10-25
+
+Code checkpoint `6d537a0092423d7b51eb34f9efe82e84432f65f1` passed full CI on Python 3.11 and 3.12: **1,081 passed per version, 2 warnings**. Python-only: **1,050 passed, 31 skipped, 2 warnings**. Runs: [full CI](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/40147404080), [Python-only](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/40147404101).
+
+Added the first operator-controlled A1.24 row importer, `atd-radius-a124-import`. It is dry-run by default, requires the canonical source archive checksum, validates canonical core table/column inventory and exact source/target column shape, includes matching plugin tables rather than silently skipping them, requires a stable unique key for each table, orders foreign-key dependencies, merges source rows by key, verifies each imported row against staging values, and reconciles sequences without lowering target high-water marks. It refuses unmapped source tables, schema/key drift, unsafe self-referencing cycles, and sequence-definition/ownership drift. PostgreSQL integration tests cover dry-run non-mutation, merge/upsert, foreign-key ordering, row verification, sequence high-water, unmapped/keyless tables, source-type drift, and cycle refusal.
+
+This is an important foundation, **not yet a claim of complete lossless adoption**. It imports rows only from a live PostgreSQL source; it does not import DDL, functions, rules, triggers, roles or other unmapped objects, and it does not delete target-only rows. The operator must stop writes and back up both databases. A representative production-like migration/restore drill and plugin-object parity are still release gates.
+
+---
+
 # LATEST VERIFIED SCHEMA-AUDIT INCREMENT — 2026-10-25
 
 Code checkpoint `bdfc5cc397cb2a058db59551d1bd410db04e6283` passed full CI on Python 3.11 and 3.12: **1,075 passed per version, 2 warnings**; Python-only: **1,050 passed, 25 skipped, 2 warnings**. CI: [full](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/40146922761), [Python-only](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/40146922755).

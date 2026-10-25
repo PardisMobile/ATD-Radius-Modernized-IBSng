@@ -1,3 +1,13 @@
+# LATEST MAIN INCREMENT — A1.24 DATA IMPORT FOUNDATION — 2026-10-25
+
+Code checkpoint `6d537a0092423d7b51eb34f9efe82e84432f65f1` passed full CI on Python 3.11/3.12: **1,081 passed each, 2 warnings**; Python-only: **1,050 passed, 31 skipped, 2 warnings**.
+
+The `atd-radius-a124-import` command now provides a dry-run-first, transactional row-merge path from a live A1.24 PostgreSQL database into an existing schema-compatible ATD database. It verifies rows after merge and reconciles sequences. It deliberately fails closed when source tables/plugin tables, column shapes, unique keys, sequence definitions/ownership or foreign-key ordering cannot be proven safe. It does not import schema DDL, functions, triggers, rules, roles, or unmapped objects, and it does not delete target-only rows. Do not call this complete migration/adoption until representative row/plugin parity and restore drills pass.
+
+The project goal remains complete IBSng A1.24 modernization. Work directly on `main`, avoid PR-driven workflow, and keep release blockers honest.
+
+---
+
 # LATEST VERIFIED SCHEMA-AUDIT INCREMENT — 2026-10-25
 
 Code checkpoint `bdfc5cc397cb2a058db59551d1bd410db04e6283` passed full CI on Python 3.11/3.12 (**1,075 passed each, 2 warnings**); Python-only: **1,050 passed, 25 skipped, 2 warnings**.

@@ -1,3 +1,18 @@
+# LATEST MAIN INCREMENT — A1.24 DATA IMPORT FOUNDATION — 2026-10-25
+
+Code checkpoint `6d537a0092423d7b51eb34f9efe82e84432f65f1` passed full CI: **1,081 passed on Python 3.11 and 1,081 on Python 3.12, 2 warnings each**; Python-only: **1,050 passed, 31 skipped**.
+
+The new `atd-radius-a124-import` command supplies a dry-run-first transactional row merge with strict table/column/key checks, source/target sequence compatibility, foreign-key ordering, post-merge row-value verification and safe sequence high-water reconciliation. It refuses unmapped plugin/source tables rather than dropping them. It does not import DDL, functions/rules/triggers/roles, delete target-only rows, or by itself prove full adoption.
+
+## Next implementation priorities
+1. Exercise the importer against a representative real A1.24 backup restored to an isolated source database and the actual ATD migration schema; produce a row-level parity report and documented rollback/cutover drill.
+2. Extend import/adoption only where source-to-target schema and plugin-object mapping is explicit; never silently skip source-only tables or keyless data.
+3. Prove live NAS/provider interoperability for PAP/CHAP/MS-CHAPv1/v2, MPPE, Accounting and Disconnect/CoA remote-state verification.
+4. Complete safe accepted-login reservation reconciliation and source-backed billing/expiry/bandwidth/VoIP/plugin side effects.
+5. Finish admin/user UI, reports/graphs, XML-RPC parity, installer, upgrade/rollback, supported OS and licensing.
+
+---
+
 # VERIFIED SCHEMA-AUDIT INCREMENT — 2026-10-25
 
 Code checkpoint `bdfc5cc397cb2a058db59551d1bd410db04e6283` passed full CI on Python 3.11/3.12: **1,075 passed each, 2 warnings**; Python-only: **1,050 passed, 25 skipped**.

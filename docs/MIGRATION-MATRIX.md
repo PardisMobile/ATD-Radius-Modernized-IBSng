@@ -1,3 +1,11 @@
+# A1.24 DATA IMPORT FOUNDATION — 2026-10-25
+
+`atd-radius-a124-import` is implemented and full CI passed on Python 3.11/3.12 (**1,081 passed each, 2 warnings**). It supports a dry-run-first row merge from a live A1.24 PostgreSQL source with exact table/column shape, stable-key, FK-order, sequence and post-merge row verification. Source/plugin tables missing from target are rejected. It does not import legacy DDL or other non-row objects, and it preserves target-only rows.
+
+Status: **Implemented foundation / full adoption unverified**. Required next proof: representative restored A1.24 database, complete row/plugin-object parity report, production-like restore/cutover rehearsal and tested rollback.
+
+---
+
 # IBSng A1.24 → ATD Migration Matrix
 
 This is the master parity checklist. Implemented means ATD code exists; Verified requires behavior/data parity tests against A1.24. No row may be marked Verified by inspection alone.
