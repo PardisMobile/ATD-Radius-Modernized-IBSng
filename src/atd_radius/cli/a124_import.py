@@ -536,6 +536,7 @@ def import_data(source_conn, target_conn, source_schema: str, target_schema: str
     source_sequences = _sequence_specs(source_conn, source_schema)
     source_owners = _sequence_owners(source_conn, source_schema)
     table_results: list[dict[str, Any]] = []
+    sequence_results: list[dict[str, Any]] = []
     with target_conn.transaction():
         for table_plan in plan["tables"]:
             target_conn.execute(
@@ -641,6 +642,7 @@ def import_data(source_conn, target_conn, source_schema: str, target_schema: str
         # sequence ahead of both its source sequence state and imported owned IDs.
         for sequence_name in sorted(source_sequences):
             last_value, is_called = _sequence_state(source_conn, source_schema, sequence_name)
+            target_before_value, target_before_called = _sequence_state(target_conn, target_schema, sequence_name)
             owner = source_owners.get(sequence_name)
             maximum = None
             if owner:
@@ -665,7 +667,21 @@ def import_data(source_conn, target_conn, source_schema: str, target_schema: str
                     sql.Identifier(target_schema), sql.Identifier(sequence_name), sql.Literal(next_value)
                 )
             )
+            target_after_value, target_after_called = _sequence_state(target_conn, target_schema, sequence_name)
+            sequence_results.append({
+                "sequence": sequence_name,
+                "source_last_value": last_value,
+                "source_is_called": is_called,
+                "target_last_value_before": target_before_value,
+                "target_is_called_before": target_before_called,
+                "target_next_value_after": target_after_value,
+                "target_is_called_after": target_after_called,
+                "restart_value": next_value,
+                "owned_by": list(owner) if owner else None,
+                "maximum_owned_id": maximum,
+            })
     plan["mode"] = "apply"
+    plan["sequence_results"] = sequence_results
     plan["tables"] = table_results
     plan["sequences_reconciled"] = len(source_sequences)
     plan["rows_inserted_or_updated_total"] = sum(item["rows_inserted_or_updated"] for item in table_results)
