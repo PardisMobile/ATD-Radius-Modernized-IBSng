@@ -169,7 +169,7 @@ def test_limit_caller_id_uses_regex_search_and_source_missing_caller_flag():
     policy = LimitCallerIDPolicy()
     assert policy.evaluate(AAARequest("u", {"caller_id": "12345"})) is None
     assert policy.evaluate(
-        AAARequest("u", {"limit_caller_id": r"^123|555$", "caller_id": "xx123yy"})
+        AAARequest("u", {"limit_caller_id": r"123|555", "caller_id": "xx123yy"})
     ) is None
     denied = policy.evaluate(
         AAARequest("u", {"limit_caller_id": r"^123$", "caller_id": "999"})
