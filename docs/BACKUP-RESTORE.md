@@ -6,14 +6,17 @@ Before row transfer, `atd-radius-a124-import` now compares source and target con
 
 For a live IBSng A1.24 PostgreSQL database, the new `atd-radius-a124-import` command first runs read-only checks and prints row counts. It does not restore a dump directly; restore an A1.24 backup into an isolated PostgreSQL source database first, then point `--source-dsn` at that restored database.
 
-Dry-run (default):
+Dry-run (default), with a persistent audit report:
 
 ```sh
 atd-radius-a124-import \
   --archive "Source of Truth/IBSng-A1.24.tar.bz2" \
   --source-dsn "$IBSNG_DATABASE_URL" \
-  --target-dsn "$ATD_DATABASE_URL"
+  --target-dsn "$ATD_DATABASE_URL" \
+  --report-file /secure/reports/a124-dry-run-2026-10-25.json
 ```
+
+The JSON report records the UTC generation time, source/target database and server identity, canonical archive digest, ordered per-table source/target counts, key columns, and—after a successful apply—verified source rows, target-only rows preserved, and inserted/updated counts. Report files are created with owner-only permissions and are never overwritten; choose a new path for each run. Keep the report with the backup and change record. A dry-run report is planning evidence only; it is not proof of a completed import.
 
 After reviewing the report, stopping writes to both databases, and taking verified backups of both, apply only with an explicit target name:
 
