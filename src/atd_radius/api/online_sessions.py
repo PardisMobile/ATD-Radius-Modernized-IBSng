@@ -270,6 +270,8 @@ def reconcile_login_reservation(
     """
     if not re.fullmatch(r"[0-9a-f]{64}", request_key):
         raise HTTPException(status_code=422, detail="invalid login reservation key")
+    if len(payload.reason.strip()) < 12:
+        raise HTTPException(status_code=422, detail="reason must contain at least 12 non-whitespace characters")
     if admin.remote_addr is None:
         raise HTTPException(status_code=400, detail="A valid administrator remote address is required")
     try:
