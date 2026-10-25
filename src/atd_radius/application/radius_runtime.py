@@ -20,6 +20,8 @@ from atd_radius.domain.user_policies import (
     AuthenticationPolicy,
     LockPolicy,
     MultiLoginPolicy,
+    LimitMacPolicy,
+    LimitStationIPPolicy,
     TimeoutPolicy,
 )
 from atd_radius.domain.ras import RASRuntimeRegistry
@@ -994,12 +996,14 @@ def build_radius_dispatcher(
         PluginSpec(1, "authentication", AuthenticationPolicy()),
         PluginSpec(2, "lock", LockPolicy()),
         PluginSpec(3, "multi_login", MultiLoginPolicy(active_sessions_provider=active_sessions_provider)),
+        PluginSpec(4, "limit_mac", LimitMacPolicy()),
+        PluginSpec(5, "limit_station_ip", LimitStationIPPolicy()),
+        PluginSpec(6, "absolute_expiry", AbsoluteExpiryPolicy()),
+        PluginSpec(7, "relative_expiry", RelativeExpiryPolicy()),
     ]
-    policies.append(PluginSpec(4, "absolute_expiry", AbsoluteExpiryPolicy()))
-    policies.append(PluginSpec(5, "relative_expiry", RelativeExpiryPolicy()))
     if ip_pools is not None:
-        policies.append(PluginSpec(6, "ip_pool", IPPoolAllocationPolicy(ip_pools)))
-    policies.append(PluginSpec(7, "timeout", TimeoutPolicy()))
+        policies.append(PluginSpec(8, "ip_pool", IPPoolAllocationPolicy(ip_pools)))
+    policies.append(PluginSpec(9, "timeout", TimeoutPolicy()))
     pipeline = PluginPipeline(policies)
     return RadiusDispatcher(pipeline, access_context=NativeAccessContext(users, ras))
 
