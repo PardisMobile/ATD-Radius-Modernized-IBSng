@@ -6,6 +6,7 @@ from atd_radius.domain.periodic_accounting import (
     PeriodicQuotaConfig,
     PeriodicQuotaKind,
     a124_next_month_reset,
+    _gregorian_to_jalali,
 )
 
 
@@ -78,7 +79,10 @@ def test_a124_gregorian_and_jalali_month_helpers_return_local_midnight():
         next_reset = a124_next_month_reset(calendar, now=1_793_000_000)
         local = time.localtime(next_reset)
         assert next_reset > 1_793_000_000
-        assert local.tm_mday == 1
+        if calendar == "gregorian":
+            assert local.tm_mday == 1
+        else:
+            assert _gregorian_to_jalali(local.tm_year, local.tm_mon, local.tm_mday)[2] == 1
         assert (local.tm_hour, local.tm_min, local.tm_sec) == (0, 0, 0)
 
 
