@@ -29,7 +29,7 @@ def test_coordinator_login_logout_persists_accumulated_usage():
     clock = [1000.0]
     repo = MemoryAttributes(attrs())
     coordinator = PeriodicAccountingCoordinator(repo, clock=lambda: clock[0])
-    decision = coordinator.login(7, 1)
+    decision = coordinator.login(7, 1, start_accounting=True)
     assert decision.allowed
     clock[0] = 1030.5
     assert coordinator.logout(7, 1)["time_periodic_accounting_daily"] == 30.5
@@ -77,8 +77,17 @@ def test_traffic_coordinator_tracks_active_instance_counter_delta():
         repo, clock=lambda: clock[0],
         traffic_counters=lambda user, instance: counts[instance],
     )
-    assert coordinator.login(7, 1).allowed
+    assert coordinator.login(7, 1, start_accounting=True).allowed
     counts[1] = 250
     assert coordinator.update(7, 1).allowed
     assert coordinator.logout(7, 1)["traffic_periodic_accounting_daily"] == 150
     assert repo.values["traffic_periodic_accounting_daily_usage"] == "150"
+
+
+def test_login_without_start_accounting_does_not_charge_session_usage():
+    clock = [1000.0]
+    repo = MemoryAttributes(attrs())
+    coordinator = PeriodicAccountingCoordinator(repo, clock=lambda: clock[0])
+    assert coordinator.login(7, 1).allowed
+    clock[0] = 1200.0
+    assert coordinator.logout(7, 1)["time_periodic_accounting_daily"] == 0
