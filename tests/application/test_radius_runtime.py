@@ -1992,3 +1992,45 @@ def test_native_dispatcher_enforces_mikrotik_station_ip_restriction():
 
     assert response.code is RadiusCode.ACCESS_REJECT
 
+def test_native_dispatcher_enforces_source_mapped_voip_caller_id_restriction():
+    class Users:
+        def get_authentication_record(self, username):
+            return (7, "secret", False) if username == "alice" else None
+
+        def attributes(self, user_id):
+            return [
+                ("limit_caller_id", "^555[0-9]{4}$"),
+                ("limit_caller_id_allow_not_defined", "0"),
+            ]
+
+        def policy_attributes(self, user_id):
+            return self.attributes(user_id)
+
+    class RASRecord:
+        ras_id = 3
+        ras_type = "MVTS"
+        ippool_ids = ()
+
+        def all_attributes(self):
+            return {}
+
+    class RAS:
+        def get_by_ip(self, source_ip):
+            return RASRecord() if source_ip == "192.0.2.1" else None
+
+    dispatcher = build_radius_dispatcher(Users(), ras=RAS())
+    response = dispatcher.access(
+        RadiusPacket(
+            RadiusCode.ACCESS_REQUEST,
+            15,
+            {
+                "User-Name": "alice",
+                "User-Password": "secret",
+                "Calling-Station-Id": "1234567",
+            },
+        ),
+        source_ip="192.0.2.1",
+    )
+
+    assert response.code is RadiusCode.ACCESS_REJECT
+
