@@ -6,7 +6,6 @@ import uuid
 
 import psycopg
 from psycopg import sql
-from psycopg.conninfo import make_conninfo
 import pytest
 
 from atd_radius.cli.a124_import import A124ImportError, import_data

@@ -18,7 +18,7 @@ from typing import Any
 import psycopg
 from psycopg import sql
 from atd_radius.config import settings
-from atd_radius.compatibility.a124_schema_parity import parse_a124_inventory, read_a124_schema
+from atd_radius.compatibility.a124_schema_parity import read_a124_schema
 
 CANONICAL_A124_SHA256 = "c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839614bb9349d18a8"
 
