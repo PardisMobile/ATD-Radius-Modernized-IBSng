@@ -736,6 +736,11 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     try:
+        if args.report_file is not None:
+            if args.report_file.exists():
+                raise A124ImportError(f"report file already exists; refusing to overwrite: {args.report_file}")
+            if not args.report_file.parent.is_dir():
+                raise A124ImportError(f"report directory does not exist: {args.report_file.parent}")
         digest, source_inventory = read_a124_schema(str(args.archive))
         if digest != CANONICAL_A124_SHA256:
             raise A124ImportError(
