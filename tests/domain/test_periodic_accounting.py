@@ -32,7 +32,7 @@ def test_traffic_quota_uses_raw_a124_baseline_deltas_even_if_counter_decreases()
     state = PeriodicAccountingState(config(
         kind=PeriodicQuotaKind.TRAFFIC, limit=1000), initial_usage=100)
     state.starts = {1: 500, 2: 800}
-    assert state.current_usage(0, {1: 650, 2: 700}) == 250
+    assert state.current_usage(0, {1: 650, 2: 700}) == 150
     assert state.logout(1, 0, traffic_octets=650) == 150
     assert state.current_usage(0, {2: 700}) == 150
 
