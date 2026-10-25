@@ -291,3 +291,31 @@ def test_cisco_voip_does_not_treat_acct_session_id_as_h323_conf_id():
         service="voip",
     ) is None
 
+def test_source_login_identity_normalization_is_provider_specific():
+    from atd_radius.domain.ras_provider import provider_login_identity
+
+    assert provider_login_identity(
+        "Mikrotik",
+        {"NAS-Port-Type": "Ethernet", "Calling-Station-Id": "AA:BB:CC:DD:EE:FF"},
+    ) == {"mac": "AA:BB:CC:DD:EE:FF"}
+    assert provider_login_identity(
+        "Mikrotik",
+        {"NAS-Port-Type": "Virtual", "Calling-Station-Id": "192.0.2.25"},
+    ) == {"station_ip": "192.0.2.25"}
+    assert provider_login_identity(
+        "Mikrotik",
+        {"NAS-Port-Type": "Wireless-802.11", "Calling-Station-Id": "AA:BB"},
+    ) == {"mac": "AA:BB"}
+    assert provider_login_identity(
+        "PPPD", {"Calling-Station-Id": "192.0.2.25"}
+    ) == {"station_ip": "192.0.2.25"}
+    assert provider_login_identity(
+        "ChilliSpot", {"Calling-Station-Id": "AA:BB:CC:DD:EE:FF"}
+    ) == {"mac": "AA:BB:CC:DD:EE:FF"}
+    assert provider_login_identity(
+        "BSAE", {"Calling-Station-Id": "AABBCCDDEEFF-extra"}
+    ) == {"mac": "AA:BB:CC:DD:EE:FF"}
+    assert provider_login_identity(
+        "Unknown", {"Calling-Station-Id": "AA:BB:CC:DD:EE:FF"}
+    ) == {}
+
