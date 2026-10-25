@@ -106,3 +106,14 @@ def test_import_refuses_keyless_tables(import_schemas):
                 source, target, source_schema, target_schema,
                 {"parent": {"id": "integer", "label": "text"}, "child": {"id": "integer", "parent_id": "integer", "value": "text"}},
             )
+
+
+def test_import_refuses_canonical_source_type_drift(import_schemas):
+    dsn, source_schema, target_schema = import_schemas
+    with psycopg.connect(dsn) as source, psycopg.connect(dsn) as target:
+        with pytest.raises(A124ImportError, match="differs from canonical A1.24"):
+            import_data(
+                source, target, source_schema, target_schema,
+                {"parent": {"id": "bigint", "label": "text"}, "child": {"id": "integer", "parent_id": "integer", "value": "text"}},
+                canonical_primary_keys={"parent": {"id"}, "child": {"id"}},
+            )

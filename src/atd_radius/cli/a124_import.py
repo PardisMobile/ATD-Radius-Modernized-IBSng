@@ -18,7 +18,7 @@ from typing import Any
 import psycopg
 from psycopg import sql
 from atd_radius.config import settings
-from atd_radius.compatibility.a124_schema_parity import read_a124_schema
+from atd_radius.compatibility.a124_schema_parity import _source_column_spec, read_a124_schema
 
 CANONICAL_A124_SHA256 = "c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839614bb9349d18a8"
 
@@ -216,7 +216,8 @@ def _has_null_key(conn, schema: str, table: str, keys: tuple[str, ...]) -> bool:
 
 
 def _plan(source_conn, target_conn, source_schema: str, target_schema: str,
-          canonical_tables: dict[str, dict[str, str]]) -> dict[str, Any]:
+          canonical_tables: dict[str, dict[str, str]],
+          canonical_primary_keys: dict[str, set[str]] | None = None) -> dict[str, Any]:
     source_tables = _tables(source_conn, source_schema)
     target_tables = set(_tables(target_conn, target_schema))
     missing_canonical = sorted(set(canonical_tables) - set(source_tables))
@@ -252,6 +253,20 @@ def _plan(source_conn, target_conn, source_schema: str, target_schema: str,
                 raise A124ImportError(
                     f"live source table {table} does not match canonical A1.24 column inventory"
                 )
+            if canonical_primary_keys is not None:
+                source_by_name = {column["name"]: column for column in source_columns}
+                for column, declaration in canonical_tables[table].items():
+                    spec = _source_column_spec(
+                        declaration, column in canonical_primary_keys.get(table, set())
+                    )
+                    actual = source_by_name[column]
+                    actual_type = re.sub(r"\\s+", " ", str(actual["type"]).lower())
+                    if actual_type != spec["type"] or actual["nullable"] != spec["nullable"]:
+                        raise A124ImportError(
+                            f"live source table {table}.{column} differs from canonical A1.24 "
+                            f"type/nullability: expected {spec['type']} nullable={spec['nullable']}, "
+                            f"found {actual_type} nullable={actual['nullable']}"
+                        )
         source_key = _key_columns(source_conn, source_schema, table)
         target_key = _key_columns(target_conn, target_schema, table)
         if source_key != target_key:
@@ -373,14 +388,15 @@ def _source_query(source_conn, source_schema: str, plan: dict[str, Any], cursor_
 
 
 def import_data(source_conn, target_conn, source_schema: str, target_schema: str,
-                canonical_tables: dict[str, dict[str, str]], *, apply: bool = False) -> dict[str, Any]:
+                canonical_tables: dict[str, dict[str, str]], *, apply: bool = False,
+                canonical_primary_keys: dict[str, set[str]] | None = None) -> dict[str, Any]:
     """Plan a complete row merge, or apply it in one target transaction.
 
     Source tables absent from the canonical core are treated as plugin tables:
     they are included only when an exactly shaped, keyed target table exists.
     Source-only/plugin-only objects are never silently skipped.
     """
-    plan = _plan(source_conn, target_conn, source_schema, target_schema, canonical_tables)
+    plan = _plan(source_conn, target_conn, source_schema, target_schema, canonical_tables, canonical_primary_keys)
     if not apply:
         return plan
 
@@ -537,6 +553,7 @@ def main(argv: list[str] | None = None) -> int:
             report = import_data(
                 source_conn, target_conn, args.source_schema, args.target_schema,
                 source_inventory["tables"], apply=args.apply,
+                canonical_primary_keys=source_inventory.get("primary_keys"),
             )
             report["canonical_archive_sha256"] = digest
             report["source_database"] = source_identity[0]
