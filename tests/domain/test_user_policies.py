@@ -108,3 +108,45 @@ def test_relative_expiry_does_not_extend_existing_shorter_session_timeout():
     )
 
     assert result.attributes["Session-Timeout"] == "30"
+
+def test_limit_mac_policy_matches_source_conditional_presence_semantics():
+    from atd_radius.domain.user_policies import LimitMacPolicy
+
+    policy = LimitMacPolicy()
+    # A1.24 only checks when the RAS message contains mac.
+    assert policy.evaluate(AAARequest("u", {"limit_mac": "AA,BB"})) is None
+    assert policy.evaluate(AAARequest("u", {"limit_mac": "AA,BB", "mac": "BB"})) is None
+    denied = policy.evaluate(AAARequest("u", {"limit_mac": "AA,BB", "mac": "CC"}))
+    assert denied.action is AAAAction.REJECT
+    assert denied.reason == "LOGIN_FROM_THIS_MAC_DENIED"
+
+
+def test_limit_station_ip_policy_matches_single_addresses_and_cidr_ranges():
+    from atd_radius.domain.user_policies import LimitStationIPPolicy
+
+    policy = LimitStationIPPolicy()
+    assert policy.evaluate(
+        AAARequest("u", {"limit_station_ip": "192.0.2.7,198.51.100.0/24", "station_ip": "192.0.2.7"})
+    ) is None
+    assert policy.evaluate(
+        AAARequest("u", {"limit_station_ip": "192.0.2.7,198.51.100.0/24", "station_ip": "198.51.100.22"})
+    ) is None
+    denied = policy.evaluate(
+        AAARequest("u", {"limit_station_ip": "192.0.2.7,198.51.100.0/24", "station_ip": "203.0.113.8"})
+    )
+    assert denied.action is AAAAction.REJECT
+    assert denied.reason == "LOGIN_FROM_THIS_IP_DENIED"
+
+
+def test_limit_station_ip_policy_fails_closed_on_invalid_ip_or_stored_range():
+    from atd_radius.domain.user_policies import LimitStationIPPolicy
+
+    policy = LimitStationIPPolicy()
+    for attrs in (
+        {"limit_station_ip": "192.0.2.0/24", "station_ip": "not-an-ip"},
+        {"limit_station_ip": "invalid-network", "station_ip": "192.0.2.7"},
+    ):
+        result = policy.evaluate(AAARequest("u", attrs))
+        assert result.action is AAAAction.REJECT
+        assert result.reason == "LOGIN_FROM_THIS_IP_DENIED"
+
