@@ -911,3 +911,14 @@ Latest code checkpoint: `190b99259684fb917021f824490380ed25bba4f8`. Python-only 
 
 Added an admin-only, audited manual reconciliation endpoint for a single accepted login reservation. It uses the shared per-user advisory lock, checks the exact reservation, blocks removal when a durable active session or successful open connection log exists, requires `CLEAR USER` permission, an explicit offline confirmation, and a nonblank operator reason. There is no automatic TTL because age alone cannot prove that the NAS session is gone. Python-only and full PostgreSQL CI passed on the previous checkpoint `e5a680ddd2f5d8436c1f12da366dee33e94c53fe`; latest validation including whitespace-only reason rejection is running on `20dddd6666ba4d6ed9630347edb4c1a1a7b06cb4`. Manual provider verification remains required.
 
+## Core-first AAA plugin batch — 2026-10-25
+
+The live Access-Request pipeline now runs three source-backed login restrictions from native user attributes:
+- `limit_caller_id`: regex search semantics, source-mapped Caller-ID fields for Cisco/GnuGk/MVTS/Tenor, and the explicit allow-missing flag.
+- `limit_mac`: conditional check when the provider's source-defined handler supplies `mac`; mappings cover BSAE, ChilliSpot, and MikroTik Ethernet/Wireless.
+- `limit_station_ip`: conditional check against individual IPs or IP/netmask ranges; mappings cover PPPD and MikroTik Virtual.
+
+Added provider normalization, domain policy, access-context and actual dispatcher rejection tests. The Python-only workflow passed at code checkpoint `da36df946da9b0400afddd949cc501d29ee60f85`; full PostgreSQL-backed CI for this batch is still in progress on the newer documentation/code history. One earlier caller-ID test fixture initially failed because its regex was incorrectly anchored; the fixture was corrected and the subsequent Python run passed. Do not treat the latest full matrix as green until the active CI run completes.
+
+This is not completion of all IBSng core behavior. The user-specified sequence is now recorded as a strict gate: finish core parity first, then UI, then installer/upgrade/rollback, then end-to-end capability testing. No UI/installer work is being substituted for core parity.
+
