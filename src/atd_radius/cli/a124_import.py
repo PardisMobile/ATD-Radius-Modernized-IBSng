@@ -18,7 +18,7 @@ from typing import Any
 import psycopg
 from psycopg import sql
 from atd_radius.config import settings
-from atd_radius.compatibility.a124_schema_parity import _source_column_spec, read_a124_schema
+from atd_radius.compatibility.a124_schema_parity import _normalize_constraint, _source_column_spec, read_a124_schema
 
 CANONICAL_A124_SHA256 = "c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839614bb9349d18a8"
 
@@ -146,6 +146,24 @@ def _table_order(tables: list[str], foreign_keys: list[dict[str, Any]]) -> list[
             f"cross-table foreign-key cycle cannot be safely ordered: {cyclic}; no data was imported"
         )
     return ordered
+
+
+def _constraint_signatures(conn, schema: str) -> set[tuple[str, str]]:
+    rows = conn.execute(
+        """
+        SELECT table_class.relname, pg_catalog.pg_get_constraintdef(constraint_row.oid, true)
+        FROM pg_constraint AS constraint_row
+        JOIN pg_class AS table_class ON table_class.oid=constraint_row.conrelid
+        JOIN pg_namespace AS namespace ON namespace.oid=table_class.relnamespace
+        WHERE namespace.nspname=%s AND constraint_row.contype IN ('p', 'f', 'u', 'c', 'x')
+        ORDER BY table_class.relname, constraint_row.contype, constraint_row.oid
+        """, (schema,)
+    ).fetchall()
+    signatures = set()
+    for table, definition in rows:
+        normalized = re.sub(rf"\b{re.escape(schema)}\.", "", str(definition), flags=re.I)
+        signatures.add((str(table).lower(), _normalize_constraint(normalized)))
+    return signatures
 
 
 def _sequence_specs(conn, schema: str) -> dict[str, dict[str, Any]]:
@@ -292,6 +310,18 @@ def _plan(source_conn, target_conn, source_schema: str, target_schema: str,
             "key_columns": list(source_key), "source_rows": source_count,
             "target_rows_before": target_count,
         })
+
+    source_constraints = _constraint_signatures(source_conn, source_schema)
+    target_constraints = _constraint_signatures(target_conn, target_schema)
+    source_table_set = set(source_tables)
+    source_constraints = {item for item in source_constraints if item[0] in source_table_set}
+    target_constraints = {item for item in target_constraints if item[0] in source_table_set}
+    if source_constraints != target_constraints:
+        raise A124ImportError(
+            "source/target constraint definitions differ; "
+            f"missing in target={sorted(source_constraints - target_constraints)}, "
+            f"extra in target={sorted(target_constraints - source_constraints)}"
+        )
 
     source_sequences = _sequence_specs(source_conn, source_schema)
     target_sequences = _sequence_specs(target_conn, target_schema)

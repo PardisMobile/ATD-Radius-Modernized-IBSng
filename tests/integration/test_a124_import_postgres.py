@@ -117,3 +117,18 @@ def test_import_refuses_canonical_source_type_drift(import_schemas):
                 {"parent": {"id": "bigint", "label": "text"}, "child": {"id": "integer", "parent_id": "integer", "value": "text"}},
                 canonical_primary_keys={"parent": {"id"}, "child": {"id"}},
             )
+
+
+def test_import_refuses_constraint_drift(import_schemas):
+    dsn, source_schema, target_schema = import_schemas
+    with psycopg.connect(dsn) as source, psycopg.connect(dsn) as target:
+        target.execute(
+            sql.SQL("ALTER TABLE {}.child DROP CONSTRAINT {}").format(
+                sql.Identifier(target_schema), sql.Identifier("child_parent_id_fkey")
+            )
+        )
+        with pytest.raises(A124ImportError, match="constraint definitions differ"):
+            import_data(
+                source, target, source_schema, target_schema,
+                {"parent": {"id": "integer", "label": "text"}, "child": {"id": "integer", "parent_id": "integer", "value": "text"}},
+            )
