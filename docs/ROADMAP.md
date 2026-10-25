@@ -1,3 +1,18 @@
+# VERIFIED SCHEMA-AUDIT INCREMENT — 2026-10-25
+
+Code checkpoint `bdfc5cc397cb2a058db59551d1bd410db04e6283` passed full CI on Python 3.11/3.12: **1,075 passed each, 2 warnings**; Python-only: **1,050 passed, 25 skipped**.
+
+Schema parity audit now checks normalized PK/FK/UNIQUE/CHECK/EXCLUDE constraint definitions for shared same-named tables, with two new regressions. This remains read-only assessment.
+
+## Next implementation batch priorities
+1. Implement a safe A1.24 data import/adoption path with strict schema/key compatibility gates, dry-run row counts, transactional transfer, sequence reconciliation, and fail-closed handling for unmapped/plugin objects.
+2. Prove row-level parity and restore/cutover on representative databases; never stamp the migration ledger based on a clean static preflight alone.
+3. Complete live NAS/provider interoperability for authentication, MPPE, accounting and Disconnect/CoA remote-state verification.
+4. Complete safe accepted-login reservation reconciliation, source-backed billing/expiry/bandwidth/plugin side effects and remaining XML-RPC.
+5. Finish admin/user UI, reports/graphs, installer, upgrade/rollback, supported OS and licensing.
+
+---
+
 # VERIFIED MAIN RECONCILIATION — 2026-10-25
 
 Main head `7484ea5b0a23f32d4de05cc794ff12d1dc76f5c1` passed full CI on Python 3.11/3.12 (1,073 passed each, 2 warnings). The seven previously open PRs were reconciled directly into main without opening more PRs.

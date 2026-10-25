@@ -1,3 +1,9 @@
+# VERIFIED SCHEMA-AUDIT INCREMENT — 2026-10-25
+
+The static audit now compares normalized PK/FK/UNIQUE/CHECK/EXCLUDE constraint definitions for same-named shared tables in addition to table/column/index/sequence inventories and column metadata. The two new constraint regressions pass in the full CI run: **1,075 passed on Python 3.11 and 1,075 on Python 3.12, 2 warnings each**.
+
+This is still an assessment tool. It does not migrate rows, prove plugin parity, or validate backup/restore fidelity. Lossless A1.24 data import/adoption remains a release blocker.
+
 # VERIFIED MAIN COMPATIBILITY UPDATE — 2026-10-25
 
 Main head `7484ea5b0a23f32d4de05cc794ff12d1dc76f5c1` passed full CI on Python 3.11/3.12 (1,073 passed each, 2 warnings); Python-only: 1,048 passed, 25 skipped.

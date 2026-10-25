@@ -1,3 +1,13 @@
+# LATEST VERIFIED SCHEMA-AUDIT INCREMENT — 2026-10-25
+
+Code checkpoint `bdfc5cc397cb2a058db59551d1bd410db04e6283` passed full CI on Python 3.11 and 3.12: **1,075 passed per version, 2 warnings**; Python-only: **1,050 passed, 25 skipped, 2 warnings**. CI: [full](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/40146922761), [Python-only](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/40146922755).
+
+The read-only A1.24 schema audit now inventories normalized primary-key, foreign-key, unique, check and exclusion constraint definitions in addition to table/column names, column type/nullability/defaults, explicit index names and sequence names. Constraint definitions are compared only for same-named tables present in both inventories; missing/extra tables are already reported separately, and mapped tables with different names still require explicit mapping. Added regressions cover inline and table-level constraints and shared-table drift. This remains schema assessment only, not an importer or full plugin/data parity proof.
+
+The next major release gate remains the lossless data adoption/import workflow, including row-level parity and verified restore. Live NAS/provider interoperability, safe reservation reconciliation, billing/plugin side effects and remaining UI/report/deployment work are still open.
+
+---
+
 # LATEST MAIN VERIFICATION — 2026-10-25
 
 Main head: `7484ea5b0a23f32d4de05cc794ff12d1dc76f5c1`.

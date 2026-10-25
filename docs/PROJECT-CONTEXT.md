@@ -1,3 +1,13 @@
+# LATEST VERIFIED SCHEMA-AUDIT INCREMENT — 2026-10-25
+
+Code checkpoint `bdfc5cc397cb2a058db59551d1bd410db04e6283` passed full CI on Python 3.11/3.12 (**1,075 passed each, 2 warnings**); Python-only: **1,050 passed, 25 skipped, 2 warnings**.
+
+The read-only static schema audit now compares normalized PK/FK/UNIQUE/CHECK/EXCLUDE constraint definitions on same-named shared tables, alongside the previously supported table/column/index/sequence inventory and column metadata. This does not establish row/plugin parity and does not perform data import.
+
+Project purpose remains complete modernization of IBSng A1.24, preserving its data, AAA, accounting, billing, permission and operational semantics. Work directly on `main`; do not use PRs as the default integration workflow. The most important unfinished deliverable is lossless A1.24 data adoption/import plus row-level parity and restore proof.
+
+---
+
 # LATEST PROJECT CONTEXT — VERIFIED 2026-10-25
 
 Main head `7484ea5b0a23f32d4de05cc794ff12d1dc76f5c1` passed full CI on Python 3.11/3.12 (1,073 passed per version, 2 warnings). Python-only: 1,048 passed, 25 skipped, 2 warnings. Runs: [full CI](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/40144748357), [Python-only](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/40144748355).
