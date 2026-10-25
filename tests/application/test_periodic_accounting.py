@@ -91,3 +91,13 @@ def test_login_without_start_accounting_does_not_charge_session_usage():
     assert coordinator.login(7, 1).allowed
     clock[0] = 1200.0
     assert coordinator.logout(7, 1)["time_periodic_accounting_daily"] == 0
+
+
+def test_coordinator_accepts_composite_native_session_identity():
+    clock = [1000.0]
+    repo = MemoryAttributes(attrs())
+    coordinator = PeriodicAccountingCoordinator(repo, clock=lambda: clock[0])
+    assert coordinator.login(7, "12:session-A", start_accounting=True).allowed
+    clock[0] = 1042.0
+    assert coordinator.logout(7, "12:session-A")["time_periodic_accounting_daily"] == 42
+    assert repo.values["time_periodic_accounting_daily_usage"] == "42.0"
