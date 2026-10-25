@@ -146,7 +146,7 @@ class PeriodicAccountingState:
     initial_usage: int | float = 0
     committed_usage: int | float | None = None
     next_reset: float | None = None
-    starts: dict[int, float | int] = field(default_factory=dict)
+    starts: dict[int, float | int | None] = field(default_factory=dict)
     pending_reset_persist: bool = False
 
     def __post_init__(self) -> None:
@@ -166,6 +166,8 @@ class PeriodicAccountingState:
         total = self.initial_usage + self.committed_usage
         counters = counters or {}
         for instance, start in self.starts.items():
+            if start is None:
+                continue
             if self.kind is PeriodicQuotaKind.TIME:
                 total += now - float(start)
             else:
@@ -189,6 +191,7 @@ class PeriodicAccountingState:
     def login(
         self, instance: int, now: float, traffic_octets: int = 0,
         counters: Mapping[int, int] | None = None,
+        start_accounting: bool = True,
     ) -> bool:
         """Register a new instance baseline; return whether quota is exhausted.
 
@@ -196,7 +199,10 @@ class PeriodicAccountingState:
         """
         if instance < 1 or traffic_octets < 0:
             raise ValueError("instance must be positive and traffic must be non-negative")
-        self.starts[instance] = now if self.kind is PeriodicQuotaKind.TIME else traffic_octets
+        self.starts[instance] = (
+            (now if self.kind is PeriodicQuotaKind.TIME else traffic_octets)
+            if start_accounting else None
+        )
         current_counters = dict(counters or {})
         current_counters[instance] = traffic_octets
         return self.current_usage(now, current_counters) >= self.config.limit
@@ -209,7 +215,9 @@ class PeriodicAccountingState:
 
     def logout(self, instance: int, now: float, traffic_octets: int = 0) -> int | float:
         """Commit usage for one instance and remove its active baseline."""
-        start = self.starts.pop(instance, None)
+        if instance not in self.starts:
+            return 0
+        start = self.starts.pop(instance)
         if start is None:
             return 0
         if self.kind is PeriodicQuotaKind.TIME:
