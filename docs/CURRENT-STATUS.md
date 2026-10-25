@@ -1,3 +1,11 @@
+# LATEST PERIODIC ACCOUNTING RUNTIME INTEGRATION — 2026-10-26
+
+Latest implementation commits: `e5d0563969d2ce0206226d2429fa975c2124af88` (runtime composite-session regression test). This batch adds a native PostgreSQL attribute adapter for the four A1.24 periodic quotas, binds effective group/user configuration while persisting per-user usage/reset attributes only, connects login/update/logout accounting hooks to the native RADIUS handler, preserves the coordinator across packet-scoped database transactions, and supports composite RAS/session identities in quota baselines.
+
+CI for the newest commits is queued/running; this batch is **not yet verified green**. Remaining blockers include real termination/Disconnect integration when quota is exhausted, exact A1.24 `_reload` and attribute-update semantics, charging-rule assumed-KPS parity, durable/cross-worker baseline behavior, and broader plugin lifecycle parity. UI and installer remain deferred.
+
+---
+
 # LATEST IMPORT SAFETY GATE — 2026-10-25
 
 Code checkpoint `57448c86f9353e0d8d537c5f82457fd99747ee4c` passed full CI on Python 3.11 and 3.12: **1,084 passed per version, 2 warnings**. Python-only: **1,050 passed, 34 skipped, 2 warnings**. Runs: [full CI](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/40147630723), [Python-only](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/40147630717).
