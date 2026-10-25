@@ -156,8 +156,9 @@ def _normalize_constraint(value: str) -> str:
     normalized = value.lower().replace('"', "")
     normalized = re.sub(r"\s+", " ", normalized).strip()
     normalized = re.sub(r"\s*\(\s*", "(", normalized)
-    normalized = re.sub(r"\s*\)\s*", ")", normalized)
+    normalized = re.sub(r"\s*\)", ")", normalized)
     normalized = re.sub(r"\s*,\s*", ", ", normalized)
+    normalized = re.sub(r"\)(?=[a-z])", ") ", normalized)
     return normalized
 
 

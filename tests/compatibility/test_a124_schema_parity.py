@@ -157,11 +157,11 @@ def test_inventory_extracts_inline_and_table_level_constraints():
         );
     """)
     constraints = {(item["table"], item["definition"]) for item in inventory["constraints"]}
-    assert ("admins", "primary key (admin_id)") in constraints
-    assert ("admins", "unique (username)") in constraints
-    assert ("admins", "check (deposit >= 0)") in constraints
-    assert ("child", "primary key (child_id)") in constraints
-    assert ("child", "foreign key (admin_id) references admins(admin_id)") in constraints
+    assert ("admins", "primary key(admin_id)") in constraints
+    assert ("admins", "unique(username)") in constraints
+    assert ("admins", "check(deposit >= 0)") in constraints
+    assert ("child", "primary key(child_id)") in constraints
+    assert ("child", "foreign key(admin_id) references admins(admin_id)") in constraints
 
 
 def test_inventory_comparison_reports_constraint_drift_on_shared_tables_only():
@@ -169,8 +169,8 @@ def test_inventory_comparison_reports_constraint_drift_on_shared_tables_only():
         "tables": {"users": {"id": "integer"}, "legacy_only": {"id": "integer"}},
         "indexes": [], "sequences": [],
         "constraints": [
-            {"table": "users", "definition": "primary key (id)"},
-            {"table": "legacy_only", "definition": "primary key (id)"},
+            {"table": "users", "definition": "primary key(id)"},
+            {"table": "legacy_only", "definition": "primary key(id)"},
         ],
     }
     target = {
@@ -180,12 +180,12 @@ def test_inventory_comparison_reports_constraint_drift_on_shared_tables_only():
         ],
         "indexes": [], "sequences": [],
         "constraints": [
-            {"table": "users", "definition": "unique (id)"},
-            {"table": "atd_only", "definition": "primary key (id)"},
+            {"table": "users", "definition": "unique(id)"},
+            {"table": "atd_only", "definition": "primary key(id)"},
         ],
     }
     report = compare_inventory(source, target)
     assert report["constraint_drift_count"] == 2
-    assert report["missing_constraints"] == [{"table": "users", "definition": "primary key (id)"}]
-    assert report["extra_constraints"] == [{"table": "users", "definition": "unique (id)"}]
+    assert report["missing_constraints"] == [{"table": "users", "definition": "primary key(id)"}]
+    assert report["extra_constraints"] == [{"table": "users", "definition": "unique(id)"}]
     assert report["matches_all_audited_fields"] is False
