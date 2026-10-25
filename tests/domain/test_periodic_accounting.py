@@ -11,7 +11,7 @@ from atd_radius.domain.periodic_accounting import (
 def config(kind=PeriodicQuotaKind.TIME, **overrides):
     values = dict(key="time_periodic_accounting_daily", period="daily",
                   kind=kind, value="1", limit=3600, next_reset=200000,
-                  accumulated_usage=120)
+                  accumulated_usage=0)
     values.update(overrides)
     return PeriodicQuotaConfig(**values)
 
@@ -55,6 +55,14 @@ def test_daily_reset_advances_from_saved_epoch_by_whole_intervals():
     assert state.next_reset == 1000 + 86400
     assert state.current_usage(1000) == 0
     assert not state.refresh_reset_if_due(2000)
+
+
+def test_reset_rebases_active_instances_instead_of_losing_post_reset_usage():
+    state = PeriodicAccountingState(config(next_reset=1000))
+    state.starts = {1: 900.0}
+    assert state.refresh_reset_if_due(1000)
+    assert state.starts == {1: 1000}
+    assert state.current_usage(1015) == 15
 
 
 def test_monthly_reset_requires_calendar_helper_and_never_guesses_month_length():
