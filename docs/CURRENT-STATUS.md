@@ -1,3 +1,11 @@
+# LATEST IMPORT SAFETY GATE — 2026-10-25
+
+Code checkpoint `57448c86f9353e0d8d537c5f82457fd99747ee4c` passed full CI on Python 3.11 and 3.12: **1,084 passed per version, 2 warnings**. Python-only: **1,050 passed, 34 skipped, 2 warnings**. Runs: [full CI](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/40147630723), [Python-only](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/40147630717).
+
+The A1.24 row importer now also refuses source/target constraint-definition drift and verifies matching rule definitions, trigger definitions/trigger-function bodies, and source function/procedure definitions before any target writes. New PostgreSQL regressions cover function-body and rule drift. The import remains a row merge only: it does not import legacy DDL or database objects, and target-only rows are preserved. Full adoption is still not proven until a representative restored A1.24 database passes row/plugin parity and a rehearsed restore/rollback drill.
+
+---
+
 # LATEST MAIN INCREMENT — A1.24 DATA IMPORT FOUNDATION — 2026-10-25
 
 Code checkpoint `6d537a0092423d7b51eb34f9efe82e84432f65f1` passed full CI on Python 3.11 and 3.12: **1,081 passed per version, 2 warnings**. Python-only: **1,050 passed, 31 skipped, 2 warnings**. Runs: [full CI](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/40147404080), [Python-only](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/40147404101).

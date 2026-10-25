@@ -1,3 +1,17 @@
+# LATEST IMPORT SAFETY GATE — 2026-10-25
+
+Code checkpoint `57448c86f9353e0d8d537c5f82457fd99747ee4c` passed full CI on Python 3.11/3.12: **1,084 passed each, 2 warnings**; Python-only: **1,050 passed, 34 skipped**.
+
+The row importer now refuses constraint, rule, trigger/trigger-function, and source function/procedure definition drift as well as schema/key/sequence mismatches. It verifies merged row values and preserves target sequence high-water marks.
+
+Next:
+1. Run the importer against a representative restored A1.24 backup and generate a complete row-level parity report.
+2. Review extension/plugin objects not covered by the row importer; add explicit mapping or refuse adoption rather than omit them.
+3. Rehearse restore, rollback and cutover on isolated PostgreSQL before any production migration.
+4. Continue live NAS/provider interoperability, billing/plugin behavior, session reconciliation, UI/report/XML-RPC and installer/upgrade work.
+
+---
+
 # LATEST MAIN INCREMENT — A1.24 DATA IMPORT FOUNDATION — 2026-10-25
 
 Code checkpoint `6d537a0092423d7b51eb34f9efe82e84432f65f1` passed full CI: **1,081 passed on Python 3.11 and 1,081 on Python 3.12, 2 warnings each**; Python-only: **1,050 passed, 31 skipped**.

@@ -1,3 +1,11 @@
+# LATEST IMPORT SAFETY GATE — 2026-10-25
+
+Code checkpoint `57448c86f9353e0d8d537c5f82457fd99747ee4c` passed full CI: **1,084 passed on Python 3.11 and 1,084 on Python 3.12, 2 warnings each**; Python-only: **1,050 passed, 34 skipped, 2 warnings**.
+
+Before importing any rows, `atd-radius-a124-import` now checks source/target constraints, rules, triggers (including trigger-function bodies) and source function/procedure definitions, in addition to exact table/column shapes, stable keys and sequence ownership/definitions. It fails closed on these mismatches. It does not import DDL or non-row objects; source/target parity must already exist. This is not yet a complete production adoption workflow.
+
+---
+
 # LATEST MAIN INCREMENT — A1.24 DATA IMPORT FOUNDATION — 2026-10-25
 
 Code checkpoint `6d537a0092423d7b51eb34f9efe82e84432f65f1` passed full CI on Python 3.11/3.12: **1,081 passed each, 2 warnings**; Python-only: **1,050 passed, 31 skipped, 2 warnings**.

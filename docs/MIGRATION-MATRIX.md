@@ -1,3 +1,7 @@
+# IMPORT OBJECT-PARITY GATE — 2026-10-25
+
+Before applying row changes, the importer now checks source/target constraint, rule, trigger/trigger-function, and source function/procedure definition parity. CI passed on Python 3.11/3.12 (**1,084 passed each, 2 warnings**). These checks reduce unsafe imports but do not import DDL or establish full plugin/row parity.
+
 # A1.24 DATA IMPORT FOUNDATION — 2026-10-25
 
 `atd-radius-a124-import` is implemented and full CI passed on Python 3.11/3.12 (**1,081 passed each, 2 warnings**). It supports a dry-run-first row merge from a live A1.24 PostgreSQL source with exact table/column shape, stable-key, FK-order, sequence and post-merge row verification. Source/plugin tables missing from target are rejected. It does not import legacy DDL or other non-row objects, and it preserves target-only rows.

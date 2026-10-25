@@ -1,3 +1,7 @@
+# IMPORT OBJECT-PARITY GATE — 2026-10-25
+
+Before row transfer, `atd-radius-a124-import` now compares source and target constraints, rules, triggers and trigger-function bodies, and checks that every source function/procedure definition has a matching target definition. Any mismatch stops the import. This is a refusal gate, not an object importer: the command does not copy DDL/functions/rules/triggers/roles. Resolve the drift through a reviewed migration before rerunning the import.
+
 # A1.24 ROW IMPORT — 2026-10-25
 
 For a live IBSng A1.24 PostgreSQL database, the new `atd-radius-a124-import` command first runs read-only checks and prints row counts. It does not restore a dump directly; restore an A1.24 backup into an isolated PostgreSQL source database first, then point `--source-dsn` at that restored database.
