@@ -5,6 +5,7 @@ from atd_radius.domain.periodic_accounting import (
     PeriodicAccountingState,
     PeriodicQuotaConfig,
     PeriodicQuotaKind,
+    a124_next_month_reset,
 )
 
 
@@ -65,12 +66,20 @@ def test_reset_rebases_active_instances_instead_of_losing_post_reset_usage():
     assert state.current_usage(1015) == 14
 
 
-def test_monthly_reset_requires_calendar_helper_and_never_guesses_month_length():
+def test_monthly_reset_uses_injected_source_calendar_result_without_guessing():
     state = PeriodicAccountingState(config(period="monthly", value="jalali", next_reset=1000))
-    with pytest.raises(ValueError, match="source-compatible calendar helper"):
-        state.refresh_reset_if_due(1000)
     assert state.refresh_reset_if_due(1000, lambda calendar: 4000)
     assert state.next_reset == 4000
+
+
+def test_a124_gregorian_and_jalali_month_helpers_return_local_midnight():
+    import time
+    for calendar in ("gregorian", "jalali"):
+        next_reset = a124_next_month_reset(calendar, now=1_793_000_000)
+        local = time.localtime(next_reset)
+        assert next_reset > 1_793_000_000
+        assert local.tm_mday == 1
+        assert (local.tm_hour, local.tm_min, local.tm_sec) == (0, 0, 0)
 
 
 def test_traffic_remaining_time_matches_per_instance_assumed_kps_formula():
