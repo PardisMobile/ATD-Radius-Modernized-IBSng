@@ -146,7 +146,7 @@ class PeriodicAccountingState:
     initial_usage: int | float = 0
     committed_usage: int | float | None = None
     next_reset: float | None = None
-    starts: dict[int, float | int | None] = field(default_factory=dict)
+    starts: dict[int | str, float | int | None] = field(default_factory=dict)
     pending_reset_persist: bool = False
 
     def __post_init__(self) -> None:
@@ -162,7 +162,7 @@ class PeriodicAccountingState:
     def kind(self) -> PeriodicQuotaKind:
         return self.config.kind
 
-    def current_usage(self, now: float, counters: Mapping[int, int] | None = None) -> int | float:
+    def current_usage(self, now: float, counters: Mapping[int | str, int] | None = None) -> int | float:
         total = self.initial_usage + self.committed_usage
         counters = counters or {}
         for instance, start in self.starts.items():
@@ -197,8 +197,8 @@ class PeriodicAccountingState:
 
         A1.24 captures the start baseline before checking the quota on login.
         """
-        if instance < 1 or traffic_octets < 0:
-            raise ValueError("instance must be positive and traffic must be non-negative")
+        if not self._valid_instance(instance) or traffic_octets < 0:
+            raise ValueError("instance must be a positive integer or non-empty string; traffic must be non-negative")
         self.starts[instance] = (
             (now if self.kind is PeriodicQuotaKind.TIME else traffic_octets)
             if start_accounting else None
@@ -207,13 +207,13 @@ class PeriodicAccountingState:
         current_counters[instance] = traffic_octets
         return self.current_usage(now, current_counters) >= self.config.limit
 
-    def update_baseline(self, instance: int, now: float, traffic_octets: int = 0) -> None:
-        if instance < 1 or traffic_octets < 0:
-            raise ValueError("instance must be positive and traffic must be non-negative")
+    def update_baseline(self, instance: int | str, now: float, traffic_octets: int = 0) -> None:
+        if not self._valid_instance(instance) or traffic_octets < 0:
+            raise ValueError("instance must be a positive integer or non-empty string; traffic must be non-negative")
         if instance in self.starts:
             self.starts[instance] = now if self.kind is PeriodicQuotaKind.TIME else traffic_octets
 
-    def logout(self, instance: int, now: float, traffic_octets: int = 0) -> int | float:
+    def logout(self, instance: int | str, now: float, traffic_octets: int = 0) -> int | float:
         """Commit usage for one instance and remove its active baseline."""
         if instance not in self.starts:
             return 0
@@ -293,7 +293,7 @@ class PeriodicAccountingState:
         now: float,
         instances: int,
         counters: Mapping[int, int] | None = None,
-        assumed_kps: Mapping[int, float] | None = None,
+        assumed_kps: Mapping[int | str, float] | None = None,
         normal_user: bool = True,
     ) -> float:
         """A1.24's estimated time until quota exhaustion across active instances."""
