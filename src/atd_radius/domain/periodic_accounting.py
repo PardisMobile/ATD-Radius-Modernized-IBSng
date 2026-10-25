@@ -167,9 +167,9 @@ class PeriodicAccountingState:
         counters = counters or {}
         for instance, start in self.starts.items():
             if self.kind is PeriodicQuotaKind.TIME:
-                total += max(0.0, now - float(start))
+                total += now - float(start)
             else:
-                total += max(0, int(counters.get(instance, 0)) - int(start))
+                total += int(counters.get(instance, int(start))) - int(start)
         return total
 
     def snapshot(
@@ -186,7 +186,10 @@ class PeriodicAccountingState:
             reset_required=self.pending_reset_persist,
         )
 
-    def login(self, instance: int, now: float, traffic_octets: int = 0) -> bool:
+    def login(
+        self, instance: int, now: float, traffic_octets: int = 0,
+        counters: Mapping[int, int] | None = None,
+    ) -> bool:
         """Register a new instance baseline; return whether quota is exhausted.
 
         A1.24 captures the start baseline before checking the quota on login.
@@ -194,7 +197,9 @@ class PeriodicAccountingState:
         if instance < 1 or traffic_octets < 0:
             raise ValueError("instance must be positive and traffic must be non-negative")
         self.starts[instance] = now if self.kind is PeriodicQuotaKind.TIME else traffic_octets
-        return self.current_usage(now, {instance: traffic_octets}) >= self.config.limit
+        current_counters = dict(counters or {})
+        current_counters[instance] = traffic_octets
+        return self.current_usage(now, current_counters) >= self.config.limit
 
     def update_baseline(self, instance: int, now: float, traffic_octets: int = 0) -> None:
         if instance < 1 or traffic_octets < 0:
@@ -208,9 +213,9 @@ class PeriodicAccountingState:
         if start is None:
             return 0
         if self.kind is PeriodicQuotaKind.TIME:
-            used = max(0.0, now - float(start))
+            used = now - float(start)
         else:
-            used = max(0, int(traffic_octets) - int(start))
+            used = int(traffic_octets) - int(start)
         self.committed_usage += used
         return used
 
