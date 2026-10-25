@@ -205,6 +205,9 @@ def provider_login_identity(
         return {"mac": station}
     if provider == "mikrotik":
         port_type = value("NAS-Port-Type")
+        port_type = {"5": "Virtual", "15": "Ethernet", "19": "Wireless-802.11"}.get(
+            port_type or "", port_type
+        )
         if port_type in {"Ethernet", "Wireless-802.11"}:
             return {"mac": station}
         if port_type == "Virtual":
