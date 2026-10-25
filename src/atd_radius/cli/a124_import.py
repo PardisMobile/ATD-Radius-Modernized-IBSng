@@ -17,8 +17,7 @@ from typing import Any
 
 import psycopg
 from psycopg import sql
-from psycopg.conninfo import conninfo_to_dict
-
+from atd_radius.config import settings
 from atd_radius.compatibility.a124_schema_parity import parse_a124_inventory, read_a124_schema
 
 CANONICAL_A124_SHA256 = "c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839614bb9349d18a8"
@@ -527,7 +526,7 @@ def main(argv: list[str] | None = None) -> int:
             raise A124ImportError(
                 f"canonical archive SHA-256 mismatch: expected {CANONICAL_A124_SHA256}, got {digest}"
             )
-        target_dsn = args.target_dsn or __import__("atd_radius.config", fromlist=["settings"]).settings.database_url
+        target_dsn = args.target_dsn or settings.database_url
         with psycopg.connect(args.source_dsn) as source_conn, psycopg.connect(target_dsn) as target_conn:
             source_identity = _database_identity(source_conn)
             target_identity = _database_identity(target_conn)

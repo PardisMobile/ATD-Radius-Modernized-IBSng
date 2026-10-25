@@ -71,7 +71,7 @@ def test_apply_merges_rows_in_fk_order_and_reconciles_sequences(import_schemas):
         assert target.execute(sql.SQL("SELECT nextval(%s::regclass)").format(), (f"{target_schema}.parent_id_seq",)).fetchone()[0] == 3
 
 
-def test_import_refuses_unmapped_source_tables_and_keyless_tables(import_schemas):
+def test_import_refuses_unmapped_source_tables(import_schemas):
     dsn, source_schema, target_schema = import_schemas
     with psycopg.connect(dsn) as source, psycopg.connect(dsn) as target:
         source.execute(sql.SQL("CREATE TABLE {}.unmapped (payload text)").format(sql.Identifier(source_schema)))
@@ -95,3 +95,15 @@ def test_import_refuses_self_reference_cycles_before_target_writes(import_schema
                 apply=True,
             )
         assert target.execute(sql.SQL("SELECT count(*) FROM {}.tree").format(sql.Identifier(target_schema))).fetchone()[0] == 0
+
+
+def test_import_refuses_keyless_tables(import_schemas):
+    dsn, source_schema, target_schema = import_schemas
+    with psycopg.connect(dsn) as source, psycopg.connect(dsn) as target:
+        source.execute(sql.SQL("CREATE TABLE {}.keyless (payload text)").format(sql.Identifier(source_schema)))
+        target.execute(sql.SQL("CREATE TABLE {}.keyless (payload text)").format(sql.Identifier(target_schema)))
+        with pytest.raises(A124ImportError, match="no simple primary/unique key"):
+            import_data(
+                source, target, source_schema, target_schema,
+                {"parent": {"id": "integer", "label": "text"}, "child": {"id": "integer", "parent_id": "integer", "value": "text"}},
+            )
