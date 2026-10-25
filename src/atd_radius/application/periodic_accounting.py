@@ -114,18 +114,20 @@ class PeriodicAccountingCoordinator:
         user = self._load_user(user_id)
         exhausted: list[str] = []
         counters = {
-            key: self.traffic_counters(user_id, key)
-            for key, state in user.quotas.items()
+            active_instance: self.traffic_counters(user_id, active_instance)
+            for state in user.quotas.values()
             if state.kind is PeriodicQuotaKind.TRAFFIC
+            for active_instance in state.starts
         }
+        counters[instance] = self.traffic_counters(user_id, instance)
         for key, state in user.quotas.items():
-            traffic = counters.get(instance, 0)
+            traffic = counters[instance] if state.kind is PeriodicQuotaKind.TRAFFIC else 0
             if state.login(instance, now, traffic, counters):
                 exhausted.append(key)
         self._persist(user_id, user)
         return PeriodicQuotaDecision(not exhausted, tuple(exhausted))
 
-    def update(self, user_id: int, instance: int) -> PeriodicQuotaDecision:
+    def update(self, user_id: int, instance: int, *, start_accounting: bool = False) -> PeriodicQuotaDecision:
         now = self.clock()
         user = self._load_user(user_id)
         counters = {
@@ -134,8 +136,9 @@ class PeriodicAccountingCoordinator:
             if state.kind is PeriodicQuotaKind.TRAFFIC
             for active_instance in state.starts
         }
-        for state in user.quotas.values():
-            state.update_baseline(instance, now, counters.get(instance, 0))
+        if start_accounting:
+            for state in user.quotas.values():
+                state.update_baseline(instance, now, counters.get(instance, 0))
         self._persist(user_id, user)
         return self.can_stay_online(user_id, instance, counters=counters)
 
