@@ -1,8 +1,8 @@
 """A1.24 periodic-accounting quota calculations.
 
 This module captures the legacy plugin's arithmetic and per-instance baselines.
-Persistence, Gregorian/Jalali month-boundary helpers, and runtime hook wiring
-are deliberately injected/handled by the application layer.
+Persistence and runtime hook wiring are deliberately handled by the application
+layer; Gregorian/Jalali month-boundary math is ported from the canonical source.
 """
 from __future__ import annotations
 
@@ -252,9 +252,11 @@ class PeriodicAccountingState:
                 while next_reset < now:
                     next_reset += interval
             else:
-                if next_month_reset is None:
-                    raise ValueError("monthly reset requires source-compatible calendar helper")
-                next_reset = next_month_reset(self.config.value)
+                next_reset = (
+                    a124_next_month_reset(self.config.value, now)
+                    if next_month_reset is None
+                    else next_month_reset(self.config.value)
+                )
             self.reset(next_reset, now, counters)
             return True
         if self.next_reset > now:
@@ -265,9 +267,11 @@ class PeriodicAccountingState:
             while next_reset < now:
                 next_reset += interval
         else:
-            if next_month_reset is None:
-                raise ValueError("monthly reset requires source-compatible calendar helper")
-            next_reset = next_month_reset(self.config.value)
+            next_reset = (
+                a124_next_month_reset(self.config.value, now)
+                if next_month_reset is None
+                else next_month_reset(self.config.value)
+            )
         self.reset(next_reset, now, counters)
         return True
 
