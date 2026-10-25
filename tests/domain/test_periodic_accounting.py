@@ -28,13 +28,13 @@ def test_time_quota_includes_committed_initial_and_all_active_instance_usage():
     assert not snapshot.quota_finished
 
 
-def test_traffic_quota_uses_input_plus_output_baseline_delta_and_clamps_counter_reset():
+def test_traffic_quota_uses_raw_a124_baseline_deltas_even_if_counter_decreases():
     state = PeriodicAccountingState(config(
         kind=PeriodicQuotaKind.TRAFFIC, limit=1000), initial_usage=100)
     state.starts = {1: 500, 2: 800}
     assert state.current_usage(0, {1: 650, 2: 700}) == 250
     assert state.logout(1, 0, traffic_octets=650) == 150
-    assert state.current_usage(0, {2: 700}) == 250
+    assert state.current_usage(0, {2: 700}) == 150
 
 
 def test_login_captures_baseline_before_quota_decision():
@@ -97,3 +97,16 @@ def test_traffic_remaining_time_matches_per_instance_assumed_kps_formula():
 def test_invalid_periodic_accounting_configuration_fails_closed(period, value):
     with pytest.raises(ValueError):
         PeriodicQuotaConfig("key", period, PeriodicQuotaKind.TIME, value, 100)
+
+
+def test_login_quota_check_includes_existing_active_instance_counters():
+    state = PeriodicAccountingState(config(kind=PeriodicQuotaKind.TRAFFIC, limit=1000))
+    state.starts = {1: 100}
+    assert state.login(2, now=1000, traffic_octets=100, counters={1: 950})
+
+
+def test_time_usage_keeps_fractional_seconds_until_persistence_boundary():
+    state = PeriodicAccountingState(config(limit=100))
+    state.starts = {1: 10.25}
+    assert state.current_usage(10.75) == 0.5
+    assert state.logout(1, 10.75) == 0.5
