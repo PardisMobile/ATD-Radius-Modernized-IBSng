@@ -127,8 +127,8 @@ class PeriodicQuotaConfig:
 
 @dataclass(frozen=True, slots=True)
 class PeriodicQuotaSnapshot:
-    usage: int
-    remaining: int
+    usage: int | float
+    remaining: int | float
     quota_finished: bool
     next_reset: float
     reset_required: bool = False
@@ -143,8 +143,8 @@ class PeriodicAccountingState:
     committed into accumulated usage exactly once by removing its baseline.
     """
     config: PeriodicQuotaConfig
-    initial_usage: int = 0
-    committed_usage: int | None = None
+    initial_usage: int | float = 0
+    committed_usage: int | float | None = None
     next_reset: float | None = None
     starts: dict[int, float | int] = field(default_factory=dict)
     pending_reset_persist: bool = False
@@ -162,12 +162,12 @@ class PeriodicAccountingState:
     def kind(self) -> PeriodicQuotaKind:
         return self.config.kind
 
-    def current_usage(self, now: float, counters: Mapping[int, int] | None = None) -> int:
+    def current_usage(self, now: float, counters: Mapping[int, int] | None = None) -> int | float:
         total = self.initial_usage + self.committed_usage
         counters = counters or {}
         for instance, start in self.starts.items():
             if self.kind is PeriodicQuotaKind.TIME:
-                total += max(0, int(now - float(start)))
+                total += max(0.0, now - float(start))
             else:
                 total += max(0, int(counters.get(instance, 0)) - int(start))
         return total
@@ -202,13 +202,13 @@ class PeriodicAccountingState:
         if instance in self.starts:
             self.starts[instance] = now if self.kind is PeriodicQuotaKind.TIME else traffic_octets
 
-    def logout(self, instance: int, now: float, traffic_octets: int = 0) -> int:
+    def logout(self, instance: int, now: float, traffic_octets: int = 0) -> int | float:
         """Commit usage for one instance and remove its active baseline."""
         start = self.starts.pop(instance, None)
         if start is None:
             return 0
         if self.kind is PeriodicQuotaKind.TIME:
-            used = max(0, int(now - float(start)))
+            used = max(0.0, now - float(start))
         else:
             used = max(0, int(traffic_octets) - int(start))
         self.committed_usage += used
@@ -289,7 +289,7 @@ class PeriodicAccountingState:
         remaining = self.config.limit - self.current_usage(now, counters)
         if remaining <= 0:
             return 0.0
-        share = remaining / instances
+        share = remaining / instances if self.kind is PeriodicQuotaKind.TIME else remaining // instances
         if self.kind is PeriodicQuotaKind.TIME:
             return share
         if not normal_user:
