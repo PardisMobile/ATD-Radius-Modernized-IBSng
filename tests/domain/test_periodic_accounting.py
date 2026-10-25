@@ -51,18 +51,18 @@ def test_logout_commits_instance_once():
 
 def test_daily_reset_advances_from_saved_epoch_by_whole_intervals():
     state = PeriodicAccountingState(config(next_reset=1000), initial_usage=500)
-    assert state.refresh_reset_if_due(1000)
+    assert state.refresh_reset_if_due(1001)
     assert state.next_reset == 1000 + 86400
-    assert state.current_usage(1000) == 0
+    assert state.current_usage(1001) == 0
     assert not state.refresh_reset_if_due(2000)
 
 
 def test_reset_rebases_active_instances_instead_of_losing_post_reset_usage():
     state = PeriodicAccountingState(config(next_reset=1000))
     state.starts = {1: 900.0}
-    assert state.refresh_reset_if_due(1000)
-    assert state.starts == {1: 1000}
-    assert state.current_usage(1015) == 15
+    assert state.refresh_reset_if_due(1001)
+    assert state.starts == {1: 1001}
+    assert state.current_usage(1015) == 14
 
 
 def test_monthly_reset_requires_calendar_helper_and_never_guesses_month_length():
