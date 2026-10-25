@@ -67,6 +67,10 @@ def test_apply_merges_rows_in_fk_order_and_reconciles_sequences(import_schemas):
         assert report["rows_verified_total"] == 3
         assert report["target_rows_after_total"] == 4
         assert report["target_only_rows_after_total"] == 1
+        sequence_report = next(item for item in report["sequence_results"] if item["sequence"] == "parent_id_seq")
+        assert sequence_report["restart_value"] == 101
+        assert sequence_report["target_next_value_after"] == 101
+        assert sequence_report["target_is_called_after"] is False
         parent_report = next(item for item in report["tables"] if item["table"] == "parent")
         assert parent_report["target_rows_before"] == 2
         assert parent_report["target_rows_after"] == 3
