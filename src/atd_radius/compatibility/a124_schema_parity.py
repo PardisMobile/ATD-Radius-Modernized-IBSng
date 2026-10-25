@@ -120,8 +120,65 @@ def parse_a124_tables(sql: str) -> dict[str, dict[str, str]]:
     return tables
 
 
+def _constraint_definition(declaration: str, table: str, column: str | None = None) -> str | None:
+    """Extract a PostgreSQL constraint definition without depending on its name."""
+    value = re.sub(r"^constraint\s+[^\s]+\s+", "", declaration.strip(), flags=re.I)
+    if re.match(r"^primary\s+key\b", value, re.I):
+        match = re.search(r"primary\s+key\s*\(([^)]+)\)", value, re.I)
+        cols = match.group(1) if match else column
+        return f"primary key ({cols})" if cols else None
+    if re.match(r"^unique\b", value, re.I):
+        match = re.search(r"unique\s*\(([^)]+)\)", value, re.I)
+        cols = match.group(1) if match else column
+        return f"unique ({cols})" if cols else None
+    if re.match(r"^foreign\s+key\b", value, re.I):
+        return value
+    if re.match(r"^check\s*\(", value, re.I):
+        return value
+    if column is not None:
+        if re.search(r"\bprimary\s+key\b", value, re.I):
+            return f"primary key ({column})"
+        if re.search(r"\bunique\b", value, re.I):
+            return f"unique ({column})"
+        ref = re.search(r"\breferences\s+([\w\"]+)(?:\s*\(([^)]+)\))?([^,]*)", value, re.I)
+        if ref:
+            target = ref.group(1).strip('"').lower()
+            target_cols = f"({ref.group(2)})" if ref.group(2) else ""
+            suffix = re.sub(r"\s+", " ", ref.group(3).strip().lower())
+            return f"foreign key ({column}) references {target}{target_cols}{(' ' + suffix) if suffix else ''}"
+        check = re.search(r"\bcheck\s*(\(.+\))", value, re.I)
+        if check:
+            return f"check {check.group(1)}"
+    return None
+
+
+def _normalize_constraint(value: str) -> str:
+    normalized = value.lower().replace('"', "")
+    normalized = re.sub(r"\s+", " ", normalized).strip()
+    normalized = re.sub(r"\s*\(\s*", "(", normalized)
+    normalized = re.sub(r"\s*\)\s*", ")", normalized)
+    normalized = re.sub(r"\s*,\s*", ", ", normalized)
+    return normalized
+
+
+def _source_constraints(sql: str) -> list[dict[str, str]]:
+    constraints: set[tuple[str, str]] = set()
+    for table, body in _table_bodies(sql):
+        for declaration in _split(body):
+            if not declaration:
+                continue
+            if _CONSTRAINT.match(declaration):
+                definition = _constraint_definition(declaration, table)
+            else:
+                col = re.match(r'^(?:"([^"]+)"|([A-Za-z_][\w$]*))\s+(.+)$', declaration, re.S)
+                definition = _constraint_definition(col.group(3), table, (col.group(1) or col.group(2)).lower()) if col else None
+            if definition:
+                constraints.add((table.lower(), _normalize_constraint(definition)))
+    return [{"table": table, "definition": definition} for table, definition in sorted(constraints)]
+
+
 def parse_a124_inventory(sql: str) -> dict[str, object]:
-    """Parse static tables, primary-key columns, explicit indexes and sequences."""
+    """Parse static tables, constraints, explicit indexes and sequences."""
     cleaned = _clean_sql(sql)
     tables = parse_a124_tables(cleaned)
     primary_keys: dict[str, set[str]] = {}
@@ -131,6 +188,10 @@ def parse_a124_inventory(sql: str) -> dict[str, object]:
             match = re.match(r"^primary\s+key\s*\(([^)]+)\)", declaration, re.I)
             if match:
                 keys.update(part.strip().strip('"').lower() for part in match.group(1).split(","))
+            else:
+                column = re.match(r'^(?:"([^"]+)"|([A-Za-z_][\w$]*))\s+(.+)$', declaration, re.S)
+                if column and re.search(r"\bprimary\s+key\b", column.group(3), re.I):
+                    keys.add((column.group(1) or column.group(2)).lower())
         primary_keys[table] = keys
     indexes = sorted({m.group(1).lower() for m in _CREATE_INDEX.finditer(cleaned)})
     sequences = {m.group(1).lower() for m in _CREATE_SEQUENCE.finditer(cleaned)}
@@ -141,6 +202,7 @@ def parse_a124_inventory(sql: str) -> dict[str, object]:
     return {
         "tables": tables,
         "primary_keys": primary_keys,
+        "constraints": _source_constraints(cleaned),
         "indexes": indexes,
         "sequences": sorted(sequences),
     }
@@ -283,9 +345,29 @@ def compare_inventory(source: Mapping[str, object], target: Mapping[str, object]
     extra_indexes = sorted(target_indexes - source_indexes)
     missing_sequences = sorted(source_sequences - target_sequences)
     extra_sequences = sorted(target_sequences - source_sequences)
+
+    # Compare constraints only on same-named tables present in both inventories.
+    if target_columns and isinstance(target_columns[0], Mapping):  # type: ignore[index]
+        target_table_names = {str(row["table"]).lower() for row in target_columns}  # type: ignore[union-attr]
+    else:
+        target_table_names = {str(table).lower() for table, _column in target_columns}  # type: ignore[union-attr]
+    shared_tables = {str(table).lower() for table in source_tables} & target_table_names  # type: ignore[union-attr]
+    source_constraints = {
+        (str(item["table"]).lower(), _normalize_constraint(str(item["definition"])))
+        for item in source.get("constraints", [])  # type: ignore[union-attr]
+        if str(item["table"]).lower() in shared_tables
+    }
+    target_constraints = {
+        (str(item["table"]).lower(), _normalize_constraint(str(item["definition"])))
+        for item in target.get("constraints", [])  # type: ignore[union-attr]
+        if str(item["table"]).lower() in shared_tables
+    }
+    missing_constraints = sorted(source_constraints - target_constraints)
+    extra_constraints = sorted(target_constraints - source_constraints)
     inventory_drift = (
         table_report["drift_count"] + len(missing_indexes) + len(extra_indexes)
         + len(missing_sequences) + len(extra_sequences)
+        + len(missing_constraints) + len(extra_constraints)
     )
     return {
         **table_report,
@@ -297,6 +379,11 @@ def compare_inventory(source: Mapping[str, object], target: Mapping[str, object]
         "target_sequence_count": len(target_sequences),
         "missing_sequences": missing_sequences,
         "extra_sequences": extra_sequences,
+        "source_constraint_count": len(source.get("constraints", [])),  # type: ignore[arg-type]
+        "target_constraint_count": len(target.get("constraints", [])),  # type: ignore[arg-type]
+        "missing_constraints": [{"table": t, "definition": d} for t, d in missing_constraints],
+        "extra_constraints": [{"table": t, "definition": d} for t, d in extra_constraints],
+        "constraint_drift_count": len(missing_constraints) + len(extra_constraints),
         "inventory_drift_count": inventory_drift,
         "column_definition_drift_count": len(definition_drift),
         "column_definition_drift": definition_drift,
@@ -304,12 +391,12 @@ def compare_inventory(source: Mapping[str, object], target: Mapping[str, object]
         "matches_column_definitions": len(definition_drift) == 0,
         "matches_all_audited_fields": inventory_drift == 0 and len(definition_drift) == 0,
         "scope_note": (
-            "Compares table/column/index/sequence names plus column type, nullable flag and "
-            "default expressions where PostgreSQL catalog data is supplied. Default expression "
-            "normalization is conservative and may flag semantically equivalent SQL. Does not "
-            "compare check/foreign-key/unique constraint semantics, extension/plugin DDL, "
-            "functions, data, backup/restore fidelity, or runtime behavior. Constraint-backed "
-            "indexes are excluded from the target explicit-index inventory."
+            "Compares table/column/index/sequence names, column type/nullability/default, and "
+            "normalized primary-key/foreign-key/unique/check/exclusion constraint definitions on "
+            "same-named shared tables. Normalization is conservative and may flag semantically "
+            "equivalent SQL. Does not compare extension/plugin DDL, functions, row data, "
+            "backup/restore fidelity, or runtime behavior. Constraint-backed indexes are excluded "
+            "from the target explicit-index inventory."
         ),
     }
 
@@ -358,11 +445,25 @@ def _target_inventory(dsn: str, schema: str) -> dict[str, object]:
         )
         indexes = [str(row[0]) for row in cursor.fetchall()]
         cursor.execute(
+            """
+            SELECT table_class.relname, pg_catalog.pg_get_constraintdef(constraint_row.oid, true)
+            FROM pg_constraint AS constraint_row
+            JOIN pg_class AS table_class ON table_class.oid = constraint_row.conrelid
+            JOIN pg_namespace AS namespace ON namespace.oid = table_class.relnamespace
+            WHERE namespace.nspname = %s AND constraint_row.contype IN ('p', 'f', 'u', 'c', 'x')
+            ORDER BY table_class.relname, constraint_row.contype, constraint_row.oid
+            """, (schema,)
+        )
+        constraints = [
+            {"table": str(table).lower(), "definition": _normalize_constraint(str(definition))}
+            for table, definition in cursor.fetchall()
+        ]
+        cursor.execute(
             "SELECT sequencename FROM pg_sequences WHERE schemaname = %s ORDER BY sequencename",
             (schema,)
         )
         sequences = [str(row[0]) for row in cursor.fetchall()]
-    return {"columns": columns, "indexes": indexes, "sequences": sequences}
+    return {"columns": columns, "indexes": indexes, "sequences": sequences, "constraints": constraints}
 
 
 def main(argv: list[str] | None = None) -> int:

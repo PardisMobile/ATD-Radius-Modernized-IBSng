@@ -140,3 +140,52 @@ def test_inventory_reports_real_column_definition_drift():
     report = compare_inventory(source, target)
     drift = {(item["column"], item["field"]) for item in report["column_definition_drift"]}
     assert drift == {("id", "type"), ("id", "nullable"), ("enabled", "default")}
+
+
+def test_inventory_extracts_inline_and_table_level_constraints():
+    inventory = parse_a124_inventory("""
+        CREATE TABLE admins (
+            admin_id integer PRIMARY KEY,
+            username text UNIQUE,
+            deposit numeric(12,2),
+            CONSTRAINT admins_deposit_nonnegative CHECK (deposit >= 0)
+        );
+        CREATE TABLE child (
+            child_id integer PRIMARY KEY,
+            admin_id integer REFERENCES admins(admin_id),
+            CONSTRAINT child_admin_fk FOREIGN KEY (admin_id) REFERENCES admins(admin_id)
+        );
+    """)
+    constraints = {(item["table"], item["definition"]) for item in inventory["constraints"]}
+    assert ("admins", "primary key (admin_id)") in constraints
+    assert ("admins", "unique (username)") in constraints
+    assert ("admins", "check (deposit >= 0)") in constraints
+    assert ("child", "primary key (child_id)") in constraints
+    assert ("child", "foreign key (admin_id) references admins(admin_id)") in constraints
+
+
+def test_inventory_comparison_reports_constraint_drift_on_shared_tables_only():
+    source = {
+        "tables": {"users": {"id": "integer"}, "legacy_only": {"id": "integer"}},
+        "indexes": [], "sequences": [],
+        "constraints": [
+            {"table": "users", "definition": "primary key (id)"},
+            {"table": "legacy_only", "definition": "primary key (id)"},
+        ],
+    }
+    target = {
+        "columns": [
+            {"table": "users", "column": "id", "type": "integer", "nullable": False, "default": None},
+            {"table": "atd_only", "column": "id", "type": "integer", "nullable": False, "default": None},
+        ],
+        "indexes": [], "sequences": [],
+        "constraints": [
+            {"table": "users", "definition": "unique (id)"},
+            {"table": "atd_only", "definition": "primary key (id)"},
+        ],
+    }
+    report = compare_inventory(source, target)
+    assert report["constraint_drift_count"] == 2
+    assert report["missing_constraints"] == [{"table": "users", "definition": "primary key (id)"}]
+    assert report["extra_constraints"] == [{"table": "users", "definition": "unique (id)"}]
+    assert report["matches_all_audited_fields"] is False
