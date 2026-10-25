@@ -16,7 +16,7 @@ atd-radius-a124-import \
   --report-file /secure/reports/a124-dry-run-2026-10-25.json
 ```
 
-The JSON report records the UTC generation time, source/target database and server identity, canonical archive digest, ordered per-table source/target counts, key columns, and—after a successful apply—verified source rows, target-only rows preserved, and inserted/updated counts. Report files are created with owner-only permissions and are never overwritten; choose a new path for each run. Keep the report with the backup and change record. A dry-run report is planning evidence only; it is not proof of a completed import.
+The JSON report records the UTC generation time, source/target database and server identity, canonical archive digest, ordered per-table source/target counts, key columns, and—after a successful apply—verified source rows, target-only rows preserved, inserted/updated counts, and per-sequence source/target high-water and restart values. Report files are created with owner-only permissions and are never overwritten; choose a new path for each run. Keep the report with the backup and change record. A dry-run report is planning evidence only; it is not proof of a completed import.
 
 After reviewing the report, stopping writes to both databases, and taking verified backups of both, apply only with an explicit target name:
 
