@@ -1,6 +1,7 @@
 """IBSng A1.24-compatible user policy adapters."""
 from __future__ import annotations
 from dataclasses import dataclass
+import ipaddress
 from datetime import datetime, timezone
 from .aaa import AAAAction,AAAResult
 from .session_policy import ActiveSessionView,session_policy
@@ -107,6 +108,43 @@ class MultiLoginPolicy:
             }.get(decision.reason, decision.reason or "POLICY_REJECTED")
             return AAAResult(AAAAction.REJECT, reason=reason)
         return None
+
+@dataclass(frozen=True, slots=True)
+class LimitMacPolicy:
+    """Mirror A1.24 limit_mac.s_login: enforce only when the RAS supplies mac."""
+    def evaluate(self, request):
+        allowed = request.attributes.get("limit_mac")
+        mac = request.attributes.get("mac")
+        if allowed in (None, "") or mac in (None, ""):
+            return None
+        permitted = str(allowed).split(",")
+        if str(mac) not in permitted:
+            return AAAResult(AAAAction.REJECT, reason="LOGIN_FROM_THIS_MAC_DENIED")
+        return None
+
+
+@dataclass(frozen=True, slots=True)
+class LimitStationIPPolicy:
+    """Mirror A1.24 limit_station_ip.s_login with IPy-compatible subnet membership."""
+    def evaluate(self, request):
+        configured = request.attributes.get("limit_station_ip")
+        station_ip = request.attributes.get("station_ip")
+        if configured in (None, "") or station_ip in (None, ""):
+            return None
+        try:
+            address = ipaddress.ip_address(str(station_ip).strip())
+        except ValueError:
+            return AAAResult(AAAAction.REJECT, reason="LOGIN_FROM_THIS_IP_DENIED")
+        for entry in str(configured).split(","):
+            try:
+                network = ipaddress.ip_network(entry.strip(), strict=False)
+            except ValueError:
+                # Invalid stored policy must never become an allow-all rule.
+                return AAAResult(AAAAction.REJECT, reason="LOGIN_FROM_THIS_IP_DENIED")
+            if address.version == network.version and address in network:
+                return None
+        return AAAResult(AAAAction.REJECT, reason="LOGIN_FROM_THIS_IP_DENIED")
+
 
 @dataclass(frozen=True,slots=True)
 class TimeoutPolicy:
