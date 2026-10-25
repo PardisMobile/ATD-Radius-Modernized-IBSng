@@ -926,6 +926,6 @@ This is not completion of all IBSng core behavior. The user-specified sequence i
 
 ## Core-first periodic-accounting foundation — 2026-10-26
 
-Added a new domain engine and regression tests for A1.24 periodic-accounting arithmetic: time and traffic usage across active instances, persisted/committed usage, quota checks, per-instance start baselines, logout accumulation, daily reset scheduling, reset-time baseline rebasing, and estimated remaining time. Monthly reset calculation now ports A1.24's Gregorian/Jalali local-midnight month-boundary helpers; it does not substitute a guessed 30-day month.
+Added a new domain engine and regression tests for A1.24 periodic-accounting arithmetic: time and traffic usage across active instances, persisted/committed usage, quota checks, per-instance start baselines (including the source's un-clamped traffic deltas), logout accumulation, daily reset scheduling, reset-time baseline rebasing, and estimated remaining time. Monthly reset calculation now ports A1.24's Gregorian/Jalali local-midnight month-boundary helpers; it does not substitute a guessed 30-day month.
 
 This is a meaningful foundation, **not a completed plugin migration**: runtime hook integration, persistent attribute updates, _reload semantics, exact calendar helper wiring and end-to-end quota termination remain open. Full CI for the new commits is running; no result is claimed until GitHub Actions completes.
