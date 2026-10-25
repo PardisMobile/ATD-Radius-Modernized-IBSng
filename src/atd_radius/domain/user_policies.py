@@ -2,6 +2,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
 import ipaddress
+import re
 from datetime import datetime, timezone
 from .aaa import AAAAction,AAAResult
 from .session_policy import ActiveSessionView,session_policy
@@ -121,6 +122,27 @@ class LimitMacPolicy:
         if str(mac) not in permitted:
             return AAAResult(AAAAction.REJECT, reason="LOGIN_FROM_THIS_MAC_DENIED")
         return None
+
+
+@dataclass(frozen=True, slots=True)
+class LimitCallerIDPolicy:
+    """Mirror A1.24 regex-based limit_caller_id login checks."""
+    def evaluate(self, request):
+        if "limit_caller_id" not in request.attributes:
+            return None
+        if "caller_id" not in request.attributes:
+            allow_missing = str(request.attributes.get("limit_caller_id_allow_not_defined", "0")) == "1"
+            return None if allow_missing else AAAResult(
+                AAAAction.REJECT, reason="LOGIN_FROM_THIS_CALLER_ID_DENIED"
+            )
+        patterns = str(request.attributes["limit_caller_id"]).split(",")
+        caller_id = str(request.attributes["caller_id"])
+        try:
+            if any(re.search(pattern, caller_id) is not None for pattern in patterns):
+                return None
+        except re.error:
+            return AAAResult(AAAAction.REJECT, reason="LOGIN_FROM_THIS_CALLER_ID_DENIED")
+        return AAAResult(AAAAction.REJECT, reason="LOGIN_FROM_THIS_CALLER_ID_DENIED")
 
 
 @dataclass(frozen=True, slots=True)
