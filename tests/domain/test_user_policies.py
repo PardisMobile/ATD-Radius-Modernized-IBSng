@@ -163,3 +163,33 @@ def test_limit_mac_and_station_ip_empty_configured_attributes_do_not_disable_che
     assert station.action is AAAAction.REJECT
     assert station.reason == "LOGIN_FROM_THIS_IP_DENIED"
 
+def test_limit_caller_id_uses_regex_search_and_source_missing_caller_flag():
+    from atd_radius.domain.user_policies import LimitCallerIDPolicy
+
+    policy = LimitCallerIDPolicy()
+    assert policy.evaluate(AAARequest("u", {"caller_id": "12345"})) is None
+    assert policy.evaluate(
+        AAARequest("u", {"limit_caller_id": r"^123|555$", "caller_id": "xx123yy"})
+    ) is None
+    denied = policy.evaluate(
+        AAARequest("u", {"limit_caller_id": r"^123$", "caller_id": "999"})
+    )
+    assert denied.action is AAAAction.REJECT
+    assert denied.reason == "LOGIN_FROM_THIS_CALLER_ID_DENIED"
+
+    missing_denied = policy.evaluate(AAARequest("u", {"limit_caller_id": r"^123$"}))
+    assert missing_denied.action is AAAAction.REJECT
+    assert policy.evaluate(
+        AAARequest("u", {"limit_caller_id": r"^123$", "limit_caller_id_allow_not_defined": "1"})
+    ) is None
+
+
+def test_limit_caller_id_invalid_stored_regex_fails_closed():
+    from atd_radius.domain.user_policies import LimitCallerIDPolicy
+
+    result = LimitCallerIDPolicy().evaluate(
+        AAARequest("u", {"limit_caller_id": "[", "caller_id": "123"})
+    )
+    assert result.action is AAAAction.REJECT
+    assert result.reason == "LOGIN_FROM_THIS_CALLER_ID_DENIED"
+
