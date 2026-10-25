@@ -109,7 +109,9 @@ class PeriodicAccountingCoordinator:
         if values:
             self.attributes.save(user_id, values)
 
-    def login(self, user_id: int, instance: int) -> PeriodicQuotaDecision:
+    def login(
+        self, user_id: int, instance: int, *, start_accounting: bool = False
+    ) -> PeriodicQuotaDecision:
         now = self.clock()
         user = self._load_user(user_id)
         exhausted: list[str] = []
@@ -122,7 +124,7 @@ class PeriodicAccountingCoordinator:
         counters[instance] = self.traffic_counters(user_id, instance)
         for key, state in user.quotas.items():
             traffic = counters[instance] if state.kind is PeriodicQuotaKind.TRAFFIC else 0
-            if state.login(instance, now, traffic, counters):
+            if state.login(instance, now, traffic, counters, start_accounting=start_accounting):
                 exhausted.append(key)
         self._persist(user_id, user)
         return PeriodicQuotaDecision(not exhausted, tuple(exhausted))
