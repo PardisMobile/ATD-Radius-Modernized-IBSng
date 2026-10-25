@@ -322,4 +322,8 @@ def test_source_login_identity_normalization_is_provider_specific():
     assert provider_login_identity(
         "Unknown", {"Calling-Station-Id": "AA:BB:CC:DD:EE:FF"}
     ) == {}
+    for provider in ("Cisco", "GnuGk", "MVTS", "Quintum Tenor"):
+        assert provider_login_identity(
+            provider, {"Calling-Station-Id": "5551234"}
+        ) == {"caller_id": "5551234"}
 
