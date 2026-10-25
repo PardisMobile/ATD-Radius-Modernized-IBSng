@@ -384,6 +384,7 @@ Migration 009 adds a durable outbox for the A1.24 post-commit mailbox deletion s
 
 | Capability | Current verified scope | Still not proven |
 |---|---|---|
+| `limit_caller_id` | Native Access-Request pipeline uses source regex-search semantics and honors the explicit missing-ID flag; Cisco, GnuGk, MVTS and Tenor mappings are source-traced and tested | Live VoIP/RAS parity and remaining plugin lifecycle hooks |
 | `limit_mac` | Native Access-Request pipeline checks the configured MAC list when a source-normalized `mac` field is present; BSAE, ChilliSpot, and MikroTik Ethernet/Wireless mappings are source-traced and tested | Optional PPPD MAC discovery via the legacy external script; live NAS parity |
 | `limit_station_ip` | Native Access-Request pipeline checks individual IPs and IP/netmask ranges when source-normalized `station_ip` is present; PPPD and MikroTik Virtual mappings are source-traced and tested | Live NAS parity and all remaining user plugin lifecycle hooks |
 
