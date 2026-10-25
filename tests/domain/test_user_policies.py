@@ -150,3 +150,16 @@ def test_limit_station_ip_policy_fails_closed_on_invalid_ip_or_stored_range():
         assert result.action is AAAAction.REJECT
         assert result.reason == "LOGIN_FROM_THIS_IP_DENIED"
 
+def test_limit_mac_and_station_ip_empty_configured_attributes_do_not_disable_checks():
+    from atd_radius.domain.user_policies import LimitMacPolicy, LimitStationIPPolicy
+
+    mac = LimitMacPolicy().evaluate(AAARequest("u", {"limit_mac": "", "mac": "AA:BB"}))
+    assert mac.action is AAAAction.REJECT
+    assert mac.reason == "LOGIN_FROM_THIS_MAC_DENIED"
+
+    station = LimitStationIPPolicy().evaluate(
+        AAARequest("u", {"limit_station_ip": "", "station_ip": "192.0.2.1"})
+    )
+    assert station.action is AAAAction.REJECT
+    assert station.reason == "LOGIN_FROM_THIS_IP_DENIED"
+
