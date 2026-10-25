@@ -7,6 +7,7 @@ are deliberately injected/handled by the application layer.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime
 from enum import StrEnum
 from math import inf
 from typing import Callable, Mapping
@@ -164,7 +165,7 @@ class PeriodicAccountingState:
         """
         if self.next_reset is None:
             if self.config.period == "daily":
-                base = now - (now % 86400)
+                base = datetime.fromtimestamp(now).replace(hour=0, minute=0, second=0, microsecond=0).timestamp()
                 interval = int(self.config.value) * 86400
                 next_reset = base + interval
                 while next_reset < now:
@@ -180,7 +181,7 @@ class PeriodicAccountingState:
         if self.config.period == "daily":
             interval = int(self.config.value) * 86400
             next_reset = self.next_reset
-            while next_reset <= now:
+            while next_reset < now:
                 next_reset += interval
         else:
             if next_month_reset is None:
