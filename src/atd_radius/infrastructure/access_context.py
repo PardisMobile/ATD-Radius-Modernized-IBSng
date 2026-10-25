@@ -16,7 +16,11 @@ from atd_radius.domain.radius_auth import (
     verify_pap,
 )
 from atd_radius.domain.user_policies import ras_allows_multi_login
-from atd_radius.domain.ras_provider import provider_ip_assignment_for_attributes, provider_service_for_ras
+from atd_radius.domain.ras_provider import (
+    provider_ip_assignment_for_attributes,
+    provider_login_identity,
+    provider_service_for_ras,
+)
 
 class NativeUserSource(Protocol):
     def get_authentication_record(self, username: str) -> tuple[int, str, bool] | None: ...
@@ -125,6 +129,9 @@ class NativeAccessContext:
                     else {name: value for name, value in self.ras.attributes(ras_record.ras_id)}
                 )
                 service = provider_service_for_ras(ras_record.ras_type)
+                # Only source-defined RAS handlers populate the internal fields
+                # consumed by limit_mac and limit_station_ip login plugins.
+                attrs.update(provider_login_identity(ras_record.ras_type, packet.attributes))
                 attrs["__ras_multi_login_allowed"] = "1" if ras_allows_multi_login(
                     ras_record.ras_type, ras_attrs, service
                 ) else "0"
