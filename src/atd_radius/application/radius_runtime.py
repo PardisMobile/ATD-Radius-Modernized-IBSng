@@ -477,6 +477,7 @@ class NativeRadiusRuntimeState:
         self.sessions_recovered = False
         self.cisco_voip_auth_h323_ids: dict[int, set[str]] = {}
         self.cisco_online_status: dict[int, dict[str, dict[str, object]]] = {}
+        self.periodic_accounting: PeriodicAccountingCoordinator | None = None
 
     def initialize(self, ras_repository, pool_repository) -> None:
         self.ras = build_ras_runtime(ras_repository, self.type_defaults)
@@ -976,6 +977,29 @@ class NativeRadiusPacketHandler:
                 ip_pools=pools,
             )
             identities = NativeAccountingIdentityResolver(users, ras)
+            if self.state.periodic_accounting is None:
+                def periodic_traffic_counter(user_id: int, instance: str) -> int:
+                    try:
+                        ras_text, session_id = instance.split(":", 1)
+                        ras_id = int(ras_text)
+                    except (ValueError, AttributeError):
+                        return 0
+                    session = self.state.sessions.get(SessionKey(user_id, ras_id, session_id))
+                    if session is None:
+                        return 0
+                    return int(session.input_octets) + int(session.output_octets)
+
+                self.state.periodic_accounting = PeriodicAccountingCoordinator(
+                    NativePeriodicAccountingAttributes(users),
+                    clock=lambda: datetime.now(timezone.utc).timestamp(),
+                    traffic_counters=periodic_traffic_counter,
+                    is_normal_user=users.is_normal_user,
+                )
+            else:
+                # Rebind only the packet-scoped repository; preserve active
+                # per-instance quota baselines across short DB transactions.
+                self.state.periodic_accounting.attributes = NativePeriodicAccountingAttributes(users)
+                self.state.periodic_accounting.is_normal_user = users.is_normal_user
             handler = RadiusRuntimeHandler(
                 dispatcher,
                 accounting,
@@ -985,6 +1009,7 @@ class NativeRadiusPacketHandler:
                 cisco_voip_auth_h323_ids=self.state.cisco_voip_auth_h323_ids,
                 cisco_online_status=self.state.cisco_online_status,
                 login_reservations=login_reservations,
+                periodic_accounting=self.state.periodic_accounting,
             )
             response = handler(packet, peer)
             if packet.code is RadiusCode.ACCOUNTING_REQUEST:
