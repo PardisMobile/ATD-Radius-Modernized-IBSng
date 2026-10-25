@@ -402,3 +402,8 @@ The two policies are now wired into the actual AAA pipeline, not just tested as 
 | Monthly reset | Gregorian/Jalali local-midnight helpers ported from A1.24 source; no guessed month length | Runtime hook/persistence integration and calendar edge-case parity against a restored A1.24 instance |
 
 This is an arithmetic/domain increment only. Do not mark the periodic-accounting plugin complete until all four plugin classes, persistence and hook lifecycles are integrated and tested against the canonical source.
+
+
+| Capability | Current scope | Remaining parity work |
+|---|---|---|
+| Periodic accounting lifecycle | Domain arithmetic plus application coordinator for login/update/logout/quota decision/reset/termination callback | Connect to live runtime hooks and native attribute persistence; durable baselines across workers/restarts; source-level end-to-end comparison |
