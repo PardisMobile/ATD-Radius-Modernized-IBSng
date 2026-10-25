@@ -907,3 +907,7 @@ The row importer now emits persistent per-table audit evidence: source rows, tar
 
 Latest code checkpoint: `190b99259684fb917021f824490380ed25bba4f8`. Python-only CI passed for this checkpoint. PostgreSQL-backed CI on Python 3.11 and 3.12 is still running; do not mark the latest full matrix green until it completes. No representative restored A1.24 backup is available in this environment, so this is audit tooling progress—not real-world migration validation.
 
+## Explicit login-reservation reconciliation — 2026-10-25
+
+Added an admin-only, audited manual reconciliation endpoint for a single accepted login reservation. It uses the shared per-user advisory lock, checks the exact reservation, blocks removal when a durable active session or successful open connection log exists, requires `CLEAR USER` permission, an explicit offline confirmation, and a nonblank operator reason. There is no automatic TTL because age alone cannot prove that the NAS session is gone. Python-only and full PostgreSQL CI passed on the previous checkpoint `e5a680ddd2f5d8436c1f12da366dee33e94c53fe`; latest validation including whitespace-only reason rejection is running on `20dddd6666ba4d6ed9630347edb4c1a1a7b06cb4`. Manual provider verification remains required.
+
