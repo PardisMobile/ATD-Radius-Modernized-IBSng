@@ -244,3 +244,22 @@ def test_reconcile_reservation_requires_valid_key_and_clear_permission(monkeypat
         assert exc.status_code == 403
     else:
         raise AssertionError("CLEAR USER permission is required")
+
+def test_reconcile_reservation_rejects_whitespace_only_reason(monkeypatch):
+    def unexpected_connection():
+        raise AssertionError("invalid reason must be rejected before database access")
+
+    monkeypatch.setattr(api, "connection", unexpected_connection)
+    try:
+        api.reconcile_login_reservation(
+            "a" * 64,
+            api.ReconcileLoginReservationPayload(
+                user_id=7, reason="            ", confirm_offline=True
+            ),
+            _admin(),
+        )
+    except api.HTTPException as exc:
+        assert exc.status_code == 422
+    else:
+        raise AssertionError("whitespace-only reason must be rejected")
+
