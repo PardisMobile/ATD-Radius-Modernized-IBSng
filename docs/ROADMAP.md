@@ -583,3 +583,15 @@ Remaining release blockers include live NAS PAP/CHAP/MS-CHAPv1/v2 and MPPE inter
 ## Main synchronization and current release gates — 2026-10-25
 
 The working feature ref was fast-forwarded to the existing `main` integration head `1b9d2aabac13a346447cff29c857d3807ff4888b` after confirming it was 40 commits behind. This was a ref synchronization, not a new feature implementation. The merged tree includes the semantic-object inventory expansion, migration runner, read-only A1.24 preflight, and backup/restore tooling. CI is green on the earlier reviewed feature checkpoint; fresh CI on this exact merge head remains unverified. Highest-value unfinished implementation remains the lossless A1.24 data importer with row/sequence/object parity and transactional rollback, followed by live protocol/provider validation and the remaining billing/plugin/UI/deployment workflows. Do not report adoption preflight as migration completion.
+
+## Delivery phase gate — clarified 2026-10-25
+
+The release order is strict and must not be collapsed:
+
+1. **Core parity first:** compare every A1.24 user/RAS/group/service plugin, AAA authentication method, accounting lifecycle, billing/expiry side effect, permission check, native database mutation, and provider operation against the canonical source. Add source-traced regression tests and explicit unsupported boundaries. Do not mark the core complete from CI pass counts alone.
+2. **UI only after core gate:** build the admin/user experience on stable, verified core contracts; UI work must not mask missing legacy behavior.
+3. **Installer only after UI/core contracts stabilize:** provide reproducible installation, configuration/secrets, schema migration, service lifecycle, upgrade and rollback.
+4. **Capability testing after deployment packaging:** run the end-to-end protocol/provider, accounting, billing, permission, recovery and upgrade matrix on isolated test systems and then representative NAS/provider equipment.
+
+No installer or broad UI implementation should be treated as current priority. The current batch extends source-backed AAA admission by implementing the native `limit_caller_id`, `limit_mac`, and `limit_station_ip` checks with provider-specific field mapping. Remaining core plugin lifecycle and side effects, VoIP/Internet billing parity, provider runtime wiring, data adoption/restore proof, and cross-worker/restart behavior remain blockers.
+
