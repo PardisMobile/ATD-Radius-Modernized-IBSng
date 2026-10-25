@@ -379,3 +379,13 @@ The current PR head has passing Python-only CI and passing PostgreSQL-backed CI 
 ## Mailbox cleanup outbox — 2026-10-24
 
 Migration 009 adds a durable outbox for the A1.24 post-commit mailbox deletion side effect. The user-delete transaction enqueues a job before removing the source user row; the operator-run worker claims jobs with `SKIP LOCKED`, executes only an absolute configured executable with `shell=False`, validates usernames against a conservative allow-list, records success/failure/attempts, retries failed jobs, and reclaims stale running jobs after 60 minutes. Python tests and PostgreSQL migration acceptance cover enqueue, claim, failure, retry and success. The external command is deliberately unset by default; until configured and run, mailbox deletion remains pending rather than falsely reported complete. See `docs/MAILBOX-CLEANUP-OUTBOX.md`.
+
+## Source-backed login restriction increment — 2026-10-25
+
+| Capability | Current verified scope | Still not proven |
+|---|---|---|
+| `limit_mac` | Native Access-Request pipeline checks the configured MAC list when a source-normalized `mac` field is present; BSAE, ChilliSpot, and MikroTik Ethernet/Wireless mappings are source-traced and tested | Optional PPPD MAC discovery via the legacy external script; live NAS parity |
+| `limit_station_ip` | Native Access-Request pipeline checks individual IPs and IP/netmask ranges when source-normalized `station_ip` is present; PPPD and MikroTik Virtual mappings are source-traced and tested | Live NAS parity and all remaining user plugin lifecycle hooks |
+
+The two policies are now wired into the actual AAA pipeline, not just tested as standalone domain objects. Unknown RAS providers do not receive invented MAC/IP mappings. Empty or malformed configured restrictions fail closed when the corresponding provider field is present. This is a bounded core increment; the overall compatibility matrix remains incomplete.
+
