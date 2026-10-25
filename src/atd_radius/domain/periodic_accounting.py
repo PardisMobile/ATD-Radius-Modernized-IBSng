@@ -8,9 +8,90 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
+import time
 from enum import StrEnum
 from math import inf
 from typing import Callable, Mapping
+
+
+_GREGORIAN_MONTH_DAYS = (31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31)
+_JALALI_MONTH_DAYS = (31, 31, 31, 31, 31, 31, 30, 30, 30, 30, 30, 29)
+
+
+def _gregorian_to_jalali(year: int, month: int, day: int) -> tuple[int, int, int]:
+    """Integer-division port of IBSng A1.24 core/lib/jalali.py."""
+    gy, gm, gd = year - 1600, month - 1, day - 1
+    gday = 365 * gy + (gy + 3) // 4 - (gy + 99) // 100 + (gy + 399) // 400
+    for index in range(gm):
+        gday += _GREGORIAN_MONTH_DAYS[index]
+    if gm > 1 and (gy % 4 == 0 and gy % 100 != 0 or gy % 400 == 0):
+        gday += 1
+    gday += gd
+    jday = gday - 79
+    jnp = jday // 12053
+    jday %= 12053
+    jy = 979 + 33 * jnp + 4 * (jday // 1461)
+    jday %= 1461
+    if jday >= 366:
+        jy += (jday - 1) // 365
+        jday = (jday - 1) % 365
+    index = 0
+    for index in range(11):
+        if jday < _JALALI_MONTH_DAYS[index]:
+            index -= 1
+            break
+        jday -= _JALALI_MONTH_DAYS[index]
+    return jy, index + 2, jday + 1
+
+
+def _jalali_to_gregorian(year: int, month: int, day: int) -> tuple[int, int, int]:
+    """Integer-division port of IBSng A1.24 core/lib/jalali.py."""
+    jy, jm, jd = year - 979, month - 1, day - 1
+    jday = 365 * jy + (jy // 33) * 8 + ((jy % 33 + 3) // 4)
+    for index in range(jm):
+        jday += _JALALI_MONTH_DAYS[index]
+    jday += jd
+    gday = jday + 79
+    gy = 1600 + 400 * (gday // 146097)
+    gday %= 146097
+    leap = 1
+    if gday >= 36525:
+        gday -= 1
+        gy += 100 * (gday // 36524)
+        gday %= 36524
+        if gday >= 365:
+            gday += 1
+        else:
+            leap = 0
+    gy += 4 * (gday // 1461)
+    gday %= 1461
+    if gday >= 366:
+        leap = 0
+        gday -= 1
+        gy += gday // 365
+        gday %= 365
+    month_index = 0
+    while gday >= _GREGORIAN_MONTH_DAYS[month_index] + (1 if month_index == 1 and leap else 0):
+        gday -= _GREGORIAN_MONTH_DAYS[month_index] + (1 if month_index == 1 and leap else 0)
+        month_index += 1
+    return gy, month_index + 1, gday + 1
+
+
+def a124_next_month_reset(calendar: str, now: float | None = None) -> float:
+    """Exact local-midnight month boundary used by A1.24 time_lib.py."""
+    if calendar not in {"gregorian", "jalali"}:
+        raise ValueError("calendar must be 'gregorian' or 'jalali'")
+    local = time.localtime(time.time() if now is None else now)
+    year, month, day = local[:3]
+    if calendar == "gregorian":
+        return time.mktime((year, month + 1, 1, 0, 0, 0, 0, 0, -1))
+    jyear, jmonth, _ = _gregorian_to_jalali(year, month, day)
+    jmonth += 1
+    if jmonth > 12:
+        jyear += 1
+        jmonth = 1
+    gyear, gmonth, gday = _jalali_to_gregorian(jyear, jmonth, 1)
+    return time.mktime((gyear, gmonth, gday, 0, 0, 0, 0, 0, -1))
 
 
 class PeriodicQuotaKind(StrEnum):
