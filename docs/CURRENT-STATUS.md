@@ -918,7 +918,7 @@ The live Access-Request pipeline now runs three source-backed login restrictions
 - `limit_mac`: conditional check when the provider's source-defined handler supplies `mac`; mappings cover BSAE, ChilliSpot, and MikroTik Ethernet/Wireless.
 - `limit_station_ip`: conditional check against individual IPs or IP/netmask ranges; mappings cover PPPD and MikroTik Virtual.
 
-Added provider normalization, domain policy, access-context and actual dispatcher rejection tests. The Python-only workflow passed at code checkpoint `da36df946da9b0400afddd949cc501d29ee60f85`; full PostgreSQL-backed CI for this batch is still in progress on the newer documentation/code history. One earlier caller-ID test fixture initially failed because its regex was incorrectly anchored; the fixture was corrected and the subsequent Python run passed. Do not treat the latest full matrix as green until the active CI run completes.
+Added provider normalization, domain policy, access-context and actual dispatcher rejection tests. Full PostgreSQL-backed CI passed on code checkpoint `da36df946da9b0400afddd949cc501d29ee60f85` on both Python 3.11 and 3.12; Python-only CI also passed. Commits after that code checkpoint update documentation only, and fresh CI for the latest documentation head is still running. One earlier caller-ID test fixture initially failed because its regex was incorrectly anchored; the fixture was corrected and subsequent Python and full CI runs passed.
 
 This is not completion of all IBSng core behavior. The user-specified sequence is now recorded as a strict gate: finish core parity first, then UI, then installer/upgrade/rollback, then end-to-end capability testing. No UI/installer work is being substituted for core parity.
 
