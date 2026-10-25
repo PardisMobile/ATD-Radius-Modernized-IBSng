@@ -102,7 +102,7 @@ def test_invalid_periodic_accounting_configuration_fails_closed(period, value):
 def test_login_quota_check_includes_existing_active_instance_counters():
     state = PeriodicAccountingState(config(kind=PeriodicQuotaKind.TRAFFIC, limit=1000))
     state.starts = {1: 100}
-    assert state.login(2, now=1000, traffic_octets=100, counters={1: 950})
+    assert state.login(2, now=1000, traffic_octets=100, counters={1: 1100})
 
 
 def test_time_usage_keeps_fractional_seconds_until_persistence_boundary():
