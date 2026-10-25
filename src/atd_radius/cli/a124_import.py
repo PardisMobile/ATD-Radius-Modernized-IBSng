@@ -166,6 +166,63 @@ def _constraint_signatures(conn, schema: str) -> set[tuple[str, str]]:
     return signatures
 
 
+def _normalize_object_sql(value: str, schema: str) -> str:
+    normalized = re.sub(rf"\b{re.escape(schema)}\.", "", value, flags=re.I)
+    return re.sub(r"\s+", " ", normalized).strip()
+
+
+def _rules(conn, schema: str, tables: set[str]) -> set[tuple[str, str, str]]:
+    rows = conn.execute(
+        "SELECT tablename, rulename, definition FROM pg_rules WHERE schemaname=%s",
+        (schema,)
+    ).fetchall()
+    return {
+        (str(table), str(name), _normalize_object_sql(str(definition), schema))
+        for table, name, definition in rows if str(table) in tables
+    }
+
+
+def _triggers(conn, schema: str, tables: set[str]) -> set[tuple[str, str, str, str, str]]:
+    rows = conn.execute(
+        """
+        SELECT table_class.relname, trigger.tgname, trigger.tgenabled,
+               pg_catalog.pg_get_triggerdef(trigger.oid, true),
+               pg_catalog.pg_get_functiondef(trigger.tgfoid)
+        FROM pg_trigger AS trigger
+        JOIN pg_class AS table_class ON table_class.oid=trigger.tgrelid
+        JOIN pg_namespace AS namespace ON namespace.oid=table_class.relnamespace
+        WHERE namespace.nspname=%s AND NOT trigger.tgisinternal
+        ORDER BY table_class.relname, trigger.tgname
+        """, (schema,)
+    ).fetchall()
+    return {
+        (str(table), str(name), str(enabled),
+         _normalize_object_sql(str(definition), schema),
+         _normalize_object_sql(str(function_definition), schema))
+        for table, name, enabled, definition, function_definition in rows
+        if str(table) in tables
+    }
+
+
+def _functions(conn, schema: str) -> set[tuple[str, str, str, str]]:
+    rows = conn.execute(
+        """
+        SELECT procedure.proname,
+               pg_catalog.pg_get_function_identity_arguments(procedure.oid),
+               procedure.prokind,
+               pg_catalog.pg_get_functiondef(procedure.oid)
+        FROM pg_proc AS procedure
+        JOIN pg_namespace AS namespace ON namespace.oid=procedure.pronamespace
+        WHERE namespace.nspname=%s AND procedure.prokind IN ('f', 'p')
+        ORDER BY procedure.proname, pg_catalog.pg_get_function_identity_arguments(procedure.oid)
+        """, (schema,)
+    ).fetchall()
+    return {
+        (str(name), str(arguments), str(kind), _normalize_object_sql(str(definition), schema))
+        for name, arguments, kind, definition in rows
+    }
+
+
 def _sequence_specs(conn, schema: str) -> dict[str, dict[str, Any]]:
     rows = conn.execute(
         """
@@ -311,16 +368,43 @@ def _plan(source_conn, target_conn, source_schema: str, target_schema: str,
             "target_rows_before": target_count,
         })
 
-    source_constraints = _constraint_signatures(source_conn, source_schema)
-    target_constraints = _constraint_signatures(target_conn, target_schema)
     source_table_set = set(source_tables)
-    source_constraints = {item for item in source_constraints if item[0] in source_table_set}
-    target_constraints = {item for item in target_constraints if item[0] in source_table_set}
+    source_constraints = {
+        item for item in _constraint_signatures(source_conn, source_schema) if item[0] in source_table_set
+    }
+    target_constraints = {
+        item for item in _constraint_signatures(target_conn, target_schema) if item[0] in source_table_set
+    }
     if source_constraints != target_constraints:
         raise A124ImportError(
             "source/target constraint definitions differ; "
             f"missing in target={sorted(source_constraints - target_constraints)}, "
             f"extra in target={sorted(target_constraints - source_constraints)}"
+        )
+
+    source_rules = _rules(source_conn, source_schema, source_table_set)
+    target_rules = _rules(target_conn, target_schema, source_table_set)
+    if source_rules != target_rules:
+        raise A124ImportError(
+            "source/target rule definitions differ; "
+            f"missing in target={sorted(source_rules - target_rules)}, "
+            f"extra in target={sorted(target_rules - source_rules)}"
+        )
+    source_triggers = _triggers(source_conn, source_schema, source_table_set)
+    target_triggers = _triggers(target_conn, target_schema, source_table_set)
+    if source_triggers != target_triggers:
+        raise A124ImportError(
+            "source/target trigger definitions differ; "
+            f"missing in target={sorted(source_triggers - target_triggers)}, "
+            f"extra in target={sorted(target_triggers - source_triggers)}"
+        )
+    source_functions = _functions(source_conn, source_schema)
+    target_functions = _functions(target_conn, target_schema)
+    missing_functions = sorted(source_functions - target_functions)
+    if missing_functions:
+        raise A124ImportError(
+            "source functions/procedures are missing or differ in target; "
+            f"review required: {missing_functions}"
         )
 
     source_sequences = _sequence_specs(source_conn, source_schema)

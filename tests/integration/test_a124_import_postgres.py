@@ -132,3 +132,38 @@ def test_import_refuses_constraint_drift(import_schemas):
                 source, target, source_schema, target_schema,
                 {"parent": {"id": "integer", "label": "text"}, "child": {"id": "integer", "parent_id": "integer", "value": "text"}},
             )
+
+
+def test_import_refuses_source_function_body_drift(import_schemas):
+    dsn, source_schema, target_schema = import_schemas
+    with psycopg.connect(dsn) as source, psycopg.connect(dsn) as target:
+        source.execute(
+            sql.SQL("CREATE FUNCTION {}.sample_fn(value integer) RETURNS integer LANGUAGE sql IMMUTABLE AS $$ SELECT value + 1 $$").format(
+                sql.Identifier(source_schema)
+            )
+        )
+        target.execute(
+            sql.SQL("CREATE FUNCTION {}.sample_fn(value integer) RETURNS integer LANGUAGE sql IMMUTABLE AS $$ SELECT value + 2 $$").format(
+                sql.Identifier(target_schema)
+            )
+        )
+        with pytest.raises(A124ImportError, match="functions/procedures are missing or differ"):
+            import_data(
+                source, target, source_schema, target_schema,
+                {"parent": {"id": "integer", "label": "text"}, "child": {"id": "integer", "parent_id": "integer", "value": "text"}},
+            )
+
+
+def test_import_refuses_source_rule_drift(import_schemas):
+    dsn, source_schema, target_schema = import_schemas
+    with psycopg.connect(dsn) as source, psycopg.connect(dsn) as target:
+        source.execute(
+            sql.SQL("CREATE RULE parent_no_delete AS ON DELETE TO {}.parent DO INSTEAD NOTHING").format(
+                sql.Identifier(source_schema)
+            )
+        )
+        with pytest.raises(A124ImportError, match="rule definitions differ"):
+            import_data(
+                source, target, source_schema, target_schema,
+                {"parent": {"id": "integer", "label": "text"}, "child": {"id": "integer", "parent_id": "integer", "value": "text"}},
+            )
