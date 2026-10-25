@@ -477,9 +477,38 @@ def import_data(source_conn, target_conn, source_schema: str, target_schema: str
                     sql.SQL(", ").join(sql.Identifier(column) for column in key_columns)
                 )
             result = target_conn.execute(insert)
+            key_join = sql.SQL(" AND ").join(
+                sql.SQL("target_row.{} = stage_row.{}").format(
+                    sql.Identifier(column), sql.Identifier(column)
+                ) for column in key_columns
+            )
+            value_drift = sql.SQL(" OR ").join(
+                sql.SQL("target_row.{} IS DISTINCT FROM stage_row.{}").format(
+                    sql.Identifier(column), sql.Identifier(column)
+                ) for column in columns
+            )
+            mismatches = int(target_conn.execute(
+                sql.SQL("""
+                    SELECT count(*)
+                    FROM {} AS stage_row
+                    LEFT JOIN {}.{} AS target_row ON {}
+                    WHERE {} OR {}
+                """).format(
+                    sql.Identifier(stage), sql.Identifier(target_schema), sql.Identifier(table),
+                    key_join,
+                    sql.SQL(" OR ").join(sql.SQL("target_row.{} IS NULL").format(sql.Identifier(key))
+                                         for key in key_columns),
+                    value_drift,
+                )
+            ).fetchone()[0])
+            if mismatches:
+                raise A124ImportError(
+                    f"post-merge row parity failed for {table}: {mismatches} source rows differ from target"
+                )
             table_results.append({
                 "table": table, "source_rows": copied,
                 "rows_inserted_or_updated": int(result.rowcount),
+                "rows_verified": copied - mismatches,
                 "key_columns": key_columns,
             })
 
@@ -490,7 +519,10 @@ def import_data(source_conn, target_conn, source_schema: str, target_schema: str
             owner = source_owners.get(sequence_name)
             maximum = None
             if owner:
-                maximum = _owned_column_max(source_conn, source_schema, owner[0], owner[1])
+                source_maximum = _owned_column_max(source_conn, source_schema, owner[0], owner[1])
+                target_maximum = _owned_column_max(target_conn, target_schema, owner[0], owner[1])
+                candidates = [value for value in (source_maximum, target_maximum) if value is not None]
+                maximum = max(candidates) if candidates else None
             increment = source_sequences[sequence_name]["increment"]
             if maximum is not None and maximum >= last_value:
                 next_value = maximum + increment
@@ -512,6 +544,7 @@ def import_data(source_conn, target_conn, source_schema: str, target_schema: str
     plan["tables"] = table_results
     plan["sequences_reconciled"] = len(source_sequences)
     plan["rows_inserted_or_updated_total"] = sum(item["rows_inserted_or_updated"] for item in table_results)
+    plan["rows_verified_total"] = sum(item["rows_verified"] for item in table_results)
     return plan
 
 
