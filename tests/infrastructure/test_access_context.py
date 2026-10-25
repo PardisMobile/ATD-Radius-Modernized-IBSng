@@ -135,3 +135,41 @@ def test_mschapv2_uses_canonical_normal_username_for_source_hashes():
     attrs = NativeAccessContext(CanonicalMSCHAPUsers()).enrich(packet)
     assert attrs["__password_ok"] == "1"
     assert attrs["__mschapv2_success"].startswith(b"\x01S=")
+
+def test_native_access_context_maps_mikrotik_station_ip_for_limit_plugin():
+    class RestrictedUsers(FakeUsers):
+        def __init__(self):
+            super().__init__()
+            self.attrs[7] = [("limit_station_ip", "192.0.2.0/24")]
+
+    class RASRecord:
+        ras_id = 3
+        ras_type = "Mikrotik"
+        ippool_ids = ()
+
+        def all_attributes(self):
+            return {}
+
+    class RAS:
+        def get_by_ip(self, source_ip):
+            assert source_ip == "192.0.2.1"
+            return RASRecord()
+
+    ctx = NativeAccessContext(RestrictedUsers(), RAS())
+    packet = RadiusPacket(
+        RadiusCode.ACCESS_REQUEST,
+        8,
+        {
+            "User-Name": "alice",
+            "User-Password": "secret",
+            "NAS-Port-Type": "Virtual",
+            "Calling-Station-Id": "192.0.2.25",
+        },
+    )
+
+    attrs = ctx.enrich(packet, "192.0.2.1")
+
+    assert attrs["station_ip"] == "192.0.2.25"
+    assert attrs["limit_station_ip"] == "192.0.2.0/24"
+    assert attrs["__ras_id"] == "3"
+
