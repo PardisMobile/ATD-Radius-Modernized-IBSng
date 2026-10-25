@@ -113,10 +113,10 @@ class MultiLoginPolicy:
 class LimitMacPolicy:
     """Mirror A1.24 limit_mac.s_login: enforce only when the RAS supplies mac."""
     def evaluate(self, request):
-        allowed = request.attributes.get("limit_mac")
-        mac = request.attributes.get("mac")
-        if allowed in (None, "") or mac in (None, ""):
+        if "limit_mac" not in request.attributes or "mac" not in request.attributes:
             return None
+        allowed = request.attributes["limit_mac"]
+        mac = request.attributes["mac"]
         permitted = str(allowed).split(",")
         if str(mac) not in permitted:
             return AAAResult(AAAAction.REJECT, reason="LOGIN_FROM_THIS_MAC_DENIED")
@@ -127,10 +127,10 @@ class LimitMacPolicy:
 class LimitStationIPPolicy:
     """Mirror A1.24 limit_station_ip.s_login with IPy-compatible subnet membership."""
     def evaluate(self, request):
-        configured = request.attributes.get("limit_station_ip")
-        station_ip = request.attributes.get("station_ip")
-        if configured in (None, "") or station_ip in (None, ""):
+        if "limit_station_ip" not in request.attributes or "station_ip" not in request.attributes:
             return None
+        configured = request.attributes["limit_station_ip"]
+        station_ip = request.attributes["station_ip"]
         try:
             address = ipaddress.ip_address(str(station_ip).strip())
         except ValueError:
