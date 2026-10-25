@@ -175,7 +175,7 @@ class PeriodicAccountingState:
         return total
 
     def snapshot(
-        self, now: float, counters: Mapping[int, int] | None = None
+        self, now: float, counters: Mapping[int | str, int] | None = None
     ) -> PeriodicQuotaSnapshot:
         usage = self.current_usage(now, counters)
         remaining = max(0, self.config.limit - usage)
@@ -188,9 +188,13 @@ class PeriodicAccountingState:
             reset_required=self.pending_reset_persist,
         )
 
+    @staticmethod
+    def _valid_instance(instance: int | str) -> bool:
+        return (isinstance(instance, int) and not isinstance(instance, bool) and instance > 0) or (isinstance(instance, str) and bool(instance.strip()))
+
     def login(
-        self, instance: int, now: float, traffic_octets: int = 0,
-        counters: Mapping[int, int] | None = None,
+        self, instance: int | str, now: float, traffic_octets: int = 0,
+        counters: Mapping[int | str, int] | None = None,
         start_accounting: bool = True,
     ) -> bool:
         """Register a new instance baseline; return whether quota is exhausted.
