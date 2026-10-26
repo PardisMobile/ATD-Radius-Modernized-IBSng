@@ -313,7 +313,10 @@ class PeriodicAccountingState:
             return inf
         speeds = assumed_kps or {}
         result = 0.0
-        for instance in range(1, instances + 1):
+        # Runtime instances use durable composite RAS/session keys. Keep the
+        # legacy 1-based fallback for domain callers that supply only a count.
+        active_instances = tuple(self.starts) or tuple(range(1, instances + 1))
+        for instance in active_instances:
             speed = speeds.get(instance)
             if speed is not None and speed > 0:
                 result += share / (speed * 1024.0)
