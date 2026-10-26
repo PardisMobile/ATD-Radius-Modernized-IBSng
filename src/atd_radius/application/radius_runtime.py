@@ -1352,10 +1352,22 @@ def build_native_radius_runtime(
             return 0
         return int(session.input_octets) + int(session.output_octets)
 
+    def periodic_assumed_kps(user_id: int, instance: str) -> float | None:
+        try:
+            ras_text, session_id = instance.split(":", 1)
+            session = state.sessions.get(SessionKey(user_id, int(ras_text), session_id))
+        except (ValueError, AttributeError):
+            return None
+        if session is None or session.charge_rule_id is None:
+            return None
+        rule = PostgresInternetChargeRuleRepository(conn).get(int(session.charge_rule_id))
+        return float(rule.assumed_kps) if rule is not None and rule.assumed_kps > 0 else None
+
     periodic_accounting = PeriodicAccountingCoordinator(
         NativePeriodicAccountingAttributes(users),
         clock=lambda: datetime.now().timestamp(),
         traffic_counters=periodic_traffic_counter,
+        assumed_kps=periodic_assumed_kps,
         is_normal_user=users.is_normal_user,
     )
     dispatcher = build_radius_dispatcher(
