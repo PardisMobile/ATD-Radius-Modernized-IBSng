@@ -569,6 +569,25 @@ def import_data(source_conn, target_conn, source_schema: str, target_schema: str
                     sql.Identifier(target_schema), sql.Identifier(table_plan["table"])
                 )
             )
+        # The first plan is advisory: target DDL could change between preflight and
+        # lock acquisition. Re-run the complete compatibility gate while every
+        # source table's target counterpart is locked, before creating staging
+        # tables or writing any rows.
+        locked_plan = _plan(
+            source_conn, target_conn, source_schema, target_schema,
+            canonical_tables, canonical_primary_keys,
+        )
+        planned_tables = [item["table"] for item in plan["tables"]]
+        locked_tables = [item["table"] for item in locked_plan["tables"]]
+        if locked_tables != planned_tables:
+            raise A124ImportError(
+                "source table inventory changed between preflight and locked validation; "
+                "no data was imported"
+            )
+        plan = locked_plan
+        # Refresh sequence metadata only after the locked schema check.
+        source_sequences = _sequence_specs(source_conn, source_schema)
+        source_owners = _sequence_owners(source_conn, source_schema)
         target_conn.execute("SET CONSTRAINTS ALL DEFERRED")
         for index, table_plan in enumerate(plan["tables"]):
             table = table_plan["table"]
