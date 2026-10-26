@@ -48,7 +48,7 @@ def _mschap_response_octets(value: object) -> bytes:
         try:
             return bytes.fromhex(text)
         except ValueError:
-            return text.encode("latin-1", errors="strict")
+            return text.encode("utf-8")
     return b""
 
 
@@ -120,30 +120,24 @@ class NativeAccessContext:
                     # adapter returning a non-canonical value must never cause
                     # an IndexError or emit a partially constructed success.
                     if len(raw_response) != 50:
-                        attrs["__password_ok"] = "0"
-                        attrs.pop("__mschapv2_success", None)
-                        attrs.pop("__mschapv2_send_key", None)
-                        attrs.pop("__mschapv2_recv_key", None)
+                        password_ok = False
                         attrs["__mschapv2_valid_shape"] = "0"
-                        attrs["__user_found"] = "1"
-                        attrs["__user_id"] = str(user_id)
-                        attrs["__auth_method"] = method.value
-                        return attrs
-                    attrs["__mschapv2_success"] = (
-                        bytes((raw_response[0],))
-                        + generate_mschapv2_authenticator_response(
-                            stored_password,
-                            raw_response[26:50],
-                            raw_response[2:18],
-                            packet.attributes.get("MS-CHAP-Challenge"),
-                            canonical_username,
-                        ).encode("ascii")
-                    )
-                    send_key, recv_key = derive_mschapv2_mppe_keys(
-                        stored_password, raw_response[26:50]
-                    )
-                    attrs["__mschapv2_send_key"] = send_key.hex()
-                    attrs["__mschapv2_recv_key"] = recv_key.hex()
+                    else:
+                        attrs["__mschapv2_success"] = (
+                            bytes((raw_response[0],))
+                            + generate_mschapv2_authenticator_response(
+                                stored_password,
+                                raw_response[26:50],
+                                raw_response[2:18],
+                                packet.attributes.get("MS-CHAP-Challenge"),
+                                canonical_username,
+                            ).encode("ascii")
+                        )
+                        send_key, recv_key = derive_mschapv2_mppe_keys(
+                            stored_password, raw_response[26:50]
+                        )
+                        attrs["__mschapv2_send_key"] = send_key.hex()
+                        attrs["__mschapv2_recv_key"] = recv_key.hex()
 
         attrs["__user_found"] = "1"
         attrs["__user_id"] = str(user_id)
