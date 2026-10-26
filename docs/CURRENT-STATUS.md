@@ -1009,3 +1009,8 @@ Expanded column shape checks to include normalized default expressions and decla
 ## Importer table-behavior and RLS parity — 2026-10-26
 
 Added source/target checks for table kind/persistence, RLS flags, replica identity, partition-key definitions, and RLS policy definitions/role scopes/expressions. Added PostgreSQL integration coverage for policy drift and no-write refusal. Latest combined checkpoint is pending Python-only and PostgreSQL-backed CI; do not treat this batch as validated until both pass.
+
+
+## Importer partition/storage semantics — 2026-10-26
+
+Extended table behavior parity to compare partition bounds and parent topology plus table storage options, in addition to relation kind/persistence, RLS flags, replica identity and partition keys. This catches partition-layout/storage drift that column-only checks cannot detect. Validation of the combined importer batch is still pending the latest PostgreSQL-backed CI.
