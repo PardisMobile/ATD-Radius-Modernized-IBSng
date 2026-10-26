@@ -7,6 +7,8 @@ per-session counters and a callback that requests RAS termination.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import wraps
+from threading import RLock
 from typing import Callable, Mapping, Protocol
 
 from atd_radius.domain.periodic_accounting import (
@@ -32,6 +34,15 @@ class PeriodicAccountingAttributes(Protocol):
 @dataclass(slots=True)
 class _UserState:
     quotas: dict[str, PeriodicAccountingState]
+
+
+def _synchronized_user(method):
+    """Serialize cache transitions and persistence for one user, reentrantly."""
+    @wraps(method)
+    def wrapped(self, user_id, *args, **kwargs):
+        with self._user_lock(user_id):
+            return method(self, user_id, *args, **kwargs)
+    return wrapped
 
 
 class PeriodicAccountingCoordinator:
@@ -66,6 +77,14 @@ class PeriodicAccountingCoordinator:
         self.request_termination = request_termination or (lambda user_id, key: None)
         self.is_normal_user = is_normal_user or (lambda user_id: True)
         self._users: dict[int, _UserState] = {}
+        self._locks_guard = RLock()
+        self._user_locks: dict[int, RLock] = {}
+
+    def _user_lock(self, user_id: int) -> RLock:
+        # Lock creation itself is shared, while unrelated users retain
+        # independent locks so a slow attribute write does not stall all AAA.
+        with self._locks_guard:
+            return self._user_locks.setdefault(user_id, RLock())
 
     @staticmethod
     def _number(attrs: Mapping[str, str], key: str, default: float = 0) -> float:
@@ -74,6 +93,7 @@ class PeriodicAccountingCoordinator:
         except (TypeError, ValueError):
             return default
 
+    @_synchronized_user
     def _load_user(self, user_id: int) -> _UserState:
         if user_id in self._users:
             return self._users[user_id]
@@ -103,6 +123,7 @@ class PeriodicAccountingCoordinator:
         self._users[user_id] = user
         return user
 
+    @_synchronized_user
     def reload_user(self, user_id: int) -> _UserState:
         """Apply source-shaped _reload semantics without losing live baselines."""
         attrs = self.attributes.load(user_id)
@@ -166,6 +187,7 @@ class PeriodicAccountingCoordinator:
     def _baseline_attribute(key: str) -> str:
         return f"__periodic_start_{key}"
 
+    @_synchronized_user
     def session_baseline_attributes(self, user_id: int, instance: int | str) -> Mapping[str, str]:
         """Serialize per-session quota baselines into the durable live-session snapshot."""
         user = self._load_user(user_id)
@@ -178,6 +200,7 @@ class PeriodicAccountingCoordinator:
             values[f"__periodic_value_{key}"] = state.config.value
         return values
 
+    @_synchronized_user
     def restore_instance(
         self,
         user_id: int,
@@ -223,6 +246,7 @@ class PeriodicAccountingCoordinator:
                     if state.kind is PeriodicQuotaKind.TIME else 0
                 )
 
+    @_synchronized_user
     def can_login(self, user_id: int) -> PeriodicQuotaDecision:
         """Pre-admission check matching A1.24's login-time quota rejection."""
         now = self.clock()
@@ -249,10 +273,12 @@ class PeriodicAccountingCoordinator:
             self._persist(user_id, user)
         return PeriodicQuotaDecision(not exhausted, tuple(exhausted))
 
+    @_synchronized_user
     def has_quotas(self, user_id: int) -> bool:
         """Return whether the effective user configuration enables any quota."""
         return bool(self._load_user(user_id).quotas)
 
+    @_synchronized_user
     def _persist(self, user_id: int, user: _UserState) -> None:
         values: dict[str, str] = {}
         for key, state in user.quotas.items():
@@ -264,6 +290,7 @@ class PeriodicAccountingCoordinator:
                 if state.next_reset is not None and state.next_reset > 0:
                     state.pending_reset_persist = False
 
+    @_synchronized_user
     def login(
         self, user_id: int, instance: int | str, *, start_accounting: bool = False
     ) -> PeriodicQuotaDecision:
@@ -295,6 +322,7 @@ class PeriodicAccountingCoordinator:
         self._persist(user_id, user)
         return PeriodicQuotaDecision(not exhausted, tuple(exhausted))
 
+    @_synchronized_user
     def update(self, user_id: int, instance: int | str, *, start_accounting: bool = False) -> PeriodicQuotaDecision:
         now = self.clock()
         user = self.reload_user(user_id)
@@ -317,6 +345,7 @@ class PeriodicAccountingCoordinator:
         self._persist(user_id, user)
         return self.can_stay_online(user_id, instance, counters=counters)
 
+    @_synchronized_user
     def logout(self, user_id: int, instance: int | str) -> Mapping[str, int | float]:
         now = self.clock()
         user = self.reload_user(user_id)
@@ -333,6 +362,7 @@ class PeriodicAccountingCoordinator:
         self._persist(user_id, user)
         return committed
 
+    @_synchronized_user
     def can_stay_online(
         self,
         user_id: int,
