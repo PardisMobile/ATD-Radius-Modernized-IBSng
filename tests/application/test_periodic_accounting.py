@@ -316,3 +316,27 @@ def test_first_login_initializes_and_persists_missing_reset_timer():
     assert state.next_reset is not None and state.next_reset > clock[0]
     assert float(repo.values["time_periodic_accounting_daily_reset"]) == state.next_reset
     assert state.starts["3:session-first"] == clock[0]
+
+
+def test_fractional_time_usage_survives_persistence_and_coordinator_restart():
+    clock = [1000.0]
+    repo = MemoryAttributes(attrs(time_periodic_accounting_daily_limit="10000"))
+    first = PeriodicAccountingCoordinator(repo, clock=lambda: clock[0])
+    first.login(7, "1:fractional", start_accounting=True)
+    clock[0] = 1030.5
+    first.logout(7, "1:fractional")
+    assert repo.values["time_periodic_accounting_daily_usage"] == "30.5"
+
+    second = PeriodicAccountingCoordinator(repo, clock=lambda: clock[0])
+    second.login(7, "2:after-restart", start_accounting=False)
+    state = second._users[7].quotas["time_periodic_accounting_daily"]
+    assert state.committed_usage == 30.5
+    assert state.snapshot(clock[0]).usage == 30.5
+
+
+def test_reload_preserves_fractional_time_usage_without_truncation():
+    repo = MemoryAttributes(attrs(time_periodic_accounting_daily_usage="30.75"))
+    coordinator = PeriodicAccountingCoordinator(repo, clock=lambda: 1000.0)
+    coordinator.login(7, "1:initial", start_accounting=False)
+    state = coordinator.reload_user(7).quotas["time_periodic_accounting_daily"]
+    assert state.committed_usage == 30.75
