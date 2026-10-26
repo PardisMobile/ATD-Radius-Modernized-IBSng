@@ -173,3 +173,128 @@ def test_native_access_context_maps_mikrotik_station_ip_for_limit_plugin():
     assert attrs["limit_station_ip"] == "192.0.2.0/24"
     assert attrs["__ras_id"] == "3"
 
+
+
+def test_native_dispatcher_completes_chap_using_request_authenticator():
+    from hashlib import md5
+    from atd_radius.application.radius_runtime import build_radius_dispatcher
+    from atd_radius.domain.radius import RadiusCode
+
+    identifier = b"\x09"
+    authenticator = bytes(range(16))
+    challenge_response = identifier + md5(identifier + b"secret" + authenticator).digest()
+    packet = RadiusPacket(
+        RadiusCode.ACCESS_REQUEST,
+        9,
+        {"User-Name": "alice", "CHAP-Password": challenge_response},
+        authenticator,
+    )
+
+    response = build_radius_dispatcher(FakeUsers()).access(packet, source_ip=None)
+
+    assert response.code is RadiusCode.ACCESS_ACCEPT
+    assert response.identifier == packet.identifier
+    assert "CHAP-Password" not in response.attributes
+    assert not any(str(key).startswith("__") for key in response.attributes)
+
+
+def test_native_dispatcher_completes_mschapv1_and_emits_mppe_material():
+    from atd_radius.application.radius_runtime import build_radius_dispatcher
+    from atd_radius.domain.radius import RadiusCode
+
+    class MSCHAPUsers(FakeUsers):
+        def __init__(self):
+            self.records = {"User": (9, "clientPass", False)}
+            self.attrs = {9: []}
+
+    challenge = bytes.fromhex("5B5D7C7D7B3F2F3E")
+    nt_response = bytes.fromhex("9F9BEC2D4EA5BD51E59EC761C102526860A6C4DE36AFB512")
+    response_value = b"\x01\x00" + b"\x00" * 16 + b"\x00" * 8 + nt_response
+    packet = RadiusPacket(
+        RadiusCode.ACCESS_REQUEST,
+        10,
+        {
+            "User-Name": "User",
+            "MS-CHAP-Challenge": challenge,
+            "MS-CHAP-Response": response_value,
+        },
+    )
+
+    response = build_radius_dispatcher(MSCHAPUsers()).access(packet)
+
+    assert response.code is RadiusCode.ACCESS_ACCEPT
+    assert len(response.attributes["MS-CHAP-MPPE-Keys"]) == 64
+    assert response.attributes["MS-MPPE-Encryption-Policy"] == "00000001"
+    assert response.attributes["MS-MPPE-Encryption-Types"] == "00000006"
+    assert not any(str(key).startswith("__") for key in response.attributes)
+
+
+def test_native_dispatcher_completes_mschapv2_for_supported_codec_shapes():
+    from atd_radius.application.radius_runtime import build_radius_dispatcher
+    from atd_radius.domain.radius import RadiusCode
+
+    class MSCHAPUsers(FakeUsers):
+        def __init__(self):
+            self.records = {"User": (9, "clientPass", False)}
+            self.attrs = {9: []}
+
+    auth_challenge = bytes.fromhex("5B5D7C7D7B3F2F3E3C2C602132262628")
+    peer_challenge = bytes.fromhex("21402324255E262A28295F2B3A337C7E")
+    nt_response = bytes.fromhex("82309ECD8D708B5EA08FAA3981CD83544233114A3D85D6DF")
+    response_bytes = b"\x01\x00" + peer_challenge + b"\x00" * 8 + nt_response
+
+    # The actual UDP codec yields bytes; adapter-level fixtures sometimes use
+    # bytearray or canonical hexadecimal text. All three must produce the same
+    # authenticator response and the same server-side MPPE keys.
+    for response_value in (response_bytes, bytearray(response_bytes), response_bytes.hex()):
+        packet = RadiusPacket(
+            RadiusCode.ACCESS_REQUEST,
+            11,
+            {
+                "User-Name": "User",
+                "MS-CHAP-Challenge": auth_challenge,
+                "MS-CHAP2-Response": response_value,
+            },
+        )
+        response = build_radius_dispatcher(MSCHAPUsers()).access(packet)
+
+        assert response.code is RadiusCode.ACCESS_ACCEPT
+        assert response.attributes["MS-CHAP2-Success"] == (
+            b"\x01S=407A5589115FD0D6209F510FE9C04566932CDA56"
+        )
+        assert response.attributes["MS-MPPE-Send-Key"] == "8b7cdc149b993a1ba118cb153f56dccb"
+        assert response.attributes["MS-MPPE-Recv-Key"] == "d5f0e9521e3ea9589645e86051c82226"
+        assert response.attributes["MS-MPPE-Encryption-Policy"] == "00000001"
+        assert response.attributes["MS-MPPE-Encryption-Types"] == "00000006"
+        assert not any(str(key).startswith("__") for key in response.attributes)
+
+
+def test_native_dispatcher_rejects_bad_mschapv2_without_leaking_mppe_keys():
+    from atd_radius.application.radius_runtime import build_radius_dispatcher
+    from atd_radius.domain.radius import RadiusCode
+
+    class MSCHAPUsers(FakeUsers):
+        def __init__(self):
+            self.records = {"User": (9, "clientPass", False)}
+            self.attrs = {9: []}
+
+    auth_challenge = bytes.fromhex("5B5D7C7D7B3F2F3E3C2C602132262628")
+    peer_challenge = bytes.fromhex("21402324255E262A28295F2B3A337C7E")
+    wrong_nt_response = b"\x00" * 24
+    response_value = b"\x01\x00" + peer_challenge + b"\x00" * 8 + wrong_nt_response
+    packet = RadiusPacket(
+        RadiusCode.ACCESS_REQUEST,
+        12,
+        {
+            "User-Name": "User",
+            "MS-CHAP-Challenge": auth_challenge,
+            "MS-CHAP2-Response": response_value,
+        },
+    )
+
+    response = build_radius_dispatcher(MSCHAPUsers()).access(packet)
+
+    assert response.code is RadiusCode.ACCESS_REJECT
+    assert "MS-MPPE-Send-Key" not in response.attributes
+    assert "MS-MPPE-Recv-Key" not in response.attributes
+    assert "MS-CHAP2-Success" not in response.attributes
