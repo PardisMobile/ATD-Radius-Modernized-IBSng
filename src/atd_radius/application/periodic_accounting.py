@@ -219,8 +219,11 @@ class PeriodicAccountingCoordinator:
         """Pre-admission check matching A1.24's login-time quota rejection."""
         now = self.clock()
         user = self.reload_user(user_id)
+        normal_user = self.is_normal_user(user_id)
         counters = {
-            instance: self.traffic_counters(user_id, instance)
+            instance: (
+                self.traffic_counters(user_id, instance) if normal_user else 0
+            )
             for state in user.quotas.values()
             if state.kind is PeriodicQuotaKind.TRAFFIC
             for instance in state.starts
@@ -230,6 +233,8 @@ class PeriodicAccountingCoordinator:
         for key, state in user.quotas.items():
             if state.refresh_reset_if_due(now, counters=counters):
                 changed = True
+            if state.kind is PeriodicQuotaKind.TRAFFIC and not normal_user:
+                continue
             if state.snapshot(now, counters).quota_finished:
                 exhausted.append(key)
         if changed:
@@ -305,8 +310,9 @@ class PeriodicAccountingCoordinator:
     ) -> PeriodicQuotaDecision:
         now = self.clock()
         user = self._load_user(user_id)
+        normal_user = self.is_normal_user(user_id)
         counters = counters or {
-            active: self.traffic_counters(user_id, active)
+            active: (self.traffic_counters(user_id, active) if normal_user else 0)
             for state in user.quotas.values()
             if state.kind is PeriodicQuotaKind.TRAFFIC
             for active in state.starts
@@ -319,7 +325,9 @@ class PeriodicAccountingCoordinator:
             if state.refresh_reset_if_due(now, counters=counters):
                 changed = True
             snapshot = state.snapshot(now, counters)
-            if snapshot.quota_finished:
+            if snapshot.quota_finished and not (
+                state.kind is PeriodicQuotaKind.TRAFFIC and not normal_user
+            ):
                 exhausted.append(key)
             else:
                 active_count = len(state.starts)
@@ -330,7 +338,7 @@ class PeriodicAccountingCoordinator:
                 }
                 remaining.append(state.remaining_time(
                     now, active_count, counters=counters, assumed_kps=speeds,
-                    normal_user=self.is_normal_user(user_id),
+                    normal_user=normal_user,
                 ))
             if state.next_reset is not None:
                 resets.append(state.next_reset)
