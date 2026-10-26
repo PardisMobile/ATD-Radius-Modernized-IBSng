@@ -999,3 +999,8 @@ Fixed a lifecycle ordering defect in the live runtime: Accounting-Stop updates a
 Apply mode now repeats the full source/target compatibility plan after target tables are locked and before staging or row writes. This detects target schema/object drift introduced after preflight and refreshes target row counts under the lock. The new PostgreSQL acceptance test injects a target-only index after the first plan and verifies that the second, locked check refuses the import without changing existing row data.
 
 Validation for this checkpoint: pending its own Python-only and PostgreSQL-backed CI. The previous index-parity checkpoint b6d91555 passed both workflows; that result does not substitute for validation of this change.
+
+
+## A1.24 importer column-semantics parity — 2026-10-26
+
+Expanded column shape checks to include normalized default expressions and declared collations, alongside order/type/nullability/generated/identity metadata. Added PostgreSQL acceptance coverage for source/target default drift and no-write refusal. This is layered onto locked schema revalidation; validation remains pending until CI for the combined latest checkpoint finishes.
