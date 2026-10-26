@@ -2034,3 +2034,58 @@ def test_native_dispatcher_enforces_source_mapped_voip_caller_id_restriction():
 
     assert response.code is RadiusCode.ACCESS_REJECT
 
+
+
+def test_native_dispatcher_rejects_access_when_periodic_quota_is_exhausted():
+    from atd_radius.application.periodic_accounting import PeriodicQuotaDecision
+
+    class Users:
+        def get_authentication_record(self, username):
+            return (17, "secret", False) if username == "alice" else None
+
+        def attributes(self, user_id):
+            return []
+
+        def policy_attributes(self, user_id):
+            return []
+
+    class Quotas:
+        def can_login(self, user_id):
+            assert user_id == 17
+            return PeriodicQuotaDecision(False, ("time_periodic_accounting_daily",))
+
+    dispatcher = build_radius_dispatcher(Users(), periodic_accounting=Quotas())
+    response = dispatcher.access(
+        RadiusPacket(
+            RadiusCode.ACCESS_REQUEST, 22,
+            {"User-Name": "alice", "User-Password": "secret"},
+        )
+    )
+    assert response.code is RadiusCode.ACCESS_REJECT
+
+
+def test_native_dispatcher_allows_access_when_periodic_quota_has_room():
+    from atd_radius.application.periodic_accounting import PeriodicQuotaDecision
+
+    class Users:
+        def get_authentication_record(self, username):
+            return (17, "secret", False) if username == "alice" else None
+
+        def attributes(self, user_id):
+            return []
+
+        def policy_attributes(self, user_id):
+            return []
+
+    class Quotas:
+        def can_login(self, user_id):
+            return PeriodicQuotaDecision(True)
+
+    dispatcher = build_radius_dispatcher(Users(), periodic_accounting=Quotas())
+    response = dispatcher.access(
+        RadiusPacket(
+            RadiusCode.ACCESS_REQUEST, 23,
+            {"User-Name": "alice", "User-Password": "secret"},
+        )
+    )
+    assert response.code is RadiusCode.ACCESS_ACCEPT
