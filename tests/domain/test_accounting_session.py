@@ -178,3 +178,38 @@ def test_interim_updates_merge_new_called_station_id_without_dropping_session_co
     updated = service.apply(event(AccountingStatus.INTERIM, "called-number", attributes={"Called-Station-Id": "9891212"}), 7, 3)
     assert updated.state.attributes["NAS-Port"] == "4"
     assert updated.state.attributes["Called-Station-Id"] == "9891212"
+
+
+def test_stop_without_counter_attributes_preserves_last_known_totals_for_quota_settlement():
+    service = AccountingSessionService(SessionRegistry())
+    service.apply(
+        event(AccountingStatus.START, inp=100, out=200, attributes={"Acct-Input-Octets": "100", "Acct-Output-Octets": "200"}),
+        7, 3,
+    )
+    service.apply(
+        event(AccountingStatus.INTERIM, inp=450, out=700, attributes={"Acct-Input-Octets": "450", "Acct-Output-Octets": "700"}),
+        7, 3,
+    )
+
+    # event_from_attributes uses zero defaults for absent counters. The Stop
+    # lifecycle must not mistake those defaults for real final zero counters.
+    stopped = service.apply(event(AccountingStatus.STOP), 7, 3)
+
+    assert (stopped.delta_input_octets, stopped.delta_output_octets) == (0, 0)
+    assert (stopped.state.input_octets, stopped.state.output_octets) == (450, 700)
+    assert stopped.state.stopped
+
+
+def test_stop_uses_explicit_final_counter_per_direction_and_preserves_missing_direction():
+    service = AccountingSessionService(SessionRegistry())
+    service.apply(
+        event(AccountingStatus.START, inp=100, out=200, attributes={"Acct-Input-Octets": "100", "Acct-Output-Octets": "200"}),
+        7, 3,
+    )
+    stopped = service.apply(
+        event(AccountingStatus.STOP, inp=180, out=0, attributes={"Acct-Input-Octets": "180"}),
+        7, 3,
+    )
+
+    assert (stopped.state.input_octets, stopped.state.output_octets) == (180, 200)
+    assert (stopped.delta_input_octets, stopped.delta_output_octets) == (80, 0)
