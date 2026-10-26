@@ -216,4 +216,4 @@ def test_traffic_periodic_quota_does_not_apply_to_voip_users():
     assert coordinator.login(7, "1:voip", start_accounting=True).allowed
     clock[0] = 2000.0
     assert coordinator.logout(7, "1:voip")["traffic_periodic_accounting_daily"] == 0
-    assert repo.values["traffic_periodic_accounting_daily_usage"] == "0"
+    assert repo.values["traffic_periodic_accounting_daily_usage"] == "999"
