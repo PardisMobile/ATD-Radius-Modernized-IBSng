@@ -308,6 +308,11 @@ class PeriodicAccountingCoordinator:
         }
         counters[instance] = self.traffic_counters(user_id, instance) if normal_user else 0
         for key, state in user.quotas.items():
+            # A1.24 initializes the reset timer when the plugin first loads.
+            # Native attributes can legitimately lack *_reset on first use;
+            # initialize it before login accounting and persist it below.
+            if state.next_reset is None:
+                state.refresh_reset_if_due(now, counters=counters)
             traffic = (
                 counters[instance]
                 if state.kind is PeriodicQuotaKind.TRAFFIC and normal_user else 0
