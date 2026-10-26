@@ -31,6 +31,27 @@ class NativeRASSource(Protocol):
     def get_by_ip(self, ip: str): ...
     def attributes(self, ras_id: int) -> list[tuple[str, str]]: ...
 
+def _mschap_response_octets(value: object) -> bytes:
+    """Normalize the MS-CHAP2 VSA without assuming the codec's bytes type.
+
+    The UDP decoder normally supplies bytes, while repositories and test
+    adapters may expose a bytearray or a hexadecimal text representation.
+    Keep this conversion in one place so verification and response generation
+    always consume the same 50-byte wire value.
+    """
+    if isinstance(value, bytes):
+        return value
+    if isinstance(value, bytearray):
+        return bytes(value)
+    if isinstance(value, str):
+        text = value.strip()
+        try:
+            return bytes.fromhex(text)
+        except ValueError:
+            return text.encode("latin-1", errors="strict")
+    return b""
+
+
 class NativeAccessContext:
     """Resolve native users, RAS and native A1.24 RAS-bound IP pools."""
     def __init__(self, users: NativeUserSource, ras: NativeRASSource | None = None) -> None:
@@ -92,8 +113,22 @@ class NativeAccessContext:
                 )
                 attrs["__mschapv2_valid_shape"] = "1" if valid_shape else "0"
                 if password_ok and valid_shape:
-                    response = packet.attributes.get("MS-CHAP2-Response")
-                    raw_response = response if isinstance(response, bytes) else bytes.fromhex(str(response))
+                    raw_response = _mschap_response_octets(
+                        packet.attributes.get("MS-CHAP2-Response")
+                    )
+                    # Guard the output path as well as the verifier: an
+                    # adapter returning a non-canonical value must never cause
+                    # an IndexError or emit a partially constructed success.
+                    if len(raw_response) != 50:
+                        attrs["__password_ok"] = "0"
+                        attrs.pop("__mschapv2_success", None)
+                        attrs.pop("__mschapv2_send_key", None)
+                        attrs.pop("__mschapv2_recv_key", None)
+                        attrs["__mschapv2_valid_shape"] = "0"
+                        attrs["__user_found"] = "1"
+                        attrs["__user_id"] = str(user_id)
+                        attrs["__auth_method"] = method.value
+                        return attrs
                     attrs["__mschapv2_success"] = (
                         bytes((raw_response[0],))
                         + generate_mschapv2_authenticator_response(
