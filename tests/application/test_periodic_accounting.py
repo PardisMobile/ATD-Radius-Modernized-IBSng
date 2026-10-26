@@ -174,3 +174,24 @@ def test_restart_rebases_session_when_period_value_changed():
     )
     state = coordinator._users[7].quotas["time_periodic_accounting_daily"]
     assert state.starts["12:session-A"] == 1000.0
+
+
+def test_coordinator_uses_effective_assumed_kps_for_traffic_quota_deadline():
+    clock = [1000.0]
+    repo = MemoryAttributes({
+        "traffic_periodic_accounting_daily": "1",
+        "traffic_periodic_accounting_daily_limit": "3000",
+        "traffic_periodic_accounting_daily_usage": "0",
+        "traffic_periodic_accounting_daily_reset": "200000",
+    })
+    counts = {"1:a": 0, "2:b": 0}
+    coordinator = PeriodicAccountingCoordinator(
+        repo,
+        clock=lambda: clock[0],
+        traffic_counters=lambda user, instance: counts[instance],
+        assumed_kps=lambda user, instance: 10,
+    )
+    coordinator.login(7, "1:a", start_accounting=True)
+    coordinator.login(7, "2:b", start_accounting=True)
+    result = coordinator.can_stay_online(7, "1:a")
+    assert result.remaining_seconds == pytest.approx(3000 / 2 / (10 * 1024) * 2)
