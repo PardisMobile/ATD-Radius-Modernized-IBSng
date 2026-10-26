@@ -1,3 +1,7 @@
+# TABLE BEHAVIOR AND RLS PARITY — 2026-10-26
+
+The importer now compares table kind, persistence, row-level-security enable/force flags, replica identity and partition-key definition, plus the complete row-security policy set (permissive mode, roles, command, USING and WITH CHECK expressions). Any mismatch refuses import before staging or row writes. This prevents treating matching columns as sufficient when table behavior can change visibility or mutation semantics. PostgreSQL integration coverage verifies RLS policy drift is rejected without changing target data.
+
 # COLUMN SEMANTICS PARITY — 2026-10-26
 
 The import gate now compares normalized per-column default expressions and declared collations as well as order, type, nullability, generated and identity properties. A mismatch fails closed before row transfer; the importer does not silently repair target DDL. PostgreSQL acceptance coverage confirms a source-only default is rejected while preserving existing target data.
