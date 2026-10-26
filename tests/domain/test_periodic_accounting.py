@@ -129,3 +129,22 @@ def test_traffic_quota_deadline_uses_composite_runtime_session_keys():
         assumed_kps={"1:session-A": 10, "2:session-B": 10},
     )
     assert result == pytest.approx(3000 / 2 / (10 * 1024) * 2)
+
+
+def test_reset_is_not_repeated_at_the_exact_reset_boundary():
+    state = PeriodicAccountingState(PeriodicQuotaConfig(
+        key="time_periodic_accounting_daily",
+        period="daily",
+        kind=PeriodicQuotaKind.TIME,
+        value="1",
+        limit=100,
+        next_reset=2000.0,
+        accumulated_usage=25,
+    ))
+    assert not state.refresh_reset_if_due(2000.0)
+    assert state.committed_usage == 25
+    assert state.next_reset == 2000.0
+
+    assert state.refresh_reset_if_due(2000.001)
+    assert state.committed_usage == 0
+    assert state.next_reset > 2000.001
