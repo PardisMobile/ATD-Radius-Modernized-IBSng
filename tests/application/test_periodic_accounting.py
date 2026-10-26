@@ -255,3 +255,26 @@ def test_concurrent_first_access_loads_user_state_once():
     assert all(results)
     assert repo.load_count == 1
     assert set(coordinator._users[7].quotas) == {"time_periodic_accounting_daily"}
+
+
+
+def test_concurrent_session_logouts_do_not_lose_periodic_usage():
+    from concurrent.futures import ThreadPoolExecutor
+
+    clock = [1000.0]
+    repo = MemoryAttributes(attrs(time_periodic_accounting_daily_limit="10000"))
+    coordinator = PeriodicAccountingCoordinator(repo, clock=lambda: clock[0])
+    instances = tuple(f"ras-{index}:session-{index}" for index in range(16))
+
+    for instance in instances:
+        assert coordinator.login(7, instance, start_accounting=True).allowed
+
+    clock[0] = 1030.0
+    with ThreadPoolExecutor(max_workers=16) as pool:
+        committed = list(pool.map(lambda instance: coordinator.logout(7, instance), instances))
+
+    assert all(row["time_periodic_accounting_daily"] == 30.0 for row in committed)
+    assert repo.values["time_periodic_accounting_daily_usage"] == "480.0"
+    state = coordinator._users[7].quotas["time_periodic_accounting_daily"]
+    assert state.starts == {}
+    assert state.committed_usage == 480.0
