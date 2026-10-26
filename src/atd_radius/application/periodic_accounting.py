@@ -260,43 +260,67 @@ class PeriodicAccountingCoordinator:
         self, user_id: int, instance: int | str, *, start_accounting: bool = False
     ) -> PeriodicQuotaDecision:
         now = self.clock()
-        user = self._load_user(user_id)
+        user = self.reload_user(user_id)
+        normal_user = self.is_normal_user(user_id)
         exhausted: list[str] = []
         counters = {
-            active_instance: self.traffic_counters(user_id, active_instance)
+            active_instance: (
+                self.traffic_counters(user_id, active_instance) if normal_user else 0
+            )
             for state in user.quotas.values()
             if state.kind is PeriodicQuotaKind.TRAFFIC
             for active_instance in state.starts
         }
-        counters[instance] = self.traffic_counters(user_id, instance)
+        counters[instance] = self.traffic_counters(user_id, instance) if normal_user else 0
         for key, state in user.quotas.items():
-            traffic = counters[instance] if state.kind is PeriodicQuotaKind.TRAFFIC else 0
-            if state.login(instance, now, traffic, counters, start_accounting=start_accounting):
+            traffic = (
+                counters[instance]
+                if state.kind is PeriodicQuotaKind.TRAFFIC and normal_user else 0
+            )
+            finished = state.login(
+                instance, now, traffic, counters, start_accounting=start_accounting
+            )
+            if finished and not (
+                state.kind is PeriodicQuotaKind.TRAFFIC and not normal_user
+            ):
                 exhausted.append(key)
         self._persist(user_id, user)
         return PeriodicQuotaDecision(not exhausted, tuple(exhausted))
 
     def update(self, user_id: int, instance: int | str, *, start_accounting: bool = False) -> PeriodicQuotaDecision:
         now = self.clock()
-        user = self._load_user(user_id)
+        user = self.reload_user(user_id)
+        normal_user = self.is_normal_user(user_id)
         counters = {
-            active_instance: self.traffic_counters(user_id, active_instance)
+            active_instance: (
+                self.traffic_counters(user_id, active_instance) if normal_user else 0
+            )
             for state in user.quotas.values()
             if state.kind is PeriodicQuotaKind.TRAFFIC
             for active_instance in state.starts
         }
         if start_accounting:
             for state in user.quotas.values():
-                state.update_baseline(instance, now, counters.get(instance, 0))
+                state.update_baseline(
+                    instance, now,
+                    counters.get(instance, 0)
+                    if state.kind is PeriodicQuotaKind.TRAFFIC and normal_user else 0,
+                )
         self._persist(user_id, user)
         return self.can_stay_online(user_id, instance, counters=counters)
 
     def logout(self, user_id: int, instance: int | str) -> Mapping[str, int | float]:
         now = self.clock()
-        user = self._load_user(user_id)
+        user = self.reload_user(user_id)
+        normal_user = self.is_normal_user(user_id)
         committed: dict[str, int | float] = {}
         for key, state in user.quotas.items():
-            traffic = self.traffic_counters(user_id, instance) if state.kind is PeriodicQuotaKind.TRAFFIC else 0
+            traffic = (
+                self.traffic_counters(user_id, instance)
+                if state.kind is PeriodicQuotaKind.TRAFFIC and normal_user else 0
+            )
+            if state.kind is PeriodicQuotaKind.TRAFFIC and not normal_user and instance in state.starts:
+                state.starts[instance] = 0 if state.starts[instance] is not None else None
             committed[key] = state.logout(instance, now, traffic)
         self._persist(user_id, user)
         return committed
@@ -309,7 +333,7 @@ class PeriodicAccountingCoordinator:
         counters: Mapping[int | str, int] | None = None,
     ) -> PeriodicQuotaDecision:
         now = self.clock()
-        user = self._load_user(user_id)
+        user = self.reload_user(user_id)
         normal_user = self.is_normal_user(user_id)
         counters = counters or {
             active: (self.traffic_counters(user_id, active) if normal_user else 0)
