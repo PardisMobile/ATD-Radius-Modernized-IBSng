@@ -193,3 +193,27 @@ def test_limit_caller_id_invalid_stored_regex_fails_closed():
     assert result.action is AAAAction.REJECT
     assert result.reason == "LOGIN_FROM_THIS_CALLER_ID_DENIED"
 
+
+
+def test_periodic_accounting_policy_rejects_exhausted_authenticated_user():
+    class Quotas:
+        def can_login(self, user_id):
+            from atd_radius.application.periodic_accounting import PeriodicQuotaDecision
+            assert user_id == 17
+            return PeriodicQuotaDecision(False, ("time_periodic_accounting_daily",))
+
+    from atd_radius.domain.user_policies import PeriodicAccountingPolicy
+    result = PeriodicAccountingPolicy(Quotas()).evaluate(
+        AAARequest("alice", {"__user_found": "1", "__user_id": "17"})
+    )
+    assert result.action is AAAAction.REJECT
+    assert result.reason == "PERIODIC_QUOTA_EXCEEDED:time_periodic_accounting_daily"
+
+
+def test_periodic_accounting_policy_skips_unknown_user():
+    class NeverCalled:
+        def can_login(self, user_id):
+            raise AssertionError("unknown users must be rejected by authentication first")
+
+    from atd_radius.domain.user_policies import PeriodicAccountingPolicy
+    assert PeriodicAccountingPolicy(NeverCalled()).evaluate(AAARequest("missing", {})) is None
