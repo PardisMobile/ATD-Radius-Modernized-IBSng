@@ -110,3 +110,36 @@ def test_can_login_rejects_exhausted_quota_without_creating_instance():
     assert not decision.allowed
     assert decision.exhausted_keys == ("time_periodic_accounting_daily",)
     assert coordinator._users[7].quotas["time_periodic_accounting_daily"].starts == {}
+
+
+def test_reload_changed_period_value_resets_usage_and_rebases_active_instances():
+    clock = [1000.0]
+    initial = attrs()
+    repo = MemoryAttributes(initial)
+    coordinator = PeriodicAccountingCoordinator(repo, clock=lambda: clock[0])
+    coordinator.login(7, "1:session", start_accounting=True)
+    state = coordinator._users[7].quotas["time_periodic_accounting_daily"]
+    state.committed_usage = 55
+    repo.values["time_periodic_accounting_daily"] = "2"
+    repo.values.pop("time_periodic_accounting_daily_usage", None)
+    repo.values.pop("time_periodic_accounting_daily_reset", None)
+    clock[0] = 1100.0
+    coordinator.reload_user(7)
+    state = coordinator._users[7].quotas["time_periodic_accounting_daily"]
+    assert state.committed_usage == 0
+    assert state.initial_usage == 0
+    assert state.starts["1:session"] == 1100.0
+    assert state.next_reset is not None and state.next_reset > 1100.0
+
+
+def test_reload_unchanged_period_refreshes_persisted_usage_without_losing_baseline():
+    clock = [1000.0]
+    repo = MemoryAttributes(attrs())
+    coordinator = PeriodicAccountingCoordinator(repo, clock=lambda: clock[0])
+    coordinator.login(7, "1:session", start_accounting=True)
+    state = coordinator._users[7].quotas["time_periodic_accounting_daily"]
+    repo.values["time_periodic_accounting_daily_usage"] = "25"
+    coordinator.reload_user(7)
+    state = coordinator._users[7].quotas["time_periodic_accounting_daily"]
+    assert state.committed_usage == 25
+    assert state.starts["1:session"] == 1000.0
