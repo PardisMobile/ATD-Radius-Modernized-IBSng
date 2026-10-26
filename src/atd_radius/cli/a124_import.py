@@ -167,6 +167,22 @@ def _constraint_signatures(conn, schema: str) -> set[tuple[str, str]]:
         signatures.add((str(table).lower(), _normalize_constraint(normalized)))
     return signatures
 
+def _index_signatures(conn, schema: str, tables: set[str]) -> set[tuple[str, str, str]]:
+    """Compare all explicit and constraint-backed index definitions before row writes."""
+    rows = conn.execute(
+        """
+        SELECT tablename, indexname, indexdef
+        FROM pg_indexes
+        WHERE schemaname=%s
+        ORDER BY tablename, indexname
+        """, (schema,)
+    ).fetchall()
+    return {
+        (str(table), str(name), _normalize_object_sql(str(definition), schema))
+        for table, name, definition in rows if str(table) in tables
+    }
+
+
 
 def _normalize_object_sql(value: str, schema: str) -> str:
     normalized = re.sub(rf"\b{re.escape(schema)}\.", "", value, flags=re.I)
@@ -382,6 +398,15 @@ def _plan(source_conn, target_conn, source_schema: str, target_schema: str,
             "source/target constraint definitions differ; "
             f"missing in target={sorted(source_constraints - target_constraints)}, "
             f"extra in target={sorted(target_constraints - source_constraints)}"
+        )
+
+    source_indexes = _index_signatures(source_conn, source_schema, source_table_set)
+    target_indexes = _index_signatures(target_conn, target_schema, source_table_set)
+    if source_indexes != target_indexes:
+        raise A124ImportError(
+            "source/target index definitions differ; "
+            f"missing in target={sorted(source_indexes - target_indexes)}, "
+            f"extra in target={sorted(target_indexes - source_indexes)}"
         )
 
     source_rules = _rules(source_conn, source_schema, source_table_set)
