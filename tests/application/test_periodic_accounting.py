@@ -195,3 +195,25 @@ def test_coordinator_uses_effective_assumed_kps_for_traffic_quota_deadline():
     coordinator.login(7, "2:b", start_accounting=True)
     result = coordinator.can_stay_online(7, "1:a")
     assert result.remaining_seconds == pytest.approx(3000 / 2 / (10 * 1024) * 2)
+
+
+def test_traffic_periodic_quota_does_not_apply_to_voip_users():
+    clock = [1000.0]
+    repo = MemoryAttributes({
+        "traffic_periodic_accounting_daily": "1",
+        "traffic_periodic_accounting_daily_limit": "10",
+        "traffic_periodic_accounting_daily_usage": "999",
+        "traffic_periodic_accounting_daily_reset": "200000",
+    })
+    counts = {"1:voip": 5000}
+    coordinator = PeriodicAccountingCoordinator(
+        repo,
+        clock=lambda: clock[0],
+        traffic_counters=lambda user, instance: counts[instance],
+        is_normal_user=lambda user: False,
+    )
+    assert coordinator.can_login(7).allowed
+    assert coordinator.login(7, "1:voip", start_accounting=True).allowed
+    clock[0] = 2000.0
+    assert coordinator.logout(7, "1:voip")["traffic_periodic_accounting_daily"] == 0
+    assert repo.values["traffic_periodic_accounting_daily_usage"] == "0"
