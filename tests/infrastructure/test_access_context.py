@@ -298,3 +298,52 @@ def test_native_dispatcher_rejects_bad_mschapv2_without_leaking_mppe_keys():
     assert "MS-MPPE-Send-Key" not in response.attributes
     assert "MS-MPPE-Recv-Key" not in response.attributes
     assert "MS-CHAP2-Success" not in response.attributes
+
+
+def test_mschapv2_native_authentication_survives_radius_wire_and_mppe_round_trip():
+    from atd_radius.application.radius_runtime import build_radius_dispatcher
+    from atd_radius.domain.radius import RadiusCode
+    from atd_radius.domain.radius_codec import decode, encode, encode_response
+
+    class MSCHAPUsers(FakeUsers):
+        def __init__(self):
+            self.records = {"User": (9, "clientPass", False)}
+            self.attrs = {9: []}
+
+    secret = "shared"
+    auth_challenge = bytes.fromhex("5B5D7C7D7B3F2F3E3C2C602132262628")
+    peer_challenge = bytes.fromhex("21402324255E262A28295F2B3A337C7E")
+    nt_response = bytes.fromhex("82309ECD8D708B5EA08FAA3981CD83544233114A3D85D6DF")
+    authenticator = bytes.fromhex("00112233445566778899aabbccddeeff")
+    original_request = RadiusPacket(
+        RadiusCode.ACCESS_REQUEST,
+        13,
+        {
+            "User-Name": "User",
+            "MS-CHAP-Challenge": auth_challenge,
+            "MS-CHAP2-Response": (
+                b"\x01\x00" + peer_challenge + b"\x00" * 8 + nt_response
+            ),
+        },
+        authenticator,
+    )
+
+    # Exercise the same binary codec and response-signing path used by UDP.
+    wire_request = encode(original_request, secret)
+    decoded_request = decode(wire_request, secret)
+    logical_response = build_radius_dispatcher(MSCHAPUsers()).access(decoded_request)
+    assert logical_response.code is RadiusCode.ACCESS_ACCEPT
+    wire_response = encode_response(logical_response, decoded_request, secret)
+    decoded_response = decode(
+        wire_response,
+        secret,
+        request_authenticator=decoded_request.authenticator,
+    )
+
+    assert decoded_response.code is RadiusCode.ACCESS_ACCEPT
+    assert decoded_response.identifier == original_request.identifier
+    assert decoded_response.attributes["MS-CHAP2-Success"] == (
+        "01533d343037413535383931313546443044363230394635313046454330343536363933324344413536"
+    )
+    assert decoded_response.attributes["MS-MPPE-Send-Key"] == "8b7cdc149b993a1ba118cb153f56dccb"
+    assert decoded_response.attributes["MS-MPPE-Recv-Key"] == "d5f0e9521e3ea9589645e86051c82226"
