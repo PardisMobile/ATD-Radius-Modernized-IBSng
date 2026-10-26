@@ -351,7 +351,9 @@ class RadiusRuntimeHandler:
                             if event.status is AccountingStatus.START:
                                 decision = self.periodic_accounting.login(
                                     user_id, instance,
-                                    start_accounting="start_accounting" in event.attributes,
+                                    # Native RADIUS Accounting-Start is the durable
+                                    # equivalent of A1.24's successful login hook.
+                                    start_accounting=True,
                                 )
                                 if not decision.allowed:
                                     logging.getLogger(__name__).warning(
