@@ -984,3 +984,11 @@ The periodic-accounting lifecycle adapter was tightened against the original `pe
 ## Accounting-Stop periodic traffic settlement fix — 2026-10-26
 
 Fixed a lifecycle ordering defect in the live runtime: Accounting-Stop updates and removes the active session before periodic quota logout was reading its traffic counter, so the callback could return zero and subtract the stored baseline from accumulated usage. The runtime now passes the final octet total from the stopped accounting state into the coordinator, which validates and commits that explicit counter. Added regression coverage for a session whose live counter has already disappeared. Full PostgreSQL-backed CI passed on Python 3.11 and 3.12: **1,142 passed, 2 warnings per version**; Ruff also passed. This validates the code path and regression suite, not live NAS interoperability.
+
+
+## Periodic-accounting persistence and reset-boundary hardening — 2026-10-26
+
+- Preserved fractional seconds for time-quota usage when loading and reloading native user attributes; traffic-quota usage remains integer octets. Regression tests cover persisted fractional usage across coordinator restart and config reload.
+- Matched A1.24's strict reset-due boundary: a hook at the exact `next_reset` timestamp no longer clears usage repeatedly. Added boundary tests across daily/monthly and time/traffic quota combinations.
+- Verified the prior first-login missing-reset fix and Accounting-Stop final-counter settlement remain in the same integrated lifecycle.
+- Validation status: GitHub Actions for this batch is running; do not consider it verified until the latest Python-only and PostgreSQL-backed CI workflows finish successfully.
