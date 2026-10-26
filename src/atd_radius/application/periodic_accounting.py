@@ -101,6 +101,27 @@ class PeriodicAccountingCoordinator:
         self._users[user_id] = user
         return user
 
+    def can_login(self, user_id: int) -> PeriodicQuotaDecision:
+        """Pre-admission check matching A1.24's login-time quota rejection."""
+        now = self.clock()
+        user = self._load_user(user_id)
+        counters = {
+            instance: self.traffic_counters(user_id, instance)
+            for state in user.quotas.values()
+            if state.kind is PeriodicQuotaKind.TRAFFIC
+            for instance in state.starts
+        }
+        exhausted: list[str] = []
+        changed = False
+        for key, state in user.quotas.items():
+            if state.refresh_reset_if_due(now, counters=counters):
+                changed = True
+            if state.snapshot(now, counters).quota_finished:
+                exhausted.append(key)
+        if changed:
+            self._persist(user_id, user)
+        return PeriodicQuotaDecision(not exhausted, tuple(exhausted))
+
     def has_quotas(self, user_id: int) -> bool:
         """Return whether the effective user configuration enables any quota."""
         return bool(self._load_user(user_id).quotas)
