@@ -55,12 +55,14 @@ class PeriodicAccountingCoordinator:
         *,
         clock: Callable[[], float],
         traffic_counters: Callable[[int, int | str], int] | None = None,
+        assumed_kps: Callable[[int, int | str], float | None] | None = None,
         request_termination: Callable[[int, str], None] | None = None,
         is_normal_user: Callable[[int], bool] | None = None,
     ) -> None:
         self.attributes = attributes
         self.clock = clock
         self.traffic_counters = traffic_counters or (lambda user_id, instance: 0)
+        self.assumed_kps = assumed_kps or (lambda user_id, instance: None)
         self.request_termination = request_termination or (lambda user_id, key: None)
         self.is_normal_user = is_normal_user or (lambda user_id: True)
         self._users: dict[int, _UserState] = {}
@@ -318,8 +320,13 @@ class PeriodicAccountingCoordinator:
                 exhausted.append(key)
             else:
                 active_count = len(state.starts)
+                speeds = {
+                    active: speed
+                    for active in state.starts
+                    if (speed := self.assumed_kps(user_id, active)) is not None and speed > 0
+                }
                 remaining.append(state.remaining_time(
-                    now, active_count, counters=counters,
+                    now, active_count, counters=counters, assumed_kps=speeds,
                     normal_user=self.is_normal_user(user_id),
                 ))
             if state.next_reset is not None:
