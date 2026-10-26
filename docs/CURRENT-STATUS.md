@@ -1,5 +1,13 @@
 # PERIODIC ACCOUNTING CORE ENFORCEMENT BATCH — 2026-10-26
 
+Latest implementation checkpoint: `b69bd90c0007f2819b224bd878b4f899bfecb4fe`. The four A1.24 periodic quotas are wired into Access admission and Accounting lifecycle; quota resets and source-shaped `_reload` behavior are implemented; usage/reset attributes use the native user-attribute repository; and per-session baselines are stored with durable RADIUS session snapshots and reconciled across workers. Recurring checks request provider-aware RAS termination when quotas expire. Traffic-quota deadlines now use the effective Internet charge rule's `assumed_kps`, and traffic periodic accounting is excluded for non-normal/VoIP users per source behavior.
+
+CI for this newest checkpoint is running. Remaining work in this area is concurrency/stress validation and final source-parity audit. Other A1.24 core plugin lifecycle and provider interoperability work remains; UI and installer are still intentionally deferred.
+
+---
+
+# PERIODIC ACCOUNTING CORE ENFORCEMENT BATCH — 2026-10-26
+
 Latest implementation checkpoint: `6b29f32bc4587219e3f8d5e1fb9774e54f583e53`. Added native per-user quota persistence; Access-Request rejection on exhausted quotas; Accounting-Start baselines; recurring quota/reset checks with deferred RAS termination; source-shaped `_reload` behavior; and per-session baseline persistence/recovery in the durable RADIUS session snapshots. Before admission and accounting, active baselines are reconciled from shared PostgreSQL session state to cover sessions created by other workers. Regression coverage includes quota admission, changed period values, restart recovery, and composite session IDs.
 
 Python-only CI passed for this checkpoint; full CI is still running. Remaining periodic-accounting gaps: exact charging-rule assumed-KPS calculation for traffic quota timing, and broader stress tests for cross-worker concurrent baseline updates. Other A1.24 core plugin parity remains in progress. UI and installer remain intentionally deferred.
