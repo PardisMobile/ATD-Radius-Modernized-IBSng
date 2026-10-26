@@ -101,3 +101,12 @@ def test_coordinator_accepts_composite_native_session_identity():
     clock[0] = 1042.0
     assert coordinator.logout(7, "12:session-A")["time_periodic_accounting_daily"] == 42
     assert repo.values["time_periodic_accounting_daily_usage"] == "42.0"
+
+
+def test_can_login_rejects_exhausted_quota_without_creating_instance():
+    repo = MemoryAttributes(attrs(time_periodic_accounting_daily_usage="100"))
+    coordinator = PeriodicAccountingCoordinator(repo, clock=lambda: 1000.0)
+    decision = coordinator.can_login(7)
+    assert not decision.allowed
+    assert decision.exhausted_keys == ("time_periodic_accounting_daily",)
+    assert coordinator._users[7].quotas["time_periodic_accounting_daily"].starts == {}
