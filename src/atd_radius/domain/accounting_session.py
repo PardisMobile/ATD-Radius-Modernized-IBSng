@@ -189,8 +189,22 @@ class AccountingSessionService:
             return AccountingSessionResult(current, delta_in, delta_out, log_id)
 
         if event.status is AccountingStatus.STOP:
-            delta_in, delta_out = self.registry.update(key, event.input_octets, event.output_octets)
-            state = self.registry.stop(key, event.input_octets, event.output_octets)
+            # A1.24's periodic-accounting logout reads the final live RAS
+            # counters before the instance is removed. A Stop packet may omit
+            # Acct-* counters, so zero-filled parser defaults must not erase
+            # the last known totals used for settlement and periodic quotas.
+            has_input_counter = (
+                "Acct-Input-Octets" in event.attributes
+                or "Acct-Input-Gigawords" in event.attributes
+            )
+            has_output_counter = (
+                "Acct-Output-Octets" in event.attributes
+                or "Acct-Output-Gigawords" in event.attributes
+            )
+            final_input = event.input_octets if has_input_counter else current.input_octets
+            final_output = event.output_octets if has_output_counter else current.output_octets
+            delta_in, delta_out = self.registry.update(key, final_input, final_output)
+            state = self.registry.stop(key, final_input, final_output)
             if self.charge:
                 if "no_commit" in event.attributes:
                     # Native A1.24 CLEAR USER logs out the local session but
