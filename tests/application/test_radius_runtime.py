@@ -2089,3 +2089,57 @@ def test_native_dispatcher_allows_access_when_periodic_quota_has_room():
         )
     )
     assert response.code is RadiusCode.ACCESS_ACCEPT
+
+
+def test_periodic_quota_termination_retries_transient_ras_failures_with_backoff():
+    from atd_radius.application.radius_runtime import NativeRadiusPacketHandler
+    from atd_radius.domain.radius_runtime import SessionKey
+
+    handler = object.__new__(NativeRadiusPacketHandler)
+    handler._periodic_termination_failures = {}
+    handler._logger = Mock()
+    key = SessionKey(17, 3, "session-1")
+    attempts = {"count": 0}
+
+    def terminate(session_key, reason):
+        assert session_key == key
+        assert reason == "A1.24 periodic quota exhausted: traffic_periodic_accounting_daily"
+        attempts["count"] += 1
+        if attempts["count"] < 3:
+            raise TimeoutError("RAS is temporarily unreachable")
+
+    handler._terminate_voip_session = terminate
+
+    assert handler._run_periodic_termination(
+        17, "traffic_periodic_accounting_daily", key
+    ) == 2
+    assert handler._run_periodic_termination(
+        17, "traffic_periodic_accounting_daily", key
+    ) == 4
+    assert handler._run_periodic_termination(
+        17, "traffic_periodic_accounting_daily", key
+    ) is None
+    assert attempts["count"] == 3
+    assert handler._periodic_termination_failures == {}
+    assert handler._logger.warning.call_count == 2
+
+
+def test_periodic_quota_termination_does_not_retry_permanent_ras_blockers():
+    from atd_radius.application.radius_runtime import NativeRadiusPacketHandler
+    from atd_radius.domain.radius_runtime import SessionKey
+    from atd_radius.infrastructure.ras_termination import PermanentRASTerminationError
+
+    handler = object.__new__(NativeRadiusPacketHandler)
+    handler._periodic_termination_failures = {}
+    handler._logger = Mock()
+    key = SessionKey(17, 3, "session-2")
+    handler._terminate_voip_session = Mock(
+        side_effect=PermanentRASTerminationError("provider cannot terminate this session")
+    )
+
+    assert handler._run_periodic_termination(
+        17, "time_periodic_accounting_daily", key
+    ) is None
+    assert handler._periodic_termination_failures == {}
+    handler._terminate_voip_session.assert_called_once()
+    handler._logger.error.assert_called_once()
