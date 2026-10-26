@@ -1256,6 +1256,7 @@ def build_native_radius_runtime(
         active_sessions_provider=session_views(state.sessions),
         ras=state.ras,
         ip_pools=state.pools,
+        periodic_accounting=periodic_accounting,
     )
     identities = NativeAccountingIdentityResolver(users, state.ras)
     return RadiusRuntimeHandler(
