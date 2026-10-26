@@ -991,4 +991,11 @@ Fixed a lifecycle ordering defect in the live runtime: Accounting-Stop updates a
 - Preserved fractional seconds for time-quota usage when loading and reloading native user attributes; traffic-quota usage remains integer octets. Regression tests cover persisted fractional usage across coordinator restart and config reload.
 - Matched A1.24's strict reset-due boundary: a hook at the exact `next_reset` timestamp no longer clears usage repeatedly. Added boundary tests across daily/monthly and time/traffic quota combinations.
 - Verified the prior first-login missing-reset fix and Accounting-Stop final-counter settlement remain in the same integrated lifecycle.
-- Validation status: GitHub Actions for this batch is running; do not consider it verified until the latest Python-only and PostgreSQL-backed CI workflows finish successfully.
+- Validation status: the subsequent importer checkpoint b6d91555 passed both workflows (CI run 40337053215, Python-only run 40337052963); the next locked-revalidation change is a separate checkpoint and must pass its own CI.
+
+
+## Importer locked schema revalidation — 2026-10-26
+
+Apply mode now repeats the full source/target compatibility plan after target tables are locked and before staging or row writes. This detects target schema/object drift introduced after preflight and refreshes target row counts under the lock. The new PostgreSQL acceptance test injects a target-only index after the first plan and verifies that the second, locked check refuses the import without changing existing row data.
+
+Validation for this checkpoint: pending its own Python-only and PostgreSQL-backed CI. The previous index-parity checkpoint b6d91555 passed both workflows; that result does not substitute for validation of this change.
