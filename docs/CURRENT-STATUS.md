@@ -2,7 +2,7 @@
 
 Latest implementation checkpoint: `b69bd90c0007f2819b224bd878b4f899bfecb4fe`. The four A1.24 periodic quotas are wired into Access admission and Accounting lifecycle; quota resets and source-shaped `_reload` behavior are implemented; usage/reset attributes use the native user-attribute repository; and per-session baselines are stored with durable RADIUS session snapshots and reconciled across workers. Recurring checks request provider-aware RAS termination when quotas expire. Traffic-quota deadlines now use the effective Internet charge rule's `assumed_kps`, and traffic periodic accounting is excluded for non-normal/VoIP users per source behavior.
 
-CI for this newest checkpoint is running. Remaining work in this area is concurrency/stress validation and final source-parity audit. Other A1.24 core plugin lifecycle and provider interoperability work remains; UI and installer are still intentionally deferred.
+Full CI and Python-only workflows passed for this checkpoint on Python 3.11 and 3.12. Remaining work in this area is concurrency/stress validation and final source-parity audit. Other A1.24 core plugin lifecycle and provider interoperability work remains; UI and installer are still intentionally deferred.
 
 ---
 
