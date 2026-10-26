@@ -558,8 +558,6 @@ def import_data(source_conn, target_conn, source_schema: str, target_schema: str
                     f"self-referencing table {table_plan['table']} contains a cycle or unorderable parent chain"
                 )
 
-    source_sequences = _sequence_specs(source_conn, source_schema)
-    source_owners = _sequence_owners(source_conn, source_schema)
     table_results: list[dict[str, Any]] = []
     sequence_results: list[dict[str, Any]] = []
     with target_conn.transaction():
