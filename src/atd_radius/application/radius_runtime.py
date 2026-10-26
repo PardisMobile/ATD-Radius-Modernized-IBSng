@@ -375,7 +375,7 @@ class RadiusRuntimeHandler:
                             session_attrs = {
                                 str(name): str(value)
                                 for name, value in session_state.attributes.items()
-                                if not str(name).startswith("__periodic_start_")
+                                if not str(name).startswith(("__periodic_start_", "__periodic_value_"))
                             }
                             session_attrs.update(
                                 self.periodic_accounting.session_baseline_attributes(user_id, instance)
