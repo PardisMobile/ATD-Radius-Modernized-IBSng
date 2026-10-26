@@ -6,7 +6,7 @@ per-session counters and a callback that requests RAS termination.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Callable, Mapping, Protocol
 
 from atd_radius.domain.periodic_accounting import (
@@ -101,10 +101,61 @@ class PeriodicAccountingCoordinator:
         self._users[user_id] = user
         return user
 
+    def reload_user(self, user_id: int) -> _UserState:
+        """Apply source-shaped _reload semantics without losing live baselines."""
+        attrs = self.attributes.load(user_id)
+        current = self._users.get(user_id)
+        if current is None:
+            return self._load_user(user_id)
+        now = self.clock()
+        next_quotas: dict[str, PeriodicAccountingState] = {}
+        for key, period, kind in self.DEFINITIONS:
+            value = attrs.get(key)
+            limit_raw = attrs.get(f"{key}_limit")
+            if value in (None, "") or limit_raw in (None, ""):
+                continue
+            try:
+                limit = int(limit_raw)
+                usage = int(self._number(attrs, f"{key}_usage"))
+                reset_raw = attrs.get(f"{key}_reset")
+                reset = float(reset_raw) if reset_raw not in (None, "") else None
+                config = PeriodicQuotaConfig(
+                    key=key, period=period, kind=kind, value=str(value),
+                    limit=limit, next_reset=reset, accumulated_usage=usage,
+                )
+            except (ValueError, TypeError, OverflowError):
+                continue
+            old = current.quotas.get(key)
+            if old is None:
+                next_quotas[key] = PeriodicAccountingState(config)
+                continue
+            changed_value = old.config.value != config.value
+            old.config = config
+            if changed_value:
+                old.initial_usage = 0
+                old.committed_usage = 0
+                old.next_reset = None
+                old.pending_reset_persist = True
+                counters = {
+                    instance: self.traffic_counters(user_id, instance)
+                    for instance in old.starts
+                }
+                old.refresh_reset_if_due(now, counters=counters)
+            else:
+                # A1.24 reloads the stored accumulated usage when the period
+                # value is unchanged but retains current per-instance starts.
+                old.initial_usage = 0
+                old.committed_usage = usage
+                if old.next_reset is None and reset is not None:
+                    old.next_reset = reset
+            next_quotas[key] = old
+        current.quotas = next_quotas
+        return current
+
     def can_login(self, user_id: int) -> PeriodicQuotaDecision:
         """Pre-admission check matching A1.24's login-time quota rejection."""
         now = self.clock()
-        user = self._load_user(user_id)
+        user = self.reload_user(user_id)
         counters = {
             instance: self.traffic_counters(user_id, instance)
             for state in user.quotas.values()
