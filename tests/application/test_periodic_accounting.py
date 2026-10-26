@@ -143,3 +143,34 @@ def test_reload_unchanged_period_refreshes_persisted_usage_without_losing_baseli
     state = coordinator._users[7].quotas["time_periodic_accounting_daily"]
     assert state.committed_usage == 25
     assert state.starts["1:session"] == 1000.0
+
+
+def test_session_baselines_restore_across_coordinator_restart():
+    clock = [1000.0]
+    repo = MemoryAttributes(attrs())
+    first = PeriodicAccountingCoordinator(repo, clock=lambda: clock[0])
+    first.login(7, "12:session-A", start_accounting=True)
+    markers = first.session_baseline_attributes(7, "12:session-A")
+    assert markers["__periodic_start_time_periodic_accounting_daily"] == "1000.0"
+    assert markers["__periodic_value_time_periodic_accounting_daily"] == "1"
+
+    clock[0] = 1030.0
+    second = PeriodicAccountingCoordinator(repo, clock=lambda: clock[0])
+    second.restore_instance(7, "12:session-A", markers)
+    state = second._users[7].quotas["time_periodic_accounting_daily"]
+    assert state.current_usage(1030.0) == 30.0
+
+
+def test_restart_rebases_session_when_period_value_changed():
+    clock = [1000.0]
+    repo = MemoryAttributes(attrs(time_periodic_accounting_daily="2"))
+    coordinator = PeriodicAccountingCoordinator(repo, clock=lambda: clock[0])
+    coordinator.restore_instance(
+        7, "12:session-A",
+        {
+            "__periodic_start_time_periodic_accounting_daily": "500.0",
+            "__periodic_value_time_periodic_accounting_daily": "1",
+        },
+    )
+    state = coordinator._users[7].quotas["time_periodic_accounting_daily"]
+    assert state.starts["12:session-A"] == 1000.0
