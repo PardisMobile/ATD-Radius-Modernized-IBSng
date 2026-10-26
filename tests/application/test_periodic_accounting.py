@@ -219,3 +219,39 @@ def test_traffic_periodic_quota_does_not_apply_to_voip_users():
     clock[0] = 2000.0
     assert coordinator.logout(7, "1:voip")["traffic_periodic_accounting_daily"] == 0
     assert repo.values["traffic_periodic_accounting_daily_usage"] == "999"
+
+
+
+def test_concurrent_first_access_loads_user_state_once():
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Barrier, Lock
+    from time import sleep
+
+    class CountingAttributes(MemoryAttributes):
+        def __init__(self, initial):
+            super().__init__(initial)
+            self.load_count = 0
+            self.load_lock = Lock()
+
+        def load(self, user_id):
+            with self.load_lock:
+                self.load_count += 1
+            # Widen the race window: without per-user synchronization, several
+            # callers can all observe an empty cache and overwrite its state.
+            sleep(0.01)
+            return super().load(user_id)
+
+    repo = CountingAttributes(attrs())
+    coordinator = PeriodicAccountingCoordinator(repo, clock=lambda: 1000.0)
+    start = Barrier(12)
+
+    def access():
+        start.wait()
+        return coordinator.has_quotas(7)
+
+    with ThreadPoolExecutor(max_workers=12) as pool:
+        results = list(pool.map(lambda _: access(), range(12)))
+
+    assert all(results)
+    assert repo.load_count == 1
+    assert set(coordinator._users[7].quotas) == {"time_periodic_accounting_daily"}
