@@ -109,6 +109,7 @@ class PeriodicAccountingCoordinator:
             return self._load_user(user_id)
         now = self.clock()
         next_quotas: dict[str, PeriodicAccountingState] = {}
+        configuration_changed = False
         for key, period, kind in self.DEFINITIONS:
             value = attrs.get(key)
             limit_raw = attrs.get(f"{key}_limit")
@@ -130,6 +131,7 @@ class PeriodicAccountingCoordinator:
                 next_quotas[key] = PeriodicAccountingState(config)
                 continue
             changed_value = old.config.value != config.value
+            configuration_changed = configuration_changed or changed_value
             old.config = config
             if changed_value:
                 old.initial_usage = 0
@@ -150,6 +152,8 @@ class PeriodicAccountingCoordinator:
                     old.next_reset = reset
             next_quotas[key] = old
         current.quotas = next_quotas
+        if configuration_changed:
+            self._persist(user_id, current)
         return current
 
     def can_login(self, user_id: int) -> PeriodicQuotaDecision:
