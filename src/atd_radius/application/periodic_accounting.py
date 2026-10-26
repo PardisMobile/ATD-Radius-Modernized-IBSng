@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from functools import wraps
+from math import isfinite
 from threading import RLock
 from typing import Callable, Mapping, Protocol
 
@@ -93,6 +94,18 @@ class PeriodicAccountingCoordinator:
         except (TypeError, ValueError):
             return default
 
+    @staticmethod
+    def _reset_epoch(attrs: Mapping[str, str], key: str) -> float | None:
+        """Decode A1.24's missing/zero reset sentinel without anchoring to 1970."""
+        raw = attrs.get(key)
+        if raw in (None, ""):
+            return None
+        try:
+            value = float(raw)
+        except (TypeError, ValueError, OverflowError):
+            return None
+        return value if isfinite(value) and value > 0 else None
+
     @_synchronized_user
     def _load_user(self, user_id: int) -> _UserState:
         if user_id in self._users:
@@ -108,8 +121,7 @@ class PeriodicAccountingCoordinator:
                 limit = int(limit_raw)
                 raw_usage = self._number(attrs, f"{key}_usage")
                 accumulated = int(raw_usage) if kind is PeriodicQuotaKind.TRAFFIC else raw_usage
-                reset_raw = attrs.get(f"{key}_reset")
-                reset = float(reset_raw) if reset_raw not in (None, "") else None
+                reset = self._reset_epoch(attrs, f"{key}_reset")
                 config = PeriodicQuotaConfig(
                     key=key, period=period, kind=kind, value=str(value),
                     limit=limit, next_reset=reset, accumulated_usage=accumulated,
@@ -143,8 +155,7 @@ class PeriodicAccountingCoordinator:
                 limit = int(limit_raw)
                 raw_usage = self._number(attrs, f"{key}_usage")
                 usage = int(raw_usage) if kind is PeriodicQuotaKind.TRAFFIC else raw_usage
-                reset_raw = attrs.get(f"{key}_reset")
-                reset = float(reset_raw) if reset_raw not in (None, "") else None
+                reset = self._reset_epoch(attrs, f"{key}_reset")
                 config = PeriodicQuotaConfig(
                     key=key, period=period, kind=kind, value=str(value),
                     limit=limit, next_reset=reset, accumulated_usage=usage,
