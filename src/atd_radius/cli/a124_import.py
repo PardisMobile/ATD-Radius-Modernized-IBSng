@@ -47,10 +47,19 @@ def _columns(conn, schema: str, table: str) -> list[dict[str, Any]]:
                pg_catalog.format_type(attribute.atttypid, attribute.atttypmod),
                NOT attribute.attnotnull,
                attribute.attgenerated,
-               attribute.attidentity
+               attribute.attidentity,
+               pg_catalog.pg_get_expr(defaults.adbin, defaults.adrelid),
+               collation_namespace.nspname,
+               collation.collname
         FROM pg_class AS relation
         JOIN pg_namespace AS namespace ON namespace.oid=relation.relnamespace
         JOIN pg_attribute AS attribute ON attribute.attrelid=relation.oid
+        LEFT JOIN pg_attrdef AS defaults
+          ON defaults.adrelid=relation.oid AND defaults.adnum=attribute.attnum
+        LEFT JOIN pg_collation AS collation
+          ON collation.oid=attribute.attcollation AND attribute.attcollation <> 0
+        LEFT JOIN pg_namespace AS collation_namespace
+          ON collation_namespace.oid=collation.collnamespace
         WHERE namespace.nspname=%s AND relation.relname=%s
           AND relation.relkind IN ('r', 'p')
           AND attribute.attnum > 0 AND NOT attribute.attisdropped
@@ -59,8 +68,10 @@ def _columns(conn, schema: str, table: str) -> list[dict[str, Any]]:
     ).fetchall()
     return [
         {"name": str(name), "type": str(type_name), "nullable": bool(nullable),
-         "generated": str(generated or ""), "identity": str(identity or "")}
-        for name, type_name, nullable, generated, identity in rows
+         "generated": str(generated or ""), "identity": str(identity or ""),
+         "default": _normalize_object_sql(str(default), schema) if default is not None else None,
+         "collation": f"{collation_schema}.{collation_name}" if collation_name else ""}
+        for name, type_name, nullable, generated, identity, default, collation_schema, collation_name in rows
     ]
 
 
@@ -327,13 +338,17 @@ def _plan(source_conn, target_conn, source_schema: str, target_schema: str,
     for table in source_tables:
         source_columns = _columns(source_conn, source_schema, table)
         target_columns = _columns(target_conn, target_schema, table)
-        source_shape = [(c["name"], c["type"], c["nullable"], c["generated"], c["identity"])
-                        for c in source_columns]
-        target_shape = [(c["name"], c["type"], c["nullable"], c["generated"], c["identity"])
-                        for c in target_columns]
+        source_shape = [
+            (c["name"], c["type"], c["nullable"], c["generated"], c["identity"], c["default"], c["collation"])
+            for c in source_columns
+        ]
+        target_shape = [
+            (c["name"], c["type"], c["nullable"], c["generated"], c["identity"], c["default"], c["collation"])
+            for c in target_columns
+        ]
         if source_shape != target_shape:
             raise A124ImportError(
-                f"schema mismatch for {table}; source and target column order/type/nullability differ"
+                f"schema mismatch for {table}; source and target column order/type/nullability/default/collation differ"
             )
         if any(c["generated"] or c["identity"] for c in source_columns):
             raise A124ImportError(
