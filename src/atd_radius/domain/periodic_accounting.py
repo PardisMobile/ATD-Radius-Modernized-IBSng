@@ -107,7 +107,7 @@ class PeriodicQuotaConfig:
     value: str
     limit: int
     next_reset: float | None = None
-    accumulated_usage: int = 0
+    accumulated_usage: int | float = 0
 
     def __post_init__(self) -> None:
         if self.period not in {"daily", "monthly"}:
@@ -276,7 +276,9 @@ class PeriodicAccountingState:
                 )
             self.reset(next_reset, now, counters)
             return True
-        if self.next_reset > now:
+        # Match A1.24's strict '< time.time()' due check: at the exact
+        # boundary, a repeated hook must not reset usage twice.
+        if self.next_reset >= now:
             return False
         if self.config.period == "daily":
             interval = int(self.config.value) * 86400
