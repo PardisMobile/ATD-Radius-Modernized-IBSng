@@ -6,7 +6,7 @@ per-session counters and a callback that requests RAS termination.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from typing import Callable, Mapping, Protocol
 
 from atd_radius.domain.periodic_accounting import (
