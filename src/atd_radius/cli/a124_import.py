@@ -50,16 +50,16 @@ def _columns(conn, schema: str, table: str) -> list[dict[str, Any]]:
                attribute.attidentity,
                pg_catalog.pg_get_expr(defaults.adbin, defaults.adrelid),
                collation_namespace.nspname,
-               collation.collname
+               collation_row.collname
         FROM pg_class AS relation
         JOIN pg_namespace AS namespace ON namespace.oid=relation.relnamespace
         JOIN pg_attribute AS attribute ON attribute.attrelid=relation.oid
         LEFT JOIN pg_attrdef AS defaults
           ON defaults.adrelid=relation.oid AND defaults.adnum=attribute.attnum
-        LEFT JOIN pg_collation AS collation
-          ON collation.oid=attribute.attcollation AND attribute.attcollation <> 0
+        LEFT JOIN pg_collation AS collation_row
+          ON collation_row.oid=attribute.attcollation AND attribute.attcollation <> 0
         LEFT JOIN pg_namespace AS collation_namespace
-          ON collation_namespace.oid=collation.collnamespace
+          ON collation_namespace.oid=collation_row.collnamespace
         WHERE namespace.nspname=%s AND relation.relname=%s
           AND relation.relkind IN ('r', 'p')
           AND attribute.attnum > 0 AND NOT attribute.attisdropped
