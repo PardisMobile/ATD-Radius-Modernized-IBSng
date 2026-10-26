@@ -24,6 +24,7 @@ from atd_radius.domain.user_policies import (
     LimitMacPolicy,
     LimitStationIPPolicy,
     TimeoutPolicy,
+    PeriodicAccountingPolicy,
 )
 from atd_radius.domain.ras import RASRuntimeRegistry
 from atd_radius.domain.ip_pool import IPPoolRuntimeRegistry
@@ -1036,17 +1037,6 @@ class NativeRadiusPacketHandler:
                 for recovered_state in session_store.list_active():
                     self._refresh_online_expiry_schedule(recovered_state.key.user_id)
             accounting = AccountingSessionService(self.state.sessions, persistence, charge, session_store)
-            dispatcher = build_radius_dispatcher(
-                users,
-                active_sessions_provider=session_views(
-                    self.state.sessions,
-                    login_reservations,
-                    login_reservations.request_key(packet, peer)
-                    if packet.code is RadiusCode.ACCESS_REQUEST else None,
-                ),
-                ras=ras,
-                ip_pools=pools,
-            )
             identities = NativeAccountingIdentityResolver(users, ras)
             if self.state.periodic_accounting is None:
                 def periodic_traffic_counter(user_id: int, instance: str) -> int:
@@ -1073,6 +1063,18 @@ class NativeRadiusPacketHandler:
                 # per-instance quota baselines across short DB transactions.
                 self.state.periodic_accounting.attributes = NativePeriodicAccountingAttributes(users)
                 self.state.periodic_accounting.is_normal_user = users.is_normal_user
+            dispatcher = build_radius_dispatcher(
+                users,
+                active_sessions_provider=session_views(
+                    self.state.sessions,
+                    login_reservations,
+                    login_reservations.request_key(packet, peer)
+                    if packet.code is RadiusCode.ACCESS_REQUEST else None,
+                ),
+                ras=ras,
+                ip_pools=pools,
+                periodic_accounting=self.state.periodic_accounting,
+            )
             handler = RadiusRuntimeHandler(
                 dispatcher,
                 accounting,
@@ -1114,6 +1116,7 @@ def build_radius_dispatcher(
     active_sessions_provider=None,
     ras=None,
     ip_pools: IPPoolRuntimeRegistry | None = None,
+    periodic_accounting: PeriodicAccountingCoordinator | None = None,
 ) -> RadiusDispatcher:
     """Build the native authentication boundary without inventing a new schema."""
     from atd_radius.infrastructure.access_context import NativeAccessContext
@@ -1128,6 +1131,8 @@ def build_radius_dispatcher(
         PluginSpec(7, "absolute_expiry", AbsoluteExpiryPolicy()),
         PluginSpec(8, "relative_expiry", RelativeExpiryPolicy()),
     ]
+    if periodic_accounting is not None:
+        policies.append(PluginSpec(8, "periodic_accounting", PeriodicAccountingPolicy(periodic_accounting)))
     if ip_pools is not None:
         policies.append(PluginSpec(9, "ip_pool", IPPoolAllocationPolicy(ip_pools)))
     policies.append(PluginSpec(9, "timeout", TimeoutPolicy()))
