@@ -296,3 +296,32 @@ def test_import_refuses_column_default_drift_before_row_writes(import_schemas):
         assert target.execute(
             sql.SQL("SELECT label FROM {}.parent WHERE id=1").format(sql.Identifier(target_schema))
         ).fetchone()[0] == "old target"
+
+
+def test_import_refuses_row_security_policy_drift_before_row_writes(import_schemas):
+    dsn, source_schema, target_schema = import_schemas
+    with psycopg.connect(dsn) as source, psycopg.connect(dsn) as target:
+        source.execute(
+            sql.SQL("ALTER TABLE {}.parent ENABLE ROW LEVEL SECURITY").format(
+                sql.Identifier(source_schema)
+            )
+        )
+        target.execute(
+            sql.SQL("ALTER TABLE {}.parent ENABLE ROW LEVEL SECURITY").format(
+                sql.Identifier(target_schema)
+            )
+        )
+        source.execute(
+            sql.SQL("CREATE POLICY parent_import_scope ON {}.parent USING (id > 0)").format(
+                sql.Identifier(source_schema)
+            )
+        )
+        with pytest.raises(A124ImportError, match="row-level security policies differ"):
+            import_data(
+                source, target, source_schema, target_schema,
+                {"parent": {"id": "integer", "label": "text"},
+                 "child": {"id": "integer", "parent_id": "integer", "value": "text"}},
+            )
+        assert target.execute(
+            sql.SQL("SELECT label FROM {}.parent WHERE id=1").format(sql.Identifier(target_schema))
+        ).fetchone()[0] == "old target"
