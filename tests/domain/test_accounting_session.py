@@ -14,7 +14,7 @@ def test_accounting_session_start_interim_stop_tracks_deltas():
     interim = service.apply(event(AccountingStatus.INTERIM, inp=150, out=260), 7, 3)
     assert (interim.delta_input_octets, interim.delta_output_octets) == (50, 60)
 
-    stopped = service.apply(event(AccountingStatus.STOP, inp=180, out=300), 7, 3)
+    stopped = service.apply(event(AccountingStatus.STOP, inp=180, out=300, attributes={"Acct-Input-Octets": "180", "Acct-Output-Octets": "300"}), 7, 3)
     assert (stopped.delta_input_octets, stopped.delta_output_octets) == (30, 40)
     assert stopped.state.stopped
 
