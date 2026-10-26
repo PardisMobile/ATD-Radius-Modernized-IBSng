@@ -300,3 +300,19 @@ def test_logout_uses_final_traffic_counter_when_live_session_is_already_removed(
         7, "3:session-stop", traffic_octets=250
     )["traffic_periodic_accounting_daily"] == 150
     assert repo.values["traffic_periodic_accounting_daily_usage"] == "175"
+
+
+def test_first_login_initializes_and_persists_missing_reset_timer():
+    clock = [1_800_000_000.0]
+    initial = attrs()
+    initial.pop("time_periodic_accounting_daily_reset")
+    repo = MemoryAttributes(initial)
+    coordinator = PeriodicAccountingCoordinator(repo, clock=lambda: clock[0])
+
+    decision = coordinator.login(7, "3:session-first", start_accounting=True)
+
+    state = coordinator._users[7].quotas["time_periodic_accounting_daily"]
+    assert decision.allowed
+    assert state.next_reset is not None and state.next_reset > clock[0]
+    assert float(repo.values["time_periodic_accounting_daily_reset"]) == state.next_reset
+    assert state.starts["3:session-first"] == clock[0]
