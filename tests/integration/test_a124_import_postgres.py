@@ -250,15 +250,16 @@ def test_apply_revalidates_schema_after_target_locks(import_schemas, monkeypatch
 
     def drift_after_initial_plan(source, target, *args, **kwargs):
         nonlocal calls
-        report = original_plan(source, target, *args, **kwargs)
         calls += 1
         if calls == 1:
+            report = original_plan(source, target, *args, **kwargs)
             target.execute(
                 sql.SQL("CREATE INDEX parent_label_race_idx ON {}.parent (label)").format(
                     sql.Identifier(target_schema)
                 )
             )
-        return report
+            return report
+        return original_plan(source, target, *args, **kwargs)
 
     monkeypatch.setattr(a124_import, "_plan", drift_after_initial_plan)
     with psycopg.connect(dsn) as source, psycopg.connect(dsn) as target:
