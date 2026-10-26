@@ -511,6 +511,10 @@ class NativeRadiusPacketHandler:
             on_error=self._expiry_error,
         )
         self.online_expiry_loop.start()
+        self.periodic_scheduler = VoipLimitScheduler(
+            on_error=self._periodic_scheduler_error, name="atd-periodic-accounting"
+        )
+        self.periodic_scheduler.start()
 
     def _scheduler_error(self, key, exc: Exception) -> None:
         self._logger.error("VoIP timer callback failed for %r: %s", key, exc)
@@ -528,6 +532,66 @@ class NativeRadiusPacketHandler:
         """Stop timer workers during normal process shutdown."""
         self.voip_limit_loop.close()
         self.online_expiry_loop.close()
+        self.periodic_scheduler.close()
+
+    def _periodic_scheduler_error(self, key, exc: Exception) -> None:
+        self._logger.error("A1.24 periodic-accounting check failed for %r: %s", key, exc)
+
+    def _schedule_periodic_termination(self, user_id: int, quota_key: str) -> None:
+        # Defer termination until the packet transaction has returned; otherwise
+        # the independent termination transaction could deadlock on its session lock.
+        with self.state.sessions.synchronized():
+            keys = tuple(state.key for state in self.state.sessions.active_for_user(user_id))
+        for session_key in keys:
+            task_key = ("periodic-quota-kill", user_id, quota_key, session_key.ras_id, session_key.unique_id)
+            self.periodic_scheduler.schedule(
+                task_key, 1,
+                lambda session_key=session_key, quota_key=quota_key: (
+                    self._terminate_voip_session(session_key, f"A1.24 periodic quota exhausted: {quota_key}"),
+                    None,
+                )[1],
+            )
+
+    def _refresh_periodic_accounting_schedule(self, user_id: int) -> None:
+        with self.state.sessions.synchronized():
+            active = self.state.sessions.active_for_user(user_id)
+        key = ("periodic-accounting-user", user_id)
+        if not active or self.state.periodic_accounting is None:
+            self.periodic_scheduler.cancel(key)
+            return
+        self.periodic_scheduler.schedule(key, 1, lambda: self._check_periodic_accounting(user_id))
+
+    def _check_periodic_accounting(self, user_id: int):
+        with self.connection_factory() as conn:
+            self._refresh_durable_user_sessions(conn, user_id)
+            users = UserRepository(conn)
+            coordinator = self.state.periodic_accounting
+            if coordinator is None:
+                return None
+            coordinator.attributes = NativePeriodicAccountingAttributes(users)
+            coordinator.is_normal_user = users.is_normal_user
+            with self.state.sessions.synchronized():
+                active = tuple(self.state.sessions.active_for_user(user_id))
+            if not active:
+                return None
+            now = datetime.now(timezone.utc).timestamp()
+            decisions = [
+                coordinator.can_stay_online(
+                    user_id, f"{state.key.ras_id}:{state.key.unique_id}"
+                )
+                for state in active
+            ]
+            if any(not decision.allowed for decision in decisions):
+                return 1
+            delays = []
+            for decision in decisions:
+                if decision.remaining_seconds is not None and decision.remaining_seconds > 0:
+                    delays.append(decision.remaining_seconds)
+                if decision.next_reset is not None and decision.next_reset > now:
+                    delays.append(decision.next_reset - now)
+            # Traffic quotas need counter polling when no assumed-KPS rule is
+            # available; cap polling to 30s and re-evaluate on every packet too.
+            return max(1.0, min([30.0, *delays]))
 
     def _refresh_online_expiry_schedule(self, user_id: int) -> None:
         with self.state.sessions.synchronized():
@@ -994,8 +1058,10 @@ class NativeRadiusPacketHandler:
                     clock=lambda: datetime.now(timezone.utc).timestamp(),
                     traffic_counters=periodic_traffic_counter,
                     is_normal_user=users.is_normal_user,
+                    request_termination=self._schedule_periodic_termination,
                 )
             else:
+                self.state.periodic_accounting.request_termination = self._schedule_periodic_termination
                 # Rebind only the packet-scoped repository; preserve active
                 # per-instance quota baselines across short DB transactions.
                 self.state.periodic_accounting.attributes = NativePeriodicAccountingAttributes(users)
@@ -1021,6 +1087,7 @@ class NativeRadiusPacketHandler:
                 if user_id is not None:
                     self._refresh_voip_limit_schedule(user_id)
                     self._refresh_online_expiry_schedule(user_id)
+                    self._refresh_periodic_accounting_schedule(user_id)
             return response
 
 
