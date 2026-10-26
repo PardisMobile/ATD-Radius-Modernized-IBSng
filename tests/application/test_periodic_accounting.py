@@ -1,3 +1,5 @@
+import pytest
+
 from atd_radius.application.periodic_accounting import PeriodicAccountingCoordinator
 
 
