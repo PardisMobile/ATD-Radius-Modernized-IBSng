@@ -663,6 +663,28 @@ class NativeRadiusPacketHandler:
         else:
             self.voip_limit_loop.cancel(user_id)
 
+    def _restore_periodic_baselines_for_user(
+        self, session_store, coordinator: PeriodicAccountingCoordinator, user_id: int
+    ) -> None:
+        """Reconcile this user's quota baselines from shared durable sessions."""
+        for state in session_store.list_active():
+            if state.key.user_id != user_id:
+                continue
+            instance = f"{state.key.ras_id}:{state.key.unique_id}"
+            fallback_start = state.started_at.timestamp() if state.started_at is not None else None
+            coordinator.restore_instance(
+                user_id, instance, state.attributes, fallback_started_at=fallback_start
+            )
+            attributes = {
+                str(name): str(value)
+                for name, value in state.attributes.items()
+                if not str(name).startswith(("__periodic_start_", "__periodic_value_"))
+            }
+            attributes.update(coordinator.session_baseline_attributes(user_id, instance))
+            if attributes != dict(state.attributes):
+                state.attributes = attributes
+                session_store.save(state)
+
     def _refresh_durable_user_sessions(self, conn, user_id: int) -> None:
         """Refresh the full user's session set while holding deterministic DB locks."""
         if not callable(getattr(conn, "execute", None)):
@@ -1107,6 +1129,27 @@ class NativeRadiusPacketHandler:
                     recovered_state.attributes = recovered_attrs
                     accounting.persist_state(recovered_state)
                 self.state.periodic_baselines_recovered = True
+            # Refresh per-user baselines from shared storage before quota
+            # admission or accounting settlement, including sessions started by
+            # another worker since this process last saw the user.
+            if self.state.periodic_accounting is not None:
+                target_user_id = None
+                if packet.code is RadiusCode.ACCESS_REQUEST:
+                    username = str(packet.attributes.get("User-Name", ""))
+                    record = users.get_authentication_record(username) if username else None
+                    target_user_id = int(record[0]) if record else None
+                elif packet.code is RadiusCode.ACCOUNTING_REQUEST:
+                    try:
+                        pending_event = event_from_attributes(packet.attributes)
+                        target_user_id = identities.user_id(pending_event.username)
+                    except (TypeError, ValueError):
+                        target_user_id = None
+                if target_user_id is not None:
+                    login_reservations.lock_user(target_user_id)
+                    self._refresh_durable_user_sessions(conn, target_user_id)
+                    self._restore_periodic_baselines_for_user(
+                        session_store, self.state.periodic_accounting, target_user_id
+                    )
             dispatcher = build_radius_dispatcher(
                 users,
                 active_sessions_provider=session_views(
