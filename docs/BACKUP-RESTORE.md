@@ -1,6 +1,10 @@
+# COLUMN SEMANTICS PARITY — 2026-10-26
+
+The import gate now compares normalized per-column default expressions and declared collations as well as order, type, nullability, generated and identity properties. A mismatch fails closed before row transfer; the importer does not silently repair target DDL. PostgreSQL acceptance coverage confirms a source-only default is rejected while preserving existing target data.
+
 # LOCKED IMPORT REVALIDATION — 2026-10-26
 
-Apply mode now treats the initial compatibility plan as advisory. After acquiring `SHARE ROW EXCLUSIVE` locks on every planned target table, it reruns the complete schema/object/sequence-definition compatibility gate before creating staging tables or writing rows. A table-inventory change between plans also aborts. This closes the target-table DDL race where indexes, constraints, triggers, or column definitions could drift after preflight but before locks. A PostgreSQL acceptance test injects an index change in that exact window and verifies refusal with target data unchanged.
+Apply mode now treats the initial compatibility plan as advisory. After acquiring `SHARE ROW EXCLUSIVE` locks on every planned target table, it reruns the complete schema/object/sequence-definition compatibility gate, now including normalized column defaults and declared collations before creating staging tables or writing rows. A table-inventory change between plans also aborts. This closes the target-table DDL race where indexes, constraints, triggers, or column definitions could drift after preflight but before locks. A PostgreSQL acceptance test injects an index change in that exact window and verifies refusal with target data unchanged.
 
 The source database should still be operationally quiesced for the migration; this gate does not replace a real restored-backup drill or coordinate arbitrary external changes to source rows/sequences.
 
