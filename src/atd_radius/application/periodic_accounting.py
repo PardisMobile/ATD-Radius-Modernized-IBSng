@@ -169,6 +169,7 @@ class PeriodicAccountingCoordinator:
                 continue
             baseline = state.starts[instance]
             values[self._baseline_attribute(key)] = "none" if baseline is None else str(baseline)
+            values[f"__periodic_value_{key}"] = state.config.value
         return values
 
     def restore_instance(
@@ -187,7 +188,15 @@ class PeriodicAccountingCoordinator:
         user = self.reload_user(user_id)
         for key, state in user.quotas.items():
             marker = self._baseline_attribute(key)
-            if marker in attributes:
+            stored_value = attributes.get(f"__periodic_value_{key}")
+            if marker in attributes and stored_value not in (None, state.config.value):
+                # A1.24 _reload resets active starts when the period value changes.
+                state.starts[instance] = (
+                    self.clock()
+                    if state.kind is PeriodicQuotaKind.TIME
+                    else self.traffic_counters(user_id, instance)
+                )
+            elif marker in attributes:
                 raw = str(attributes[marker])
                 if raw == "none":
                     state.starts[instance] = None
