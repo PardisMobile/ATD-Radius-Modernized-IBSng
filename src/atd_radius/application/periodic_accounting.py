@@ -156,6 +156,54 @@ class PeriodicAccountingCoordinator:
             self._persist(user_id, current)
         return current
 
+    @staticmethod
+    def _baseline_attribute(key: str) -> str:
+        return f"__periodic_start_{key}"
+
+    def session_baseline_attributes(self, user_id: int, instance: int | str) -> Mapping[str, str]:
+        """Serialize per-session quota baselines into the durable live-session snapshot."""
+        user = self._load_user(user_id)
+        values: dict[str, str] = {}
+        for key, state in user.quotas.items():
+            if instance not in state.starts:
+                continue
+            baseline = state.starts[instance]
+            values[self._baseline_attribute(key)] = "none" if baseline is None else str(baseline)
+        return values
+
+    def restore_instance(
+        self,
+        user_id: int,
+        instance: int | str,
+        attributes: Mapping[str, str],
+        *,
+        fallback_started_at: float | None = None,
+    ) -> None:
+        """Restore active-session baselines after a process restart.
+
+        Older snapshots without quota markers are backfilled from their durable
+        RADIUS start timestamp; traffic counters begin at zero in that fallback.
+        """
+        user = self.reload_user(user_id)
+        for key, state in user.quotas.items():
+            marker = self._baseline_attribute(key)
+            if marker in attributes:
+                raw = str(attributes[marker])
+                if raw == "none":
+                    state.starts[instance] = None
+                else:
+                    try:
+                        state.starts[instance] = (
+                            float(raw) if state.kind is PeriodicQuotaKind.TIME else int(float(raw))
+                        )
+                    except (TypeError, ValueError, OverflowError):
+                        raise ValueError(f"invalid persisted periodic baseline for {key}")
+            elif fallback_started_at is not None and instance not in state.starts:
+                state.starts[instance] = (
+                    fallback_started_at
+                    if state.kind is PeriodicQuotaKind.TIME else 0
+                )
+
     def can_login(self, user_id: int) -> PeriodicQuotaDecision:
         """Pre-admission check matching A1.24's login-time quota rejection."""
         now = self.clock()
