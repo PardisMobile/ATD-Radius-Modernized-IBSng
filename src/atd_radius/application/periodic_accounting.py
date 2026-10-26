@@ -346,16 +346,30 @@ class PeriodicAccountingCoordinator:
         return self.can_stay_online(user_id, instance, counters=counters)
 
     @_synchronized_user
-    def logout(self, user_id: int, instance: int | str) -> Mapping[str, int | float]:
+    def logout(
+        self,
+        user_id: int,
+        instance: int | str,
+        *,
+        traffic_octets: int | None = None,
+    ) -> Mapping[str, int | float]:
+        """Commit final session usage, accepting counters captured before session removal.
+
+        Accounting-Stop may remove a session from the live registry before this
+        hook runs. In that case querying the live counter callback returns zero
+        and would subtract the stored baseline from accumulated usage.
+        """
         now = self.clock()
         user = self.reload_user(user_id)
         normal_user = self.is_normal_user(user_id)
+        if traffic_octets is not None and traffic_octets < 0:
+            raise ValueError("traffic_octets must be non-negative")
         committed: dict[str, int | float] = {}
         for key, state in user.quotas.items():
             traffic = (
-                self.traffic_counters(user_id, instance)
-                if state.kind is PeriodicQuotaKind.TRAFFIC and normal_user else 0
-            )
+                traffic_octets if traffic_octets is not None
+                else self.traffic_counters(user_id, instance)
+            ) if state.kind is PeriodicQuotaKind.TRAFFIC and normal_user else 0
             if state.kind is PeriodicQuotaKind.TRAFFIC and not normal_user and instance in state.starts:
                 state.starts[instance] = 0 if state.starts[instance] is not None else None
             committed[key] = state.logout(instance, now, traffic)
