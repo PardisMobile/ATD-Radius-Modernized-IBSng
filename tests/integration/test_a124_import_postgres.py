@@ -8,6 +8,7 @@ import psycopg
 from psycopg import sql
 import pytest
 
+import atd_radius.cli.a124_import as a124_import
 from atd_radius.cli.a124_import import A124ImportError, import_data
 
 
@@ -239,3 +240,39 @@ def test_import_refuses_partial_expression_index_definition_drift(import_schemas
         assert target.execute(
             sql.SQL("SELECT label FROM {}.parent WHERE id=1").format(sql.Identifier(target_schema))
         ).fetchone()[0] == "old target"
+
+
+def test_apply_revalidates_schema_after_target_locks(import_schemas, monkeypatch):
+    """Schema drift introduced after preflight must be caught before row writes."""
+    dsn, source_schema, target_schema = import_schemas
+    original_plan = a124_import._plan
+    calls = 0
+
+    def drift_after_initial_plan(source, target, *args, **kwargs):
+        nonlocal calls
+        report = original_plan(source, target, *args, **kwargs)
+        calls += 1
+        if calls == 1:
+            target.execute(
+                sql.SQL("CREATE INDEX parent_label_race_idx ON {}.parent (label)").format(
+                    sql.Identifier(target_schema)
+                )
+            )
+        return report
+
+    monkeypatch.setattr(a124_import, "_plan", drift_after_initial_plan)
+    with psycopg.connect(dsn) as source, psycopg.connect(dsn) as target:
+        with pytest.raises(A124ImportError, match="index definitions differ"):
+            import_data(
+                source, target, source_schema, target_schema,
+                {"parent": {"id": "integer", "label": "text"},
+                 "child": {"id": "integer", "parent_id": "integer", "value": "text"}},
+                apply=True,
+            )
+        assert calls == 2
+        assert target.execute(
+            sql.SQL("SELECT label FROM {}.parent WHERE id=1").format(sql.Identifier(target_schema))
+        ).fetchone()[0] == "old target"
+        assert target.execute(
+            sql.SQL("SELECT count(*) FROM {}.child").format(sql.Identifier(target_schema))
+        ).fetchone()[0] == 0
