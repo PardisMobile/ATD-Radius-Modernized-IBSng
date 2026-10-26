@@ -1,3 +1,9 @@
+# LOCKED IMPORT REVALIDATION — 2026-10-26
+
+Apply mode now treats the initial compatibility plan as advisory. After acquiring `SHARE ROW EXCLUSIVE` locks on every planned target table, it reruns the complete schema/object/sequence-definition compatibility gate before creating staging tables or writing rows. A table-inventory change between plans also aborts. This closes the target-table DDL race where indexes, constraints, triggers, or column definitions could drift after preflight but before locks. A PostgreSQL acceptance test injects an index change in that exact window and verifies refusal with target data unchanged.
+
+The source database should still be operationally quiesced for the migration; this gate does not replace a real restored-backup drill or coordinate arbitrary external changes to source rows/sequences.
+
 # INDEX-PARITY IMPORT GATE — 2026-10-26
 
 Before any row writes, `atd-radius-a124-import` now compares every source/target index definition on tables being imported, including ordinary, unique, expression, partial and constraint-backed indexes. A missing, extra or differently defined index refuses the import before target mutation. This complements the existing column/key/constraint/rule/trigger/function/sequence gates; it does not create missing indexes or import DDL. Review and reconcile index drift with a reviewed migration, then rerun the dry-run.
