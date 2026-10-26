@@ -247,6 +247,9 @@ class PeriodicAccountingCoordinator:
             values[f"{key}_reset"] = str(state.next_reset or 0)
         if values:
             self.attributes.save(user_id, values)
+            for state in user.quotas.values():
+                if state.next_reset is not None and state.next_reset > 0:
+                    state.pending_reset_persist = False
 
     def login(
         self, user_id: int, instance: int | str, *, start_accounting: bool = False
