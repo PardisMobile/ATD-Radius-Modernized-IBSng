@@ -518,6 +518,7 @@ class NativeRadiusPacketHandler:
         self.connection_factory = connection_factory
         self._logger = logging.getLogger(__name__)
         self._ras_terminator = SourceRASDisconnectClient()
+        self._periodic_termination_failures: dict[tuple[int, str, SessionKey], int] = {}
         scheduler = VoipLimitScheduler(on_error=self._scheduler_error)
         self.voip_limit_loop = VoipLimitCheckLoop(
             scheduler,
@@ -567,11 +568,38 @@ class NativeRadiusPacketHandler:
             task_key = ("periodic-quota-kill", user_id, quota_key, session_key.ras_id, session_key.unique_id)
             self.periodic_scheduler.schedule(
                 task_key, 1,
-                lambda session_key=session_key, quota_key=quota_key: (
-                    self._terminate_voip_session(session_key, f"A1.24 periodic quota exhausted: {quota_key}"),
-                    None,
-                )[1],
+                lambda session_key=session_key, quota_key=quota_key, user_id=user_id: (
+                    self._run_periodic_termination(user_id, quota_key, session_key)
+                ),
             )
+
+    def _run_periodic_termination(
+        self, user_id: int, quota_key: str, session_key: SessionKey
+    ) -> int | None:
+        """Retry transient RAS failures without spinning or retrying permanent blockers."""
+        failure_key = (user_id, quota_key, session_key)
+        try:
+            self._terminate_voip_session(
+                session_key, f"A1.24 periodic quota exhausted: {quota_key}"
+            )
+        except PermanentRASTerminationError as exc:
+            self._periodic_termination_failures.pop(failure_key, None)
+            self._logger.error(
+                "Cannot enforce periodic quota %s for user %s on session %r: %s",
+                quota_key, user_id, session_key, exc,
+            )
+            return None
+        except Exception as exc:
+            failures = self._periodic_termination_failures.get(failure_key, 0) + 1
+            self._periodic_termination_failures[failure_key] = failures
+            delay = min(2 ** min(failures, 6), 60)
+            self._logger.warning(
+                "Periodic quota termination failed for user %s session %r; retrying in %ss: %s",
+                user_id, session_key, delay, exc,
+            )
+            return delay
+        self._periodic_termination_failures.pop(failure_key, None)
+        return None
 
     def _refresh_periodic_accounting_schedule(self, user_id: int) -> None:
         with self.state.sessions.synchronized():
