@@ -205,7 +205,11 @@ class PeriodicAccountingCoordinator:
                 else:
                     try:
                         state.starts[instance] = (
-                            float(raw) if state.kind is PeriodicQuotaKind.TIME else int(float(raw))
+                            float(raw)
+                            if state.kind is PeriodicQuotaKind.TIME
+                            else (
+                                int(float(raw)) if self.is_normal_user(user_id) else 0
+                            )
                         )
                     except (TypeError, ValueError, OverflowError):
                         raise ValueError(f"invalid persisted periodic baseline for {key}")
