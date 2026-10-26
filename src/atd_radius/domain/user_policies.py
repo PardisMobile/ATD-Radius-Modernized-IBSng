@@ -69,6 +69,24 @@ def _attrs(request):
     from .models import AttributeSet
     return AttributeSet(request.attributes)
 
+@dataclass(frozen=True, slots=True)
+class PeriodicAccountingPolicy:
+    """Reject authenticated logins whose A1.24 periodic quota is exhausted."""
+    coordinator: object
+
+    def evaluate(self, request):
+        user_id = request.attributes.get("__user_id")
+        if user_id in (None, "") or request.attributes.get("__user_found") != "1":
+            return None
+        decision = self.coordinator.can_login(int(user_id))
+        if not decision.allowed:
+            return AAAResult(
+                AAAAction.REJECT,
+                reason="PERIODIC_QUOTA_EXCEEDED:" + ",".join(decision.exhausted_keys),
+            )
+        return None
+
+
 @dataclass(frozen=True,slots=True)
 class LockPolicy:
     def evaluate(self,request):
