@@ -1,3 +1,13 @@
+# VERIFIED AUTHENTICATION INTEGRATION BATCH — 2026-10-26
+
+Code checkpoint `20e9f8cbe8d59b54bec9d337e071d9cd59d486d1` passed full CI on Python 3.11 and 3.12: **1,140 passed per version, 2 warnings**. Python-only workflow also passed.
+
+The native Access-Request path now has integrated regression coverage for CHAP using the packet authenticator, MS-CHAPv1 MPPE output, MS-CHAPv2 success and Send/Recv key derivation, malformed/wrong-response rejection without key leakage, and a full request → native dispatcher → response codec round-trip with encrypted MPPE keys. MS-CHAPv2 response normalization now explicitly supports bytes, bytearray and hexadecimal text adapters without an early-return path that could skip RAS enrichment.
+
+This verifies the local native RADIUS pipeline and codec, **not** live NAS/supplicant interoperability. That remains an explicit release blocker, together with the remaining A1.24 plugin/runtime parity work. UI and installer remain deferred.
+
+---
+
 # PERIODIC ACCOUNTING CORE ENFORCEMENT BATCH — 2026-10-26
 
 Latest implementation checkpoint: `b69bd90c0007f2819b224bd878b4f899bfecb4fe`. The four A1.24 periodic quotas are wired into Access admission and Accounting lifecycle; quota resets and source-shaped `_reload` behavior are implemented; usage/reset attributes use the native user-attribute repository; and per-session baselines are stored with durable RADIUS session snapshots and reconciled across workers. Recurring checks request provider-aware RAS termination when quotas expire. Traffic-quota deadlines now use the effective Internet charge rule's `assumed_kps`, and traffic periodic accounting is excluded for non-normal/VoIP users per source behavior.
