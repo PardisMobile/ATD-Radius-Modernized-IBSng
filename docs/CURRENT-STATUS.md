@@ -1004,3 +1004,8 @@ Validation for this checkpoint: pending its own Python-only and PostgreSQL-backe
 ## A1.24 importer column-semantics parity — 2026-10-26
 
 Expanded column shape checks to include normalized default expressions and declared collations, alongside order/type/nullability/generated/identity metadata. Added PostgreSQL acceptance coverage for source/target default drift and no-write refusal. This is layered onto locked schema revalidation; validation remains pending until CI for the combined latest checkpoint finishes.
+
+
+## Importer table-behavior and RLS parity — 2026-10-26
+
+Added source/target checks for table kind/persistence, RLS flags, replica identity, partition-key definitions, and RLS policy definitions/role scopes/expressions. Added PostgreSQL integration coverage for policy drift and no-write refusal. Latest combined checkpoint is pending Python-only and PostgreSQL-backed CI; do not treat this batch as validated until both pass.
