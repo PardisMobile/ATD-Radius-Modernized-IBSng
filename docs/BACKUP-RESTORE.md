@@ -1,3 +1,7 @@
+# INDEX-PARITY IMPORT GATE — 2026-10-26
+
+Before any row writes, `atd-radius-a124-import` now compares every source/target index definition on tables being imported, including ordinary, unique, expression, partial and constraint-backed indexes. A missing, extra or differently defined index refuses the import before target mutation. This complements the existing column/key/constraint/rule/trigger/function/sequence gates; it does not create missing indexes or import DDL. Review and reconcile index drift with a reviewed migration, then rerun the dry-run.
+
 # IMPORT OBJECT-PARITY GATE — 2026-10-25
 
 Before row transfer, `atd-radius-a124-import` now compares source and target constraints, rules, triggers and trigger-function bodies, and checks that every source function/procedure definition has a matching target definition. Any mismatch stops the import. This is a refusal gate, not an object importer: the command does not copy DDL/functions/rules/triggers/roles. Resolve the drift through a reviewed migration before rerunning the import.
