@@ -178,6 +178,49 @@ def _constraint_signatures(conn, schema: str) -> set[tuple[str, str]]:
         signatures.add((str(table).lower(), _normalize_constraint(normalized)))
     return signatures
 
+def _table_signatures(conn, schema: str, tables: set[str]) -> set[tuple[Any, ...]]:
+    """Capture table behavior that can change row visibility or write semantics."""
+    rows = conn.execute(
+        """
+        SELECT relation.relname, relation.relkind, relation.relpersistence,
+               relation.relrowsecurity, relation.relforcerowsecurity,
+               relation.relreplident,
+               COALESCE(pg_catalog.pg_get_partkeydef(relation.oid), '')
+        FROM pg_class AS relation
+        JOIN pg_namespace AS namespace ON namespace.oid=relation.relnamespace
+        WHERE namespace.nspname=%s AND relation.relkind IN ('r', 'p')
+        ORDER BY relation.relname
+        """, (schema,)
+    ).fetchall()
+    return {
+        (str(name), str(kind), str(persistence), bool(row_security),
+         bool(force_row_security), str(replica_identity),
+         _normalize_object_sql(str(partition_key), schema))
+        for name, kind, persistence, row_security, force_row_security,
+            replica_identity, partition_key in rows
+        if str(name) in tables
+    }
+
+
+def _policy_signatures(conn, schema: str, tables: set[str]) -> set[tuple[str, str, str, str, str, str, str]]:
+    """Compare RLS policy definitions, including role scope and expressions."""
+    rows = conn.execute(
+        """
+        SELECT tablename, policyname, permissive, roles, cmd, qual, with_check
+        FROM pg_policies
+        WHERE schemaname=%s
+        ORDER BY tablename, policyname
+        """, (schema,)
+    ).fetchall()
+    return {
+        (str(table), str(name), str(permissive), str(roles), str(command),
+         _normalize_object_sql(str(qual), schema) if qual is not None else "",
+         _normalize_object_sql(str(with_check), schema) if with_check is not None else "")
+        for table, name, permissive, roles, command, qual, with_check in rows
+        if str(table) in tables
+    }
+
+
 def _index_signatures(conn, schema: str, tables: set[str]) -> set[tuple[str, str, str]]:
     """Compare all explicit and constraint-backed index definitions before row writes."""
     rows = conn.execute(
@@ -413,6 +456,24 @@ def _plan(source_conn, target_conn, source_schema: str, target_schema: str,
             "source/target constraint definitions differ; "
             f"missing in target={sorted(source_constraints - target_constraints)}, "
             f"extra in target={sorted(target_constraints - source_constraints)}"
+        )
+
+    source_table_signatures = _table_signatures(source_conn, source_schema, source_table_set)
+    target_table_signatures = _table_signatures(target_conn, target_schema, source_table_set)
+    if source_table_signatures != target_table_signatures:
+        raise A124ImportError(
+            "source/target table behavior differs; "
+            f"missing in target={sorted(source_table_signatures - target_table_signatures)}, "
+            f"extra in target={sorted(target_table_signatures - source_table_signatures)}"
+        )
+
+    source_policies = _policy_signatures(source_conn, source_schema, source_table_set)
+    target_policies = _policy_signatures(target_conn, target_schema, source_table_set)
+    if source_policies != target_policies:
+        raise A124ImportError(
+            "source/target row-level security policies differ; "
+            f"missing in target={sorted(source_policies - target_policies)}, "
+            f"extra in target={sorted(target_policies - source_policies)}"
         )
 
     source_indexes = _index_signatures(source_conn, source_schema, source_table_set)
