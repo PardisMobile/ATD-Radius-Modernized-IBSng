@@ -357,6 +357,10 @@ class RadiusRuntimeHandler:
                                         "Periodic quota already exhausted for user %s: %s",
                                         user_id, ",".join(decision.exhausted_keys),
                                     )
+                                    for quota_key in decision.exhausted_keys:
+                                        self.periodic_accounting.request_termination(
+                                            user_id, quota_key
+                                        )
                             elif event.status in (AccountingStatus.INTERIM, AccountingStatus.ALIVE):
                                 self.periodic_accounting.update(
                                     user_id, instance,
@@ -556,7 +560,10 @@ class NativeRadiusPacketHandler:
         with self.state.sessions.synchronized():
             active = self.state.sessions.active_for_user(user_id)
         key = ("periodic-accounting-user", user_id)
-        if not active or self.state.periodic_accounting is None:
+        if (
+            not active or self.state.periodic_accounting is None
+            or not self.state.periodic_accounting.has_quotas(user_id)
+        ):
             self.periodic_scheduler.cancel(key)
             return
         self.periodic_scheduler.schedule(key, 1, lambda: self._check_periodic_accounting(user_id))
