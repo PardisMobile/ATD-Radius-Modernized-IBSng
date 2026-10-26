@@ -177,3 +177,65 @@ def test_import_refuses_source_rule_drift(import_schemas):
                 source, target, source_schema, target_schema,
                 {"parent": {"id": "integer", "label": "text"}, "child": {"id": "integer", "parent_id": "integer", "value": "text"}},
             )
+
+
+def test_import_refuses_target_only_index_before_any_row_writes(import_schemas):
+    dsn, source_schema, target_schema = import_schemas
+    with psycopg.connect(dsn) as source, psycopg.connect(dsn) as target:
+        target.execute(
+            sql.SQL("CREATE INDEX parent_label_idx ON {}.parent (label)").format(
+                sql.Identifier(target_schema)
+            )
+        )
+        with pytest.raises(A124ImportError, match="index definitions differ"):
+            import_data(
+                source, target, source_schema, target_schema,
+                {"parent": {"id": "integer", "label": "text"},
+                 "child": {"id": "integer", "parent_id": "integer", "value": "text"}},
+            )
+        assert target.execute(
+            sql.SQL("SELECT label FROM {}.parent WHERE id=1").format(sql.Identifier(target_schema))
+        ).fetchone()[0] == "old target"
+
+
+def test_import_refuses_missing_source_index_before_any_row_writes(import_schemas):
+    dsn, source_schema, target_schema = import_schemas
+    with psycopg.connect(dsn) as source, psycopg.connect(dsn) as target:
+        source.execute(
+            sql.SQL("CREATE INDEX parent_label_idx ON {}.parent (label)").format(
+                sql.Identifier(source_schema)
+            )
+        )
+        with pytest.raises(A124ImportError, match="index definitions differ"):
+            import_data(
+                source, target, source_schema, target_schema,
+                {"parent": {"id": "integer", "label": "text"},
+                 "child": {"id": "integer", "parent_id": "integer", "value": "text"}},
+            )
+        assert target.execute(
+            sql.SQL("SELECT label FROM {}.parent WHERE id=1").format(sql.Identifier(target_schema))
+        ).fetchone()[0] == "old target"
+
+
+def test_import_refuses_partial_expression_index_definition_drift(import_schemas):
+    dsn, source_schema, target_schema = import_schemas
+    with psycopg.connect(dsn) as source, psycopg.connect(dsn) as target:
+        source.execute(
+            sql.SQL("CREATE INDEX parent_label_expr_idx ON {}.parent (lower(label)) WHERE label <> ''").format(
+                sql.Identifier(source_schema)
+            )
+        )
+        target.execute(
+            sql.SQL("CREATE INDEX parent_label_expr_idx ON {}.parent (lower(label)) WHERE label <> 'old target'").format(
+                sql.Identifier(target_schema)
+            )
+        )
+        with pytest.raises(A124ImportError, match="index definitions differ"):
+            import_data(
+                source, target, source_schema, target_schema,
+                {"parent": {"id": "integer", "label": "text"},
+                 "child": {"id": "integer", "parent_id": "integer", "value": "text"}},
+            )
+        assert target.execute(
+            sql.SQL("SELECT label FROM {}.parent WHERE id=1").format(sql.Identifier(target_schema))
+        ).fetchone()[0] == "old target"
