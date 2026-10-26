@@ -278,3 +278,25 @@ def test_concurrent_session_logouts_do_not_lose_periodic_usage():
     state = coordinator._users[7].quotas["time_periodic_accounting_daily"]
     assert state.starts == {}
     assert state.committed_usage == 480.0
+
+
+def test_logout_uses_final_traffic_counter_when_live_session_is_already_removed():
+    repo = MemoryAttributes({
+        "traffic_periodic_accounting_daily": "1",
+        "traffic_periodic_accounting_daily_limit": "1000",
+        "traffic_periodic_accounting_daily_usage": "25",
+        "traffic_periodic_accounting_daily_reset": "200000",
+    })
+    # Simulates the runtime after AccountingSessionService has removed the
+    # stopped session from its registry: the live counter callback now returns 0.
+    coordinator = PeriodicAccountingCoordinator(
+        repo, clock=lambda: 1100.0,
+        traffic_counters=lambda user, instance: 0,
+    )
+    assert coordinator.login(7, "3:session-stop", start_accounting=True).allowed
+    state = coordinator._users[7].quotas["traffic_periodic_accounting_daily"]
+    state.starts["3:session-stop"] = 100
+    assert coordinator.logout(
+        7, "3:session-stop", traffic_octets=250
+    )["traffic_periodic_accounting_daily"] == 150
+    assert repo.values["traffic_periodic_accounting_daily_usage"] == "175"
