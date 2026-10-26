@@ -340,3 +340,17 @@ def test_reload_preserves_fractional_time_usage_without_truncation():
     coordinator.login(7, "1:initial", start_accounting=False)
     state = coordinator.reload_user(7).quotas["time_periodic_accounting_daily"]
     assert state.committed_usage == 30.75
+
+
+@pytest.mark.parametrize("reset_value", ["0", "nan", "-1", "not-a-timestamp"])
+def test_nonpositive_or_invalid_reset_marker_is_reinitialized(reset_value):
+    clock = [1_800_000_000.0]
+    repo = MemoryAttributes(attrs(time_periodic_accounting_daily_reset=reset_value))
+    coordinator = PeriodicAccountingCoordinator(repo, clock=lambda: clock[0])
+
+    result = coordinator.login(7, "1:reset-recovery", start_accounting=True)
+
+    state = coordinator._users[7].quotas["time_periodic_accounting_daily"]
+    assert result.allowed
+    assert state.next_reset is not None and state.next_reset > clock[0]
+    assert float(repo.values["time_periodic_accounting_daily_reset"]) == state.next_reset
