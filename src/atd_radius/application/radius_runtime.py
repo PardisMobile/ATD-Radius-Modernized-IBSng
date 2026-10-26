@@ -371,6 +371,19 @@ class RadiusRuntimeHandler:
                                 )
                             elif event.status is AccountingStatus.STOP:
                                 self.periodic_accounting.logout(user_id, instance)
+                            session_state = accounting_result.state
+                            session_attrs = {
+                                str(name): str(value)
+                                for name, value in session_state.attributes.items()
+                                if not str(name).startswith("__periodic_start_")
+                            }
+                            session_attrs.update(
+                                self.periodic_accounting.session_baseline_attributes(user_id, instance)
+                            )
+                            session_state.attributes = session_attrs
+                            # Baselines live in the same durable session snapshot
+                            # and PostgreSQL transaction as Accounting state.
+                            self.accounting_sessions.persist_state(session_state)
                         if (
                             self.login_reservations is not None
                             and accounting_result.created
@@ -485,6 +498,7 @@ class NativeRadiusRuntimeState:
         self.cisco_voip_auth_h323_ids: dict[int, set[str]] = {}
         self.cisco_online_status: dict[int, dict[str, dict[str, object]]] = {}
         self.periodic_accounting: PeriodicAccountingCoordinator | None = None
+        self.periodic_baselines_recovered = False
 
     def initialize(self, ras_repository, pool_repository) -> None:
         self.ras = build_ras_runtime(ras_repository, self.type_defaults)
@@ -1065,6 +1079,34 @@ class NativeRadiusPacketHandler:
                 # per-instance quota baselines across short DB transactions.
                 self.state.periodic_accounting.attributes = NativePeriodicAccountingAttributes(users)
                 self.state.periodic_accounting.is_normal_user = users.is_normal_user
+            if not self.state.periodic_baselines_recovered:
+                for recovered_state in session_store.list_active():
+                    recovered_instance = (
+                        f"{recovered_state.key.ras_id}:{recovered_state.key.unique_id}"
+                    )
+                    fallback_start = (
+                        recovered_state.started_at.timestamp()
+                        if recovered_state.started_at is not None else None
+                    )
+                    self.state.periodic_accounting.restore_instance(
+                        recovered_state.key.user_id,
+                        recovered_instance,
+                        recovered_state.attributes,
+                        fallback_started_at=fallback_start,
+                    )
+                    recovered_attrs = {
+                        str(name): str(value)
+                        for name, value in recovered_state.attributes.items()
+                        if not str(name).startswith("__periodic_start_")
+                    }
+                    recovered_attrs.update(
+                        self.state.periodic_accounting.session_baseline_attributes(
+                            recovered_state.key.user_id, recovered_instance
+                        )
+                    )
+                    recovered_state.attributes = recovered_attrs
+                    accounting.persist_state(recovered_state)
+                self.state.periodic_baselines_recovered = True
             dispatcher = build_radius_dispatcher(
                 users,
                 active_sessions_provider=session_views(
