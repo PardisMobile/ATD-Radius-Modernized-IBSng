@@ -140,8 +140,12 @@ class PeriodicAccountingCoordinator:
                 old.committed_usage = 0
                 old.next_reset = None
                 old.pending_reset_persist = True
+                normal_user = self.is_normal_user(user_id)
                 counters = {
-                    instance: self.traffic_counters(user_id, instance)
+                    instance: (
+                        self.traffic_counters(user_id, instance)
+                        if kind is not PeriodicQuotaKind.TRAFFIC or normal_user else 0
+                    )
                     for instance in old.starts
                 }
                 old.refresh_reset_if_due(now, counters=counters)
