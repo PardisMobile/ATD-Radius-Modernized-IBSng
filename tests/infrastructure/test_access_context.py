@@ -343,7 +343,7 @@ def test_mschapv2_native_authentication_survives_radius_wire_and_mppe_round_trip
     assert decoded_response.code is RadiusCode.ACCESS_ACCEPT
     assert decoded_response.identifier == original_request.identifier
     assert decoded_response.attributes["MS-CHAP2-Success"] == (
-        "01533d343037413535383931313546443044363230394635313046454330343536363933324344413536"
+        "\\x01S=407A5589115FD0D6209F510FE9C04566932CDA56"
     )
     assert decoded_response.attributes["MS-MPPE-Send-Key"] == "8b7cdc149b993a1ba118cb153f56dccb"
     assert decoded_response.attributes["MS-MPPE-Recv-Key"] == "d5f0e9521e3ea9589645e86051c82226"
