@@ -370,7 +370,16 @@ class RadiusRuntimeHandler:
                                     start_accounting="start_accounting" in event.attributes,
                                 )
                             elif event.status is AccountingStatus.STOP:
-                                self.periodic_accounting.logout(user_id, instance)
+                                # AccountingSessionService has already updated the
+                                # stopped state's counters; the live registry may no
+                                # longer expose it to the coordinator's counter callback.
+                                final_traffic_octets = (
+                                    int(accounting_result.state.input_octets)
+                                    + int(accounting_result.state.output_octets)
+                                )
+                                self.periodic_accounting.logout(
+                                    user_id, instance, traffic_octets=final_traffic_octets
+                                )
                             session_state = accounting_result.state
                             session_attrs = {
                                 str(name): str(value)
