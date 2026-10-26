@@ -73,6 +73,22 @@ ATD Radius Modernized IBSng is a clean-room modernization project whose behavior
 ## Reference archive facts
 The inspected A1.24 archive contains 2,477 members and 2,295 regular files: 1,028 under core/, 1,049 under interface/, 131 under addons/, 41 under radius_server/, 22 under docs/, and 19 under db/. It contains 453 Python sources, 530 PHP files and 284 Smarty templates plus legacy bytecode/assets.
 
+## MANDATORY ORIGINAL-SOURCE INSPECTION GATE — NON-NEGOTIABLE
+
+**For every IBSng-compatibility/parity task, inspect the actual canonical Source of Truth/IBSng-A1.24.tar.bz2 source before designing, changing, or declaring behavior. Reading project context, inventories, parity notes, previous audits, tests, or existing ATD code is not a substitute. This rule applies even when the behavior appears familiar or was checked in an earlier task.**
+
+Canonical archive SHA-256 must be verified as c7117a6a2fd252aa9b8149a1ee6606f9320888da347ee4f839614bb9349d18a8. Extract/read the actual source files and trace the relevant implementation end-to-end: entry point/caller chain, ordering and state transitions, database queries/transactions, side effects, error/fallback behavior, provider-specific branches, and related schema/functions/triggers when relevant. Do not guess source paths; locate them in the archive. If the archive cannot be accessed or checksum-verified, stop the parity claim and report the blocker—never silently substitute documentation or memory.
+
+Required sequence for each behavior-sensitive batch:
+1. Inspect the original source code directly and record exact source paths plus relevant functions/branches (line references where practical).
+2. Derive the observable A1.24 behavior, including ordering, edge cases, side effects and failure semantics.
+3. Compare the current ATD implementation against that source trace before editing.
+4. Implement the complete justified slice and add regression/integration tests that encode the source-derived behavior, including the relevant edge cases.
+5. Run the applicable test suite/CI and report separately what is source-inspected, test-verified, CI-verified, and still unverified (including live NAS/provider behavior).
+6. Update the parity/roadmap status only to the level of evidence actually obtained. A green CI run, existing documentation, or a test that only reflects ATD's own assumptions is not proof of A1.24 parity.
+
+**No exceptions for convenience, context length, previous work, or apparently sufficient documentation.** Before starting work in a new chat, read this project context and the required project docs, then inspect the original archive for the specific task again. This is a workflow gate, not merely a preference.
+
 ## Non-negotiable compatibility rule
 ATD must not create a different name for an existing IBSng A1.24 concept. This applies to UI menus, pages, entities, fields, database tables/columns, attributes, configuration concepts, workflows and protocol/domain terminology.
 
