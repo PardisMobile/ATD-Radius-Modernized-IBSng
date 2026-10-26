@@ -106,7 +106,8 @@ class PeriodicAccountingCoordinator:
                 continue
             try:
                 limit = int(limit_raw)
-                accumulated = int(self._number(attrs, f"{key}_usage"))
+                raw_usage = self._number(attrs, f"{key}_usage")
+                accumulated = int(raw_usage) if kind is PeriodicQuotaKind.TRAFFIC else raw_usage
                 reset_raw = attrs.get(f"{key}_reset")
                 reset = float(reset_raw) if reset_raw not in (None, "") else None
                 config = PeriodicQuotaConfig(
@@ -140,7 +141,8 @@ class PeriodicAccountingCoordinator:
                 continue
             try:
                 limit = int(limit_raw)
-                usage = int(self._number(attrs, f"{key}_usage"))
+                raw_usage = self._number(attrs, f"{key}_usage")
+                usage = int(raw_usage) if kind is PeriodicQuotaKind.TRAFFIC else raw_usage
                 reset_raw = attrs.get(f"{key}_reset")
                 reset = float(reset_raw) if reset_raw not in (None, "") else None
                 config = PeriodicQuotaConfig(
