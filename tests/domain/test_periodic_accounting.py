@@ -69,7 +69,7 @@ def test_reset_rebases_active_instances_instead_of_losing_post_reset_usage():
 
 def test_monthly_reset_uses_injected_source_calendar_result_without_guessing():
     state = PeriodicAccountingState(config(period="monthly", value="jalali", next_reset=1000))
-    assert state.refresh_reset_if_due(1000, lambda calendar: 4000)
+    assert state.refresh_reset_if_due(1001, lambda calendar: 4000)
     assert state.next_reset == 4000
 
 
@@ -131,20 +131,29 @@ def test_traffic_quota_deadline_uses_composite_runtime_session_keys():
     assert result == pytest.approx(3000 / 2 / (10 * 1024) * 2)
 
 
-def test_reset_is_not_repeated_at_the_exact_reset_boundary():
+@pytest.mark.parametrize(
+    ("period", "value", "kind"),
+    [
+        ("daily", "1", PeriodicQuotaKind.TIME),
+        ("monthly", "gregorian", PeriodicQuotaKind.TIME),
+        ("daily", "1", PeriodicQuotaKind.TRAFFIC),
+        ("monthly", "jalali", PeriodicQuotaKind.TRAFFIC),
+    ],
+)
+def test_reset_is_not_repeated_at_the_exact_reset_boundary(period, value, kind):
     state = PeriodicAccountingState(PeriodicQuotaConfig(
-        key="time_periodic_accounting_daily",
-        period="daily",
-        kind=PeriodicQuotaKind.TIME,
-        value="1",
+        key=f"{kind.value}_periodic_accounting_{period}",
+        period=period,
+        kind=kind,
+        value=value,
         limit=100,
         next_reset=2000.0,
         accumulated_usage=25,
     ))
-    assert not state.refresh_reset_if_due(2000.0)
+    assert not state.refresh_reset_if_due(2000.0, lambda calendar: 4000.0)
     assert state.committed_usage == 25
     assert state.next_reset == 2000.0
 
-    assert state.refresh_reset_if_due(2000.001)
+    assert state.refresh_reset_if_due(2000.001, lambda calendar: 4000.0)
     assert state.committed_usage == 0
     assert state.next_reset > 2000.001
