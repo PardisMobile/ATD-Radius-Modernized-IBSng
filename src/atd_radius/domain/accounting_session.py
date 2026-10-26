@@ -196,10 +196,13 @@ class AccountingSessionService:
             has_input_counter = (
                 "Acct-Input-Octets" in event.attributes
                 or "Acct-Input-Gigawords" in event.attributes
+                # Domain callers may supply already-decoded counters directly.
+                or event.input_octets != 0
             )
             has_output_counter = (
                 "Acct-Output-Octets" in event.attributes
                 or "Acct-Output-Gigawords" in event.attributes
+                or event.output_octets != 0
             )
             final_input = event.input_octets if has_input_counter else current.input_octets
             final_output = event.output_octets if has_output_counter else current.output_octets
