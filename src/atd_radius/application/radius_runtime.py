@@ -585,6 +585,23 @@ class NativeRadiusPacketHandler:
             return
         self.periodic_scheduler.schedule(key, 1, lambda: self._check_periodic_accounting(user_id))
 
+    def _periodic_assumed_kps(self, conn, user_id: int, instance: int | str) -> float | None:
+        try:
+            ras_text, session_id = str(instance).split(":", 1)
+            ras_id = int(ras_text)
+        except (ValueError, AttributeError):
+            return None
+        session = self.state.sessions.get(SessionKey(user_id, ras_id, session_id))
+        if (
+            session is None or session.charge_rule_id is None
+            or session.charge_kind not in {"internet", None}
+        ):
+            return None
+        rule = PostgresInternetChargeRuleRepository(conn).get(int(session.charge_rule_id))
+        if rule is None or rule.assumed_kps <= 0:
+            return None
+        return float(rule.assumed_kps)
+
     def _check_periodic_accounting(self, user_id: int):
         with self.connection_factory() as conn:
             self._refresh_durable_user_sessions(conn, user_id)
@@ -594,6 +611,7 @@ class NativeRadiusPacketHandler:
                 return None
             coordinator.attributes = NativePeriodicAccountingAttributes(users)
             coordinator.is_normal_user = users.is_normal_user
+            coordinator.assumed_kps = lambda uid, instance: self._periodic_assumed_kps(conn, uid, instance)
             with self.state.sessions.synchronized():
                 active = tuple(self.state.sessions.active_for_user(user_id))
             if not active:
@@ -1093,6 +1111,7 @@ class NativeRadiusPacketHandler:
                     clock=lambda: datetime.now(timezone.utc).timestamp(),
                     traffic_counters=periodic_traffic_counter,
                     is_normal_user=users.is_normal_user,
+                    assumed_kps=lambda uid, instance: self._periodic_assumed_kps(conn, uid, instance),
                     request_termination=self._schedule_periodic_termination,
                 )
             else:
@@ -1101,6 +1120,7 @@ class NativeRadiusPacketHandler:
                 # per-instance quota baselines across short DB transactions.
                 self.state.periodic_accounting.attributes = NativePeriodicAccountingAttributes(users)
                 self.state.periodic_accounting.is_normal_user = users.is_normal_user
+                self.state.periodic_accounting.assumed_kps = lambda uid, instance: self._periodic_assumed_kps(conn, uid, instance)
             if not self.state.periodic_baselines_recovered:
                 for recovered_state in session_store.list_active():
                     recovered_instance = (
