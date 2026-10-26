@@ -117,3 +117,15 @@ def test_native_session_string_is_valid_for_periodic_baselines():
     assert not state.login("42:session-A", now=1000)
     assert state.starts["42:session-A"] == 1000
     assert state.logout("42:session-A", now=1030) == 30
+
+
+def test_traffic_quota_deadline_uses_composite_runtime_session_keys():
+    state = PeriodicAccountingState(config(kind=PeriodicQuotaKind.TRAFFIC, limit=3000))
+    state.starts = {"1:session-A": 100, "2:session-B": 200}
+    result = state.remaining_time(
+        0,
+        instances=2,
+        counters={"1:session-A": 100, "2:session-B": 200},
+        assumed_kps={"1:session-A": 10, "2:session-B": 10},
+    )
+    assert result == pytest.approx(3000 / 2 / (10 * 1024) * 2)
