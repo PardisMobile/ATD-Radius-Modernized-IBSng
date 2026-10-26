@@ -101,6 +101,10 @@ class PeriodicAccountingCoordinator:
         self._users[user_id] = user
         return user
 
+    def has_quotas(self, user_id: int) -> bool:
+        """Return whether the effective user configuration enables any quota."""
+        return bool(self._load_user(user_id).quotas)
+
     def _persist(self, user_id: int, user: _UserState) -> None:
         values: dict[str, str] = {}
         for key, state in user.quotas.items():
