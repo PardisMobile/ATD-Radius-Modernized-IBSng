@@ -1,3 +1,11 @@
+# PERIODIC ACCOUNTING CORE ENFORCEMENT BATCH — 2026-10-26
+
+Latest code checkpoint: `f007f24d2fd78fd0dcfc67696ecfccdbae9ff066`. The four A1.24 periodic quota types now have a native user-attribute adapter, Access-Request admission rejection, Accounting-Start baselines, recurring quota/reset checks, deferred RAS termination requests, and source-shaped attribute `_reload` behavior. Added policy, reload, and runtime admission regression tests.
+
+CI for this newest checkpoint is running; do not treat it as green until both Python versions finish. Still open: restoring per-instance quota baselines after process restart / across workers, exact charging-rule assumed-KPS integration for traffic quotas, and full parity for other A1.24 plugin hooks. UI and installer remain deferred.
+
+---
+
 # LATEST PERIODIC ACCOUNTING RUNTIME INTEGRATION — 2026-10-26
 
 Latest implementation commits: `e5d0563969d2ce0206226d2429fa975c2124af88` (runtime composite-session regression test). This batch adds a native PostgreSQL attribute adapter for the four A1.24 periodic quotas, binds effective group/user configuration while persisting per-user usage/reset attributes only, connects login/update/logout accounting hooks to the native RADIUS handler, preserves the coordinator across packet-scoped database transactions, and supports composite RAS/session identities in quota baselines.
