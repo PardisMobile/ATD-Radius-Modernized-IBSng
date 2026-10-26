@@ -185,7 +185,14 @@ def _table_signatures(conn, schema: str, tables: set[str]) -> set[tuple[Any, ...
         SELECT relation.relname, relation.relkind, relation.relpersistence,
                relation.relrowsecurity, relation.relforcerowsecurity,
                relation.relreplident,
-               COALESCE(pg_catalog.pg_get_partkeydef(relation.oid), '')
+               COALESCE(pg_catalog.pg_get_partkeydef(relation.oid), ''),
+               COALESCE(pg_catalog.pg_get_expr(relation.relpartbound, relation.oid), ''),
+               COALESCE((SELECT parent.relname
+                         FROM pg_inherits AS inheritance
+                         JOIN pg_class AS parent ON parent.oid=inheritance.inhparent
+                         WHERE inheritance.inhrelid=relation.oid
+                         ORDER BY parent.relname LIMIT 1), ''),
+               COALESCE(array_to_string(relation.reloptions, ','), '')
         FROM pg_class AS relation
         JOIN pg_namespace AS namespace ON namespace.oid=relation.relnamespace
         WHERE namespace.nspname=%s AND relation.relkind IN ('r', 'p')
@@ -195,9 +202,12 @@ def _table_signatures(conn, schema: str, tables: set[str]) -> set[tuple[Any, ...
     return {
         (str(name), str(kind), str(persistence), bool(row_security),
          bool(force_row_security), str(replica_identity),
-         _normalize_object_sql(str(partition_key), schema))
+         _normalize_object_sql(str(partition_key), schema),
+         _normalize_object_sql(str(partition_bound), schema),
+         str(partition_parent), str(table_options))
         for name, kind, persistence, row_security, force_row_security,
-            replica_identity, partition_key in rows
+            replica_identity, partition_key, partition_bound, partition_parent,
+            table_options in rows
         if str(name) in tables
     }
 
