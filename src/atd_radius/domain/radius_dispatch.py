@@ -44,6 +44,8 @@ class RadiusDispatcher:
                 if address:
                     reply_attributes = dict(response.attributes)
                     reply_attributes["Framed-IP-Address"] = str(address)
+                    # IBSng A1.24 assign_ip.setIPInPacket emits a host mask.
+                    reply_attributes["Framed-IP-Netmask"] = "255.255.255.255"
                     response = RadiusPacket(response.code, response.identifier, reply_attributes, response.authenticator)
         return response
     def accounting(self,packet:RadiusPacket)->DispatchResult:

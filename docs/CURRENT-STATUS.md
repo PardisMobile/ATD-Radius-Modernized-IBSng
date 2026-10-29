@@ -1076,3 +1076,8 @@ Added canonical IPv4/IPv6 normalization and strict invalid-address rejection to 
 ## assign_ip repository implementation correction — 2026-10-29
 
 A review of the latest source and its already-added regression tests found that the canonicalization/expiration behavior described above had not actually landed in the repository implementation (the tests were present but the implementation was incomplete, including an unresolved IP-normalizer reference). Corrected the implementation to canonicalize IPv4/IPv6 with Python's `ipaddress` parser, deduplicate normalized values, reject invalid addresses, and implement age-bounded cleanup of pending leases only. This is a correctness repair to the repository layer, not live Access/Accounting integration; runtime wiring and cross-process lifecycle verification remain open.
+
+
+# LIVE ASSIGN_IP ACCESS PATH + RESPONSE ATTRIBUTE PARITY — 2026-10-30
+
+Commit `358d05b wires the PostgreSQL lease repository into Access-Accept and Accounting Start/Stop. A source comparison against canonical A1.24 found one response parity omission: `assign_ip.setIPInPacket` adds both `Framed-IP-Address` and the host mask `Framed-IP-Netmask=255.255.255.255`. The dispatcher now emits both attributes for a successful reservation. Regression coverage verifies the accepted response and confirms Access-Reject does not invoke reservation. This narrows the response gap; it does not establish complete assign_ip parity. In particular, explicit re-online conflict mapping, stale active lease recovery after NAS/accounting loss, source-faithful pool reload, and full PostgreSQL packet transaction acceptance remain audit gates. No CI result is asserted for this checkpoint until the workflows complete.

@@ -51,3 +51,33 @@ def test_control_returns_error_cause_from_session_control():
     ))
     assert response.code is RadiusCode.DISCONNECT_NAK
     assert response.attributes["Error-Cause"] == "503"
+
+
+class AssignedIPContext(Context):
+    def __init__(self, address=None):
+        self.address = address
+        self.calls = 0
+    def assigned_ip_for_accept(self, packet, attributes):
+        self.calls += 1
+        return self.address
+
+
+def test_accept_includes_a124_assigned_ip_and_host_netmask():
+    context = AssignedIPContext("192.0.2.44")
+    response = RadiusDispatcher(PluginPipeline([Accept()]), access_context=context).access(
+        RadiusPacket(RadiusCode.ACCESS_REQUEST, 7, {"User-Name": "alice"})
+    )
+    assert response.code is RadiusCode.ACCESS_ACCEPT
+    assert response.attributes["Framed-IP-Address"] == "192.0.2.44"
+    assert response.attributes["Framed-IP-Netmask"] == "255.255.255.255"
+    assert context.calls == 1
+
+
+def test_reject_never_reserves_assigned_ip():
+    context = AssignedIPContext("192.0.2.44")
+    response = RadiusDispatcher(PluginPipeline([Reject()]), access_context=context).access(
+        RadiusPacket(RadiusCode.ACCESS_REQUEST, 8, {"User-Name": "alice"})
+    )
+    assert response.code is RadiusCode.ACCESS_REJECT
+    assert "Framed-IP-Address" not in response.attributes
+    assert context.calls == 0
