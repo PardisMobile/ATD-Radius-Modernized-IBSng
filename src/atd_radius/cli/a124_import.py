@@ -841,7 +841,7 @@ def import_data(source_conn, target_conn, source_schema: str, target_schema: str
                 "target_is_called_after": target_after_called,
                 "restart_value": next_value,
                 "owned_by": list(owner) if owner else None,
-                "maximum_owned_id": maximum,
+                "maximum_owned_id": owned_maximum,
             })
     plan["mode"] = "apply"
     plan["sequence_results"] = sequence_results
