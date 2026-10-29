@@ -1,3 +1,7 @@
+## Mandatory verified/frozen work register
+
+Before starting any new implementation batch, consult [`docs/A1.24-VERIFIED-FROZEN.md`](A1.24-VERIFIED-FROZEN.md). Any source-traced behavior slice that has been implemented, regression-tested, and validated must be recorded there in the same batch, with its exact scope, canonical source location, tests, validation commit/CI, and remaining limitations. Freeze only that narrow slice; do not freeze an entire feature/module by implication. Do not modify frozen behavior unless a reproducible defect, new source mismatch, security issue, or required integration side effect is evidenced and documented first. This register is authoritative for avoiding repeated work.
+
 # LATEST IMPORT SAFETY GATE — 2026-10-25
 
 Code checkpoint `57448c86f9353e0d8d537c5f82457fd99747ee4c` passed full CI: **1,084 passed on Python 3.11 and 1,084 on Python 3.12, 2 warnings each**; Python-only: **1,050 passed, 34 skipped, 2 warnings**.
