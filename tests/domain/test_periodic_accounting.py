@@ -140,7 +140,7 @@ def test_traffic_quota_deadline_uses_composite_runtime_session_keys():
         ("monthly", "jalali", PeriodicQuotaKind.TRAFFIC),
     ],
 )
-def test_reset_is_not_repeated_at_the_exact_reset_boundary(period, value, kind):
+def test_reset_is_due_at_the_exact_a124_reset_boundary(period, value, kind):
     state = PeriodicAccountingState(PeriodicQuotaConfig(
         key=f"{kind.value}_periodic_accounting_{period}",
         period=period,
@@ -150,10 +150,12 @@ def test_reset_is_not_repeated_at_the_exact_reset_boundary(period, value, kind):
         next_reset=2000.0,
         accumulated_usage=25,
     ))
-    assert not state.refresh_reset_if_due(2000.0, lambda calendar: 4000.0)
-    assert state.committed_usage == 25
-    assert state.next_reset == 2000.0
-
-    assert state.refresh_reset_if_due(2000.001, lambda calendar: 4000.0)
+    assert state.refresh_reset_if_due(2000.0, lambda calendar: 4000.0)
     assert state.committed_usage == 0
-    assert state.next_reset > 2000.001
+    assert state.next_reset == 4000.0
+
+    # Once the source-compatible reset is applied, it is not repeated until
+    # the next boundary; a hook just before that boundary remains a no-op.
+    assert not state.refresh_reset_if_due(3999.999, lambda calendar: 5000.0)
+    assert state.committed_usage == 0
+    assert state.next_reset == 4000.0
