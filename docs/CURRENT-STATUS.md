@@ -1,3 +1,11 @@
+# VERIFIED/FROZEN REGISTER ADDED — 2026-10-29
+
+`docs/A1.24-VERIFIED-FROZEN.md` is now the durable ledger of narrowly scoped A1.24 behaviors already source-traced, implemented, regression-tested, and validated. It records expiry boundary semantics, daily periodic reset catch-up equality behavior, first-login persistence after accepted authentication, and the native CHAP/MS-CHAP/MPPE wire-codec slice. These entries do **not** imply complete feature or product parity. Every future verified behavior must be added to the ledger in the same batch. Check it before coding; only reopen an entry with reproducible new evidence and a regression test.
+
+The final comment-only reset correction checkpoint `32d46f52620269f367edf2150683feb5851da709` has both full CI and Python workflows successful (runs `40800850638` and `40800850548`).
+
+---
+
 # SOURCE AUDIT CORRECTION — DAILY PERIODIC RESET CATCH-UP — 2026-10-29
 
 The prior 2026-10-29 statement that daily reset advancement must always leave the next boundary strictly in the future was too broad and did not exactly reproduce canonical A1.24. In `IBSng/core/user/plugins/periodic_accounting.py::BasePeriodicAccounting._calcNextReset`, daily reset calculates `saved_next_reset + interval` first, then advances only while `candidate < time.time()`. If a delayed hook lands exactly on a missed interval boundary, the calculated reset may equal `now`; a subsequent due hook advances from that saved boundary again. The modernized implementation now preserves this source behavior, and a regression test covers both calls. This is a targeted correction, not evidence of complete plugin parity. CI for the corrective commits is running.
