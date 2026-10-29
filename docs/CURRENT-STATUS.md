@@ -1061,3 +1061,8 @@ Extended table behavior parity to compare partition bounds and parent topology p
 Added `domain/user_assigned_ip_registry.py` above the source-shaped per-user ordered container. It provides idempotent Access-request reservation keys, rollback of only the rejected request's pending lease, accepted-login to exact `(user, RAS, session)` binding, session release, and diagnostic snapshots. Regression tests cover retransmission, Accounting handoff, request cleanup, duplicate release, user separation, and empty pools.
 
 This is process-local groundwork—not complete `assign_ip` parity. It is not a durable/cross-worker lease authority and is not yet wired into the live Access-Accept/Accounting packet path. Response attribute integration, re-online conflict mapping, restart recovery, and shared lease ownership remain open. Frozen features were not changed.
+
+
+# DURABLE ASSIGN_IP LEASE REPOSITORY FOUNDATION — 2026-10-29
+
+Added PostgreSQL schema and repository for `assign_ip`, beyond the process-local registry: per-user transaction advisory locks, globally unique INET ownership, idempotent request reservation, exact session promotion, and release operations. Repository tests cover ordering, retry ownership, explicit claim, session bind, and idempotent Stop. **Not yet live runtime parity:** Access/Accounting wiring and restart reconciliation remain necessary before declaring the plugin complete.
