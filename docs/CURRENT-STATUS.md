@@ -1,6 +1,6 @@
 # SEQUENCE HIGH-WATER SAFETY — 2026-10-29
 
-The A1.24 row importer now preserves the next-value state of both source and target sequences, even when a sequence is ahead of the maximum currently stored row ID (for example, after deletes or manual allocation). Owned-column extrema are also considered and the selected restart value is checked against sequence bounds. PostgreSQL acceptance regressions cover source/target sequence-state precedence and an uncalled target sequence. CI is pending for this increment; full legacy restore/cutover parity remains unverified.
+The A1.24 row importer now preserves the next-value state of both source and target sequences, even when a sequence is ahead of the maximum currently stored row ID (for example, after deletes or manual allocation). Owned-column extrema are also considered and the selected restart value is checked against sequence bounds. During apply, destination sequences are locked in deterministic order before reading/restarting them to prevent concurrent target-side nextval() races. PostgreSQL acceptance regressions cover source/target sequence-state precedence and an uncalled target sequence. CI is pending for this increment; full legacy restore/cutover parity remains unverified.
 
 # VERIFIED AUTHENTICATION INTEGRATION BATCH — 2026-10-26
 
