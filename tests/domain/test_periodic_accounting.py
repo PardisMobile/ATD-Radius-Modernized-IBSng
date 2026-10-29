@@ -155,8 +155,14 @@ def test_reset_is_due_at_the_exact_a124_reset_boundary(period, value, kind):
     expected_next_reset = 2000.0 + 86400 if period == "daily" else 4000.0
     assert state.next_reset == expected_next_reset
 
-    # Once the source-compatible reset is applied, it is not repeated until
-    # the next boundary; a hook just before that boundary remains a no-op.
-    assert not state.refresh_reset_if_due(expected_next_reset - 0.001, lambda calendar: 5000.0)
+    # The next scheduled boundary is strictly in the future; at that next
+    # exact boundary A1.24 resets again and advances the daily anchor.
+    assert state.refresh_reset_if_due(expected_next_reset, lambda calendar: 5000.0)
     assert state.committed_usage == 0
-    assert state.next_reset == expected_next_reset
+    next_expected = expected_next_reset + 86400 if period == "daily" else 5000.0
+    assert state.next_reset == next_expected
+
+    # Before the following boundary, the hook is a no-op.
+    assert not state.refresh_reset_if_due(next_expected - 0.001, lambda calendar: 6000.0)
+    assert state.committed_usage == 0
+    assert state.next_reset == next_expected
