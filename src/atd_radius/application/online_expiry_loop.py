@@ -32,25 +32,45 @@ def nearest_expiration(attributes: dict[str, str], now: float) -> tuple[int | No
 
 
 def plan_online_expiry(attributes: dict[str, str], sessions: tuple[SessionKey, ...], now: float) -> OnlineExpiryPlan:
-    """Calculate the earliest native A1.24 user-expiry deadline."""
+    """Calculate expiry while preserving each A1.24 plugin's boundary semantics.
+
+    Absolute expiry checks `abs_exp_date < time.time()`. Relative expiry
+    checks `first_login + rel_exp_date <= time.time()`. The scheduler has a
+    one-second minimum delay, so an absolute deadline exactly at `now` is
+    rechecked one second later instead of being dropped as a zero-delay event.
+    """
     if not sessions:
         return OnlineExpiryPlan(None)
-    deadlines: list[tuple[float, str]] = []
+    deadlines: list[tuple[float, str, bool]] = []
     raw_absolute = attributes.get("abs_exp_date")
     if raw_absolute not in (None, ""):
-        try: deadlines.append((float(raw_absolute), "absolute_expired"))
+        try: deadlines.append((float(raw_absolute), "absolute_expired", True))
         except (TypeError, ValueError): pass
     raw_duration, raw_first_login = attributes.get("rel_exp_date"), attributes.get("first_login")
     if raw_duration not in (None, "") and raw_first_login not in (None, ""):
         try:
             duration, first_login = float(raw_duration), float(raw_first_login)
-            if duration >= 0: deadlines.append((first_login + duration, "relative_expired"))
+            if duration >= 0:
+                deadlines.append((first_login + duration, "relative_expired", False))
         except (TypeError, ValueError): pass
-    if not deadlines: return OnlineExpiryPlan(None)
-    deadline, reason = min(deadlines, key=lambda item: item[0])
+    if not deadlines:
+        return OnlineExpiryPlan(None)
+
+    expired = [
+        item for item in deadlines
+        if (item[0] < now if item[2] else item[0] <= now)
+    ]
+    if expired:
+        deadline, reason, _strict = min(expired, key=lambda item: item[0])
+        return OnlineExpiryPlan(0, tuple((key, reason) for key in sessions))
+
+    deadline, _reason, strict = min(deadlines, key=lambda item: item[0])
     remaining = deadline - now
-    if remaining > 0: return OnlineExpiryPlan(remaining)
-    return OnlineExpiryPlan(0, tuple((key, reason) for key in sessions))
+    if strict and remaining == 0:
+        # Exact absolute-expiry equality is not expired in A1.24; re-evaluate
+        # after the scheduler's minimum interval rather than ending the loop.
+        return OnlineExpiryPlan(1.0)
+    return OnlineExpiryPlan(remaining)
 
 class OnlineSessionExpiryLoop:
     """Schedule source-compatible expiry checks and terminate every live instance."""
