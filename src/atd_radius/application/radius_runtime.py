@@ -137,6 +137,7 @@ class RadiusRuntimeHandler:
         cisco_voip_auth_h323_ids: dict[int, set[str]] | None = None,
         cisco_online_status: dict[int, dict[str, dict[str, object]]] | None = None,
         login_reservations=None,
+        user_assigned_ip_repository=None,
         periodic_accounting: PeriodicAccountingCoordinator | None = None,
     ) -> None:
         self.dispatcher = dispatcher
@@ -147,6 +148,7 @@ class RadiusRuntimeHandler:
         )
         self.identities = identities
         self.login_reservations = login_reservations
+        self.user_assigned_ip_repository = user_assigned_ip_repository
         self.periodic_accounting = periodic_accounting
         self.ip_pool_sessions = ip_pool_sessions
         self.bandwidth_snapshots = bandwidth_snapshots
@@ -343,6 +345,15 @@ class RadiusRuntimeHandler:
                             # from inverting the registry/session-lock order.
                             self.login_reservations.lock_user(user_id)
                         accounting_result = self.accounting_sessions.apply(event, user_id, ras_id)
+                        if self.user_assigned_ip_repository is not None and event.session_id:
+                            if event.status is AccountingStatus.START and event.remote_ip:
+                                self.user_assigned_ip_repository.bind_session(
+                                    user_id, ras_id, event.session_id, event.remote_ip
+                                )
+                            elif event.status is AccountingStatus.STOP:
+                                self.user_assigned_ip_repository.release_session(
+                                    user_id, ras_id, event.session_id
+                                )
                         if self.periodic_accounting is not None:
                             # Mirror A1.24 login/update/logout hooks against the
                             # same native session identity used by the registry.
@@ -442,6 +453,11 @@ class RadiusRuntimeHandler:
                 reservation_request_key = self.login_reservations.request_key(packet, peer)
                 self.login_reservations.lock_user(reservation_user_id)
                 self.accounting_sessions.refresh_user_sessions(reservation_user_id)
+        if self.user_assigned_ip_repository is not None:
+            access_context = self.dispatcher.access_context
+            if access_context is not None:
+                access_context.assigned_ip_repository = self.user_assigned_ip_repository
+                access_context.assigned_ip_request_key = reservation_request_key
         response = self.dispatcher.access(packet, source_ip=peer[0])
         if (
             response.code is RadiusCode.ACCESS_ACCEPT
@@ -1207,6 +1223,12 @@ class NativeRadiusPacketHandler:
                     self._restore_periodic_baselines_for_user(
                         session_store, self.state.periodic_accounting, target_user_id
                     )
+            from atd_radius.infrastructure.user_assigned_ip_repository import PostgresUserAssignedIPRepository
+            assigned_ip_repository = PostgresUserAssignedIPRepository(conn)
+            assigned_ip_request_key = (
+                login_reservations.request_key(packet, peer)
+                if packet.code is RadiusCode.ACCESS_REQUEST else None
+            )
             dispatcher = build_radius_dispatcher(
                 users,
                 active_sessions_provider=session_views(
@@ -1218,6 +1240,8 @@ class NativeRadiusPacketHandler:
                 ras=ras,
                 ip_pools=pools,
                 periodic_accounting=self.state.periodic_accounting,
+                user_assigned_ip_repository=assigned_ip_repository,
+                assigned_ip_request_key=assigned_ip_request_key,
             )
             handler = RadiusRuntimeHandler(
                 dispatcher,
@@ -1228,6 +1252,7 @@ class NativeRadiusPacketHandler:
                 cisco_voip_auth_h323_ids=self.state.cisco_voip_auth_h323_ids,
                 cisco_online_status=self.state.cisco_online_status,
                 login_reservations=login_reservations,
+                user_assigned_ip_repository=assigned_ip_repository,
                 periodic_accounting=self.state.periodic_accounting,
             )
             response = handler(packet, peer)
@@ -1261,6 +1286,8 @@ def build_radius_dispatcher(
     ras=None,
     ip_pools: IPPoolRuntimeRegistry | None = None,
     periodic_accounting: PeriodicAccountingCoordinator | None = None,
+    user_assigned_ip_repository=None,
+    assigned_ip_request_key: str | None = None,
 ) -> RadiusDispatcher:
     """Build the native authentication boundary without inventing a new schema."""
     from atd_radius.infrastructure.access_context import NativeAccessContext
@@ -1281,7 +1308,9 @@ def build_radius_dispatcher(
         policies.append(PluginSpec(9, "ip_pool", IPPoolAllocationPolicy(ip_pools)))
     policies.append(PluginSpec(9, "timeout", TimeoutPolicy()))
     pipeline = PluginPipeline(policies)
-    return RadiusDispatcher(pipeline, access_context=NativeAccessContext(users, ras))
+    return RadiusDispatcher(pipeline, access_context=NativeAccessContext(
+        users, ras, user_assigned_ip_repository, assigned_ip_request_key
+    ))
 
 
 class NativeAccountingIdentityResolver:

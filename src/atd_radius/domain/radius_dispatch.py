@@ -36,7 +36,16 @@ class RadiusDispatcher:
             commit_effects = getattr(self.access_context, "commit_login_effects", None)
             if callable(commit_effects):
                 commit_effects(attributes)
-        return response_for_access(packet,result.action.value,result.attributes)
+        response = response_for_access(packet,result.action.value,result.attributes)
+        if response.code is RadiusCode.ACCESS_ACCEPT and self.access_context is not None:
+            assign = getattr(self.access_context, "assigned_ip_for_accept", None)
+            if callable(assign):
+                address = assign(packet, attributes)
+                if address:
+                    reply_attributes = dict(response.attributes)
+                    reply_attributes["Framed-IP-Address"] = str(address)
+                    response = RadiusPacket(response.code, response.identifier, reply_attributes, response.authenticator)
+        return response
     def accounting(self,packet:RadiusPacket)->DispatchResult:
         if packet.code is not RadiusCode.ACCOUNTING_REQUEST: raise ValueError("expected Accounting-Request")
         return DispatchResult(RadiusPacket(RadiusCode.ACCOUNTING_RESPONSE,packet.identifier,{},packet.authenticator),event_from_attributes(packet.attributes))

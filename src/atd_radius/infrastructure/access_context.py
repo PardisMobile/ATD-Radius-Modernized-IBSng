@@ -53,10 +53,13 @@ def _mschap_response_octets(value: object) -> bytes:
 
 
 class NativeAccessContext:
-    """Resolve native users, RAS and native A1.24 RAS-bound IP pools."""
-    def __init__(self, users: NativeUserSource, ras: NativeRASSource | None = None) -> None:
+    """Resolve users/RAS and apply A1.24 per-user assign_ip after acceptance."""
+    def __init__(self, users: NativeUserSource, ras: NativeRASSource | None = None,
+                 assigned_ip_repository=None, assigned_ip_request_key: str | None = None) -> None:
         self.users = users
         self.ras = ras
+        self.assigned_ip_repository = assigned_ip_repository
+        self.assigned_ip_request_key = assigned_ip_request_key
 
     def enrich(self, packet: RadiusPacket, source_ip: str | None = None) -> Mapping[str, str]:
         username = packet.attributes.get("User-Name", "")
@@ -173,6 +176,33 @@ class NativeAccessContext:
                 if ras_record.ippool_ids and ip_assignment is not False:
                     attrs["__ras_ippool_ids"] = ",".join(str(pool_id) for pool_id in ras_record.ippool_ids)
         return attrs
+
+    def assigned_ip_for_accept(self, packet: RadiusPacket, attributes: Mapping[str, str]) -> str | None:
+        """Reserve one configured user IP for this accepted Access-Request.
+
+        Exhaustion is intentionally non-fatal, matching IBSng A1.24: Access
+        remains accepted and simply omits Framed-IP-Address.
+        """
+        repo = self.assigned_ip_repository
+        key = self.assigned_ip_request_key
+        user_id = attributes.get("__user_id")
+        if repo is None or not key or not user_id:
+            return None
+        is_normal = getattr(self.users, "is_normal_user", None)
+        if not callable(is_normal) or not is_normal(int(user_id)):
+            return None
+        user_attrs = dict(self.users.policy_attributes(int(user_id)))
+        configured = user_attrs.get("assign_ip")
+        if not configured or attributes.get("__ras_ip_assignment") == "0":
+            return None
+        if user_attrs.get("ip_assignment") in ("0", "false", "False", "no"):
+            return None
+        requested = packet.attributes.get("Framed-IP-Address") or packet.attributes.get("remote_ip")
+        if requested:
+            # A re-online request must reclaim its original address, never pick
+            # a different address from the user's configured list.
+            return repo.reserve_specific(int(user_id), configured, key, str(requested))
+        return repo.reserve(int(user_id), configured, key)
 
     def commit_login_effects(self, attributes: Mapping[str, str]) -> None:
         """Persist A1.24 login-hook state only after the request is accepted."""
