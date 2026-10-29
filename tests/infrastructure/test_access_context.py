@@ -347,3 +347,53 @@ def test_mschapv2_native_authentication_survives_radius_wire_and_mppe_round_trip
     )
     assert decoded_response.attributes["MS-MPPE-Send-Key"] == "8b7cdc149b993a1ba118cb153f56dccb"
     assert decoded_response.attributes["MS-MPPE-Recv-Key"] == "d5f0e9521e3ea9589645e86051c82226"
+
+
+def test_first_login_is_committed_only_after_successful_access_and_never_renewed():
+    from atd_radius.application.radius_runtime import build_radius_dispatcher
+
+    class FirstLoginUsers(FakeUsers):
+        def __init__(self):
+            super().__init__()
+            self.attrs[7] = []
+            self.persisted = {}
+
+        def policy_attributes(self, user_id):
+            return list(self.attrs.get(user_id, []))
+
+        def set_attribute_if_absent(self, user_id, name, value):
+            self.persisted.setdefault(user_id, {}).setdefault(name, value)
+
+    users = FirstLoginUsers()
+    dispatcher = build_radius_dispatcher(users)
+
+    rejected = dispatcher.access(
+        RadiusPacket(
+            RadiusCode.ACCESS_REQUEST, 21,
+            {"User-Name": "alice", "User-Password": "wrong"},
+        )
+    )
+    assert rejected.code is RadiusCode.ACCESS_REJECT
+    assert users.persisted == {}
+
+    accepted = dispatcher.access(
+        RadiusPacket(
+            RadiusCode.ACCESS_REQUEST, 22,
+            {"User-Name": "alice", "User-Password": "secret"},
+        )
+    )
+    assert accepted.code is RadiusCode.ACCESS_ACCEPT
+    first_login = users.persisted[7]["first_login"]
+    assert first_login.isdigit()
+    assert "first_login" not in accepted.attributes
+    assert not any(str(key).startswith("__") for key in accepted.attributes)
+
+    # An existing source-defined first_login is immutable across later logins.
+    users.attrs[7] = [("first_login", "1234")]
+    dispatcher.access(
+        RadiusPacket(
+            RadiusCode.ACCESS_REQUEST, 23,
+            {"User-Name": "alice", "User-Password": "secret"},
+        )
+    )
+    assert users.persisted[7]["first_login"] == first_login
