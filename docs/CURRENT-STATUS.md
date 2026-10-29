@@ -1,3 +1,9 @@
+# SOURCE AUDIT CORRECTION — DAILY PERIODIC RESET CATCH-UP — 2026-10-29
+
+The prior 2026-10-29 statement that daily reset advancement must always leave the next boundary strictly in the future was too broad and did not exactly reproduce canonical A1.24. In `IBSng/core/user/plugins/periodic_accounting.py::BasePeriodicAccounting._calcNextReset`, daily reset calculates `saved_next_reset + interval` first, then advances only while `candidate < time.time()`. If a delayed hook lands exactly on a missed interval boundary, the calculated reset may equal `now`; a subsequent due hook advances from that saved boundary again. The modernized implementation now preserves this source behavior, and a regression test covers both calls. This is a targeted correction, not evidence of complete plugin parity. CI for the corrective commits is running.
+
+---
+
 # VERIFIED A1.24 EXPIRY + PERIODIC RESET PARITY BATCH — 2026-10-29
 
 Checkpoint `300a3799589b51f7b8918fed7537a8a063aba887` passed full CI on Python 3.11 and 3.12: **1,170 passed, 1 skipped, 2 warnings per version** (CI run [40798723019](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/40798723019)). Python-only passed **1,128 passed, 43 skipped, 2 warnings** (run [40798723305](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/40798723305)). Ruff, compilation and PHP syntax checks passed.
