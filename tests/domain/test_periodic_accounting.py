@@ -166,3 +166,21 @@ def test_reset_is_due_at_the_exact_a124_reset_boundary(period, value, kind):
     assert not state.refresh_reset_if_due(next_expected - 0.001, lambda calendar: 6000.0)
     assert state.committed_usage == 0
     assert state.next_reset == next_expected
+
+
+def test_daily_reset_delayed_exact_catchup_boundary_matches_a124_two_step_reset():
+    interval = 86400
+    saved_boundary = 1000.0
+    delayed_now = saved_boundary + 2 * interval
+    state = PeriodicAccountingState(config(next_reset=saved_boundary), initial_usage=75)
+
+    # A1.24 computes saved_boundary + interval, then loops only while
+    # candidate < now. On this exact missed boundary, it retains now.
+    assert state.refresh_reset_if_due(delayed_now)
+    assert state.next_reset == delayed_now
+    assert state.committed_usage == 0
+
+    # The source's next due hook at the same epoch starts from that retained
+    # boundary and advances one full interval; it must not remain stuck.
+    assert state.refresh_reset_if_due(delayed_now)
+    assert state.next_reset == delayed_now + interval
