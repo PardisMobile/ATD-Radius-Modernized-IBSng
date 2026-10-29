@@ -990,12 +990,9 @@ The periodic-accounting lifecycle adapter was tightened against the original `pe
 Fixed a lifecycle ordering defect in the live runtime: Accounting-Stop updates and removes the active session before periodic quota logout was reading its traffic counter, so the callback could return zero and subtract the stored baseline from accumulated usage. The runtime now passes the final octet total from the stopped accounting state into the coordinator, which validates and commits that explicit counter. Added regression coverage for a session whose live counter has already disappeared. Full PostgreSQL-backed CI passed on Python 3.11 and 3.12: **1,142 passed, 2 warnings per version**; Ruff also passed. This validates the code path and regression suite, not live NAS interoperability.
 
 
-## Periodic-accounting persistence and reset-boundary hardening — 2026-10-26
+## Periodic-accounting reset-boundary source correction — 2026-10-29
 
-- Preserved fractional seconds for time-quota usage when loading and reloading native user attributes; traffic-quota usage remains integer octets. Regression tests cover persisted fractional usage across coordinator restart and config reload.
-- Matched A1.24's strict reset-due boundary: a hook at the exact `next_reset` timestamp no longer clears usage repeatedly. Added boundary tests across daily/monthly and time/traffic quota combinations.
-- Verified the prior first-login missing-reset fix and Accounting-Stop final-counter settlement remain in the same integrated lifecycle.
-- Validation status: the subsequent importer checkpoint b6d91555 passed both workflows (CI run 40337053215, Python-only run 40337052963); the next locked-revalidation change is a separate checkpoint and must pass its own CI.
+A source re-read of canonical `IBSng/core/user/plugins/periodic_accounting.py` found that A1.24 treats `next_reset == time.time()` as due: both `_checkResetTimer` and `s_canStayOnline` use an inclusive `<=` boundary. The modernized domain engine previously deferred the reset until time advanced beyond the exact epoch. Corrected the comparison and replaced the prior strict-boundary assertion with parametrized exact-boundary regressions for daily/monthly time and traffic quotas. This is a narrow source-parity correction; CI for this checkpoint must pass before it is considered validated.
 
 
 ## Importer locked schema revalidation — 2026-10-26
