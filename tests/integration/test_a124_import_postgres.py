@@ -325,3 +325,48 @@ def test_import_refuses_row_security_policy_drift_before_row_writes(import_schem
         assert target.execute(
             sql.SQL("SELECT label FROM {}.parent WHERE id=1").format(sql.Identifier(target_schema))
         ).fetchone()[0] == "old target"
+
+@pytest.mark.parametrize(
+    ("source_last", "source_called", "target_last", "target_called", "expected_restart"),
+    [
+        (2, True, 500, True, 501),
+        (700, True, 500, True, 701),
+        (2, True, 500, False, 500),
+    ],
+)
+def test_apply_never_lowers_existing_sequence_high_water(
+    import_schemas, source_last, source_called, target_last, target_called, expected_restart
+):
+    """Sequence state can exceed table MAX after deletions/manual allocation."""
+    dsn, source_schema, target_schema = import_schemas
+    with psycopg.connect(dsn) as source, psycopg.connect(dsn) as target:
+        source.execute(
+            sql.SQL("SELECT setval({}::regclass, %s, %s)").format(
+                sql.Literal(f'"{source_schema}"."parent_id_seq"')
+            ),
+            (source_last, source_called),
+        )
+        target.execute(
+            sql.SQL("SELECT setval({}::regclass, %s, %s)").format(
+                sql.Literal(f'"{target_schema}"."parent_id_seq"')
+            ),
+            (target_last, target_called),
+        )
+        report = import_data(
+            source, target, source_schema, target_schema,
+            {"parent": {"id": "integer", "label": "text"},
+             "child": {"id": "integer", "parent_id": "integer", "value": "text"}},
+            apply=True,
+        )
+        sequence_report = next(
+            item for item in report["sequence_results"] if item["sequence"] == "parent_id_seq"
+        )
+        assert sequence_report["restart_value"] == expected_restart
+        assert sequence_report["target_next_value_after"] == expected_restart
+        assert sequence_report["target_is_called_after"] is False
+        assert target.execute(
+            sql.SQL("SELECT nextval({}::regclass)").format(
+                sql.Literal(f'"{target_schema}"."parent_id_seq"')
+            )
+        ).fetchone()[0] == expected_restart
+
