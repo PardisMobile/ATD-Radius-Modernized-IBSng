@@ -278,7 +278,8 @@ class PeriodicAccountingState:
             return True
         # Match A1.24's strict '< time.time()' due check: at the exact
         # boundary, a repeated hook must not reset usage twice.
-        if self.next_reset >= now:
+        # A1.24 checks next_reset <= time.time(); equality is due too.
+        if self.next_reset > now:
             return False
         if self.config.period == "daily":
             interval = int(self.config.value) * 86400
