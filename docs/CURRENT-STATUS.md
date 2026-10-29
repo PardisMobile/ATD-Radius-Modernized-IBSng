@@ -1,6 +1,19 @@
+# VERIFIED A1.24 EXPIRY + PERIODIC RESET PARITY BATCH — 2026-10-29
+
+Checkpoint `300a3799589b51f7b8918fed7537a8a063aba887` passed full CI on Python 3.11 and 3.12: **1,170 passed, 1 skipped, 2 warnings per version** (CI run [40798723019](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/40798723019)). Python-only passed **1,128 passed, 43 skipped, 2 warnings** (run [40798723305](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/40798723305)). Ruff, compilation and PHP syntax checks passed.
+
+This batch source-traced three lifecycle boundaries against canonical A1.24:
+- Periodic accounting: reset is due at `next_reset <= now`; daily anchored reset advances until the next event is strictly future, including when a callback arrives exactly on the boundary. Tests cover daily/monthly × time/traffic, consecutive exact-boundary events, and just-before-boundary no-op behavior.
+- Absolute vs relative expiry: absolute expiration uses strict `deadline < now`, while relative expiry uses inclusive `deadline <= now`. The active-session scheduler now rechecks at the exact absolute boundary after its minimum interval rather than silently ending scheduling; exact relative expiry still terminates.
+- First login: an A1.24 `first_login` candidate is committed only after successful Access-Accept and is not renewed on subsequent logins. Integrated dispatcher regression coverage verifies reject/accept and response attribute privacy.
+
+This verifies these source-derived boundary slices, not complete user-plugin parity or live NAS behavior. The broader core plugin/runtime, provider interoperability and production adoption gates remain open.
+
+---
+
 # PERIODIC RESET BOUNDARY PARITY FIX — 2026-10-29
 
-Canonical source `IBSng/core/user/plugins/periodic_accounting.py` confirms reset is due when `next_reset <= time.time()`. The modernized domain engine's due check now matches that inclusive condition, and its daily anchored schedule advances with `while next_reset <= now` so the next scheduled boundary is strictly future—even when the current instant equals the old boundary. Parametrized regression coverage exercises all four daily/monthly time/traffic quota types, exact-boundary repeated resets, and the no-op just before the next boundary. The previous checkpoint exposed two failing daily assertions; this fix is not considered validated until CI passes.
+Canonical source `IBSng/core/user/plugins/periodic_accounting.py` confirms reset is due when `next_reset <= time.time()`. The modernized domain engine's due check now matches that inclusive condition, and its daily anchored schedule advances with `while next_reset <= now` so the next scheduled boundary is strictly future—even when the current instant equals the old boundary. Parametrized regression coverage exercises all four daily/monthly time/traffic quota types, exact-boundary repeated resets, and the no-op just before the next boundary. An earlier test expectation was corrected to match the anchored source schedule; the verified combined checkpoint above now passes both workflows.
 
 ---
 
