@@ -1,3 +1,11 @@
+# SEQUENCE HIGH-WATER PRESERVATION — 2026-10-29
+
+A1.24 import sequence reconciliation now considers the next value represented by both the source and target sequence states, as well as the extrema of values in source and target owned columns. This is important when rows were deleted or IDs were allocated manually: a target sequence can legitimately be ahead of the current table maximum. Apply no longer resets it to a value derived only from table contents. The restart point is checked against the canonical sequence bounds; the post-apply report records the chosen restart value.
+
+PostgreSQL acceptance coverage includes target sequence state ahead of table MAX, source sequence state ahead of target, and an uncalled target sequence whose next value must be retained. This is still sequence-safety coverage—not a representative legacy database migration or cutover proof.
+
+---
+
 # TABLE BEHAVIOR AND RLS PARITY — 2026-10-26
 
 The importer now compares table kind, persistence, row-level-security enable/force flags, replica identity, partition key/bound/parent topology and table storage options, plus the complete row-security policy set (permissive mode, roles, command, USING and WITH CHECK expressions). Any mismatch refuses import before staging or row writes. This prevents treating matching columns as sufficient when table behavior can change visibility or mutation semantics. PostgreSQL integration coverage verifies RLS policy drift is rejected without changing target data.
