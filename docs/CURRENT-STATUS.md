@@ -1066,3 +1066,8 @@ This is process-local groundwork—not complete `assign_ip` parity. It is not a 
 # DURABLE ASSIGN_IP LEASE REPOSITORY FOUNDATION — 2026-10-29
 
 Added PostgreSQL schema and repository for `assign_ip`, beyond the process-local registry: per-user transaction advisory locks, globally unique INET ownership, idempotent request reservation, exact session promotion, and release operations. Repository tests cover ordering, retry ownership, explicit claim, session bind, and idempotent Stop. **Not yet live runtime parity:** Access/Accounting wiring and restart reconciliation remain necessary before declaring the plugin complete.
+
+
+# ASSIGN_IP LEASE REPOSITORY HARDENING — 2026-10-29
+
+Added canonical IPv4/IPv6 normalization and strict invalid-address rejection to the durable lease repository, plus a safe age-bounded cleanup method for orphaned pending reservations. Active lease rows are not targeted by cleanup. New tests cover address canonicalization, invalid configuration, and pending expiration behavior. Runtime Access/Accounting integration remains the next unclosed lifecycle gate.

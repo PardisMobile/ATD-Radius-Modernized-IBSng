@@ -44,7 +44,7 @@ class PostgresUserAssignedIPRepository:
         return None
 
     def reserve_specific(self, user_id: int, addresses: str | Iterable[str] | None, request_key: str, address: str) -> str | None:
-        address = str(address).strip()
+        address = str(ip_address(str(address).strip()))
         if not request_key: raise ValueError("request_key is required")
         if address not in self._configured(addresses): return None
         user_id = int(user_id); self.lock_user(user_id)

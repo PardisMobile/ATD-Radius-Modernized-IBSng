@@ -37,3 +37,30 @@ def test_release_is_exact_and_stop_idempotent():
 def test_empty_pool_is_no_address():
     conn=Connection(); repo=PostgresUserAssignedIPRepository(conn)
     assert repo.reserve(4,None,"empty") is None and conn.calls==[]
+
+
+def test_configured_addresses_are_canonicalized_and_deduplicated():
+    assert PostgresUserAssignedIPRepository._configured(["192.0.2.1", "192.0.2.1", "2001:0db8::1", "2001:db8::1"]) == ("192.0.2.1", "2001:db8::1")
+
+def test_invalid_configured_address_fails_closed():
+    try:
+        PostgresUserAssignedIPRepository._configured(["not-an-ip"])
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("invalid configured IP must not reach allocation")
+
+def test_pending_expiration_reports_count_and_only_targets_pending_leases():
+    conn = Connection([Result((3,))]); repo = PostgresUserAssignedIPRepository(conn)
+    assert repo.expire_pending(180) == 3
+    sql, params = conn.calls[-1]
+    assert "status='pending'" in sql and "INTERVAL '1 second'" in sql and params == (180,)
+
+def test_pending_expiration_rejects_nonpositive_age():
+    repo = PostgresUserAssignedIPRepository(Connection())
+    try:
+        repo.expire_pending(0)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("expiration age must be positive")
