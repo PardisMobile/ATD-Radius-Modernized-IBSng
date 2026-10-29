@@ -1054,3 +1054,10 @@ Added source/target checks for table kind/persistence, RLS flags, replica identi
 ## Importer partition/storage semantics — 2026-10-26
 
 Extended table behavior parity to compare partition bounds and parent topology plus table storage options, in addition to relation kind/persistence, RLS flags, replica identity and partition keys. This catches partition-layout/storage drift that column-only checks cannot detect. Validation of the combined importer batch is still pending the latest PostgreSQL-backed CI.
+
+
+## A1.24 assign_ip reservation coordinator foundation — 2026-10-29
+
+Added `domain/user_assigned_ip_registry.py` above the source-shaped per-user ordered container. It provides idempotent Access-request reservation keys, rollback of only the rejected request's pending lease, accepted-login to exact `(user, RAS, session)` binding, session release, and diagnostic snapshots. Regression tests cover retransmission, Accounting handoff, request cleanup, duplicate release, user separation, and empty pools.
+
+This is process-local groundwork—not complete `assign_ip` parity. It is not a durable/cross-worker lease authority and is not yet wired into the live Access-Accept/Accounting packet path. Response attribute integration, re-online conflict mapping, restart recovery, and shared lease ownership remain open. Frozen features were not changed.
