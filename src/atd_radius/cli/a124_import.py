@@ -354,13 +354,47 @@ def _sequence_state(conn, schema: str, name: str) -> tuple[int, bool]:
     return int(row[0]), bool(row[1])
 
 
-def _owned_column_max(conn, schema: str, table: str, column: str) -> int | None:
-    value = conn.execute(
-        sql.SQL("SELECT max({}) FROM {}.{}").format(
-            sql.Identifier(column), sql.Identifier(schema), sql.Identifier(table)
+def _owned_column_bounds(
+    conn, schema: str, table: str, column: str
+) -> tuple[int | None, int | None]:
+    minimum, maximum = conn.execute(
+        sql.SQL("SELECT min({}), max({}) FROM {}.{}").format(
+            sql.Identifier(column), sql.Identifier(column),
+            sql.Identifier(schema), sql.Identifier(table),
         )
-    ).fetchone()[0]
-    return int(value) if value is not None else None
+    ).fetchone()
+    return (
+        int(minimum) if minimum is not None else None,
+        int(maximum) if maximum is not None else None,
+    )
+
+
+def _sequence_next_value(last_value: int, is_called: bool, increment: int) -> int:
+    """Return the next value nextval() would produce from a sequence state."""
+    return last_value + increment if is_called else last_value
+
+
+def _sequence_restart_value(
+    source_last: int,
+    source_called: bool,
+    target_last: int,
+    target_called: bool,
+    increment: int,
+    owned_minimum: int | None,
+    owned_maximum: int | None,
+) -> int:
+    """Choose a restart point that preserves both sequence states and owned IDs."""
+    candidates = [
+        _sequence_next_value(source_last, source_called, increment),
+        _sequence_next_value(target_last, target_called, increment),
+    ]
+    if increment > 0 and owned_maximum is not None:
+        candidates.append(owned_maximum + increment)
+        return max(candidates)
+    if increment < 0 and owned_minimum is not None:
+        candidates.append(owned_minimum + increment)
+        return min(candidates)
+    return max(candidates) if increment > 0 else min(candidates)
 
 
 def _has_null_key(conn, schema: str, table: str, keys: tuple[str, ...]) -> bool:
@@ -772,19 +806,20 @@ def import_data(source_conn, target_conn, source_schema: str, target_schema: str
             last_value, is_called = _sequence_state(source_conn, source_schema, sequence_name)
             target_before_value, target_before_called = _sequence_state(target_conn, target_schema, sequence_name)
             owner = source_owners.get(sequence_name)
-            maximum = None
+            owned_minimum = owned_maximum = None
             if owner:
-                source_maximum = _owned_column_max(source_conn, source_schema, owner[0], owner[1])
-                target_maximum = _owned_column_max(target_conn, target_schema, owner[0], owner[1])
-                candidates = [value for value in (source_maximum, target_maximum) if value is not None]
-                maximum = max(candidates) if candidates else None
+                source_bounds = _owned_column_bounds(source_conn, source_schema, owner[0], owner[1])
+                target_bounds = _owned_column_bounds(target_conn, target_schema, owner[0], owner[1])
+                minima = [value for value in (source_bounds[0], target_bounds[0]) if value is not None]
+                maxima = [value for value in (source_bounds[1], target_bounds[1]) if value is not None]
+                owned_minimum = min(minima) if minima else None
+                owned_maximum = max(maxima) if maxima else None
             increment = source_sequences[sequence_name]["increment"]
-            if maximum is not None and maximum >= last_value:
-                next_value = maximum + increment
-            elif is_called:
-                next_value = last_value + increment
-            else:
-                next_value = last_value
+            next_value = _sequence_restart_value(
+                last_value, is_called,
+                target_before_value, target_before_called,
+                increment, owned_minimum, owned_maximum,
+            )
             spec = source_sequences[sequence_name]
             if next_value < spec["min"] or next_value > spec["max"]:
                 raise A124ImportError(
