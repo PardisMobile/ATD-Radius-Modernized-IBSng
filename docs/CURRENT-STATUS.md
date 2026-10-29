@@ -1,3 +1,9 @@
+# PERIODIC RESET BOUNDARY PARITY FIX — 2026-10-29
+
+Canonical source `IBSng/core/user/plugins/periodic_accounting.py` confirms reset is due when `next_reset <= time.time()`. The modernized domain engine's due check now matches that inclusive condition, and its daily anchored schedule advances with `while next_reset <= now` so the next scheduled boundary is strictly future—even when the current instant equals the old boundary. Parametrized regression coverage exercises all four daily/monthly time/traffic quota types, exact-boundary repeated resets, and the no-op just before the next boundary. The previous checkpoint exposed two failing daily assertions; this fix is not considered validated until CI passes.
+
+---
+
 # SEQUENCE HIGH-WATER SAFETY — 2026-10-29
 
 The A1.24 row importer now preserves the next-value state of both source and target sequences, even when a sequence is ahead of the maximum currently stored row ID (for example, after deletes or manual allocation). Owned-column extrema are also considered and the selected restart value is checked against sequence bounds. During apply, destination sequences are locked in deterministic order before reading/restarting them to prevent concurrent target-side nextval() races. PostgreSQL acceptance regressions cover source/target sequence-state precedence and an uncalled target sequence. CI is pending for this increment; full legacy restore/cutover parity remains unverified.
