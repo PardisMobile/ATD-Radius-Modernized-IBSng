@@ -1,6 +1,6 @@
-# VERIFIED/FROZEN REGISTER ADDED — 2026-10-29
+# VERIFIED/FROZEN REGISTER LOCATION CORRECTED — 2026-10-29
 
-The existing `docs/A1.24-USER-PLUGIN-INVENTORY.md` is the canonical plugin-by-plugin record for source-verified and frozen behavior. `docs/COMPATIBILITY-MATRIX.md` is the broader cross-cutting parity matrix and supplementary evidence, not a replacement for that inventory. The mistakenly added parallel file `docs/A1.24-VERIFIED-FROZEN.md` was removed; no separate freeze file should exist. It records expiry boundary semantics, daily periodic reset catch-up equality behavior, first-login persistence after accepted authentication, and the native CHAP/MS-CHAP/MPPE wire-codec slice. These entries do **not** imply complete feature or product parity. Every future verified behavior must be added to the ledger in the same batch. Check it before coding; only reopen an entry with reproducible new evidence and a regression test.
+The existing `docs/A1.24-USER-PLUGIN-INVENTORY.md` is the canonical plugin-by-plugin inventory and freeze record. `docs/COMPATIBILITY-MATRIX.md` remains the cross-cutting parity matrix and supplementary evidence; it does not replace the plugin inventory. The mistakenly created parallel file `docs/A1.24-VERIFIED-FROZEN.md` has been deleted. No separate freeze register should be created.
 
 The final comment-only reset correction checkpoint `32d46f52620269f367edf2150683feb5851da709` has both full CI and Python workflows successful (runs `40800850638` and `40800850548`).
 
