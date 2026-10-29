@@ -12,7 +12,26 @@ Status: **Implemented foundation / full adoption unverified**. Required next pro
 
 # IBSng A1.24 → ATD Migration Matrix
 
-This is the master parity checklist. Implemented means ATD code exists; Verified requires behavior/data parity tests against A1.24. No row may be marked Verified by inspection alone.
+This is the **single cross-product implementation traceability map** (see the governing project rules in `docs/PROJECT-CONTEXT.md`). Implemented means ATD code exists; Verified requires behavior/data parity tests against A1.24. No row may be marked Verified by inspection alone.
+
+For each capability, trace and explicitly mark the following layers: **IBSng source → Domain → Application → Runtime (RADIUS/Accounting/events) → Database (schema, relations, persistence, migrations/import) → API → UI (exact A1.24 names and workflow) → Installer/configuration/services → Tests/CI → Status/open handoffs**. Use `implemented`, `verified`, `partial`, `missing`, `not applicable`, or `not yet audited` per layer. A domain class or API alone is not feature completion. Update this matrix alongside implementation; subsystem inventories remain detailed evidence, not competing master maps.
+
+### Explicit traceability record — assign_ip
+
+| Layer | Current recorded scope |
+|---|---|
+| IBSng source | `IBSng/core/user/plugins/assign_ip.py`; `IBSng/core/ippool/ippool.py::IPPoolContainer` |
+| Domain | Partial foundation reported in `src/atd_radius/domain/user_assigned_ip.py`: ordered free/used IP handling, explicit reservation/re-online claim, conflict detection, logout release, reload retaining configured active addresses, and graceful exhaustion. |
+| Application | Not yet traced/connected end-to-end in this record. |
+| Runtime | Partial/missing handoffs: Access-Request allocation, accepted-login reservation handoff to Accounting-Start, Accounting-Stop release, and multi-worker lease coordination. |
+| Database | Persistence/lease mapping and restart/reconciliation behavior must be traced and verified; do not infer completion from domain state. |
+| API | Applicable management/API path and exact A1.24 workflow/labels must be mapped; status not yet established here. |
+| UI | Must use exact corresponding IBSng A1.24 labels and preserve workflow; page/field/action mapping remains to be linked. |
+| Installer/configuration | Applicable IP-pool/plugin configuration and service dependencies remain to be mapped. |
+| Tests/CI | Domain regression file reported: `tests/domain/test_user_assigned_ip.py`; runtime integration and multi-worker coverage remain open. The referenced commits/CI need validation against the current HEAD before being called current proof. |
+| Status | **Domain foundation only; not complete runtime/product parity.** Detailed plugin evidence belongs in `docs/A1.24-USER-PLUGIN-INVENTORY.md`. |
+
+
 
 | IBSng subsystem | A1.24 source area | ATD target | Status |
 |---|---|---|---|
