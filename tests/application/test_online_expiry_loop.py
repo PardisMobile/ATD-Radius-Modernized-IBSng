@@ -37,6 +37,29 @@ def test_relative_expiry_exact_epoch_is_due_in_a124():
     assert plan.kill_reasons == ((session, "relative_expired"),)
 
 
+def test_expiry_loop_keeps_exact_absolute_boundary_scheduled():
+    from atd_radius.application.online_expiry_loop import OnlineSessionExpiryLoop
+
+    class SchedulerStub:
+        def start(self): pass
+        def schedule(self, *args): pass
+        def cancel(self, *args): return False
+        def close(self): pass
+
+    session = SessionKey(7, 3, "sid")
+    terminated = []
+    loop = OnlineSessionExpiryLoop(
+        SchedulerStub(),
+        lambda _user_id: plan_online_expiry(
+            {"abs_exp_date": "200"}, (session,), now=200
+        ),
+        lambda key, reason: terminated.append((key, reason)),
+    )
+
+    assert loop._tick(7) == 1.0
+    assert terminated == []
+
+
 def test_relative_expiry_wins_when_absolute_and_relative_deadlines_equal_now():
     session = SessionKey(7, 3, "sid")
     plan = plan_online_expiry(
