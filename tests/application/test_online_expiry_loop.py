@@ -19,6 +19,33 @@ def test_future_expiry_returns_remaining_seconds_without_killing():
     assert plan.remaining_seconds == 50
     assert plan.kill_reasons == ()
 
+def test_absolute_expiry_exact_epoch_rechecks_instead_of_terminating_or_stopping():
+    session = SessionKey(7, 3, "sid")
+    plan = plan_online_expiry({"abs_exp_date": "200"}, (session,), now=200)
+    assert plan.remaining_seconds == 1.0
+    assert plan.kill_reasons == ()
+
+
+def test_relative_expiry_exact_epoch_is_due_in_a124():
+    session = SessionKey(7, 3, "sid")
+    plan = plan_online_expiry(
+        {"rel_exp_date": "100", "first_login": "100"},
+        (session,),
+        now=200,
+    )
+    assert plan.remaining_seconds == 0
+    assert plan.kill_reasons == ((session, "relative_expired"),)
+
+
+def test_relative_expiry_wins_when_absolute_and_relative_deadlines_equal_now():
+    session = SessionKey(7, 3, "sid")
+    plan = plan_online_expiry(
+        {"abs_exp_date": "200", "rel_exp_date": "100", "first_login": "100"},
+        (session,),
+        now=200,
+    )
+    assert plan.kill_reasons == ((session, "relative_expired"),)
+
 def test_no_expiry_or_no_active_sessions_does_not_schedule_termination():
     session = SessionKey(7, 3, "sid")
     assert plan_online_expiry({}, (session,), now=200).remaining_seconds is None
