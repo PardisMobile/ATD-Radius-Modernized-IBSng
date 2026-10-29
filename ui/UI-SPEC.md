@@ -6,7 +6,7 @@ ATD is a modernized IBSng control plane, not a generic SaaS product. The interfa
 
 The modernization rule is:
 
-> Preserve IBSng's operational model and discoverability; replace its presentation, navigation mechanics, visual language, and legacy page chains.
+> Preserve IBSng A1.24's exact user-visible terminology, source-defined workflows, action semantics, permission checks and outcomes. Modernize presentation, responsive layout and visual styling only. This UI spec follows the project-wide rule in `docs/PROJECT-CONTEXT.md` and the naming contract already stated in the root `README.md`; it does not establish a separate policy.
 
 ## IBSng reference information architecture
 
@@ -48,7 +48,7 @@ The home screen also exposes shortcut/work areas for:
 - Realtime Web Analyzer
 - Realtime graphs and connection analysis
 
-ATD must retain these capabilities where they exist in the IBSng source, but reorganize them into modern object-centric workspaces.
+ATD must retain these capabilities where they exist in IBSng A1.24. Any object-centric workspace is a presentation adaptation only and must preserve the source workflow and exact corresponding terminology.
 
 ## Navigation
 
@@ -62,8 +62,8 @@ Within each section, page titles and actions must use the corresponding A1.24 na
 
 ## UX rules
 
-- Preserve familiar IBSng workflows and terminology where they are operationally useful.
-- Replace legacy multi-page form chains with contextual workspaces, tabs, drawers and inline actions.
+- Preserve the exact corresponding IBSng A1.24 terms and source-defined workflow/action order. Do not decide that a legacy workflow is unnecessary or change its semantics.
+- Contextual workspaces, tabs, drawers and inline actions may change presentation mechanics only; they must retain the same operations, dependencies, permission checks and outcomes.
 - Search and filtering are first-class on operational tables.
 - High-frequency actions are visible without requiring deep navigation.
 - Destructive actions require clear confirmation and audit visibility.
