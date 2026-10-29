@@ -96,6 +96,30 @@ def test_reload_discards_pending_reservations_for_removed_addresses():
     assert registry.snapshot(12) == (("192.0.2.11",), (), ("192.0.2.11",))
 
 
+def test_reserve_retry_reconciles_removed_pending_address_before_idempotency():
+    registry = UserAssignedIPRegistry()
+    assert registry.reserve(12, "192.0.2.10,192.0.2.11", "same") == "192.0.2.10"
+
+    # The same request identity is retried after the user's configuration
+    # removes the reserved address. It must allocate only from the new pool.
+    assert registry.reserve(12, "192.0.2.11", "same") == "192.0.2.11"
+    assert registry.pending("same") == (12, "192.0.2.11")
+    assert registry.snapshot(12) == (("192.0.2.11",), (), ("192.0.2.11",))
+
+
+def test_specific_retry_reconciles_removed_address_before_idempotency():
+    registry = UserAssignedIPRegistry()
+    assert registry.reserve_specific(
+        5, "192.0.2.10,192.0.2.11", "specific", "192.0.2.10"
+    ) == "192.0.2.10"
+
+    assert registry.reserve_specific(
+        5, "192.0.2.11", "specific", "192.0.2.10"
+    ) is None
+    assert registry.pending("specific") is None
+    assert registry.snapshot(5) == (("192.0.2.11",), ("192.0.2.11",), ())
+
+
 def test_reload_cleanup_does_not_discard_pending_address_still_configured():
     registry = UserAssignedIPRegistry()
     assert registry.reserve(12, "192.0.2.10,192.0.2.11", "pending") == "192.0.2.10"

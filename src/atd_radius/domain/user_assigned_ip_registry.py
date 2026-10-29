@@ -54,12 +54,16 @@ class UserAssignedIPRegistry:
             raise ValueError("request_key is required")
         user_id = int(user_id)
         with self._lock:
+            # Refresh configuration before consulting the idempotency record.
+            # Otherwise a retransmit can resurrect a reservation for an IP that
+            # the user has since removed from the configured assign_ip list.
+            pool = self._pool(user_id, configured)
             existing = self._pending.get(request_key)
             if existing is not None:
                 if existing[0] != user_id:
                     raise AssignedIPConflict("request key belongs to another user")
                 return existing[1]
-            address = self._pool(user_id, configured).allocate()
+            address = pool.allocate()
             if address is not None:
                 self._pending[request_key] = (user_id, address)
             return address
@@ -78,12 +82,15 @@ class UserAssignedIPRegistry:
             raise ValueError("request_key is required")
         user_id, address = int(user_id), str(address).strip()
         with self._lock:
+            # As in reserve(), reconcile the configured list before honoring a
+            # retry. A removed explicit address must not remain idempotently
+            # successful merely because its old request key is still present.
+            pool = self._pool(user_id, configured)
             existing = self._pending.get(request_key)
             if existing is not None:
                 if existing != (user_id, address):
                     raise AssignedIPConflict("request key is already reserved differently")
                 return address
-            pool = self._pool(user_id, configured)
             if not pool.claim(address):
                 return None
             self._pending[request_key] = (user_id, address)
