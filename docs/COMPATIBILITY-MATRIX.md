@@ -1,3 +1,9 @@
+# SOURCE AUDIT CORRECTION — DAILY PERIODIC RESET CATCH-UP — 2026-10-29
+
+The prior 2026-10-29 statement that daily reset advancement must always leave the next boundary strictly in the future was too broad and did not exactly reproduce canonical A1.24. In `IBSng/core/user/plugins/periodic_accounting.py::BasePeriodicAccounting._calcNextReset`, daily reset calculates `saved_next_reset + interval` first, then advances only while `candidate < time.time()`. If a delayed hook lands exactly on a missed interval boundary, the calculated reset may equal `now`; a subsequent due hook advances from that saved boundary again. The modernized implementation now preserves this source behavior, and a regression test covers both calls. This is a targeted correction, not evidence of complete plugin parity. CI for the corrective commits is running.
+
+---
+
 # A1.24 EXPIRY BOUNDARY PARITY — 2026-10-29
 
 Source trace: `IBSng/core/user/plugins/abs_exp.py::AbsExpDate.__isAbsExpired` uses strict `abs_exp_date < time.time()`; `rel_exp.py::RelExpDate.__isRelExpired` uses inclusive `first_login + rel_exp_date <= time.time()`. The native AAA policy and active-session expiry planner preserve this distinction. At an exact absolute-expiry epoch, login is not rejected and the online scheduler rechecks after its one-second minimum instead of terminating or silently dropping the timer; exact relative expiry remains due. Tests cover each boundary, equal-deadline precedence, and scheduler continuation. Verified on checkpoint `300a3799589b51f7b8918fed7537a8a063aba887`: full CI run [40798723019](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/40798723019), Python-only run [40798723305](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/40798723305).
