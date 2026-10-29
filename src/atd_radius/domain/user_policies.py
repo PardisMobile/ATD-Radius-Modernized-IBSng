@@ -215,7 +215,9 @@ class AbsoluteExpiryPolicy:
         try: expiry=float(raw)
         except (TypeError,ValueError): return None
         now=(self.now or datetime.now(timezone.utc)).timestamp()
-        if now>=expiry: return AAAResult(AAAAction.REJECT,reason="ABS_EXP_DATE_REACHED")
+        # A1.24 abs_exp_date is expired only after its epoch has passed;
+        # unlike relative expiry, equality itself is not a rejection.
+        if now>expiry: return AAAResult(AAAAction.REJECT,reason="ABS_EXP_DATE_REACHED")
         return AAAResult(AAAAction.ACCEPT,{"Session-Timeout":str(max(0,int(expiry-now)))})
 
 @dataclass(frozen=True,slots=True)
