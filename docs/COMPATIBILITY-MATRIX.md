@@ -1,3 +1,9 @@
+# A1.24 EXPIRY BOUNDARY PARITY — 2026-10-29
+
+Source trace: `IBSng/core/user/plugins/abs_exp.py::AbsExpDate.__isAbsExpired` uses strict `abs_exp_date < time.time()`; `rel_exp.py::RelExpDate.__isRelExpired` uses inclusive `first_login + rel_exp_date <= time.time()`. The native AAA policy and active-session expiry planner now preserve this distinction. At an exact absolute-expiry epoch, login is not rejected and the online scheduler rechecks after its one-second minimum instead of terminating or silently dropping the timer; exact relative expiry remains due. Regression tests cover each boundary and equal-deadline precedence. CI is required before this source-parity slice is marked verified.
+
+---
+
 # VERIFIED NATIVE AUTHENTICATION WIRE BATCH — 2026-10-26
 
 Checkpoint `20e9f8cbe8d59b54bec9d337e071d9cd59d486d1` passed full CI on Python 3.11 and 3.12 (**1,140 passed each, 2 warnings**). New integrated tests exercise CHAP and MS-CHAPv1/v2 through the native dispatcher; the MS-CHAPv2 case also encodes and decodes the actual RADIUS request/response, verifies the AuthenticatorResponse identifier byte, and round-trips encrypted MPPE Send/Recv keys using the original request authenticator.
