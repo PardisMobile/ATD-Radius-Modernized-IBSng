@@ -54,6 +54,58 @@ class UserAssignedIPRegistry:
                 self._pending[request_key] = (user_id, address)
             return address
 
+    def reserve_specific(
+        self, user_id: int, configured: str | Iterable[str] | None,
+        request_key: str, address: str,
+    ) -> str | None:
+        """Reserve a configured address for re-online; same request is idempotent.
+
+        Returns None when the requested address is not in the user's configured
+        pool. A used address raises AssignedIPConflict, matching A1.24's
+        remote-IP conflict behavior instead of silently allocating another IP.
+        """
+        if not request_key:
+            raise ValueError("request_key is required")
+        user_id, address = int(user_id), str(address).strip()
+        with self._lock:
+            existing = self._pending.get(request_key)
+            if existing is not None:
+                if existing != (user_id, address):
+                    raise AssignedIPConflict("request key is already reserved differently")
+                return address
+            pool = self._pool(user_id, configured)
+            if not pool.claim(address):
+                return None
+            self._pending[request_key] = (user_id, address)
+            return address
+
+    def bind_session(
+        self, user_id: int, ras_id: int, session_id: str, address: str,
+        configured: str | Iterable[str] | None,
+    ) -> str:
+        """Claim an address for a known session, idempotently.
+
+        This is the Accounting/recovery path for sessions without a pending
+        Access reservation. A session key cannot be rebound to another IP.
+        """
+        if not session_id:
+            raise ValueError("session_id is required")
+        user_id, ras_id, session_id, address = (
+            int(user_id), int(ras_id), str(session_id), str(address).strip()
+        )
+        key = (user_id, ras_id, session_id)
+        with self._lock:
+            prior = self._sessions.get(key)
+            if prior is not None:
+                if prior != address:
+                    raise AssignedIPConflict("session owns a different address")
+                return prior
+            pool = self._pool(user_id, configured)
+            if not pool.claim(address):
+                raise AssignedIPConflict("address is not configured for this user")
+            self._sessions[key] = address
+            return address
+
     def consume(self, request_key: str, ras_id: int, session_id: str) -> str | None:
         """Bind a pending reservation to its accepted Accounting session."""
         if not request_key or not session_id:
@@ -66,6 +118,8 @@ class UserAssignedIPRegistry:
             key = (user_id, int(ras_id), str(session_id))
             prior = self._sessions.get(key)
             if prior is not None and prior != address:
+                # Restore pending ownership rather than leaking the reserved IP.
+                self._pending[request_key] = pending
                 raise AssignedIPConflict("session owns a different address")
             self._sessions[key] = address
             return address

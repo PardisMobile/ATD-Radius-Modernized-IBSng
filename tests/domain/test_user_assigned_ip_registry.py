@@ -46,3 +46,39 @@ def test_empty_pool_and_exhaustion_return_none():
     assert registry.allocate(12, None) is None
     assert registry.reserve(12, "", "empty") is None
     assert registry.snapshot(12) == ((), (), ())
+
+
+def test_specific_reservation_is_idempotent_and_rejects_conflicting_request_key():
+    registry = UserAssignedIPRegistry()
+    assert registry.reserve_specific(5, "192.0.2.10,192.0.2.11", "req", "192.0.2.11") == "192.0.2.11"
+    assert registry.reserve_specific(5, "192.0.2.10,192.0.2.11", "req", "192.0.2.11") == "192.0.2.11"
+    with pytest.raises(AssignedIPConflict):
+        registry.reserve_specific(5, "192.0.2.10,192.0.2.11", "req", "192.0.2.10")
+    assert registry.snapshot(5)[1] == ("192.0.2.10",)
+
+
+def test_specific_reservation_reports_unconfigured_address_and_conflict_for_used_address():
+    registry = UserAssignedIPRegistry()
+    assert registry.reserve_specific(5, "192.0.2.10", "outside", "192.0.2.99") is None
+    assert registry.reserve_specific(5, "192.0.2.10", "first", "192.0.2.10") == "192.0.2.10"
+    with pytest.raises(AssignedIPConflict):
+        registry.reserve_specific(5, "192.0.2.10", "second", "192.0.2.10")
+
+
+def test_accounting_session_claim_is_idempotent_and_never_rebinds():
+    registry = UserAssignedIPRegistry()
+    assert registry.bind_session(5, 7, "session", "192.0.2.10", "192.0.2.10,192.0.2.11") == "192.0.2.10"
+    assert registry.bind_session(5, 7, "session", "192.0.2.10", "192.0.2.10,192.0.2.11") == "192.0.2.10"
+    with pytest.raises(AssignedIPConflict):
+        registry.bind_session(5, 7, "session", "192.0.2.11", "192.0.2.10,192.0.2.11")
+    assert registry.snapshot(5)[1] == ("192.0.2.11",)
+
+
+def test_consume_conflict_keeps_pending_lease_releasable():
+    registry = UserAssignedIPRegistry()
+    ip = registry.reserve(5, "192.0.2.10", "req")
+    registry.bind_session(5, 7, "session", "192.0.2.11", "192.0.2.10,192.0.2.11")
+    with pytest.raises(AssignedIPConflict):
+        registry.consume("req", 7, "session")
+    assert registry.pending("req") == (5, ip)
+    assert registry.release_request("req")
