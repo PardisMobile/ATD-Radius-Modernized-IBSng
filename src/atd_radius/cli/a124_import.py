@@ -800,15 +800,11 @@ def import_data(source_conn, target_conn, source_schema: str, target_schema: str
                 "key_columns": key_columns,
             })
 
-        # Sequence calls can continue independently of table locks. Acquire
-        # transaction-scoped relation locks before reading state so target-side
-        # nextval() cannot race the restart calculation.
-        for sequence_name in sorted(source_sequences):
-            target_conn.execute(
-                sql.SQL("LOCK TABLE {}.{} IN ACCESS EXCLUSIVE MODE").format(
-                    sql.Identifier(target_schema), sql.Identifier(sequence_name)
-                )
-            )
+        # PostgreSQL does not support LOCK TABLE on sequences. The subsequent
+        # ALTER SEQUENCE RESTART is transactional and takes the sequence lock,
+        # but state reads before it cannot exclude independent nextval() calls.
+        # Operationally, pause target writers/sequence consumers for cutover;
+        # table locks alone do not provide that guarantee.
 
         # ALTER SEQUENCE RESTART is transactional (unlike setval). Keep each
         # sequence ahead of both its source sequence state and imported owned IDs.
