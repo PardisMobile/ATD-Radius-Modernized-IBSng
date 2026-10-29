@@ -61,7 +61,7 @@ def plan_online_expiry(attributes: dict[str, str], sessions: tuple[SessionKey, .
         if (item[0] < now if item[2] else item[0] <= now)
     ]
     if expired:
-        deadline, reason, _strict = min(expired, key=lambda item: item[0])
+        _deadline, reason, _strict = min(expired, key=lambda item: item[0])
         return OnlineExpiryPlan(0, tuple((key, reason) for key in sessions))
 
     deadline, _reason, strict = min(deadlines, key=lambda item: item[0])
