@@ -2,7 +2,7 @@
 
 A1.24 import sequence reconciliation now considers the next value represented by both the source and target sequence states, as well as the extrema of values in source and target owned columns. This is important when rows were deleted or IDs were allocated manually: a target sequence can legitimately be ahead of the current table maximum. Apply no longer resets it to a value derived only from table contents. The restart point is checked against the canonical sequence bounds; the post-apply report records the chosen restart value.
 
-PostgreSQL acceptance coverage includes target sequence state ahead of table MAX, source sequence state ahead of target, and an uncalled target sequence whose next value must be retained. This is still sequence-safety coverage—not a representative legacy database migration or cutover proof.
+Before reading/restarting destination sequences, the apply transaction now takes ACCESS EXCLUSIVE relation locks on them in deterministic name order, preventing target-side nextval() from racing the state reconciliation. PostgreSQL acceptance coverage includes target sequence state ahead of table MAX, source sequence state ahead of target, and an uncalled target sequence whose next value must be retained. This is still sequence-safety coverage—not a representative legacy database migration or cutover proof.
 
 ---
 
