@@ -283,11 +283,11 @@ class PeriodicAccountingState:
             return False
         if self.config.period == "daily":
             interval = int(self.config.value) * 86400
-            next_reset = self.next_reset
-            # Source parity: A1.24 advances while the candidate is strictly
-            # earlier than now. If a delayed callback lands exactly on a
-            # missed interval boundary, next_reset may remain equal to now;
-            # the next due hook then performs the source's next reset.
+            # A1.24 first advances from the saved boundary by one whole
+            # interval, then catches up while the candidate is strictly
+            # earlier than now. Equality is intentionally retained: a later
+            # hook at that exact epoch will advance from it again.
+            next_reset = self.next_reset + interval
             while next_reset < now:
                 next_reset += interval
         else:
