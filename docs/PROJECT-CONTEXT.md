@@ -1,6 +1,6 @@
 ## Mandatory verified/frozen work register
 
-Before starting any new implementation batch, consult [`docs/A1.24-VERIFIED-FROZEN.md`](A1.24-VERIFIED-FROZEN.md). Any source-traced behavior slice that has been implemented, regression-tested, and validated must be recorded there in the same batch, with its exact scope, canonical source location, tests, validation commit/CI, and remaining limitations. Freeze only that narrow slice; do not freeze an entire feature/module by implication. Do not modify frozen behavior unless a reproducible defect, new source mismatch, security issue, or required integration side effect is evidenced and documented first. This register is authoritative for avoiding repeated work.
+Before starting any new implementation batch, consult the **VERIFIED / FROZEN A1.24 BEHAVIOR SLICES** section at the top of [`docs/COMPATIBILITY-MATRIX.md`](COMPATIBILITY-MATRIX.md). This is the single canonical freeze ledger; do not create a parallel freeze file. Any source-traced behavior slice that has been implemented, regression-tested, and validated must be recorded there in the same batch, with its exact scope, canonical source location, tests, validation commit/CI, and remaining limitations. Freeze only that narrow slice; do not freeze an entire feature/module by implication. Do not modify frozen behavior unless a reproducible defect, new source mismatch, security issue, or required integration side effect is evidenced and documented first. This register is authoritative for avoiding repeated work.
 
 # LATEST IMPORT SAFETY GATE — 2026-10-25
 
