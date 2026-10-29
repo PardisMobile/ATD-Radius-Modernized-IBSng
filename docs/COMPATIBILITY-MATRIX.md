@@ -1,3 +1,26 @@
+# VERIFIED / FROZEN A1.24 BEHAVIOR SLICES — 2026-10-29
+
+This compatibility matrix is the single canonical ledger for source-verified behavior slices that have been implemented, regression-tested, and validated. Check this section before touching related code. Freeze scope is deliberately narrow; no row certifies an entire plugin, module, or product feature.
+
+## Frozen slices — do not reimplement without new evidence
+
+| ID | Exact frozen behavior | Canonical A1.24 source | Regression scope / validation | Explicitly not covered |
+|---|---|---|---|---|
+| FRZ-A124-EXPIRY-001 | Absolute expiry comparison is strict (`deadline < now`); relative expiry is inclusive (`deadline <= now`). At exact absolute expiry, online scheduler rechecks after its minimum interval; exact relative expiry is due. | `IBSng/core/user/plugins/abs_exp.py::AbsExpDate.__isAbsExpired`; `rel_exp.py::RelExpDate.__isRelExpired` | Exact boundaries, equal-deadline precedence and scheduler continuation. Checkpoint `300a3799589b51f7b8918fed7537a8a063aba887`; full CI [40798723019](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/40798723019), Python-only [40798723305](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/40798723305). | Full expiry plugin lifecycle, all reload/online side effects, live RAS behavior. |
+| FRZ-A124-PERIODIC-002 | Daily catch-up starts from saved `next_reset + interval` and advances only while candidate `< now`; reset is due at `next_reset <= now`. A delayed callback exactly on a missed boundary can produce a candidate equal to now; the next due invocation advances again. | `IBSng/core/user/plugins/periodic_accounting.py::BasePeriodicAccounting._calcNextReset` and due hook | Regression covers delayed exact-boundary catch-up and repeated invocation at same epoch. Implementation `64d5f21f629e0ab849c18d70949ce04d06fea3d1`, test `f12f18f331aae60e82404ad3454f8bfabbdca5a6`, final clarification `32d46f52620269f367edf2150683feb5851da709`; full CI and Python workflows passed (runs [40800850638](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/40800850638), [40800850548](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/40800850548)). | Entire periodic accounting plugin, all quota types' full lifecycle or deployed timezone behavior. |
+| FRZ-A124-FIRST-LOGIN-003 | First-login candidate commits only after successful Access-Accept and is not renewed on later successful logins. | A1.24 user-plugin first-login lifecycle; source audit recorded in the 2026-10-29 expiry/periodic batch | Integrated dispatcher reject/accept and response-attribute privacy tests; checkpoint `300a3799589b51f7b8918fed7537a8a063aba887`, full CI [40798723019](https://github.com/PardisMobile/ATD-Radius-Modernized-IBSng/actions/runs/40798723019). | Broader user plugin lifecycle, data import and live NAS tests. |
+| FRZ-A124-AUTH-WIRE-004 | Native CHAP uses packet authenticator; MS-CHAPv1 MPPE output; MS-CHAPv2 success and Send/Recv derivation; malformed/wrong response does not leak keys; bytes/bytearray/hex adapter normalization; native request→dispatcher→codec round-trip including encrypted MPPE keys and original request authenticator. | Canonical A1.24 authentication/password/key behavior; native authentication pipeline | Checkpoint `20e9f8cbe8d59b54bec9d337e071d9cd59d486d1`; full CI Python 3.11/3.12, 1,140 passed each, 2 warnings. | Live NAS/supplicant interoperability, provider-specific behavior, complete PAP/CHAP/MS-CHAP or plugin parity. |
+
+## Freeze/change control
+
+- Before implementation, inspect the matching frozen row and its cited test coverage.
+- A row is frozen only for its literal behavior—not the surrounding module or all adjacent hooks.
+- Reopen a frozen slice only for a reproducible defect, newly demonstrated source mismatch, security issue, or required integration side effect. Record the evidence and add a regression test before/with the minimal fix.
+- Any newly source-verified and tested slice must be added here in the same batch, including source path/method, tests, validation commit/CI, and what remains unverified.
+- The source archive remains the behavioral authority; green CI or docs alone do not establish parity.
+
+---
+
 # SOURCE AUDIT CORRECTION — DAILY PERIODIC RESET CATCH-UP — 2026-10-29
 
 The prior 2026-10-29 statement that daily reset advancement must always leave the next boundary strictly in the future was too broad and did not exactly reproduce canonical A1.24. In `IBSng/core/user/plugins/periodic_accounting.py::BasePeriodicAccounting._calcNextReset`, daily reset calculates `saved_next_reset + interval` first, then advances only while `candidate < time.time()`. If a delayed hook lands exactly on a missed interval boundary, the calculated reset may equal `now`; a subsequent due hook advances from that saved boundary again. The modernized implementation now preserves this source behavior, and a regression test covers both calls. This is a targeted correction, not evidence of complete plugin parity. CI for the corrective commits is running.
