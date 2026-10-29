@@ -1,3 +1,28 @@
+# PROJECT RULES — SINGLE AUTHORITY
+
+These are project-wide requirements, not optional suggestions. Keep the rules centralized here; subsystem documents should record implementation evidence/status and link back here rather than copy these rules into parallel policy lists.
+
+## Product goal and source authority
+- The deliverable is a modernized, behavior-compatible **complete IBSng A1.24 product**: AAA/RADIUS, accounting/session lifecycle, plugins and their side effects, billing/permissions, PostgreSQL data/schema compatibility and import/adoption, full admin/user UI, APIs/reports, and supported installer/deployment/upgrade/rollback.
+- This is not merely a RADIUS server with selected features. Passing CI, having a domain model, or implementing an API endpoint does not establish end-to-end product parity.
+- The canonical behavioral reference is `Source of Truth/IBSng-A1.24.tar.bz2` (SHA-256 pinned in `Source of Truth/README.md`). For every IBSng-compatibility task, inspect the relevant original source before designing, implementing, or claiming parity.
+
+## UI terminology and workflow compatibility
+- Every user-visible UI name must match its corresponding IBSng A1.24 term exactly: navigation/menu labels, page names, fields, buttons/actions, options, entities and feature labels. Do not rename, paraphrase, replace with ATD-specific taxonomy, or silently simplify these terms.
+- Preserve the source-defined workflows, action semantics, ordering/dependencies, permission checks and outcomes. Modernize presentation, responsive layout, navigation mechanics and visual styling only; a UX change must not change the underlying IBSng workflow.
+- The root `README.md` already states the naming contract. `ui/UI-SPEC.md` defines presentation details; `docs/IBSNG-UI-PAGE-INVENTORY.md` and `docs/IBSNG-UI-REFERENCE.md` provide the source UI reference. They must conform to this rule, not create alternate naming rules.
+
+## One implementation traceability map; no parallel inventories
+- `docs/MIGRATION-MATRIX.md` is the **single cross-product implementation traceability map**. For each IBSng capability, trace: canonical IBSng source → Domain → Application/use case → Runtime (RADIUS/Accounting/events and lifecycle) → Database (schema/relations/persistence/migrations/import) → API → UI (exact A1.24 labels/workflow) → Installer/configuration/services → tests/CI → status and unconnected work.
+- Mark each layer distinctly as implemented, verified, partial, missing, not applicable, or not yet audited. A class/model alone is not end-to-end completion. Do not infer status from a similarly named object, an audit note, or green CI.
+- Update the existing matrix in the same cohesive implementation batch as code/tests and evidence. Do not create another master feature map, freeze register, or duplicated policy document. Use subsystem inventories (for example `docs/A1.24-USER-PLUGIN-INVENTORY.md`) for detailed source behavior and plugin-specific freeze evidence; link/reference them from the matrix.
+- A feature's runtime, database, API, UI and installer links must be traceable; explicitly identify missing handoffs. Example: `assign_ip` must be tracked beyond its domain primitive through Access-Request allocation, accepted-login reservation handoff, Accounting Start/Stop, persistence and multi-worker coordination, plus its applicable management UI/configuration.
+
+## IBSng database import/adoption requirement
+- Preserve IBSng A1.24 data and relationships, including users, groups, attributes, RAS, IP pools, accounting/session history, billing/credit and plugin-owned data.
+- A row importer requiring an already-compatible target schema is a foundation, not a complete migration. Do not claim full adoption until schema/DDL, functions, triggers, rules, roles and plugin objects are accounted for as applicable, source/target parity is proven, and representative restore/import/cutover/rollback drills pass.
+- Record actual importer scope and proof in the existing migration/database documents and the traceability matrix; do not create a parallel migration status ledger.
+
 ## Mandatory verified/frozen work register
 
 Before any implementation batch touching A1.24 user plugins, consult and update the existing `docs/A1.24-USER-PLUGIN-INVENTORY.md`. That file is the canonical plugin-by-plugin inventory and freeze record: each frozen slice must state exact behavior, canonical source location, regression tests, validation commit/CI, and remaining limits. Do not create a parallel freeze file. `docs/COMPATIBILITY-MATRIX.md` is the cross-cutting parity matrix and supplementary evidence; it does not replace the plugin inventory. Freeze only the verified behavior slice, never a whole plugin by implication. Reopen frozen behavior only with documented reproducible defect evidence, source mismatch, security issue, or necessary integration side effect.
