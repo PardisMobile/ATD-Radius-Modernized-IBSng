@@ -6,6 +6,7 @@ prevents an address being leased to different users concurrently.
 """
 from __future__ import annotations
 from collections.abc import Iterable
+from ipaddress import ip_address
 from typing import Protocol
 
 class AssignedIPConnection(Protocol):
@@ -23,9 +24,13 @@ class PostgresUserAssignedIPRepository:
         values = addresses.split(",") if isinstance(addresses, str) else (addresses or ())
         result, seen = [], set()
         for value in values:
-            address = str(value).strip()
-            if address and address not in seen:
-                result.append(address); seen.add(address)
+            raw = str(value).strip()
+            if not raw:
+                continue
+            address = str(ip_address(raw))
+            if address not in seen:
+                result.append(address)
+                seen.add(address)
         return tuple(result)
 
     def reserve(self, user_id: int, addresses: str | Iterable[str] | None, request_key: str) -> str | None:
@@ -78,3 +83,17 @@ class PostgresUserAssignedIPRepository:
     def snapshot(self, user_id: int):
         rows = self.conn.execute("SELECT host(ip_address),status,ras_id::text,session_id FROM atd_radius_user_assigned_ip_leases WHERE user_id=%s ORDER BY lease_id", (int(user_id),)).fetchall()
         return tuple((str(ip),str(status),ras,session) for ip,status,ras,session in rows)
+
+    def expire_pending(self, older_than_seconds: int) -> int:
+        """Delete stale provisional leases without touching active sessions."""
+        age = int(older_than_seconds)
+        if age <= 0:
+            raise ValueError("older_than_seconds must be positive")
+        rows = self.conn.execute(
+            "DELETE FROM atd_radius_user_assigned_ip_leases "
+            "WHERE status='pending' AND updated_at < "
+            "CURRENT_TIMESTAMP - (%s * INTERVAL '1 second') "
+            "RETURNING lease_id",
+            (age,),
+        ).fetchall()
+        return len(rows)

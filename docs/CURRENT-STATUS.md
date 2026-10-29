@@ -1071,3 +1071,8 @@ Added PostgreSQL schema and repository for `assign_ip`, beyond the process-local
 # ASSIGN_IP LEASE REPOSITORY HARDENING — 2026-10-29
 
 Added canonical IPv4/IPv6 normalization and strict invalid-address rejection to the durable lease repository, plus a safe age-bounded cleanup method for orphaned pending reservations. Active lease rows are not targeted by cleanup. New tests cover address canonicalization, invalid configuration, and pending expiration behavior. Runtime Access/Accounting integration remains the next unclosed lifecycle gate.
+
+
+## assign_ip repository implementation correction — 2026-10-29
+
+A review of the latest source and its already-added regression tests found that the canonicalization/expiration behavior described above had not actually landed in the repository implementation (the tests were present but the implementation was incomplete, including an unresolved IP-normalizer reference). Corrected the implementation to canonicalize IPv4/IPv6 with Python's `ipaddress` parser, deduplicate normalized values, reject invalid addresses, and implement age-bounded cleanup of pending leases only. This is a correctness repair to the repository layer, not live Access/Accounting integration; runtime wiring and cross-process lifecycle verification remain open.
