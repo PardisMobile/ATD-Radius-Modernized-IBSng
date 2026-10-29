@@ -82,3 +82,25 @@ def test_consume_conflict_keeps_pending_lease_releasable():
         registry.consume("req", 7, "session")
     assert registry.pending("req") == (5, ip)
     assert registry.release_request("req")
+
+
+def test_reload_discards_pending_reservations_for_removed_addresses():
+    registry = UserAssignedIPRegistry()
+    assert registry.reserve(12, "192.0.2.10,192.0.2.11", "pending") == "192.0.2.10"
+
+    # Any operation that reloads the user's configured attribute reconciles
+    # provisional requests before a later reject/timeout cleanup is attempted.
+    assert registry.allocate(12, "192.0.2.11") == "192.0.2.11"
+    assert registry.pending("pending") is None
+    assert not registry.release_request("pending")
+    assert registry.snapshot(12) == (("192.0.2.11",), (), ("192.0.2.11",))
+
+
+def test_reload_cleanup_does_not_discard_pending_address_still_configured():
+    registry = UserAssignedIPRegistry()
+    assert registry.reserve(12, "192.0.2.10,192.0.2.11", "pending") == "192.0.2.10"
+    # Reordering the attribute retains the lease and doesn't duplicate it.
+    assert registry.allocate(12, "192.0.2.11,192.0.2.10") == "192.0.2.11"
+    assert registry.pending("pending") == (12, "192.0.2.10")
+    assert registry.release_request("pending")
+    assert registry.snapshot(12)[1] == ("192.0.2.10",)

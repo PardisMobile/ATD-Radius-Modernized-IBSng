@@ -28,6 +28,16 @@ class UserAssignedIPRegistry:
             pool = self._containers[user_id] = UserAssignedIPContainer(addresses)
         else:
             pool.reload(addresses)
+            # Reservations are provisional: when a user's configured list is
+            # refreshed, discard pending claims for addresses no longer in it.
+            # Otherwise a later reject/timeout could try to release an IP that
+            # the container has already forgotten, raising and masking cleanup.
+            configured_now = set(pool.all_ips)
+            self._pending = {
+                request_key: lease
+                for request_key, lease in self._pending.items()
+                if lease[0] != user_id or lease[1] in configured_now
+            }
         return pool
 
     def allocate(self, user_id: int, configured: str | Iterable[str] | None) -> str | None:
