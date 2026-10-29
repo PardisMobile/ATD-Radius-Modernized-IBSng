@@ -28,6 +28,12 @@ def test_absolute_expiry_rejects_expired_user():
     r=AbsoluteExpiryPolicy(now).evaluate(AAARequest("u",{"abs_exp_date":"999"}))
     assert r.action is AAAAction.REJECT
 
+def test_absolute_expiry_exact_epoch_matches_a124_strict_past_boundary():
+    now=datetime.fromtimestamp(1000,tz=timezone.utc)
+    result=AbsoluteExpiryPolicy(now).evaluate(AAARequest("u",{"abs_exp_date":"1000"}))
+    assert result.action is AAAAction.ACCEPT
+    assert result.attributes == {"Session-Timeout": "0"}
+
 def test_relative_expiry_uses_private_first_login_candidate_without_emitting_it():
     now=datetime.fromtimestamp(1000,tz=timezone.utc)
     r=RelativeExpiryPolicy(now).evaluate(
