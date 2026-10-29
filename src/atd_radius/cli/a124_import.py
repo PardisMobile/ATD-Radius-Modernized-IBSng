@@ -800,6 +800,16 @@ def import_data(source_conn, target_conn, source_schema: str, target_schema: str
                 "key_columns": key_columns,
             })
 
+        # Sequence calls can continue independently of table locks. Acquire
+        # transaction-scoped relation locks before reading state so target-side
+        # nextval() cannot race the restart calculation.
+        for sequence_name in sorted(source_sequences):
+            target_conn.execute(
+                sql.SQL("LOCK TABLE {}.{} IN ACCESS EXCLUSIVE MODE").format(
+                    sql.Identifier(target_schema), sql.Identifier(sequence_name)
+                )
+            )
+
         # ALTER SEQUENCE RESTART is transactional (unlike setval). Keep each
         # sequence ahead of both its source sequence state and imported owned IDs.
         for sequence_name in sorted(source_sequences):
