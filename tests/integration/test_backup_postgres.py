@@ -20,6 +20,20 @@ def backup_databases():
         pytest.skip("ATD_TEST_DATABASE_URL is required for PostgreSQL backup acceptance")
     if not shutil.which("pg_dump") or not shutil.which("pg_restore"):
         pytest.skip("pg_dump and pg_restore are required for PostgreSQL backup acceptance")
+    # Newer PostgreSQL client archives can contain SET commands unsupported by
+    # older servers (for example transaction_timeout on PostgreSQL < 17).
+    with psycopg.connect(base_dsn) as version_conn:
+        server_major = version_conn.execute("SHOW server_version").fetchone()[0].split(".")[0]
+    restore_version = shutil.which("pg_restore")
+    version_output = __import__("subprocess").run(
+        [restore_version, "--version"], check=True, capture_output=True, text=True
+    ).stdout
+    client_major = version_output.split()[-1].split(".")[0]
+    if int(client_major) > int(server_major):
+        pytest.skip(
+            f"pg_restore {client_major} archive compatibility is not guaranteed on "
+            f"PostgreSQL {server_major}; use matching major-version client tools"
+        )
     suffix = uuid.uuid4().hex[:10]
     source_name = "atd_bksrc_" + suffix
     target_name = "atd_bktgt_" + suffix
