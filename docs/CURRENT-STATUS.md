@@ -1,3 +1,9 @@
+# A1.24 ASSIGN_IP DOMAIN FOUNDATION — 2026-10-29
+
+Added the source-shaped per-user ordered free/used address container in `src/atd_radius/domain/user_assigned_ip.py` and regression coverage in `tests/domain/test_user_assigned_ip.py`. The domain primitive covers first-free selection, re-online address claims, graceful exhaustion, logout release, and reload retaining still-configured active addresses. This is not yet live runtime parity: Access-Request allocation, accepted-login reservation handoff, Accounting Start/Stop and multi-worker lease coordination remain open. See the exact scope in `docs/A1.24-USER-PLUGIN-INVENTORY.md`. CI runs are queued/in progress at this checkpoint.
+
+---
+
 # VERIFIED/FROZEN REGISTER LOCATION CORRECTED — 2026-10-29
 
 The existing `docs/A1.24-USER-PLUGIN-INVENTORY.md` is the canonical plugin-by-plugin inventory and freeze record. `docs/COMPATIBILITY-MATRIX.md` remains the cross-cutting parity matrix and supplementary evidence; it does not replace the plugin inventory. The mistakenly created parallel file `docs/A1.24-VERIFIED-FROZEN.md` has been deleted. No separate freeze register should be created.
